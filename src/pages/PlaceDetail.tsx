@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getPlace } from "@/services/api";
-import type { Place } from "@/types";
+import type { Place, DiscussionComment } from "@/types";
 import { ArrowLeft, Map } from "lucide-react";
+import DiscussionSection from "@/components/DiscussionSection";
 
 export default function PlaceDetail() {
   const { id } = useParams<{ id: string }>();
   const [place, setPlace] = useState<Place | null>(null);
   const [showMap, setShowMap] = useState(false);
+  const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
 
   useEffect(() => {
     if (id) getPlace(id).then((p) => setPlace(p ?? null));
@@ -15,9 +17,15 @@ export default function PlaceDetail() {
 
   if (!place) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
 
+  const handleAddComment = (author: string, text: string) => {
+    setDiscussion((prev) => [...prev, { id: `dc-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0], replies: [] }]);
+  };
+  const handleAddReply = (commentId: string, author: string, text: string) => {
+    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, replies: [...c.replies, { id: `dr-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0] }] } : c));
+  };
+
   return (
     <div className="space-y-0">
-      {/* Parallax header */}
       <div className="relative h-64 md:h-80 bg-muted overflow-hidden flex items-end">
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent z-10" />
         <div className="absolute inset-0 flex items-center justify-center">
@@ -35,7 +43,6 @@ export default function PlaceDetail() {
       <div className="p-6 md:p-8 space-y-8">
         <div className="mecha-line" />
 
-        {/* Map Toggle */}
         <button
           onClick={() => setShowMap(!showMap)}
           className="flex items-center gap-2 px-4 py-2 border border-border rounded-sm text-xs font-display tracking-wider text-muted-foreground hover:bg-muted transition-colors"
@@ -54,7 +61,6 @@ export default function PlaceDetail() {
           </div>
         )}
 
-        {/* Description */}
         <div className="max-w-3xl space-y-4">
           <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Overview</h2>
           {place.fullDesc.split("\n\n").map((para, i) => (
@@ -62,7 +68,6 @@ export default function PlaceDetail() {
           ))}
         </div>
 
-        {/* Documentation */}
         {place.docs.length > 0 && (
           <div className="space-y-4">
             <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Documentation</h2>
@@ -70,7 +75,7 @@ export default function PlaceDetail() {
               {place.docs.map((doc, i) => (
                 <div key={i} className="hud-border-sm bg-card overflow-hidden">
                   <div className="aspect-video bg-muted flex items-center justify-center">
-                    <span className="text-xs text-muted-foreground font-heading tracking-wider">IMAGE</span>
+                    <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : "IMAGE"}</span>
                   </div>
                   <div className="p-3">
                     <p className="text-xs font-body text-muted-foreground">{doc.caption}</p>
@@ -80,6 +85,9 @@ export default function PlaceDetail() {
             </div>
           </div>
         )}
+
+        <div className="mecha-line" />
+        <DiscussionSection comments={discussion} onAddComment={handleAddComment} onAddReply={handleAddReply} />
       </div>
     </div>
   );

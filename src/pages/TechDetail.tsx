@@ -1,18 +1,27 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getTech } from "@/services/api";
-import type { Technology } from "@/types";
+import type { Technology, DiscussionComment } from "@/types";
 import { ArrowLeft } from "lucide-react";
+import DiscussionSection from "@/components/DiscussionSection";
 
 export default function TechDetail() {
   const { id } = useParams<{ id: string }>();
   const [tech, setTech] = useState<Technology | null>(null);
+  const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
 
   useEffect(() => {
     if (id) getTech(id).then((t) => setTech(t ?? null));
   }, [id]);
 
   if (!tech) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+
+  const handleAddComment = (author: string, text: string) => {
+    setDiscussion((prev) => [...prev, { id: `dc-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0], replies: [] }]);
+  };
+  const handleAddReply = (commentId: string, author: string, text: string) => {
+    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, replies: [...c.replies, { id: `dr-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0] }] } : c));
+  };
 
   return (
     <div className="space-y-0">
@@ -46,7 +55,7 @@ export default function TechDetail() {
               {tech.docs.map((doc, i) => (
                 <div key={i} className="hud-border-sm bg-card overflow-hidden">
                   <div className="aspect-video bg-muted flex items-center justify-center">
-                    <span className="text-xs text-muted-foreground font-heading tracking-wider">IMAGE</span>
+                    <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : "IMAGE"}</span>
                   </div>
                   <div className="p-3">
                     <p className="text-xs font-body text-muted-foreground">{doc.caption}</p>
@@ -56,6 +65,9 @@ export default function TechDetail() {
             </div>
           </div>
         )}
+
+        <div className="mecha-line" />
+        <DiscussionSection comments={discussion} onAddComment={handleAddComment} onAddReply={handleAddReply} />
       </div>
     </div>
   );

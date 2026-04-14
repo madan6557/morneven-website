@@ -44,6 +44,22 @@ export interface Character {
   shortDesc: string;
   fullDesc: string;
   stats: CharacterStats;
+  docs: DocItem[];
+}
+
+export interface DiscussionReply {
+  id: string;
+  author: string;
+  text: string;
+  date: string;
+}
+
+export interface DiscussionComment {
+  id: string;
+  author: string;
+  text: string;
+  date: string;
+  replies: DiscussionReply[];
 }
 
 export interface Place {
