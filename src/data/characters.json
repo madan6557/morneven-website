@@ -11,7 +11,8 @@
     "thumbnail": "",
     "shortDesc": "Shadow Operative and Chief Tactician of Morneven Institute's Field Division.",
     "fullDesc": "Kael Vorthane is a Shadow-kin Demi-human who serves as the primary field operative and tactical advisor for Morneven Institute. Born in the Underdark Territories, he was recruited at age 16 after single-handedly neutralizing a Voidborn scouting party.\n\nHis Shadow-kin heritage grants him enhanced night vision, shadow-step capabilities, and an innate resistance to psychic intrusion. Despite his cold exterior, Kael is fiercely loyal to Director Elynra and the Institute's mission.",
-    "stats": { "combat": 92, "intelligence": 88, "stealth": 97, "charisma": 45, "endurance": 76 }
+    "stats": { "combat": 92, "intelligence": 88, "stealth": 97, "charisma": 45, "endurance": 76 },
+    "docs": []
   },
   {
     "id": "char-002",
@@ -25,7 +26,8 @@
     "thumbnail": "",
     "shortDesc": "Director of Morneven Institute. A Jewerlian leader guiding cross-species cooperation.",
     "fullDesc": "Director Elynra Moonveil is the founding leader of Morneven Institute and one of the most influential Jewerlians of her generation. She established the Institute with the vision of uniting Jewerlians, Humans, and Demi-humans under a shared pursuit of knowledge and peace.\n\nHer mastery of crystal resonance technology is unparalleled, and she personally oversees the most sensitive research projects. Under her leadership, Morneven has become a beacon of hope in a world still scarred by the apocalypse.",
-    "stats": { "combat": 35, "intelligence": 98, "stealth": 30, "charisma": 95, "endurance": 60 }
+    "stats": { "combat": 35, "intelligence": 98, "stealth": 30, "charisma": 95, "endurance": 60 },
+    "docs": []
   },
   {
     "id": "char-003",
@@ -39,7 +41,8 @@
     "thumbnail": "",
     "shortDesc": "Lead Engineer and head of Morneven's R&D Weapons Division.",
     "fullDesc": "Rex Ashford is a human engineer whose genius is matched only by his disregard for safety protocols. He heads the Research & Development Weapons Division at Morneven Institute, responsible for developing defensive technologies against Voidborn threats.\n\nDespite numerous lab incidents (17 at last count), his innovations have saved countless lives. His signature creation, the 'Ashford Repeater,' is standard issue for all Institute field operatives.",
-    "stats": { "combat": 65, "intelligence": 91, "stealth": 20, "charisma": 78, "endurance": 70 }
+    "stats": { "combat": 65, "intelligence": 91, "stealth": 20, "charisma": 78, "endurance": 70 },
+    "docs": []
   },
   {
     "id": "char-004",
@@ -53,6 +56,7 @@
     "thumbnail": "",
     "shortDesc": "Chief Medical Officer and leyline healer stationed at Morneven Central.",
     "fullDesc": "Lyra Fenwick is a Fae-touched Demi-human who serves as the Chief Medical Officer of Morneven Institute. Her Fae heritage gives her an extraordinary connection to natural leyline energies, which she channels for healing purposes.\n\nShe can sense emotional states and physical ailments through touch, making her diagnostic abilities unmatched. However, prolonged exposure to heavy machinery and refined metals causes her significant discomfort — a common Fae-touched sensitivity.",
-    "stats": { "combat": 30, "intelligence": 85, "stealth": 55, "charisma": 90, "endurance": 50 }
+    "stats": { "combat": 30, "intelligence": 85, "stealth": 55, "charisma": 90, "endurance": 50 },
+    "docs": []
   }
 ]
