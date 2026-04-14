@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { getCharacter } from "@/services/api";
-import type { Character } from "@/types";
+import type { Character, DiscussionComment } from "@/types";
 import { ArrowLeft, Heart, Frown } from "lucide-react";
+import DiscussionSection from "@/components/DiscussionSection";
 
 export default function CharacterDetail() {
   const { id } = useParams<{ id: string }>();
   const [char, setChar] = useState<Character | null>(null);
+  const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
 
   useEffect(() => {
     if (id) getCharacter(id).then((c) => setChar(c ?? null));
@@ -16,6 +18,14 @@ export default function CharacterDetail() {
   if (!char) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
 
   const accentColor = char.accentColor;
+
+  const handleAddComment = (author: string, text: string) => {
+    setDiscussion((prev) => [...prev, { id: `dc-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0], replies: [] }]);
+  };
+
+  const handleAddReply = (commentId: string, author: string, text: string) => {
+    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, replies: [...c.replies, { id: `dr-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0] }] } : c));
+  };
 
   return (
     <div className="space-y-0" style={{ "--char-accent": accentColor } as React.CSSProperties}>
@@ -109,14 +119,42 @@ export default function CharacterDetail() {
             </div>
           </div>
 
-          {/* Right: Description */}
-          <div className="lg:col-span-2 space-y-6">
+          {/* Right: Description, Docs, Discussion */}
+          <div className="lg:col-span-2 space-y-8">
             <div className="space-y-4">
               <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Background</h2>
               {char.fullDesc.split("\n\n").map((para, i) => (
                 <p key={i} className="text-sm font-body text-foreground/80 leading-relaxed">{para}</p>
               ))}
             </div>
+
+            {/* Documentation */}
+            {char.docs && char.docs.length > 0 && (
+              <div className="space-y-4">
+                <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Documentation</h2>
+                <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
+                  {char.docs.map((doc, i) => (
+                    <div key={i} className="hud-border-sm bg-card overflow-hidden" style={{ borderColor: `${accentColor}20` }}>
+                      <div className="aspect-video bg-muted flex items-center justify-center">
+                        <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : "IMAGE"}</span>
+                      </div>
+                      <div className="p-3">
+                        <p className="text-xs font-body text-muted-foreground">{doc.caption}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Discussion */}
+            <div className="h-px w-full" style={{ background: `linear-gradient(to right, transparent, ${accentColor}30, transparent)` }} />
+            <DiscussionSection
+              comments={discussion}
+              onAddComment={handleAddComment}
+              onAddReply={handleAddReply}
+              accentColor={accentColor}
+            />
           </div>
         </div>
       </div>

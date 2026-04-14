@@ -11,12 +11,12 @@ interface Props {
 }
 
 export default function DiscussionSection({ comments, onAddComment, onAddReply, accentColor }: Props) {
-  const { role, user } = useAuth();
+  const { role, username } = useAuth();
   const [newComment, setNewComment] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
 
-  const authorName = user?.username || (role === "guest" ? "Guest" : "User");
+  const authorName = username || (role === "guest" ? "Guest" : "User");
   const canComment = role !== "guest";
 
   const handleSubmitComment = () => {
