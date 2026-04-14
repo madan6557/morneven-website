@@ -22,37 +22,38 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => {
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route element={<AppLayout />}>
-              <Route path="/home" element={<HomePage />} />
-              <Route path="/projects" element={<ProjectsPage />} />
-              <Route path="/projects/:id" element={<ProjectDetail />} />
-              <Route path="/gallery" element={<GalleryPage />} />
-              <Route path="/gallery/:id" element={<GalleryDetail />} />
-              <Route path="/lore" element={<LorePage />} />
-              <Route path="/lore/:category" element={<LorePage />} />
-              <Route path="/lore/characters/:id" element={<CharacterDetail />} />
-              <Route path="/lore/places/:id" element={<PlaceDetail />} />
-              <Route path="/lore/tech/:id" element={<TechDetail />} />
-              <Route path="/author" element={<AuthorDashboard />} />
-              <Route path="/settings" element={<SettingsPage />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route element={<AppLayout />}>
+                <Route path="/home" element={<HomePage />} />
+                <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/projects/:id" element={<ProjectDetail />} />
+                <Route path="/gallery" element={<GalleryPage />} />
+                <Route path="/gallery/:id" element={<GalleryDetail />} />
+                <Route path="/lore" element={<LorePage />} />
+                <Route path="/lore/:category" element={<LorePage />} />
+                <Route path="/lore/characters/:id" element={<CharacterDetail />} />
+                <Route path="/lore/places/:id" element={<PlaceDetail />} />
+                <Route path="/lore/tech/:id" element={<TechDetail />} />
+                <Route path="/author" element={<AuthorDashboard />} />
+                <Route path="/settings" element={<SettingsPage />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
