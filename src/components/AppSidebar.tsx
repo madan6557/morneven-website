@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
@@ -7,18 +7,19 @@ import {
   Image,
   BookOpen,
   Settings,
-  ChevronLeft,
-  ChevronRight,
   PanelLeftClose,
   PanelLeft,
-  LogOut,
   Shield,
+  LogOut,
+  ChevronRight,
+  User,
 } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type SidebarState = "expanded" | "minimized" | "collapsed";
 
@@ -27,7 +28,7 @@ const navItems = [
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Gallery", url: "/gallery", icon: Image },
   { title: "Lore / Wiki", url: "/lore", icon: BookOpen },
-  { title: "Author Panel", url: "/author", icon: Shield },
+  { title: "Author Panel", url: "/author", icon: Shield, authorOnly: true },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
@@ -38,6 +39,8 @@ interface AppSidebarProps {
 
 export function AppSidebar({ state, onStateChange }: AppSidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { role, username, logout } = useAuth();
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   const cycleState = () => {
@@ -51,9 +54,18 @@ export function AppSidebar({ state, onStateChange }: AppSidebarProps) {
 
   const width = state === "expanded" ? 256 : state === "minimized" ? 64 : 0;
 
+  const filteredNav = navItems.filter((item) => {
+    if (item.authorOnly && role !== "author") return false;
+    return true;
+  });
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
   return (
     <>
-      {/* Floating trigger when collapsed */}
       <AnimatePresence>
         {state === "collapsed" && (
           <motion.button
@@ -97,12 +109,26 @@ export function AppSidebar({ state, onStateChange }: AppSidebarProps) {
             </button>
           </div>
 
-          {/* Mecha accent line */}
           <div className="mecha-line" />
+
+          {/* User info */}
+          {state === "expanded" && (
+            <div className="px-4 py-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center">
+                  <User className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-heading text-foreground truncate">{username}</p>
+                  <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">{role}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Nav items */}
           <nav className="flex-1 py-3 space-y-1 px-2 overflow-y-auto">
-            {navItems.map((item) => {
+            {filteredNav.map((item) => {
               const active = isActive(item.url);
               const link = (
                 <Link
@@ -141,15 +167,34 @@ export function AppSidebar({ state, onStateChange }: AppSidebarProps) {
           </nav>
 
           {/* Footer */}
-          <div className="border-t border-border p-2">
+          <div className="border-t border-border p-2 space-y-1">
             {state === "expanded" ? (
-              <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground font-heading tracking-wide">
-                <div className="h-1.5 w-1.5 rounded-full bg-accent-yellow animate-pulse-glow" />
-                SYSTEM ONLINE
-              </div>
+              <>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm text-muted-foreground hover:bg-sidebar-accent transition-colors"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="font-heading text-sm tracking-wide">Logout</span>
+                </button>
+                <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground font-heading tracking-wide">
+                  <div className="h-1.5 w-1.5 rounded-full bg-accent-yellow animate-pulse-glow" />
+                  SYSTEM ONLINE
+                </div>
+              </>
             ) : (
-              <div className="flex justify-center py-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-accent-yellow animate-pulse-glow" />
+              <div className="space-y-1">
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <button onClick={handleLogout} className="flex justify-center w-full py-2 text-muted-foreground hover:text-foreground transition-colors">
+                      <LogOut className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="font-heading">Logout</TooltipContent>
+                </Tooltip>
+                <div className="flex justify-center py-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-accent-yellow animate-pulse-glow" />
+                </div>
               </div>
             )}
           </div>
