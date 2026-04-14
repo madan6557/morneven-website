@@ -1,0 +1,37 @@
+[
+  {
+    "id": "place-001",
+    "name": "The Iron Citadel",
+    "type": "Fortress City",
+    "thumbnail": "",
+    "shortDesc": "Morneven Institute's primary headquarters, built into the remains of an ancient megastructure.",
+    "fullDesc": "The Iron Citadel is a massive fortress-city constructed within and around the skeletal remains of a pre-apocalypse megastructure. It serves as the primary headquarters for Morneven Institute and houses over 50,000 residents including researchers, soldiers, and civilians.\n\nThe Citadel's walls are reinforced with Worldshard crystal lattices, making them nearly impervious to conventional weaponry. At its center stands the Spire of Echoes, a towering structure that serves as both a communications hub and a leyline resonance amplifier.",
+    "docs": [
+      { "type": "image", "url": "", "caption": "Iron Citadel aerial view" },
+      { "type": "image", "url": "", "caption": "The Spire of Echoes" }
+    ]
+  },
+  {
+    "id": "place-002",
+    "name": "The Scorched Wastes",
+    "type": "Barren Zone",
+    "thumbnail": "",
+    "shortDesc": "A vast expanse of lifeless terrain created by the apocalypse that transformed Earth into Gemora.",
+    "fullDesc": "The Scorched Wastes stretch across what was once the central plains of a pre-apocalypse continent. The cataclysm that created Gemora left this region completely devoid of life — the soil is crystallized, the atmosphere is thin, and strange energy anomalies pulse beneath the surface.\n\nDespite its hostile nature, the Wastes are rich in Worldshard crystal deposits, making it a target for mining operations and the site of the Genesis Protocol terraforming project.",
+    "docs": [
+      { "type": "image", "url": "", "caption": "Scorched Wastes horizon" }
+    ]
+  },
+  {
+    "id": "place-003",
+    "name": "Verdant Hollows",
+    "type": "Forest Settlement",
+    "thumbnail": "",
+    "shortDesc": "A Fae-touched settlement hidden within an ancient forest untouched by the apocalypse.",
+    "fullDesc": "The Verdant Hollows is one of the few regions of Gemora that survived the apocalypse relatively intact. This ancient forest is home to a community of Fae-touched Demi-humans who have maintained a symbiotic relationship with the natural leyline network.\n\nThe trees themselves are imbued with leyline energy, glowing faintly at night and producing a natural barrier against Voidborn intrusion. Morneven Institute maintains a small research outpost at the forest's edge with permission from the Fae-touched elders.",
+    "docs": [
+      { "type": "image", "url": "", "caption": "Bioluminescent forest canopy" },
+      { "type": "image", "url": "", "caption": "Fae-touched elder council chamber" }
+    ]
+  }
+]

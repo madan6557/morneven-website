@@ -1,0 +1,36 @@
+[
+  {
+    "id": "tech-001",
+    "name": "Nexus Drive",
+    "category": "FTL Technology",
+    "thumbnail": "",
+    "shortDesc": "Experimental faster-than-light propulsion system using Worldshard crystal resonance.",
+    "fullDesc": "The Nexus Drive is Morneven Institute's most ambitious technological achievement — a faster-than-light propulsion system that harnesses the resonant frequencies of Worldshard crystals to fold space-time. Unlike conventional warp drives theorized in the pre-apocalypse era, the Nexus Drive works by creating a harmonic bridge between two points in the crystal lattice network.\n\nCurrent limitations include the requirement for a Jewerlian operator to maintain the crystal harmonic during transit, and a maximum range of approximately 12 light-years per jump.",
+    "docs": [
+      { "type": "image", "url": "", "caption": "Nexus Drive core assembly" },
+      { "type": "image", "url": "", "caption": "Crystal harmonic resonance pattern" }
+    ]
+  },
+  {
+    "id": "tech-002",
+    "name": "Ashford Repeater",
+    "category": "Defensive Weapon",
+    "thumbnail": "",
+    "shortDesc": "Standard-issue energy weapon developed by Rex Ashford for Institute field operatives.",
+    "fullDesc": "The Ashford Repeater is a compact energy weapon that fires concentrated leyline energy pulses. Developed by Lead Engineer Rex Ashford, it has become the standard sidearm for all Morneven Institute field operatives.\n\nThe weapon draws power from a miniaturized Worldshard crystal, giving it approximately 200 shots before requiring recharge. Its unique design includes a variable output mode — from non-lethal stun to armor-piercing — making it versatile for both peacekeeping and combat operations.",
+    "docs": [
+      { "type": "image", "url": "", "caption": "Repeater blueprint v4" }
+    ]
+  },
+  {
+    "id": "tech-003",
+    "name": "Voidborn Anomaly Scanner",
+    "category": "Detection Equipment",
+    "thumbnail": "",
+    "shortDesc": "Long-range sensor array designed to detect and track Voidborn energy signatures.",
+    "fullDesc": "The Voidborn Anomaly Scanner (VAS) is a critical piece of defensive infrastructure deployed across Morneven-controlled territories. The scanner uses a network of tuned Worldshard crystals to detect the unique energy signatures emitted by Voidborn entities.\n\nThe latest model (VAS-7) can detect Voidborn activity up to 500 kilometers away and distinguish between different entity classifications. Data from the scanner network feeds directly into the Iron Citadel's command center for real-time threat assessment.",
+    "docs": [
+      { "type": "image", "url": "", "caption": "VAS-7 array installation" }
+    ]
+  }
+]
