@@ -6,7 +6,7 @@ export function ThemeToggle() {
     if (typeof window !== "undefined") {
       return document.documentElement.classList.contains("dark");
     }
-    return true;
+    return false;
   });
 
   useEffect(() => {
