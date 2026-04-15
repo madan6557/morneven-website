@@ -71,7 +71,7 @@ export default function Landing() {
         {/* Grid decoration */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/4 left-0 w-full mecha-line" />
-          <div className="absolute top-3/4 left-0 w-full mecha-line" />
+          <div className="absolute top-[82%] left-0 w-full mecha-line" />
           <div className="absolute top-0 left-1/4 h-full w-px bg-gradient-to-b from-transparent via-primary/20 to-transparent" />
           <div className="absolute top-0 right-1/4 h-full w-px bg-gradient-to-b from-transparent via-primary/20 to-transparent" />
           <div className="absolute top-8 left-8 w-16 h-16 border-l border-t border-primary/20" />
