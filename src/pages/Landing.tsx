@@ -116,7 +116,7 @@ export default function Landing() {
             </p>
           </motion.div>
 
-          <motion.div variants={fadeUp} custom={4} className="flex flex-col sm:flex-row gap-4 justify-center">
+          <motion.div variants={fadeUp} custom={4} className="relative z-20 flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               to="/auth"
               className="inline-flex items-center gap-2 hud-border px-10 py-3 bg-primary/5 hover:bg-primary/10 transition-colors font-display text-xs tracking-[0.25em] text-primary uppercase glow-primary"
@@ -126,7 +126,7 @@ export default function Landing() {
             </Link>
             <a
               href="#about"
-              className="inline-flex items-center gap-2 px-10 py-3 border border-border hover:border-primary/40 transition-colors font-display text-xs tracking-[0.25em] text-muted-foreground uppercase"
+              className="inline-flex items-center gap-2 px-10 py-3 border border-border hover:border-primary/40 transition-colors font-display text-xs tracking-[0.25em] text-muted-foreground uppercase bg-background/80 backdrop-blur-sm"
             >
               Learn More
             </a>
