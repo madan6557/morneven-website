@@ -46,7 +46,7 @@
     --sidebar-ring: 0 48% 32%;
 
     --accent-orange: 18 76% 54%;
-    --accent-yellow: 48 91% 60%;
+    --accent-yellow: 48 91% 40%;
     --hud-glow: 0 48% 32%;
   }
 
@@ -60,7 +60,7 @@
     --popover: 0 15% 10%;
     --popover-foreground: 30 10% 90%;
 
-    --primary: 0 48% 32%;
+    --primary: 0 48% 52%;
     --primary-foreground: 30 10% 96%;
 
     --secondary: 270 28% 39%;
