@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/contexts/AuthContext";
+import logoColor from "@/assets/logo-color.png";
 
 export type SidebarState = "expanded" | "minimized" | "collapsed";
 
