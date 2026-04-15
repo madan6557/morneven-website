@@ -253,10 +253,7 @@ export default function AuthorDashboard() {
               <input type="text" value={editing.title ?? editing.name ?? ""} onChange={(e) => setEditing({ ...editing, [editing.title !== undefined ? "title" : "name"]: e.target.value })} className={inputClass} />
             </div>
 
-            {/* Thumbnail URL */}
-            <div>
-              <label className={labelClass}>Thumbnail URL</label>
-              <input type="text" value={editing.thumbnail || ""} onChange={(e) => setEditing({ ...editing, thumbnail: e.target.value })} className={inputClass} placeholder="https://..." />
+            <FileUploadField label="Thumbnail" value={editing.thumbnail || ""} onChange={(url) => setEditing({ ...editing, thumbnail: url })} accept="image/*" />
             </div>
 
             {/* Project-specific: Status */}
@@ -391,13 +388,13 @@ export default function AuthorDashboard() {
               {(editing.docs || []).map((doc: DocItem, idx: number) => (
                 <div key={idx} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
                   <div className="flex-1 space-y-2">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       <select value={doc.type} onChange={(e) => updateDoc(idx, "type", e.target.value)} className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground">
                         <option value="image">Image</option>
                         <option value="video">Video</option>
                       </select>
-                      <input type="text" value={doc.url} onChange={(e) => updateDoc(idx, "url", e.target.value)} placeholder="URL" className="flex-1 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                     </div>
+                    <FileUploadField label="" value={doc.url} onChange={(url) => updateDoc(idx, "url", url)} accept={doc.type === "video" ? "video/*" : "image/*"} />
                     <input type="text" value={doc.caption} onChange={(e) => updateDoc(idx, "caption", e.target.value)} placeholder="Caption" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                   </div>
                   <button onClick={() => removeDoc(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
