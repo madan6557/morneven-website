@@ -1,14 +1,64 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getProjects, createProject, updateProject, deleteProject, getCharacters, createCharacter, updateCharacter, deleteCharacter, getPlaces, createPlace, updatePlace, deletePlace, getTechnology, createTech, updateTech, deleteTech, getGallery, createGalleryItem, updateGalleryItem, deleteGalleryItem } from "@/services/api";
 import type { Project, Character, Place, Technology, GalleryItem, DocItem } from "@/types";
-import { Pencil, Trash2, Plus, X, Save } from "lucide-react";
+import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video } from "lucide-react";
 
 const dashTabs = ["projects", "lore", "gallery"] as const;
 const loreSubs = ["characters", "places", "technology"] as const;
 const inputClass = "w-full mt-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 const labelClass = "font-heading text-xs tracking-wider text-muted-foreground uppercase";
+
+type AttachmentMode = "url" | "image" | "video";
+
+function FileUploadField({ label, value, onChange, accept = "image/*,video/*" }: { label: string; value: string; onChange: (url: string) => void; accept?: string }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<AttachmentMode>(value ? "url" : "image");
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const objectUrl = URL.createObjectURL(file);
+    onChange(objectUrl);
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className={labelClass}>{label}</label>
+      <div className="flex gap-1 mt-1">
+        <button type="button" onClick={() => setMode("image")}
+          className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "image" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
+          <Image className="h-3 w-3" /> Image
+        </button>
+        <button type="button" onClick={() => setMode("video")}
+          className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "video" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
+          <Video className="h-3 w-3" /> Video
+        </button>
+        <button type="button" onClick={() => setMode("url")}
+          className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "url" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
+          <LinkIcon className="h-3 w-3" /> URL
+        </button>
+      </div>
+      {mode === "url" ? (
+        <input type="text" value={value || ""} onChange={(e) => onChange(e.target.value)} className={inputClass} placeholder="https://..." />
+      ) : (
+        <div className="flex gap-2 items-center">
+          <input ref={fileRef} type="file" accept={mode === "image" ? "image/*" : "video/*"} onChange={handleFile} className="hidden" />
+          <button type="button" onClick={() => fileRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-display tracking-wider border border-dashed border-primary/40 rounded-sm text-primary hover:bg-primary/10 transition-colors">
+            <Upload className="h-3.5 w-3.5" /> Choose {mode === "image" ? "Image" : "Video"}
+          </button>
+          {value && (
+            <span className="text-xs text-muted-foreground font-body truncate max-w-[200px]">
+              {value.startsWith("blob:") ? "File selected ✓" : value}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AuthorDashboard() {
   const { role } = useAuth();
@@ -203,11 +253,7 @@ export default function AuthorDashboard() {
               <input type="text" value={editing.title ?? editing.name ?? ""} onChange={(e) => setEditing({ ...editing, [editing.title !== undefined ? "title" : "name"]: e.target.value })} className={inputClass} />
             </div>
 
-            {/* Thumbnail URL */}
-            <div>
-              <label className={labelClass}>Thumbnail URL</label>
-              <input type="text" value={editing.thumbnail || ""} onChange={(e) => setEditing({ ...editing, thumbnail: e.target.value })} className={inputClass} placeholder="https://..." />
-            </div>
+            <FileUploadField label="Thumbnail" value={editing.thumbnail || ""} onChange={(url) => setEditing({ ...editing, thumbnail: url })} accept="image/*" />
 
             {/* Project-specific: Status */}
             {isProject && (
@@ -341,13 +387,13 @@ export default function AuthorDashboard() {
               {(editing.docs || []).map((doc: DocItem, idx: number) => (
                 <div key={idx} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
                   <div className="flex-1 space-y-2">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       <select value={doc.type} onChange={(e) => updateDoc(idx, "type", e.target.value)} className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground">
                         <option value="image">Image</option>
                         <option value="video">Video</option>
                       </select>
-                      <input type="text" value={doc.url} onChange={(e) => updateDoc(idx, "url", e.target.value)} placeholder="URL" className="flex-1 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                     </div>
+                    <FileUploadField label="" value={doc.url} onChange={(url) => updateDoc(idx, "url", url)} accept={doc.type === "video" ? "video/*" : "image/*"} />
                     <input type="text" value={doc.caption} onChange={(e) => updateDoc(idx, "caption", e.target.value)} placeholder="Caption" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                   </div>
                   <button onClick={() => removeDoc(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
