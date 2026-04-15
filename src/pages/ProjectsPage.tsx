@@ -5,7 +5,7 @@ import type { Project } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { Plus } from "lucide-react";
 
-const tabs = ["All", "Planning", "On Progress", "On Hold", "Canceled"] as const;
+const tabs = ["All", "Planning", "On Progress", "On Hold", "Completed", "Canceled"] as const;
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -54,12 +54,12 @@ export default function ProjectsPage() {
               </div>
               <h3 className="font-heading text-base text-foreground">{p.title}</h3>
               <p className="text-xs text-muted-foreground font-body line-clamp-2">{p.shortDesc}</p>
-              <span className={`inline-block text-[10px] font-display tracking-wider uppercase ${
-                p.status === "On Progress" ? "text-accent-yellow" :
-                p.status === "Planning" ? "text-primary" :
-                p.status === "On Hold" ? "text-accent-orange" :
-                "text-destructive"
-              }`}>{p.status}</span>
+              <span className={`inline-block text-[10px] font-display tracking-wider uppercase ${p.status === "On Progress" ? "text-accent-yellow" :
+                  p.status === "Planning" ? "text-primary" :
+                    p.status === "On Hold" ? "text-accent-orange" :
+                      p.status === "Completed" ? "text-emerald-600 dark:text-emerald-400" :
+                        "text-destructive"
+                }`}>{p.status}</span>
             </div>
           </Link>
         ))}

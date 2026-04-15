@@ -33,12 +33,12 @@ export default function ProjectDetail() {
           </Link>
           <h1 className="font-display text-2xl md:text-3xl tracking-[0.1em] text-primary">{project.title.toUpperCase()}</h1>
           <div className="flex items-center gap-3 mt-2">
-            <span className={`text-xs font-display tracking-wider uppercase ${
-              project.status === "On Progress" ? "text-accent-yellow" :
-              project.status === "Planning" ? "text-primary" :
-              project.status === "On Hold" ? "text-accent-orange" :
-              "text-destructive"
-            }`}>{project.status}</span>
+            <span className={`text-xs font-display tracking-wider uppercase ${project.status === "On Progress" ? "text-accent-yellow" :
+                project.status === "Planning" ? "text-primary" :
+                  project.status === "On Hold" ? "text-accent-orange" :
+                    project.status === "Completed" ? "text-emerald-600 dark:text-emerald-400" :
+                      "text-destructive"
+              }`}>{project.status}</span>
           </div>
         </div>
       </div>
