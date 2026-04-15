@@ -89,15 +89,18 @@ export function AppSidebar({ state, onStateChange }: AppSidebarProps) {
         <div className="flex flex-col h-full" style={{ width: state === "expanded" ? 256 : 64 }}>
           {/* Header */}
           <div className="h-14 flex items-center justify-between px-3 border-b border-border">
-            {state === "expanded" && (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="font-display text-xs tracking-[0.2em] text-primary uppercase truncate"
-              >
-                Morneven
-              </motion.span>
-            )}
+            <div className="flex items-center gap-2 min-w-0">
+              <img src={logoColor} alt="Morneven" className="h-6 w-6 flex-shrink-0" />
+              {state === "expanded" && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="font-display text-xs tracking-[0.2em] text-primary uppercase truncate"
+                >
+                  Morneven
+                </motion.span>
+              )}
+            </div>
             <button
               onClick={cycleState}
               className="p-1.5 rounded-md hover:bg-muted transition-colors ml-auto"
