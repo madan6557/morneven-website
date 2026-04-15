@@ -1,14 +1,64 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getProjects, createProject, updateProject, deleteProject, getCharacters, createCharacter, updateCharacter, deleteCharacter, getPlaces, createPlace, updatePlace, deletePlace, getTechnology, createTech, updateTech, deleteTech, getGallery, createGalleryItem, updateGalleryItem, deleteGalleryItem } from "@/services/api";
 import type { Project, Character, Place, Technology, GalleryItem, DocItem } from "@/types";
-import { Pencil, Trash2, Plus, X, Save } from "lucide-react";
+import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video } from "lucide-react";
 
 const dashTabs = ["projects", "lore", "gallery"] as const;
 const loreSubs = ["characters", "places", "technology"] as const;
 const inputClass = "w-full mt-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 const labelClass = "font-heading text-xs tracking-wider text-muted-foreground uppercase";
+
+type AttachmentMode = "url" | "image" | "video";
+
+function FileUploadField({ label, value, onChange, accept = "image/*,video/*" }: { label: string; value: string; onChange: (url: string) => void; accept?: string }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<AttachmentMode>(value ? "url" : "image");
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const objectUrl = URL.createObjectURL(file);
+    onChange(objectUrl);
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className={labelClass}>{label}</label>
+      <div className="flex gap-1 mt-1">
+        <button type="button" onClick={() => setMode("image")}
+          className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "image" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
+          <Image className="h-3 w-3" /> Image
+        </button>
+        <button type="button" onClick={() => setMode("video")}
+          className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "video" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
+          <Video className="h-3 w-3" /> Video
+        </button>
+        <button type="button" onClick={() => setMode("url")}
+          className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "url" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
+          <LinkIcon className="h-3 w-3" /> URL
+        </button>
+      </div>
+      {mode === "url" ? (
+        <input type="text" value={value || ""} onChange={(e) => onChange(e.target.value)} className={inputClass} placeholder="https://..." />
+      ) : (
+        <div className="flex gap-2 items-center">
+          <input ref={fileRef} type="file" accept={mode === "image" ? "image/*" : "video/*"} onChange={handleFile} className="hidden" />
+          <button type="button" onClick={() => fileRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-display tracking-wider border border-dashed border-primary/40 rounded-sm text-primary hover:bg-primary/10 transition-colors">
+            <Upload className="h-3.5 w-3.5" /> Choose {mode === "image" ? "Image" : "Video"}
+          </button>
+          {value && (
+            <span className="text-xs text-muted-foreground font-body truncate max-w-[200px]">
+              {value.startsWith("blob:") ? "File selected ✓" : value}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AuthorDashboard() {
   const { role } = useAuth();
