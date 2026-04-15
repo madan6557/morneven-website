@@ -254,7 +254,6 @@ export default function AuthorDashboard() {
             </div>
 
             <FileUploadField label="Thumbnail" value={editing.thumbnail || ""} onChange={(url) => setEditing({ ...editing, thumbnail: url })} accept="image/*" />
-            </div>
 
             {/* Project-specific: Status */}
             {isProject && (
