@@ -57,21 +57,14 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
     if (isMobile) onClose();
   };
 
-  // On mobile, sidebar is always full-width style when open (expanded look)
   const isExpanded = isMobile ? true : expanded;
   const sidebarWidth = isExpanded ? 256 : 64;
-
-  // If not open and on mobile, don't render
-  // On desktop, sidebar is always visible (expanded or minimized)
-  const shouldRender = isMobile ? open : true;
-
-  if (!shouldRender && isMobile) return null;
 
   const sidebarContent = (
     <div className="flex flex-col h-full" style={{ width: sidebarWidth }}>
       {/* Header */}
-      <div className="h-14 flex items-center justify-between px-3 border-b border-border">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="h-14 flex items-center px-3 border-b border-border">
+        <div className="flex items-center gap-2 min-w-0 w-full justify-center">
           <img src={logoColor} alt="Morneven" className="h-7 w-7 flex-shrink-0" />
           {isExpanded && (
             <motion.span
@@ -83,26 +76,6 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
             </motion.span>
           )}
         </div>
-        {!isMobile && (
-          <button
-            onClick={onToggleExpand}
-            className="p-1.5 rounded-md hover:bg-muted transition-colors ml-auto"
-          >
-            {isExpanded ? (
-              <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            )}
-          </button>
-        )}
-        {isMobile && (
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-md hover:bg-muted transition-colors ml-auto"
-          >
-            <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-          </button>
-        )}
       </div>
 
       <div className="mecha-line" />
@@ -226,14 +199,27 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
     );
   }
 
-  // Desktop: static sidebar
+  // Desktop: static sidebar with external chevron toggle
   return (
-    <motion.aside
-      animate={{ width: sidebarWidth }}
-      transition={{ duration: 0.25, ease: "easeInOut" }}
-      className="h-screen sticky top-0 flex-shrink-0 overflow-hidden border-r border-border bg-sidebar z-40"
-    >
-      {sidebarContent}
-    </motion.aside>
+    <div className="relative flex-shrink-0">
+      <motion.aside
+        animate={{ width: sidebarWidth }}
+        transition={{ duration: 0.25, ease: "easeInOut" }}
+        className="h-screen sticky top-0 overflow-hidden border-r border-border bg-sidebar z-40"
+      >
+        {sidebarContent}
+      </motion.aside>
+      {/* Chevron button on the edge of the sidebar */}
+      <button
+        onClick={onToggleExpand}
+        className="absolute top-7 -right-3 z-50 h-6 w-6 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted transition-colors shadow-sm -translate-y-1/2"
+      >
+        {expanded ? (
+          <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+        )}
+      </button>
+    </div>
   );
 }
