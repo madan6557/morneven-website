@@ -48,18 +48,26 @@ export default function ProjectsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filtered.map((p) => (
           <Link key={p.id} to={`/projects/${p.id}`} className="block">
-            <div className="hud-border bg-card p-5 space-y-3 hover:glow-primary transition-shadow">
-              <div className="aspect-video bg-muted rounded-sm flex items-center justify-center">
-                <span className="text-xs text-muted-foreground font-heading tracking-wider">THUMBNAIL</span>
+            <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
+              {p.thumbnail ? (
+                <div className="aspect-video bg-muted rounded-sm overflow-hidden">
+                  <img src={p.thumbnail} alt={p.title} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="aspect-video bg-muted rounded-sm flex items-center justify-center">
+                  <span className="text-xs text-muted-foreground font-heading tracking-wider">NO IMAGE</span>
+                </div>
+              )}
+              <div className="p-5 space-y-3">
+                <h3 className="font-heading text-base text-foreground">{p.title}</h3>
+                <p className="text-xs text-muted-foreground font-body line-clamp-2">{p.shortDesc}</p>
+                <span className={`inline-block text-[10px] font-display tracking-wider uppercase ${p.status === "On Progress" ? "text-accent-yellow" :
+                    p.status === "Planning" ? "text-primary" :
+                      p.status === "On Hold" ? "text-accent-orange" :
+                        p.status === "Completed" ? "text-emerald-600 dark:text-emerald-400" :
+                          "text-destructive"
+                  }`}>{p.status}</span>
               </div>
-              <h3 className="font-heading text-base text-foreground">{p.title}</h3>
-              <p className="text-xs text-muted-foreground font-body line-clamp-2">{p.shortDesc}</p>
-              <span className={`inline-block text-[10px] font-display tracking-wider uppercase ${p.status === "On Progress" ? "text-accent-yellow" :
-                  p.status === "Planning" ? "text-primary" :
-                    p.status === "On Hold" ? "text-accent-orange" :
-                      p.status === "Completed" ? "text-emerald-600 dark:text-emerald-400" :
-                        "text-destructive"
-                }`}>{p.status}</span>
             </div>
           </Link>
         ))}

@@ -6,7 +6,7 @@ interface AuthState {
   username: string;
   role: UserRole;
   login: (email: string, password: string) => void;
-  register: (email: string, password: string) => void;
+  register: (email: string, password: string, username: string) => void;
   guestLogin: () => void;
   logout: () => void;
 }
@@ -14,6 +14,7 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null);
 
 const AUTH_KEY = "auth_state"; // localStorage key
+const AUTHOR_ACCOUNTS = new Set(["author@morneven.org", "admin@morneven.org"]);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   // Initialize from localStorage
@@ -41,15 +42,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated, username, role]);
 
   const login = (email: string, _password: string) => {
-    const isAuthor = email.toLowerCase().includes("author");
+    const isAuthor = AUTHOR_ACCOUNTS.has(email.trim().toLowerCase());
     setIsAuthenticated(true);
     setUsername(email.split("@")[0]);
     setRole(isAuthor ? "author" : "viewer");
   };
 
-  const register = (email: string, _password: string) => {
+  const register = (email: string, _password: string, name: string) => {
     setIsAuthenticated(true);
-    setUsername(email.split("@")[0]);
+    setUsername(name.trim() || email.split("@")[0]);
     setRole("viewer");
   };
 

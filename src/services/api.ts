@@ -8,13 +8,48 @@ import technologyData from "@/data/technology.json";
 import galleryData from "@/data/gallery.json";
 import newsData from "@/data/news.json";
 
+const STORAGE_KEYS = {
+  projects: "morneven_projects",
+  characters: "morneven_characters",
+  places: "morneven_places",
+  technology: "morneven_technology",
+  gallery: "morneven_gallery",
+} as const;
+
+function hasStorage() {
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+function readCollection<T>(key: string, fallback: T[]): T[] {
+  if (!hasStorage()) return [...fallback];
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [...fallback];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as T[]) : [...fallback];
+  } catch {
+    return [...fallback];
+  }
+}
+
+function writeCollection<T>(key: string, value: T[]) {
+  if (!hasStorage()) return;
+
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Ignore storage write failures and keep in-memory behavior.
+  }
+}
+
 // Mutable local copies (simulates database)
-let projects: Project[] = [...projectsData] as Project[];
-let characters: Character[] = [...charactersData] as Character[];
-let places: Place[] = [...placesData] as Place[];
-let technology: Technology[] = [...technologyData] as Technology[];
-let gallery: GalleryItem[] = [...galleryData] as GalleryItem[];
-let news: NewsItem[] = [...newsData] as NewsItem[];
+let projects: Project[] = readCollection<Project>(STORAGE_KEYS.projects, projectsData as Project[]);
+let characters: Character[] = readCollection<Character>(STORAGE_KEYS.characters, charactersData as Character[]);
+let places: Place[] = readCollection<Place>(STORAGE_KEYS.places, placesData as Place[]);
+let technology: Technology[] = readCollection<Technology>(STORAGE_KEYS.technology, technologyData as Technology[]);
+let gallery: GalleryItem[] = readCollection<GalleryItem>(STORAGE_KEYS.gallery, galleryData as GalleryItem[]);
+const news: NewsItem[] = [...newsData] as NewsItem[];
 
 // Helper to simulate async API calls
 const delay = (ms = 100) => new Promise((r) => setTimeout(r, ms));
@@ -34,6 +69,7 @@ export async function createProject(project: Omit<Project, "id">): Promise<Proje
   await delay();
   const newProject = { ...project, id: `proj-${Date.now()}` };
   projects = [newProject, ...projects];
+  writeCollection(STORAGE_KEYS.projects, projects);
   return newProject;
 }
 
@@ -42,6 +78,7 @@ export async function updateProject(id: string, data: Partial<Project>): Promise
   const idx = projects.findIndex((p) => p.id === id);
   if (idx === -1) return undefined;
   projects[idx] = { ...projects[idx], ...data };
+  writeCollection(STORAGE_KEYS.projects, projects);
   return projects[idx];
 }
 
@@ -49,6 +86,7 @@ export async function deleteProject(id: string): Promise<boolean> {
   await delay();
   const len = projects.length;
   projects = projects.filter((p) => p.id !== id);
+  writeCollection(STORAGE_KEYS.projects, projects);
   return projects.length < len;
 }
 
@@ -67,6 +105,7 @@ export async function createCharacter(character: Omit<Character, "id">): Promise
   await delay();
   const newChar = { ...character, id: `char-${Date.now()}` };
   characters = [newChar, ...characters];
+  writeCollection(STORAGE_KEYS.characters, characters);
   return newChar;
 }
 
@@ -75,6 +114,7 @@ export async function updateCharacter(id: string, data: Partial<Character>): Pro
   const idx = characters.findIndex((c) => c.id === id);
   if (idx === -1) return undefined;
   characters[idx] = { ...characters[idx], ...data };
+  writeCollection(STORAGE_KEYS.characters, characters);
   return characters[idx];
 }
 
@@ -82,6 +122,7 @@ export async function deleteCharacter(id: string): Promise<boolean> {
   await delay();
   const len = characters.length;
   characters = characters.filter((c) => c.id !== id);
+  writeCollection(STORAGE_KEYS.characters, characters);
   return characters.length < len;
 }
 
@@ -100,6 +141,7 @@ export async function createPlace(place: Omit<Place, "id">): Promise<Place> {
   await delay();
   const newPlace = { ...place, id: `place-${Date.now()}` };
   places = [newPlace, ...places];
+  writeCollection(STORAGE_KEYS.places, places);
   return newPlace;
 }
 
@@ -108,6 +150,7 @@ export async function updatePlace(id: string, data: Partial<Place>): Promise<Pla
   const idx = places.findIndex((p) => p.id === id);
   if (idx === -1) return undefined;
   places[idx] = { ...places[idx], ...data };
+  writeCollection(STORAGE_KEYS.places, places);
   return places[idx];
 }
 
@@ -115,6 +158,7 @@ export async function deletePlace(id: string): Promise<boolean> {
   await delay();
   const len = places.length;
   places = places.filter((p) => p.id !== id);
+  writeCollection(STORAGE_KEYS.places, places);
   return places.length < len;
 }
 
@@ -133,6 +177,7 @@ export async function createTech(tech: Omit<Technology, "id">): Promise<Technolo
   await delay();
   const newTech = { ...tech, id: `tech-${Date.now()}` };
   technology = [newTech, ...technology];
+  writeCollection(STORAGE_KEYS.technology, technology);
   return newTech;
 }
 
@@ -141,6 +186,7 @@ export async function updateTech(id: string, data: Partial<Technology>): Promise
   const idx = technology.findIndex((t) => t.id === id);
   if (idx === -1) return undefined;
   technology[idx] = { ...technology[idx], ...data };
+  writeCollection(STORAGE_KEYS.technology, technology);
   return technology[idx];
 }
 
@@ -148,6 +194,7 @@ export async function deleteTech(id: string): Promise<boolean> {
   await delay();
   const len = technology.length;
   technology = technology.filter((t) => t.id !== id);
+  writeCollection(STORAGE_KEYS.technology, technology);
   return technology.length < len;
 }
 
@@ -166,6 +213,7 @@ export async function createGalleryItem(item: Omit<GalleryItem, "id">): Promise<
   await delay();
   const newItem = { ...item, id: `gal-${Date.now()}` };
   gallery = [newItem, ...gallery];
+  writeCollection(STORAGE_KEYS.gallery, gallery);
   return newItem;
 }
 
@@ -174,6 +222,7 @@ export async function updateGalleryItem(id: string, data: Partial<GalleryItem>):
   const idx = gallery.findIndex((g) => g.id === id);
   if (idx === -1) return undefined;
   gallery[idx] = { ...gallery[idx], ...data };
+  writeCollection(STORAGE_KEYS.gallery, gallery);
   return gallery[idx];
 }
 
@@ -181,6 +230,7 @@ export async function deleteGalleryItem(id: string): Promise<boolean> {
   await delay();
   const len = gallery.length;
   gallery = gallery.filter((g) => g.id !== id);
+  writeCollection(STORAGE_KEYS.gallery, gallery);
   return gallery.length < len;
 }
 
@@ -195,6 +245,7 @@ export async function addComment(galleryId: string, author: string, text: string
     date: new Date().toISOString().split("T")[0],
     replies: [],
   });
+  writeCollection(STORAGE_KEYS.gallery, gallery);
   return gallery[idx];
 }
 
@@ -210,6 +261,7 @@ export async function addReply(galleryId: string, commentId: string, author: str
     text,
     date: new Date().toISOString().split("T")[0],
   });
+  writeCollection(STORAGE_KEYS.gallery, gallery);
   return gallery[gIdx];
 }
 

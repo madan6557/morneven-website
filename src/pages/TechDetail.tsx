@@ -25,11 +25,13 @@ export default function TechDetail() {
 
   return (
     <div className="space-y-0">
-      <div className="relative h-64 md:h-80 bg-muted overflow-hidden flex items-end">
+      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={tech.thumbnail ? { backgroundImage: `url(${tech.thumbnail})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent z-10" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="font-display text-6xl text-muted-foreground/10 tracking-[0.3em]">TECH</span>
-        </div>
+        {!tech.thumbnail && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="font-display text-6xl text-muted-foreground/10 tracking-[0.3em]">TECH</span>
+          </div>
+        )}
         <div className="relative z-20 p-6 md:p-8 w-full">
           <Link to="/lore" className="inline-flex items-center gap-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors mb-3">
             <ArrowLeft className="h-3 w-3" /> BACK TO LORE
@@ -54,9 +56,25 @@ export default function TechDetail() {
             <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
               {tech.docs.map((doc, i) => (
                 <div key={i} className="hud-border-sm bg-card overflow-hidden">
-                  <div className="aspect-video bg-muted flex items-center justify-center">
-                    <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : "IMAGE"}</span>
-                  </div>
+                  {doc.type === "video" && doc.url ? (
+                    <div className="aspect-video bg-muted">
+                      <iframe
+                        src={doc.url}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title={`${tech.name} Documentation`}
+                      />
+                    </div>
+                  ) : doc.type === "image" && doc.url ? (
+                    <div className="aspect-video bg-muted overflow-hidden">
+                      <img src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="aspect-video bg-muted flex items-center justify-center">
+                      <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : "IMAGE"}</span>
+                    </div>
+                  )}
                   <div className="p-3">
                     <p className="text-xs font-body text-muted-foreground">{doc.caption}</p>
                   </div>

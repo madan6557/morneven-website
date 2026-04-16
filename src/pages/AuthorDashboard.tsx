@@ -2,13 +2,47 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getProjects, createProject, updateProject, deleteProject, getCharacters, createCharacter, updateCharacter, deleteCharacter, getPlaces, createPlace, updatePlace, deletePlace, getTechnology, createTech, updateTech, deleteTech, getGallery, createGalleryItem, updateGalleryItem, deleteGalleryItem } from "@/services/api";
-import type { Project, Character, Place, Technology, GalleryItem, DocItem } from "@/types";
+import type { Project, Character, Place, Technology, GalleryItem, DocItem, ProjectPatch } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video } from "lucide-react";
 
 const dashTabs = ["projects", "lore", "gallery"] as const;
 const loreSubs = ["characters", "places", "technology"] as const;
 const inputClass = "w-full mt-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 const labelClass = "font-heading text-xs tracking-wider text-muted-foreground uppercase";
+
+type DashboardTab = typeof dashTabs[number];
+type LoreSub = typeof loreSubs[number];
+type DashboardItem = Project | Character | Place | Technology | GalleryItem;
+type EditableState = {
+  id?: string;
+  title?: string;
+  name?: string;
+  status?: Project["status"];
+  thumbnail?: string;
+  shortDesc?: string;
+  fullDesc?: string;
+  patches?: ProjectPatch[];
+  docs?: DocItem[];
+  race?: string;
+  height?: string;
+  traits?: string[];
+  likes?: string[];
+  dislikes?: string[];
+  accentColor?: string;
+  stats?: Character["stats"];
+  type?: GalleryItem["type"] | string;
+  category?: string;
+  videoUrl?: string;
+  caption?: string;
+  tags?: string[];
+  date?: string;
+  comments?: GalleryItem["comments"];
+};
+
+const isDashboardTab = (value: string | null): value is DashboardTab => {
+  if (!value) return false;
+  return dashTabs.includes(value as DashboardTab);
+};
 
 type AttachmentMode = "url" | "image" | "video";
 
@@ -63,8 +97,11 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*" }:
 export default function AuthorDashboard() {
   const { role } = useAuth();
   const [params] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(params.get("tab") || "projects");
-  const [loreSub, setLoreSub] = useState<string>("characters");
+  const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
+    const tab = params.get("tab");
+    return isDashboardTab(tab) ? tab : "projects";
+  });
+  const [loreSub, setLoreSub] = useState<LoreSub>("characters");
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -72,10 +109,20 @@ export default function AuthorDashboard() {
   const [tech, setTech] = useState<Technology[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
 
-  const [editing, setEditing] = useState<any | null>(null);
+  const [editing, setEditing] = useState<EditableState | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
+
+  useEffect(() => {
+    const tab = params.get("tab");
+    if (isDashboardTab(tab)) {
+      setActiveTab(tab);
+      return;
+    }
+
+    setActiveTab("projects");
+  }, [params]);
 
   const loadAll = async () => {
     setProjects(await getProjects());
@@ -92,7 +139,7 @@ export default function AuthorDashboard() {
         <div className="mecha-line w-32" />
         <div className="hud-border bg-card p-8 text-center">
           <p className="text-sm text-muted-foreground font-body">Access restricted. Login with an author account to manage content.</p>
-          <p className="text-xs text-muted-foreground font-body mt-2 italic">Hint: Use an email containing "author" (e.g. author@morneven.org) to access.</p>
+          <p className="text-xs text-muted-foreground font-body mt-2 italic">Hint: Author access is available only for approved accounts (author@morneven.org or admin@morneven.org).</p>
         </div>
       </div>
     );
@@ -116,34 +163,93 @@ export default function AuthorDashboard() {
   };
 
   const handleSave = async () => {
+    if (!editing) return;
+
     if (activeTab === "projects") {
-      if (isCreating) await createProject(editing);
-      else await updateProject(editing.id, editing);
+      const payload: Omit<Project, "id"> = {
+        title: editing.title ?? "",
+        status: (editing.status as Project["status"]) ?? "Planning",
+        thumbnail: editing.thumbnail ?? "",
+        shortDesc: editing.shortDesc ?? "",
+        fullDesc: editing.fullDesc ?? "",
+        patches: editing.patches ?? [],
+        docs: editing.docs ?? [],
+      };
+
+      if (isCreating) await createProject(payload);
+      else if (editing.id) await updateProject(editing.id, payload);
       setProjects(await getProjects());
     } else if (activeTab === "lore") {
       if (loreSub === "characters") {
-        if (isCreating) await createCharacter(editing);
-        else await updateCharacter(editing.id, editing);
+        const payload: Omit<Character, "id"> = {
+          name: editing.name ?? "",
+          race: editing.race ?? "",
+          height: editing.height ?? "",
+          traits: editing.traits ?? [],
+          likes: editing.likes ?? [],
+          dislikes: editing.dislikes ?? [],
+          accentColor: editing.accentColor ?? "#4A90D9",
+          thumbnail: editing.thumbnail ?? "",
+          shortDesc: editing.shortDesc ?? "",
+          fullDesc: editing.fullDesc ?? "",
+          stats: editing.stats ?? { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 },
+          docs: editing.docs ?? [],
+        };
+
+        if (isCreating) await createCharacter(payload);
+        else if (editing.id) await updateCharacter(editing.id, payload);
         setCharacters(await getCharacters());
       } else if (loreSub === "places") {
-        if (isCreating) await createPlace(editing);
-        else await updatePlace(editing.id, editing);
+        const payload: Omit<Place, "id"> = {
+          name: editing.name ?? "",
+          type: editing.type ?? "",
+          thumbnail: editing.thumbnail ?? "",
+          shortDesc: editing.shortDesc ?? "",
+          fullDesc: editing.fullDesc ?? "",
+          docs: editing.docs ?? [],
+        };
+
+        if (isCreating) await createPlace(payload);
+        else if (editing.id) await updatePlace(editing.id, payload);
         setPlaces(await getPlaces());
       } else {
-        if (isCreating) await createTech(editing);
-        else await updateTech(editing.id, editing);
+        const payload: Omit<Technology, "id"> = {
+          name: editing.name ?? "",
+          category: editing.category ?? "",
+          thumbnail: editing.thumbnail ?? "",
+          shortDesc: editing.shortDesc ?? "",
+          fullDesc: editing.fullDesc ?? "",
+          docs: editing.docs ?? [],
+        };
+
+        if (isCreating) await createTech(payload);
+        else if (editing.id) await updateTech(editing.id, payload);
         setTech(await getTechnology());
       }
     } else {
-      if (isCreating) await createGalleryItem(editing);
-      else await updateGalleryItem(editing.id, editing);
+      const payload: Omit<GalleryItem, "id"> = {
+        type: (editing.type as GalleryItem["type"]) ?? "image",
+        title: editing.title ?? "",
+        thumbnail: editing.thumbnail ?? "",
+        videoUrl: editing.videoUrl,
+        caption: editing.caption ?? "",
+        tags: editing.tags ?? [],
+        date: editing.date ?? new Date().toISOString().split("T")[0],
+        comments: editing.comments ?? [],
+      };
+
+      if (isCreating) await createGalleryItem(payload);
+      else if (editing.id) await updateGalleryItem(editing.id, payload);
       setGallery(await getGallery());
     }
     setEditing(null);
     setIsCreating(false);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, title: string) => {
+    const confirmed = window.confirm(`Delete ${title}? This action cannot be undone.`);
+    if (!confirmed) return;
+
     if (activeTab === "projects") { await deleteProject(id); setProjects(await getProjects()); }
     else if (activeTab === "lore") {
       if (loreSub === "characters") { await deleteCharacter(id); setCharacters(await getCharacters()); }
@@ -152,7 +258,7 @@ export default function AuthorDashboard() {
     } else { await deleteGalleryItem(id); setGallery(await getGallery()); }
   };
 
-  const getItems = (): any[] => {
+  const getItems = (): DashboardItem[] => {
     if (activeTab === "projects") return projects;
     if (activeTab === "lore") {
       if (loreSub === "characters") return characters;
@@ -162,8 +268,15 @@ export default function AuthorDashboard() {
     return gallery;
   };
 
-  const getItemTitle = (item: any): string => item.title || item.name || "Untitled";
-  const getItemDesc = (item: any): string => item.shortDesc || item.caption || "";
+  const getItemTitle = (item: DashboardItem): string => {
+    if ("title" in item) return item.title || "Untitled";
+    return item.name || "Untitled";
+  };
+
+  const getItemDesc = (item: DashboardItem): string => {
+    if ("caption" in item) return item.caption || "";
+    return item.shortDesc || "";
+  };
 
   // Doc management helpers
   const addDoc = () => {
@@ -176,7 +289,8 @@ export default function AuthorDashboard() {
     setEditing({ ...editing, docs });
   };
   const removeDoc = (idx: number) => {
-    const docs = (editing.docs || []).filter((_: any, i: number) => i !== idx);
+    if (!editing) return;
+    const docs = (editing.docs || []).filter((_, i: number) => i !== idx);
     setEditing({ ...editing, docs });
   };
 
@@ -191,7 +305,8 @@ export default function AuthorDashboard() {
     setEditing({ ...editing, patches });
   };
   const removePatch = (idx: number) => {
-    const patches = (editing.patches || []).filter((_: any, i: number) => i !== idx);
+    if (!editing) return;
+    const patches = (editing.patches || []).filter((_, i: number) => i !== idx);
     setEditing({ ...editing, patches });
   };
 
@@ -259,7 +374,7 @@ export default function AuthorDashboard() {
             {isProject && (
               <div>
                 <label className={labelClass}>Status</label>
-                <select value={editing.status} onChange={(e) => setEditing({ ...editing, status: e.target.value })} className={inputClass}>
+                <select value={editing.status} onChange={(e) => setEditing({ ...editing, status: e.target.value as Project["status"] })} className={inputClass}>
                   <option>Planning</option>
                   <option>On Progress</option>
                   <option>On Hold</option>
@@ -412,7 +527,7 @@ export default function AuthorDashboard() {
                   <Plus className="h-3 w-3" /> ADD PATCH
                 </button>
               </div>
-              {(editing.patches || []).map((patch: any, idx: number) => (
+              {(editing.patches || []).map((patch: ProjectPatch, idx: number) => (
                 <div key={idx} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
                   <div className="flex-1 space-y-2">
                     <div className="flex gap-2">
@@ -450,7 +565,7 @@ export default function AuthorDashboard() {
               <button onClick={() => { setEditing({ ...item }); setIsCreating(false); }} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
                 <Pencil className="h-3.5 w-3.5" />
               </button>
-              <button onClick={() => handleDelete(item.id)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
+              <button onClick={() => handleDelete(item.id, getItemTitle(item))} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>

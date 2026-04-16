@@ -25,7 +25,7 @@ export default function Auth() {
     ev.preventDefault();
     if (!validate()) return;
     if (isLogin) login(email, password);
-    else register(email, password);
+    else register(email, password, username);
     navigate("/home");
   };
 
@@ -120,7 +120,7 @@ export default function Auth() {
         </p>
 
         <p className="text-center text-[10px] text-muted-foreground/50 font-body italic">
-          Use email with "author" (e.g. author@test.com) for Author access
+          Author access is reserved for approved accounts (author@morneven.org or admin@morneven.org)
         </p>
       </motion.div>
     </div>

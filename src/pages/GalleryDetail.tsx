@@ -35,11 +35,15 @@ export default function GalleryDetail() {
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-6">
-      <Link to="/gallery" className="inline-flex items-center gap-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors">
-        <ArrowLeft className="h-3 w-3" /> BACK TO GALLERY
-      </Link>
+    <div className="space-y-0">
+      {/* Header with back link */}
+      <div className="p-6 md:p-8 border-b border-border">
+        <Link to="/gallery" className="inline-flex items-center gap-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-3 w-3" /> BACK TO GALLERY
+        </Link>
+      </div>
 
+      <div className="p-6 md:p-8 space-y-6">
       {/* Media Display */}
       <div className="hud-border bg-card overflow-hidden">
         {item.type === "video" && item.videoUrl ? (
@@ -51,6 +55,10 @@ export default function GalleryDetail() {
               allowFullScreen
               title={item.title}
             />
+          </div>
+        ) : item.type === "image" && item.thumbnail ? (
+          <div className="aspect-video bg-muted overflow-hidden">
+            <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
           </div>
         ) : (
           <div className="aspect-video bg-muted flex items-center justify-center">
@@ -151,6 +159,7 @@ export default function GalleryDetail() {
             </div>
           ))}
         </div>
+      </div>
       </div>
     </div>
   );

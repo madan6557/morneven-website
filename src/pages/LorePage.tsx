@@ -99,10 +99,17 @@ export default function LorePage() {
           {filteredChars.map((c) => (
             <Link key={c.id} to={`/lore/characters/${c.id}`} className="block group">
               <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow" style={{ borderColor: `${c.accentColor}30` }}>
-                <div className="aspect-[3/4] bg-muted flex items-center justify-center relative">
-                  <span className="text-xs text-muted-foreground font-heading tracking-wider">PORTRAIT</span>
-                  <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: c.accentColor }} />
-                </div>
+                {c.thumbnail ? (
+                  <div className="aspect-[3/4] bg-muted overflow-hidden relative">
+                    <img src={c.thumbnail} alt={c.name} className="w-full h-full object-cover" />
+                    <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: c.accentColor }} />
+                  </div>
+                ) : (
+                  <div className="aspect-[3/4] bg-muted flex items-center justify-center relative">
+                    <span className="text-xs text-muted-foreground font-heading tracking-wider">PORTRAIT</span>
+                    <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: c.accentColor }} />
+                  </div>
+                )}
                 <div className="p-3 space-y-1">
                   <h3 className="text-sm font-heading text-foreground group-hover:text-primary transition-colors">{c.name}</h3>
                   <p className="text-[10px] text-muted-foreground font-body">{c.race}</p>
@@ -120,9 +127,15 @@ export default function LorePage() {
           {filteredPlaces.map((p) => (
             <Link key={p.id} to={`/lore/places/${p.id}`} className="block group">
               <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
-                <div className="aspect-video bg-muted flex items-center justify-center">
-                  <span className="text-xs text-muted-foreground font-heading tracking-wider">LANDSCAPE</span>
-                </div>
+                {p.thumbnail ? (
+                  <div className="aspect-video bg-muted overflow-hidden">
+                    <img src={p.thumbnail} alt={p.name} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="aspect-video bg-muted flex items-center justify-center">
+                    <span className="text-xs text-muted-foreground font-heading tracking-wider">LANDSCAPE</span>
+                  </div>
+                )}
                 <div className="p-4 space-y-1">
                   <h3 className="text-sm font-heading text-foreground group-hover:text-primary transition-colors">{p.name}</h3>
                   <p className="text-[10px] text-muted-foreground font-display tracking-wider uppercase">{p.type}</p>
@@ -141,9 +154,15 @@ export default function LorePage() {
           {filteredTech.map((t) => (
             <Link key={t.id} to={`/lore/tech/${t.id}`} className="block group">
               <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
-                <div className="aspect-video bg-muted flex items-center justify-center">
-                  <span className="text-xs text-muted-foreground font-heading tracking-wider">TECH</span>
-                </div>
+                {t.thumbnail ? (
+                  <div className="aspect-video bg-muted overflow-hidden">
+                    <img src={t.thumbnail} alt={t.name} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="aspect-video bg-muted flex items-center justify-center">
+                    <span className="text-xs text-muted-foreground font-heading tracking-wider">TECH</span>
+                  </div>
+                )}
                 <div className="p-4 space-y-1">
                   <h3 className="text-sm font-heading text-foreground group-hover:text-primary transition-colors">{t.name}</h3>
                   <p className="text-[10px] text-muted-foreground font-display tracking-wider uppercase">{t.category}</p>

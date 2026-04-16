@@ -26,7 +26,7 @@ const fadeUp = (delay: number) => ({
   transition: { delay, duration: 0.4 },
 });
 
-function StatCard({ icon: Icon, label, value, color, delay }: { icon: any; label: string; value: string | number; color: string; delay: number }) {
+function StatCard({ icon: Icon, label, value, color, delay }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number; color: string; delay: number }) {
   return (
     <motion.div {...fadeUp(delay)} className="hud-border bg-card p-4 flex items-center gap-4">
       <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${color}`}>

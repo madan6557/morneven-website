@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
+import { AuthorRoute } from "@/components/AuthorRoute";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import HomePage from "./pages/HomePage";
@@ -44,7 +45,7 @@ function App() {
                 <Route path="/lore/characters/:id" element={<CharacterDetail />} />
                 <Route path="/lore/places/:id" element={<PlaceDetail />} />
                 <Route path="/lore/tech/:id" element={<TechDetail />} />
-                <Route path="/author" element={<AuthorDashboard />} />
+                <Route path="/author" element={<AuthorRoute><AuthorDashboard /></AuthorRoute>} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
