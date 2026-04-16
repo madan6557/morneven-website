@@ -36,17 +36,14 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/3 left-0 w-full mecha-line" />
-        <div className="absolute bottom-1/3 left-0 w-full mecha-line" />
-      </div>
-
       <motion.div
+        layout
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-sm space-y-6 z-10"
+        className="relative w-full max-w-sm space-y-6 z-10"
       >
+<div className="pointer-events-none absolute -top-4 left-1/2 -translate-x-1/2 w-[285%] mecha-line opacity-60" />
+<div className="pointer-events-none absolute -bottom-4 left-1/2 -translate-x-1/2 w-[285%] mecha-line opacity-60" />
         <div className="text-center space-y-1">
           <p className="font-display text-[10px] tracking-[0.3em] text-muted-foreground uppercase mb-2">Morneven Institute</p>
           <h2 className="font-display text-xl tracking-[0.15em] text-primary">
