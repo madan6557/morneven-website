@@ -62,10 +62,10 @@ export default function HomePage() {
   const totalLore = characters.length + places.length + tech.length;
 
   const statusColor: Record<string, string> = {
-    "On Progress": "text-green-400",
-    "Planning": "text-blue-400",
-    "On Hold": "text-yellow-400",
-    "Completed": "text-accent-yellow",
+    "On Progress": "text-accent-yellow",
+    "Planning": "text-primary",
+    "On Hold": "text-accent-orange",
+    "Completed": "text-emerald-600 dark:text-emerald-400",
     "Canceled": "text-destructive",
   };
 
