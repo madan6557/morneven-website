@@ -263,6 +263,7 @@ export default function AuthorDashboard() {
                   <option>Planning</option>
                   <option>On Progress</option>
                   <option>On Hold</option>
+                  <option>Completed</option>
                   <option>Canceled</option>
                 </select>
               </div>
