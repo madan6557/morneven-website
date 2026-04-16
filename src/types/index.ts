@@ -15,7 +15,7 @@ export interface DocItem {
 export interface Project {
   id: string;
   title: string;
-  status: "Planning" | "On Progress" | "On Hold" | "Canceled";
+  status: "Planning" | "On Progress" | "On Hold" | "Completed" | "Canceled";
   thumbnail: string;
   shortDesc: string;
   fullDesc: string;
