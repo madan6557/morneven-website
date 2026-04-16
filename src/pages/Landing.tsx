@@ -52,7 +52,7 @@ export default function Landing() {
             <img src={logoColor} alt="Morneven Logo" className="h-7 w-7" />
             <span className="font-display text-sm tracking-[0.2em] text-primary uppercase">Morneven</span>
           </div>
-          <div className="hidden md:flex items-center gap-8 text-xs font-heading tracking-wider text-muted-foreground uppercase">
+          <div className="hidden md:flex items-center gap-8 text-xs font-heading font-normal tracking-wider text-muted-foreground uppercase">
             <a href="#about" className="hover:text-primary transition-colors">About</a>
             <a href="#features" className="hover:text-primary transition-colors">Features</a>
             <a href="#community" className="hover:text-primary transition-colors">Community</a>
@@ -68,18 +68,6 @@ export default function Landing() {
 
       {/* ───── HERO ───── */}
       <section className="relative min-h-screen flex flex-col items-center justify-center pt-14">
-        {/* Grid decoration */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/4 left-0 w-full mecha-line" />
-          <div className="absolute top-[82%] left-0 w-full mecha-line" />
-          <div className="absolute top-0 left-1/4 h-full w-px bg-gradient-to-b from-transparent via-primary/20 to-transparent" />
-          <div className="absolute top-0 right-1/4 h-full w-px bg-gradient-to-b from-transparent via-primary/20 to-transparent" />
-          <div className="absolute top-8 left-8 w-16 h-16 border-l border-t border-primary/20" />
-          <div className="absolute top-8 right-8 w-16 h-16 border-r border-t border-primary/20" />
-          <div className="absolute bottom-8 left-8 w-16 h-16 border-l border-b border-primary/20" />
-          <div className="absolute bottom-8 right-8 w-16 h-16 border-r border-b border-primary/20" />
-        </div>
-
         {/* Scan line */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="w-full h-px bg-primary/10 animate-scan-line" />
@@ -88,8 +76,16 @@ export default function Landing() {
         <motion.div
           initial="hidden"
           animate="visible"
-          className="text-center z-10 space-y-8 px-6"
+          className="relative text-center z-10 space-y-8 px-6 py-10 md:py-12"
         >
+          {/* Grid decoration */}
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute top-0 left-1/2 w-[300%] -translate-x-1/2 mecha-line opacity-60" />
+            <div className="absolute bottom-0 left-1/2 w-[300%] -translate-x-1/2 mecha-line opacity-60" />
+            <div className="absolute top-1/2 -left-[40%] h-[200%] -translate-y-1/2 w-px bg-gradient-to-b from-transparent via-primary/20 to-transparent" />
+            <div className="absolute top-1/2 -right-[40%] h-[200%] -translate-y-1/2 w-px bg-gradient-to-b from-transparent via-primary/20 to-transparent" />
+          </div>
+
           <motion.img
             src={logoColor}
             alt="Morneven Institute Logo"
