@@ -485,7 +485,12 @@ export default function AuthorDashboard() {
                 )}
                 <div>
                   <label className={labelClass}>Date</label>
-                  <input type="date" value={editing.date || ""} onChange={(e) => setEditing({ ...editing, date: e.target.value })} className={inputClass} />
+                  <div className="flex gap-2 mt-1">
+                    <input type="date" value={editing.date || ""} onChange={(e) => setEditing({ ...editing, date: e.target.value })} className={inputClass + " mt-0"} />
+                    <button type="button" onClick={() => setEditing({ ...editing, date: todayStr() })} className="flex items-center gap-1 px-2 py-2 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors flex-shrink-0" title="Set to today">
+                      <Calendar className="h-3 w-3" /> TODAY
+                    </button>
+                  </div>
                 </div>
               </>
             )}
@@ -552,9 +557,12 @@ export default function AuthorDashboard() {
               {(editing.patches || []).map((patch: ProjectPatch, idx: number) => (
                 <div key={idx} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
                   <div className="flex-1 space-y-2">
-                    <div className="flex gap-2">
-                      <input type="text" value={patch.version} onChange={(e) => updatePatch(idx, "version", e.target.value)} placeholder="Version (e.g. v1.0)" className="w-24 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <input type="text" value={patch.version} onChange={(e) => updatePatch(idx, "version", e.target.value)} placeholder="0.1" className="w-24 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                       <input type="date" value={patch.date} onChange={(e) => updatePatch(idx, "date", e.target.value)} className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                      <button type="button" onClick={() => updatePatch(idx, "date", todayStr())} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors" title="Set to today">
+                        <Calendar className="h-3 w-3" /> TODAY
+                      </button>
                     </div>
                     <input type="text" value={patch.notes} onChange={(e) => updatePatch(idx, "notes", e.target.value)} placeholder="Patch notes..." className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                   </div>
