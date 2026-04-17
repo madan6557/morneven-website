@@ -49,6 +49,7 @@ export default function HomePage() {
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
   const [tech, setTech] = useState<Technology[]>([]);
+  const [settings, setSettings] = useState<CommandCenterSettings>(() => getCommandCenterSettings());
 
   useEffect(() => {
     getProjects().then(setProjects);
@@ -57,6 +58,19 @@ export default function HomePage() {
     getGallery().then(setGallery);
     getPlaces().then(setPlaces);
     getTechnology().then(setTech);
+  }, []);
+
+  // Refresh settings when author saves them, or when tab regains focus
+  useEffect(() => {
+    const refresh = () => setSettings(getCommandCenterSettings());
+    window.addEventListener("morneven:cc-settings-changed", refresh);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("morneven:cc-settings-changed", refresh);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("storage", refresh);
+    };
   }, []);
 
   const activeProjects = projects.filter((p) => p.status === "On Progress").length;
@@ -71,28 +85,30 @@ export default function HomePage() {
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6 md:space-y-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0 flex-1">
           <motion.div {...fadeUp(0)} className="flex items-center gap-3">
-            <h1 className="font-display text-2xl md:text-3xl tracking-[0.1em] text-primary">COMMAND CENTER</h1>
+            <h1 className="font-display text-xl sm:text-2xl md:text-3xl tracking-[0.1em] text-primary">COMMAND CENTER</h1>
           </motion.div>
           <div className="mecha-line w-32 mt-2" />
           <motion.p {...fadeUp(0.05)} className="mt-3 text-sm font-body text-muted-foreground">
-            Welcome back, <span className="text-foreground font-medium">{username}</span>. Here's your operational overview.
+            Welcome back, <span className="text-foreground font-medium">{username}</span>. {settings.welcomeMessage}
           </motion.p>
         </div>
         <ThemeToggle />
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={FolderKanban} label="Projects" value={projects.length} color="bg-primary/20 text-primary" delay={0.05} />
-        <StatCard icon={Activity} label="Active" value={activeProjects} color="bg-green-500/20 text-green-400" delay={0.1} />
-        <StatCard icon={BookOpen} label="Lore Entries" value={totalLore} color="bg-secondary/20 text-secondary" delay={0.15} />
-        <StatCard icon={Image} label="Gallery" value={gallery.length} color="bg-accent/20 text-accent-foreground" delay={0.2} />
-      </div>
+      {settings.showStats && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <StatCard icon={FolderKanban} label="Projects" value={projects.length} color="bg-primary/20 text-primary" delay={0.05} />
+          <StatCard icon={Activity} label="Active" value={activeProjects} color="bg-green-500/20 text-green-400" delay={0.1} />
+          <StatCard icon={BookOpen} label="Lore Entries" value={totalLore} color="bg-secondary/20 text-secondary" delay={0.15} />
+          <StatCard icon={Image} label="Gallery" value={gallery.length} color="bg-accent/20 text-accent-foreground" delay={0.2} />
+        </div>
+      )}
 
       {/* Main Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
