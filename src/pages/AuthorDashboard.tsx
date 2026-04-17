@@ -649,26 +649,28 @@ export default function AuthorDashboard() {
       )}
 
       {/* Items List */}
-      <div className="space-y-2">
-        {getItems().map((item) => (
-          <div key={item.id} className="hud-border-sm bg-card p-4 flex items-center justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <h3 className="font-heading text-sm text-foreground truncate">{getItemTitle(item)}</h3>
-              <p className="text-xs text-muted-foreground font-body truncate">{getItemDesc(item)}</p>
-              {"status" in item && <span className="text-[10px] font-display tracking-wider text-accent-orange uppercase">{item.status}</span>}
-              {"accentColor" in item && <span className="inline-block w-3 h-3 rounded-full ml-2 align-middle" style={{ backgroundColor: item.accentColor }} />}
+      {activeTab !== "homepage" && (
+        <div className="space-y-2">
+          {getItems().map((item) => (
+            <div key={item.id} className="hud-border-sm bg-card p-4 flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-heading text-sm text-foreground truncate">{getItemTitle(item)}</h3>
+                <p className="text-xs text-muted-foreground font-body truncate">{getItemDesc(item)}</p>
+                {"status" in item && <span className="text-[10px] font-display tracking-wider text-accent-orange uppercase">{item.status}</span>}
+                {"accentColor" in item && <span className="inline-block w-3 h-3 rounded-full ml-2 align-middle" style={{ backgroundColor: item.accentColor }} />}
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button onClick={() => { setEditing({ ...item }); setIsCreating(false); }} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button onClick={() => handleDelete(item.id, getItemTitle(item))} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button onClick={() => { setEditing({ ...item }); setIsCreating(false); }} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-              <button onClick={() => handleDelete(item.id, getItemTitle(item))} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
