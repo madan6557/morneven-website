@@ -112,7 +112,7 @@ export default function HomePage() {
 
       {/* Main Grid */}
       {(settings.showProjects || settings.showNews) && (
-        <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
           {settings.showProjects && (
             <motion.div {...fadeUp(0.1)} className="lg:col-span-2 hud-border bg-card p-4 sm:p-5 space-y-4 glow-primary">
               <div className="flex items-center justify-between gap-2">
