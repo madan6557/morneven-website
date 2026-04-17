@@ -6,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthorRoute } from "@/components/AuthorRoute";
-import { Analytics } from '@vercel/analytics/next';
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import HomePage from "./pages/HomePage";
@@ -27,35 +26,33 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Analytics>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Landing />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route element={<AppLayout />}>
-                  <Route path="/home" element={<HomePage />} />
-                  <Route path="/projects" element={<ProjectsPage />} />
-                  <Route path="/projects/:id" element={<ProjectDetail />} />
-                  <Route path="/gallery" element={<GalleryPage />} />
-                  <Route path="/gallery/:id" element={<GalleryDetail />} />
-                  <Route path="/lore" element={<LorePage />} />
-                  <Route path="/lore/:category" element={<LorePage />} />
-                  <Route path="/lore/characters/:id" element={<CharacterDetail />} />
-                  <Route path="/lore/places/:id" element={<PlaceDetail />} />
-                  <Route path="/lore/tech/:id" element={<TechDetail />} />
-                  <Route path="/author" element={<AuthorRoute><AuthorDashboard /></AuthorRoute>} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                </Route>
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </AuthProvider>
-      </Analytics>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route element={<AppLayout />}>
+                <Route path="/home" element={<HomePage />} />
+                <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/projects/:id" element={<ProjectDetail />} />
+                <Route path="/gallery" element={<GalleryPage />} />
+                <Route path="/gallery/:id" element={<GalleryDetail />} />
+                <Route path="/lore" element={<LorePage />} />
+                <Route path="/lore/:category" element={<LorePage />} />
+                <Route path="/lore/characters/:id" element={<CharacterDetail />} />
+                <Route path="/lore/places/:id" element={<PlaceDetail />} />
+                <Route path="/lore/tech/:id" element={<TechDetail />} />
+                <Route path="/author" element={<AuthorRoute><AuthorDashboard /></AuthorRoute>} />
+                <Route path="/settings" element={<SettingsPage />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
