@@ -26,7 +26,7 @@ export function AppLayout() {
           onClose={() => setMobileOpen(false)}
           isMobile={isMobile}
         />
-        <main className="flex-1 min-w-0">
+        <main className="flex-1 min-w-0 overflow-x-hidden">
           {/* Mobile header with hamburger */}
           {isMobile && (
             <div className="sticky top-0 z-30 h-12 flex items-center px-4 border-b border-border bg-background/80 backdrop-blur-sm">
