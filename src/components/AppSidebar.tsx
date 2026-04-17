@@ -201,18 +201,20 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
 
   // Desktop: static sidebar with external chevron toggle
   return (
-    <div className="relative flex-shrink-0">
-      <motion.aside
-        animate={{ width: sidebarWidth }}
-        transition={{ duration: 0.25, ease: "easeInOut" }}
-        className="h-screen sticky top-0 overflow-hidden border-r border-border bg-sidebar z-40"
-      >
+    <motion.aside
+      animate={{ width: sidebarWidth }}
+      transition={{ duration: 0.25, ease: "easeInOut" }}
+      className="h-screen sticky top-0 border-r border-border bg-sidebar z-40 flex-shrink-0"
+      style={{ overflow: "visible" }}
+    >
+      <div className="h-full overflow-hidden">
         {sidebarContent}
-      </motion.aside>
-      {/* Chevron button on the edge of the sidebar */}
+      </div>
+      {/* Chevron button on the edge of the sidebar — sticky inside aside so it stays visible while scrolling */}
       <button
         onClick={onToggleExpand}
-        className="absolute top-7 -right-3 z-50 h-6 w-6 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted transition-colors shadow-sm -translate-y-1/2"
+        className="absolute top-7 -right-3 z-50 h-6 w-6 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted transition-colors shadow-sm"
+        aria-label={expanded ? "Minimize sidebar" : "Expand sidebar"}
       >
         {expanded ? (
           <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
@@ -220,6 +222,6 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
         )}
       </button>
-    </div>
+    </motion.aside>
   );
 }

@@ -2,13 +2,32 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getProjects, createProject, updateProject, deleteProject, getCharacters, createCharacter, updateCharacter, deleteCharacter, getPlaces, createPlace, updatePlace, deletePlace, getTechnology, createTech, updateTech, deleteTech, getGallery, createGalleryItem, updateGalleryItem, deleteGalleryItem } from "@/services/api";
+import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, type CommandCenterSettings } from "@/services/commandCenterSettings";
 import type { Project, Character, Place, Technology, GalleryItem, DocItem, ProjectPatch } from "@/types";
-import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video } from "lucide-react";
+import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, Calendar, LayoutDashboard, RotateCcw } from "lucide-react";
 
-const dashTabs = ["projects", "lore", "gallery"] as const;
+const dashTabs = ["projects", "lore", "gallery", "homepage"] as const;
 const loreSubs = ["characters", "places", "technology"] as const;
 const inputClass = "w-full mt-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 const labelClass = "font-heading text-xs tracking-wider text-muted-foreground uppercase";
+
+const todayStr = () => new Date().toISOString().split("T")[0];
+
+// Auto-increment patch version. Strips/preserves a leading "v" and increments the
+// last numeric segment by 1 (so 0.1 -> 0.2, v1.2 -> v1.3). Empty -> "0.1".
+function nextPatchVersion(prev?: string): string {
+  if (!prev) return "0.1";
+  const trimmed = prev.trim();
+  const hasV = /^v/i.test(trimmed);
+  const core = hasV ? trimmed.slice(1) : trimmed;
+  const parts = core.split(".");
+  const lastIdx = parts.length - 1;
+  const lastNum = Number(parts[lastIdx]);
+  if (Number.isNaN(lastNum)) return hasV ? `v${core}.1` : `${core}.1`;
+  parts[lastIdx] = String(lastNum + 1);
+  const next = parts.join(".");
+  return hasV ? `v${next}` : next;
+}
 
 type DashboardTab = typeof dashTabs[number];
 type LoreSub = typeof loreSubs[number];
@@ -111,6 +130,7 @@ export default function AuthorDashboard() {
 
   const [editing, setEditing] = useState<EditableState | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [ccSettings, setCcSettings] = useState<CommandCenterSettings>(() => getCommandCenterSettings());
 
   useEffect(() => { loadAll(); }, []);
 
@@ -294,9 +314,12 @@ export default function AuthorDashboard() {
     setEditing({ ...editing, docs });
   };
 
-  // Patch management for projects
+  // Patch management for projects (auto-increments version from previous patch)
   const addPatch = () => {
-    const patches = [...(editing.patches || []), { version: "", date: new Date().toISOString().split("T")[0], notes: "" }];
+    const existing = editing?.patches || [];
+    const lastVersion = existing.length > 0 ? existing[existing.length - 1].version : "";
+    const version = nextPatchVersion(lastVersion);
+    const patches = [...existing, { version, date: todayStr(), notes: "" }];
     setEditing({ ...editing, patches });
   };
   const updatePatch = (idx: number, field: string, value: string) => {
@@ -318,22 +341,22 @@ export default function AuthorDashboard() {
   const hasDocs = isProject || isCharacter || isPlace || isTech;
 
   return (
-    <div className="p-6 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
       <h1 className="font-display text-2xl tracking-[0.1em] text-primary">AUTHOR PANEL</h1>
       <div className="mecha-line w-32" />
 
       {/* Tabs */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {dashTabs.map((t) => (
           <button key={t} onClick={() => { setActiveTab(t); setEditing(null); setIsCreating(false); }}
-            className={`px-4 py-1.5 text-xs font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${activeTab === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
-            {t}
+            className={`px-3 md:px-4 py-1.5 text-xs font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${activeTab === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
+            {t === "homepage" ? "Command Center" : t}
           </button>
         ))}
       </div>
 
       {activeTab === "lore" && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {loreSubs.map((s) => (
             <button key={s} onClick={() => { setLoreSub(s); setEditing(null); setIsCreating(false); }}
               className={`px-3 py-1 text-[10px] font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${loreSub === s ? "bg-secondary text-secondary-foreground border-secondary" : "border-border text-muted-foreground hover:bg-muted"}`}>
@@ -343,11 +366,77 @@ export default function AuthorDashboard() {
         </div>
       )}
 
-      <div className="flex justify-end">
-        <button onClick={startCreate} className="flex items-center gap-1 px-3 py-1.5 text-xs font-display tracking-wider text-primary-foreground bg-primary rounded-sm hover:opacity-90 transition-opacity">
-          <Plus className="h-3 w-3" /> CREATE NEW
-        </button>
-      </div>
+      {activeTab !== "homepage" && (
+        <div className="flex justify-end">
+          <button onClick={startCreate} className="flex items-center gap-1 px-3 py-1.5 text-xs font-display tracking-wider text-primary-foreground bg-primary rounded-sm hover:opacity-90 transition-opacity">
+            <Plus className="h-3 w-3" /> CREATE NEW
+          </button>
+        </div>
+      )}
+
+      {/* Command Center settings panel */}
+      {activeTab === "homepage" && (
+        <div className="hud-border bg-card p-4 md:p-6 space-y-5">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase flex items-center gap-2">
+              <LayoutDashboard className="h-4 w-4" /> Command Center Settings
+            </h3>
+            <button
+              onClick={() => { setCcSettings({ ...defaultSettings }); saveCommandCenterSettings({ ...defaultSettings }); }}
+              className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors"
+            >
+              <RotateCcw className="h-3 w-3" /> RESET DEFAULTS
+            </button>
+          </div>
+          <div className="mecha-line" />
+
+          <div>
+            <label className={labelClass}>Welcome Message</label>
+            <input
+              type="text"
+              value={ccSettings.welcomeMessage}
+              onChange={(e) => setCcSettings({ ...ccSettings, welcomeMessage: e.target.value })}
+              className={inputClass}
+              placeholder="Here's your operational overview."
+            />
+          </div>
+
+          <div>
+            <p className={labelClass + " mb-2"}>Visible Sections</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {([
+                ["showStats", "Stat Cards"],
+                ["showProjects", "Project Status"],
+                ["showNews", "News Feed"],
+                ["showCharacters", "Key Personnel"],
+                ["showPlaces", "Key Locations"],
+                ["showTechnology", "Technology"],
+                ["showGallery", "Recent Gallery"],
+                ["showQuickActions", "Quick Navigation"],
+              ] as const).map(([key, label]) => (
+                <label key={key} className="flex items-center gap-2 p-2 rounded-sm bg-background/50 border border-border cursor-pointer hover:bg-background transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={ccSettings[key]}
+                    onChange={(e) => setCcSettings({ ...ccSettings, [key]: e.target.checked })}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <span className="text-sm font-body text-foreground">{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              onClick={() => { saveCommandCenterSettings(ccSettings); }}
+              className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity"
+            >
+              <Save className="h-3 w-3" /> SAVE SETTINGS
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Edit Form */}
       {editing && (
@@ -463,7 +552,12 @@ export default function AuthorDashboard() {
                 )}
                 <div>
                   <label className={labelClass}>Date</label>
-                  <input type="date" value={editing.date || ""} onChange={(e) => setEditing({ ...editing, date: e.target.value })} className={inputClass} />
+                  <div className="flex gap-2 mt-1">
+                    <input type="date" value={editing.date || ""} onChange={(e) => setEditing({ ...editing, date: e.target.value })} className={inputClass + " mt-0"} />
+                    <button type="button" onClick={() => setEditing({ ...editing, date: todayStr() })} className="flex items-center gap-1 px-2 py-2 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors flex-shrink-0" title="Set to today">
+                      <Calendar className="h-3 w-3" /> TODAY
+                    </button>
+                  </div>
                 </div>
               </>
             )}
@@ -530,9 +624,12 @@ export default function AuthorDashboard() {
               {(editing.patches || []).map((patch: ProjectPatch, idx: number) => (
                 <div key={idx} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
                   <div className="flex-1 space-y-2">
-                    <div className="flex gap-2">
-                      <input type="text" value={patch.version} onChange={(e) => updatePatch(idx, "version", e.target.value)} placeholder="Version (e.g. v1.0)" className="w-24 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <input type="text" value={patch.version} onChange={(e) => updatePatch(idx, "version", e.target.value)} placeholder="0.1" className="w-24 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                       <input type="date" value={patch.date} onChange={(e) => updatePatch(idx, "date", e.target.value)} className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                      <button type="button" onClick={() => updatePatch(idx, "date", todayStr())} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors" title="Set to today">
+                        <Calendar className="h-3 w-3" /> TODAY
+                      </button>
                     </div>
                     <input type="text" value={patch.notes} onChange={(e) => updatePatch(idx, "notes", e.target.value)} placeholder="Patch notes..." className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                   </div>
@@ -552,26 +649,28 @@ export default function AuthorDashboard() {
       )}
 
       {/* Items List */}
-      <div className="space-y-2">
-        {getItems().map((item) => (
-          <div key={item.id} className="hud-border-sm bg-card p-4 flex items-center justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <h3 className="font-heading text-sm text-foreground truncate">{getItemTitle(item)}</h3>
-              <p className="text-xs text-muted-foreground font-body truncate">{getItemDesc(item)}</p>
-              {"status" in item && <span className="text-[10px] font-display tracking-wider text-accent-orange uppercase">{item.status}</span>}
-              {"accentColor" in item && <span className="inline-block w-3 h-3 rounded-full ml-2 align-middle" style={{ backgroundColor: item.accentColor }} />}
+      {activeTab !== "homepage" && (
+        <div className="space-y-2">
+          {getItems().map((item) => (
+            <div key={item.id} className="hud-border-sm bg-card p-4 flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-heading text-sm text-foreground truncate">{getItemTitle(item)}</h3>
+                <p className="text-xs text-muted-foreground font-body truncate">{getItemDesc(item)}</p>
+                {"status" in item && <span className="text-[10px] font-display tracking-wider text-accent-orange uppercase">{item.status}</span>}
+                {"accentColor" in item && <span className="inline-block w-3 h-3 rounded-full ml-2 align-middle" style={{ backgroundColor: item.accentColor }} />}
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button onClick={() => { setEditing({ ...item }); setIsCreating(false); }} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button onClick={() => handleDelete(item.id, getItemTitle(item))} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button onClick={() => { setEditing({ ...item }); setIsCreating(false); }} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-              <button onClick={() => handleDelete(item.id, getItemTitle(item))} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
