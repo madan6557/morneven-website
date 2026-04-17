@@ -114,7 +114,7 @@ export default function HomePage() {
       {(settings.showProjects || settings.showNews) && (
         <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
           {settings.showProjects && (
-            <motion.div {...fadeUp(0.1)} className="lg:col-span-2 hud-border bg-card p-4 sm:p-5 space-y-4 glow-primary">
+            <motion.div {...fadeUp(0.1)} className="md:col-span-2 hud-border bg-card p-4 sm:p-5 space-y-4 glow-primary min-w-0">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-heading text-xs sm:text-sm tracking-[0.15em] text-accent-orange uppercase flex items-center gap-2">
                   <FolderKanban className="h-4 w-4" /> Project Status
