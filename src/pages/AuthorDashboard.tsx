@@ -313,9 +313,12 @@ export default function AuthorDashboard() {
     setEditing({ ...editing, docs });
   };
 
-  // Patch management for projects
+  // Patch management for projects (auto-increments version from previous patch)
   const addPatch = () => {
-    const patches = [...(editing.patches || []), { version: "", date: new Date().toISOString().split("T")[0], notes: "" }];
+    const existing = editing?.patches || [];
+    const lastVersion = existing.length > 0 ? existing[existing.length - 1].version : "";
+    const version = nextPatchVersion(lastVersion);
+    const patches = [...existing, { version, date: todayStr(), notes: "" }];
     setEditing({ ...editing, patches });
   };
   const updatePatch = (idx: number, field: string, value: string) => {
