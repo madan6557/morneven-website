@@ -2,13 +2,32 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getProjects, createProject, updateProject, deleteProject, getCharacters, createCharacter, updateCharacter, deleteCharacter, getPlaces, createPlace, updatePlace, deletePlace, getTechnology, createTech, updateTech, deleteTech, getGallery, createGalleryItem, updateGalleryItem, deleteGalleryItem } from "@/services/api";
+import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, type CommandCenterSettings } from "@/services/commandCenterSettings";
 import type { Project, Character, Place, Technology, GalleryItem, DocItem, ProjectPatch } from "@/types";
-import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video } from "lucide-react";
+import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, Calendar, LayoutDashboard, RotateCcw } from "lucide-react";
 
-const dashTabs = ["projects", "lore", "gallery"] as const;
+const dashTabs = ["projects", "lore", "gallery", "homepage"] as const;
 const loreSubs = ["characters", "places", "technology"] as const;
 const inputClass = "w-full mt-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 const labelClass = "font-heading text-xs tracking-wider text-muted-foreground uppercase";
+
+const todayStr = () => new Date().toISOString().split("T")[0];
+
+// Auto-increment patch version. Strips/preserves a leading "v" and increments the
+// last numeric segment by 1 (so 0.1 -> 0.2, v1.2 -> v1.3). Empty -> "0.1".
+function nextPatchVersion(prev?: string): string {
+  if (!prev) return "0.1";
+  const trimmed = prev.trim();
+  const hasV = /^v/i.test(trimmed);
+  const core = hasV ? trimmed.slice(1) : trimmed;
+  const parts = core.split(".");
+  const lastIdx = parts.length - 1;
+  const lastNum = Number(parts[lastIdx]);
+  if (Number.isNaN(lastNum)) return hasV ? `v${core}.1` : `${core}.1`;
+  parts[lastIdx] = String(lastNum + 1);
+  const next = parts.join(".");
+  return hasV ? `v${next}` : next;
+}
 
 type DashboardTab = typeof dashTabs[number];
 type LoreSub = typeof loreSubs[number];
