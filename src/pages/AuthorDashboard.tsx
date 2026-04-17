@@ -341,22 +341,22 @@ export default function AuthorDashboard() {
   const hasDocs = isProject || isCharacter || isPlace || isTech;
 
   return (
-    <div className="p-6 md:p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
       <h1 className="font-display text-2xl tracking-[0.1em] text-primary">AUTHOR PANEL</h1>
       <div className="mecha-line w-32" />
 
       {/* Tabs */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {dashTabs.map((t) => (
           <button key={t} onClick={() => { setActiveTab(t); setEditing(null); setIsCreating(false); }}
-            className={`px-4 py-1.5 text-xs font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${activeTab === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
-            {t}
+            className={`px-3 md:px-4 py-1.5 text-xs font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${activeTab === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
+            {t === "homepage" ? "Command Center" : t}
           </button>
         ))}
       </div>
 
       {activeTab === "lore" && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {loreSubs.map((s) => (
             <button key={s} onClick={() => { setLoreSub(s); setEditing(null); setIsCreating(false); }}
               className={`px-3 py-1 text-[10px] font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${loreSub === s ? "bg-secondary text-secondary-foreground border-secondary" : "border-border text-muted-foreground hover:bg-muted"}`}>
@@ -366,11 +366,77 @@ export default function AuthorDashboard() {
         </div>
       )}
 
-      <div className="flex justify-end">
-        <button onClick={startCreate} className="flex items-center gap-1 px-3 py-1.5 text-xs font-display tracking-wider text-primary-foreground bg-primary rounded-sm hover:opacity-90 transition-opacity">
-          <Plus className="h-3 w-3" /> CREATE NEW
-        </button>
-      </div>
+      {activeTab !== "homepage" && (
+        <div className="flex justify-end">
+          <button onClick={startCreate} className="flex items-center gap-1 px-3 py-1.5 text-xs font-display tracking-wider text-primary-foreground bg-primary rounded-sm hover:opacity-90 transition-opacity">
+            <Plus className="h-3 w-3" /> CREATE NEW
+          </button>
+        </div>
+      )}
+
+      {/* Command Center settings panel */}
+      {activeTab === "homepage" && (
+        <div className="hud-border bg-card p-4 md:p-6 space-y-5">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase flex items-center gap-2">
+              <LayoutDashboard className="h-4 w-4" /> Command Center Settings
+            </h3>
+            <button
+              onClick={() => { setCcSettings({ ...defaultSettings }); saveCommandCenterSettings({ ...defaultSettings }); }}
+              className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors"
+            >
+              <RotateCcw className="h-3 w-3" /> RESET DEFAULTS
+            </button>
+          </div>
+          <div className="mecha-line" />
+
+          <div>
+            <label className={labelClass}>Welcome Message</label>
+            <input
+              type="text"
+              value={ccSettings.welcomeMessage}
+              onChange={(e) => setCcSettings({ ...ccSettings, welcomeMessage: e.target.value })}
+              className={inputClass}
+              placeholder="Here's your operational overview."
+            />
+          </div>
+
+          <div>
+            <p className={labelClass + " mb-2"}>Visible Sections</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {([
+                ["showStats", "Stat Cards"],
+                ["showProjects", "Project Status"],
+                ["showNews", "News Feed"],
+                ["showCharacters", "Key Personnel"],
+                ["showPlaces", "Key Locations"],
+                ["showTechnology", "Technology"],
+                ["showGallery", "Recent Gallery"],
+                ["showQuickActions", "Quick Navigation"],
+              ] as const).map(([key, label]) => (
+                <label key={key} className="flex items-center gap-2 p-2 rounded-sm bg-background/50 border border-border cursor-pointer hover:bg-background transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={ccSettings[key]}
+                    onChange={(e) => setCcSettings({ ...ccSettings, [key]: e.target.checked })}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <span className="text-sm font-body text-foreground">{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              onClick={() => { saveCommandCenterSettings(ccSettings); }}
+              className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity"
+            >
+              <Save className="h-3 w-3" /> SAVE SETTINGS
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Edit Form */}
       {editing && (
