@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getProjects, getCharacters, getNews, getGallery, getPlaces, getTechnology } from "@/services/api";
+import { getCommandCenterSettings, type CommandCenterSettings } from "@/services/commandCenterSettings";
 import type { Project, Character, NewsItem, GalleryItem, Place, Technology } from "@/types";
 import {
   Activity,
