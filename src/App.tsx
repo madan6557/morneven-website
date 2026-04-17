@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthorRoute } from "@/components/AuthorRoute";
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import HomePage from "./pages/HomePage";
@@ -27,6 +28,7 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <SpeedInsights />
       <Analytics />
       <AuthProvider>
         <TooltipProvider>
