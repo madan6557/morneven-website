@@ -51,7 +51,7 @@ function highestVersion(versions: string[]): string {
 
 type DashboardTab = typeof dashTabs[number];
 type LoreSub = typeof loreSubs[number];
-type DashboardItem = Project | Character | Place | Technology | GalleryItem;
+type DashboardItem = Project | Character | Place | Technology | GalleryItem | Creature | OtherLore;
 type EditableState = {
   id?: string;
   title?: string;
@@ -63,6 +63,7 @@ type EditableState = {
   patches?: ProjectPatch[];
   docs?: DocItem[];
   race?: string;
+  occupation?: string;
   height?: string;
   traits?: string[];
   likes?: string[];
@@ -76,6 +77,10 @@ type EditableState = {
   tags?: string[];
   date?: string;
   comments?: GalleryItem["comments"];
+  // Creature
+  classification?: CreatureClassification;
+  dangerLevel?: CreatureDangerLevel;
+  habitat?: string;
 };
 
 const isDashboardTab = (value: string | null): value is DashboardTab => {
