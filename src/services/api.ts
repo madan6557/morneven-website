@@ -279,3 +279,106 @@ export async function getNews(): Promise<NewsItem[]> {
   await delay();
   return [...news];
 }
+
+// ── Creatures ───────────────────────────────────────
+export async function getCreatures(): Promise<Creature[]> {
+  await delay();
+  return [...creatures];
+}
+
+export async function getCreature(id: string): Promise<Creature | undefined> {
+  await delay();
+  return creatures.find((c) => c.id === id);
+}
+
+export async function createCreature(creature: Omit<Creature, "id">): Promise<Creature> {
+  await delay();
+  const newCreature = { ...creature, id: `crea-${Date.now()}` };
+  creatures = [newCreature, ...creatures];
+  writeCollection(STORAGE_KEYS.creatures, creatures);
+  return newCreature;
+}
+
+export async function updateCreature(id: string, data: Partial<Creature>): Promise<Creature | undefined> {
+  await delay();
+  const idx = creatures.findIndex((c) => c.id === id);
+  if (idx === -1) return undefined;
+  creatures[idx] = { ...creatures[idx], ...data };
+  writeCollection(STORAGE_KEYS.creatures, creatures);
+  return creatures[idx];
+}
+
+export async function deleteCreature(id: string): Promise<boolean> {
+  await delay();
+  const len = creatures.length;
+  creatures = creatures.filter((c) => c.id !== id);
+  writeCollection(STORAGE_KEYS.creatures, creatures);
+  return creatures.length < len;
+}
+
+// ── Other Lore ──────────────────────────────────────
+export async function getOthers(): Promise<OtherLore[]> {
+  await delay();
+  return [...others];
+}
+
+export async function getOther(id: string): Promise<OtherLore | undefined> {
+  await delay();
+  return others.find((o) => o.id === id);
+}
+
+export async function createOther(item: Omit<OtherLore, "id">): Promise<OtherLore> {
+  await delay();
+  const newItem = { ...item, id: `other-${Date.now()}` };
+  others = [newItem, ...others];
+  writeCollection(STORAGE_KEYS.other, others);
+  return newItem;
+}
+
+export async function updateOther(id: string, data: Partial<OtherLore>): Promise<OtherLore | undefined> {
+  await delay();
+  const idx = others.findIndex((o) => o.id === id);
+  if (idx === -1) return undefined;
+  others[idx] = { ...others[idx], ...data };
+  writeCollection(STORAGE_KEYS.other, others);
+  return others[idx];
+}
+
+export async function deleteOther(id: string): Promise<boolean> {
+  await delay();
+  const len = others.length;
+  others = others.filter((o) => o.id !== id);
+  writeCollection(STORAGE_KEYS.other, others);
+  return others.length < len;
+}
+
+// ── Map Markers ─────────────────────────────────────
+export async function getMapMarkers(): Promise<MapMarker[]> {
+  await delay();
+  return [...mapMarkers];
+}
+
+export async function saveMapMarkers(next: MapMarker[]): Promise<MapMarker[]> {
+  await delay();
+  mapMarkers = [...next];
+  writeCollection(STORAGE_KEYS.mapMarkers, mapMarkers);
+  return [...mapMarkers];
+}
+
+export function getMapImage(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(STORAGE_KEYS.mapImage) || "";
+  } catch {
+    return "";
+  }
+}
+
+export function setMapImage(url: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEYS.mapImage, url);
+  } catch {
+    // ignore
+  }
+}
