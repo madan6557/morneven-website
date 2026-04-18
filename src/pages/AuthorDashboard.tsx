@@ -341,8 +341,10 @@ export default function AuthorDashboard() {
     else if (activeTab === "lore") {
       if (loreSub === "characters") { await deleteCharacter(id); setCharacters(await getCharacters()); }
       else if (loreSub === "places") { await deletePlace(id); setPlaces(await getPlaces()); }
-      else { await deleteTech(id); setTech(await getTechnology()); }
-    } else { await deleteGalleryItem(id); setGallery(await getGallery()); }
+      else if (loreSub === "technology") { await deleteTech(id); setTech(await getTechnology()); }
+      else if (loreSub === "creatures") { await deleteCreature(id); setCreatures(await getCreatures()); }
+      else { await deleteOther(id); setOthers(await getOthers()); }
+    } else if (activeTab === "gallery") { await deleteGalleryItem(id); setGallery(await getGallery()); }
   };
 
   const getItems = (): DashboardItem[] => {
@@ -350,9 +352,12 @@ export default function AuthorDashboard() {
     if (activeTab === "lore") {
       if (loreSub === "characters") return characters;
       if (loreSub === "places") return places;
-      return tech;
+      if (loreSub === "technology") return tech;
+      if (loreSub === "creatures") return creatures;
+      return others;
     }
-    return gallery;
+    if (activeTab === "gallery") return gallery;
+    return [];
   };
 
   const getItemTitle = (item: DashboardItem): string => {
