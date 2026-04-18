@@ -410,9 +410,12 @@ export default function AuthorDashboard() {
   const isCharacter = activeTab === "lore" && loreSub === "characters";
   const isPlace = activeTab === "lore" && loreSub === "places";
   const isTech = activeTab === "lore" && loreSub === "technology";
+  const isCreature = activeTab === "lore" && loreSub === "creatures";
+  const isOther = activeTab === "lore" && loreSub === "other";
   const isProject = activeTab === "projects";
   const isGallery = activeTab === "gallery";
-  const hasDocs = isProject || isCharacter || isPlace || isTech;
+  const isMap = activeTab === "map";
+  const hasDocs = isProject || isCharacter || isPlace || isTech || isCreature || isOther;
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -440,7 +443,7 @@ export default function AuthorDashboard() {
         </div>
       )}
 
-      {activeTab !== "homepage" && (
+      {activeTab !== "homepage" && activeTab !== "map" && (
         <div className="flex justify-end">
           <button onClick={startCreate} className="flex items-center gap-1 px-3 py-1.5 text-xs font-display tracking-wider text-primary-foreground bg-primary rounded-sm hover:opacity-90 transition-opacity">
             <Plus className="h-3 w-3" /> CREATE NEW
