@@ -29,6 +29,26 @@ function nextPatchVersion(prev?: string): string {
   return hasV ? `v${next}` : next;
 }
 
+// Compare two patch versions numerically (segment by segment) and return the
+// one that is greater. Handles optional leading "v".
+function compareVersion(a: string, b: string): number {
+  const norm = (v: string) => v.replace(/^v/i, "").split(".").map((n) => Number(n) || 0);
+  const aa = norm(a);
+  const bb = norm(b);
+  const len = Math.max(aa.length, bb.length);
+  for (let i = 0; i < len; i++) {
+    const av = aa[i] ?? 0;
+    const bv = bb[i] ?? 0;
+    if (av !== bv) return av - bv;
+  }
+  return 0;
+}
+
+function highestVersion(versions: string[]): string {
+  if (versions.length === 0) return "";
+  return versions.reduce((max, v) => (compareVersion(v, max) > 0 ? v : max), versions[0]);
+}
+
 type DashboardTab = typeof dashTabs[number];
 type LoreSub = typeof loreSubs[number];
 type DashboardItem = Project | Character | Place | Technology | GalleryItem;
@@ -314,12 +334,14 @@ export default function AuthorDashboard() {
     setEditing({ ...editing, docs });
   };
 
-  // Patch management for projects (auto-increments version from previous patch)
+  // Patch management for projects:
+  // - new patches are inserted at the TOP of the list
+  // - version auto-increments from the HIGHEST existing version
   const addPatch = () => {
     const existing = editing?.patches || [];
-    const lastVersion = existing.length > 0 ? existing[existing.length - 1].version : "";
-    const version = nextPatchVersion(lastVersion);
-    const patches = [...existing, { version, date: todayStr(), notes: "" }];
+    const highest = highestVersion(existing.map((p) => p.version).filter(Boolean));
+    const version = nextPatchVersion(highest);
+    const patches = [{ version, date: todayStr(), notes: "" }, ...existing];
     setEditing({ ...editing, patches });
   };
   const updatePatch = (idx: number, field: string, value: string) => {
