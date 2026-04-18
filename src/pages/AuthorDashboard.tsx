@@ -152,6 +152,10 @@ export default function AuthorDashboard() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [tech, setTech] = useState<Technology[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [creatures, setCreatures] = useState<Creature[]>([]);
+  const [others, setOthers] = useState<OtherLore[]>([]);
+  const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
+  const [mapImageUrl, setMapImageUrl] = useState<string>("");
 
   const [editing, setEditing] = useState<EditableState | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -175,6 +179,10 @@ export default function AuthorDashboard() {
     setPlaces(await getPlaces());
     setTech(await getTechnology());
     setGallery(await getGallery());
+    setCreatures(await getCreatures());
+    setOthers(await getOthers());
+    setMapMarkers(await getMapMarkers());
+    setMapImageUrl(getMapImage());
   };
 
   if (role !== "author") {
