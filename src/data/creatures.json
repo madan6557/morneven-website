@@ -1,0 +1,35 @@
+[
+  {
+    "id": "crea-001",
+    "name": "Glassfang Stalker",
+    "classification": "Euclid",
+    "dangerLevel": 4,
+    "habitat": "Scorched Wastes — crystalline canyons",
+    "thumbnail": "",
+    "accentColor": "#7DD3FC",
+    "shortDesc": "A bipedal predator whose mutated hide regrew as Gemosphere quartz, refracting light into hypnotic patterns.",
+    "fullDesc": "First catalogued by Field Team Echo near the eastern Scorched Wastes, the Glassfang Stalker is a post-apocalyptic descendant of canid mammals that integrated trace Gemosphere crystals into its keratin during gestation. Its plating is functionally translucent and acts as a passive optical lure: prey approaching at dusk perceive the creature as a shimmering pool of water.\n\nContainment is currently passive — the species avoids settled territory but reacts violently to amplified sound. Approach protocol DL-4 must be observed at all times."
+  },
+  {
+    "id": "crea-002",
+    "name": "Hollow Choir",
+    "classification": "Keter",
+    "dangerLevel": 5,
+    "habitat": "Deep ruins beneath former metropolitan zones",
+    "thumbnail": "",
+    "accentColor": "#A855F7",
+    "shortDesc": "A swarm-mind entity that mimics human voices to draw survivors deeper into collapsed Jewerlian shrines.",
+    "fullDesc": "The Hollow Choir is not a single creature but a colonial intelligence formed when Jewerlian vocal-print fragments bonded to mutated locust biomass during the Final Resonance. Field recordings describe choirs of stolen voices — children, partners, fallen comrades — emanating from sealed substructures.\n\nDirect contact is invariably fatal; Institute doctrine designates all encounters as Code Black and authorizes immediate withdrawal."
+  },
+  {
+    "id": "crea-003",
+    "name": "Mossback Drifter",
+    "classification": "Safe",
+    "dangerLevel": 1,
+    "habitat": "Verdant Hollows and other Fae-touched forests",
+    "thumbnail": "",
+    "accentColor": "#65A30D",
+    "shortDesc": "A docile herbivore whose carapace hosts living moss colonies, often used by Fae-touched as pack animals.",
+    "fullDesc": "The Mossback Drifter is one of the few large mutated species considered fully benign. Its dorsal carapace is colonized by symbiotic moss that filters airborne Gemosphere particulates, making the creature a walking air-purifier in sealed habitats.\n\nDrifters bond readily with handlers and have been integrated into Verdant Hollow caravans as low-impact pack animals. No incident has been recorded in 47 years of cohabitation."
+  }
+]
