@@ -62,6 +62,9 @@ export default function CharacterDetail() {
               <div className="space-y-2 text-sm font-body">
                 <div className="flex justify-between"><span className="text-muted-foreground">Height</span><span className="text-foreground">{char.height}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Race</span><span className="text-foreground">{char.race}</span></div>
+                {char.occupation && (
+                  <div className="flex justify-between gap-2"><span className="text-muted-foreground">Occupation</span><span className="text-foreground text-right">{char.occupation}</span></div>
+                )}
               </div>
             </div>
 
