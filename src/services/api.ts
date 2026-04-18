@@ -1,5 +1,5 @@
 // Service layer — abstracts data access for future Express migration
-import type { Project, Character, Place, Technology, GalleryItem, NewsItem } from "@/types";
+import type { Project, Character, Place, Technology, GalleryItem, NewsItem, Creature, OtherLore, MapMarker } from "@/types";
 
 import projectsData from "@/data/projects.json";
 import charactersData from "@/data/characters.json";
@@ -7,6 +7,9 @@ import placesData from "@/data/places.json";
 import technologyData from "@/data/technology.json";
 import galleryData from "@/data/gallery.json";
 import newsData from "@/data/news.json";
+import creaturesData from "@/data/creatures.json";
+import otherData from "@/data/other.json";
+import mapData from "@/data/map.json";
 
 const STORAGE_KEYS = {
   projects: "morneven_projects",
@@ -14,6 +17,10 @@ const STORAGE_KEYS = {
   places: "morneven_places",
   technology: "morneven_technology",
   gallery: "morneven_gallery",
+  creatures: "morneven_creatures",
+  other: "morneven_other",
+  mapMarkers: "morneven_map_markers",
+  mapImage: "morneven_map_image",
 } as const;
 
 function hasStorage() {
@@ -49,9 +56,11 @@ let characters: Character[] = readCollection<Character>(STORAGE_KEYS.characters,
 let places: Place[] = readCollection<Place>(STORAGE_KEYS.places, placesData as Place[]);
 let technology: Technology[] = readCollection<Technology>(STORAGE_KEYS.technology, technologyData as Technology[]);
 let gallery: GalleryItem[] = readCollection<GalleryItem>(STORAGE_KEYS.gallery, galleryData as GalleryItem[]);
+let creatures: Creature[] = readCollection<Creature>(STORAGE_KEYS.creatures, creaturesData as Creature[]);
+let others: OtherLore[] = readCollection<OtherLore>(STORAGE_KEYS.other, otherData as OtherLore[]);
+let mapMarkers: MapMarker[] = readCollection<MapMarker>(STORAGE_KEYS.mapMarkers, (mapData as { markers: MapMarker[] }).markers);
 const news: NewsItem[] = [...newsData] as NewsItem[];
 
-// Helper to simulate async API calls
 const delay = (ms = 100) => new Promise((r) => setTimeout(r, ms));
 
 // ── Projects ────────────────────────────────────────
