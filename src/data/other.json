@@ -1,0 +1,29 @@
+[
+  {
+    "id": "other-001",
+    "title": "Danger Level Classification",
+    "category": "World Systems",
+    "thumbnail": "",
+    "shortDesc": "Definitions for the Gemora 1-5 danger scale used to rate creatures, anomalies, and zones.",
+    "fullDesc": "The Gemora Danger Level (DL) is a 1-5 scale used by Morneven Institute to communicate the threat profile of any catalogued entity, zone, or anomaly.\n\nDL-1 — Negligible. Trained personnel may approach without escort.\nDL-2 — Cautionary. Standard PPE required; solo approach permitted.\nDL-3 — Hostile. Minimum two-operative team, ranged armament authorized.\nDL-4 — Lethal. Specialist field team only; containment doctrine in force.\nDL-5 — Existential. No approach is sanctioned; observation from secure orbit only.\n\nThe DL rating is reviewed quarterly and may be elevated unilaterally by any Director-tier officer.",
+    "docs": []
+  },
+  {
+    "id": "other-002",
+    "title": "Creature Classification System",
+    "category": "World Systems",
+    "thumbnail": "",
+    "shortDesc": "Explanation of the Safe / Euclid / Keter / Thaumiel / Apollyon / Neutralized framework.",
+    "fullDesc": "Morneven adopted a six-tier classification system inspired by pre-apocalypse containment frameworks.\n\nSafe — Predictable behavior, containment is trivial.\nEuclid — Behavior is partially understood; active monitoring required.\nKeter — Actively hostile or escape-prone; containment consumes significant resources.\nThaumiel — Used by the Institute itself to contain other anomalies.\nApollyon — Cannot be contained by any known means.\nNeutralized — Permanently destroyed, dormant, or otherwise non-anomalous.\n\nClassification is independent of Danger Level; a Safe-class entity can still hold a high DL if engaged carelessly.",
+    "docs": []
+  },
+  {
+    "id": "other-003",
+    "title": "The Gemosphere",
+    "category": "Cosmology",
+    "thumbnail": "",
+    "shortDesc": "Overview of the crystalline atmospheric layer that defines post-apocalyptic Earth.",
+    "fullDesc": "The Gemosphere is the suspended crystalline particulate layer that replaced the lower stratosphere following the Final Resonance. It refracts sunlight into the characteristic violet dawns observed across all settled territories and is the source of the trace minerals that drove most post-event mutation events.\n\nUnderstanding the Gemosphere is foundational to nearly every Institute research vertical, from terraforming to Jewerlian metaphysics.",
+    "docs": []
+  }
+]

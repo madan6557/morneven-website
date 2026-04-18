@@ -4,59 +4,135 @@
     "name": "Kael Vorthane",
     "race": "Demi-human (Shadow-kin)",
     "height": "186 cm",
-    "traits": ["Strategist", "Cold-blooded", "Loyal"],
-    "likes": ["Silence", "Ancient texts", "Black tea"],
-    "dislikes": ["Incompetence", "Crowds", "Bright light"],
+    "traits": [
+      "Strategist",
+      "Cold-blooded",
+      "Loyal"
+    ],
+    "likes": [
+      "Silence",
+      "Ancient texts",
+      "Black tea"
+    ],
+    "dislikes": [
+      "Incompetence",
+      "Crowds",
+      "Bright light"
+    ],
     "accentColor": "#4A90D9",
     "thumbnail": "",
     "shortDesc": "Shadow Operative and Chief Tactician of Morneven Institute's Field Division.",
     "fullDesc": "Kael Vorthane is a Shadow-kin Demi-human who serves as the primary field operative and tactical advisor for Morneven Institute. Born in the Underdark Territories, he was recruited at age 16 after single-handedly neutralizing a Voidborn scouting party.\n\nHis Shadow-kin heritage grants him enhanced night vision, shadow-step capabilities, and an innate resistance to psychic intrusion. Despite his cold exterior, Kael is fiercely loyal to Director Elynra and the Institute's mission.",
-    "stats": { "combat": 92, "intelligence": 88, "stealth": 97, "charisma": 45, "endurance": 76 },
-    "docs": []
+    "stats": {
+      "combat": 92,
+      "intelligence": 88,
+      "stealth": 97,
+      "charisma": 45,
+      "endurance": 76
+    },
+    "docs": [],
+    "occupation": "Chief Tactician \u2014 Field Division"
   },
   {
     "id": "char-002",
     "name": "Elynra Moonveil",
     "race": "Jewerlian",
     "height": "172 cm",
-    "traits": ["Visionary", "Compassionate", "Unyielding"],
-    "likes": ["Crystal harmonics", "Stargazing", "Diplomatic discussions"],
-    "dislikes": ["Violence", "Deception", "Waste of resources"],
+    "traits": [
+      "Visionary",
+      "Compassionate",
+      "Unyielding"
+    ],
+    "likes": [
+      "Crystal harmonics",
+      "Stargazing",
+      "Diplomatic discussions"
+    ],
+    "dislikes": [
+      "Violence",
+      "Deception",
+      "Waste of resources"
+    ],
     "accentColor": "#9B59B6",
     "thumbnail": "",
     "shortDesc": "Director of Morneven Institute. A Jewerlian leader guiding cross-species cooperation.",
     "fullDesc": "Director Elynra Moonveil is the founding leader of Morneven Institute and one of the most influential Jewerlians of her generation. She established the Institute with the vision of uniting Jewerlians, Humans, and Demi-humans under a shared pursuit of knowledge and peace.\n\nHer mastery of crystal resonance technology is unparalleled, and she personally oversees the most sensitive research projects. Under her leadership, Morneven has become a beacon of hope in a world still scarred by the apocalypse.",
-    "stats": { "combat": 35, "intelligence": 98, "stealth": 30, "charisma": 95, "endurance": 60 },
-    "docs": []
+    "stats": {
+      "combat": 35,
+      "intelligence": 98,
+      "stealth": 30,
+      "charisma": 95,
+      "endurance": 60
+    },
+    "docs": [],
+    "occupation": "Director \u2014 Morneven Institute"
   },
   {
     "id": "char-003",
     "name": "Rex Ashford",
     "race": "Human",
     "height": "180 cm",
-    "traits": ["Reckless", "Inventive", "Humorous"],
-    "likes": ["Explosions", "Tinkering", "Spicy food"],
-    "dislikes": ["Bureaucracy", "Sitting still", "Formal events"],
+    "traits": [
+      "Reckless",
+      "Inventive",
+      "Humorous"
+    ],
+    "likes": [
+      "Explosions",
+      "Tinkering",
+      "Spicy food"
+    ],
+    "dislikes": [
+      "Bureaucracy",
+      "Sitting still",
+      "Formal events"
+    ],
     "accentColor": "#E67E22",
     "thumbnail": "",
     "shortDesc": "Lead Engineer and head of Morneven's R&D Weapons Division.",
     "fullDesc": "Rex Ashford is a human engineer whose genius is matched only by his disregard for safety protocols. He heads the Research & Development Weapons Division at Morneven Institute, responsible for developing defensive technologies against Voidborn threats.\n\nDespite numerous lab incidents (17 at last count), his innovations have saved countless lives. His signature creation, the 'Ashford Repeater,' is standard issue for all Institute field operatives.",
-    "stats": { "combat": 65, "intelligence": 91, "stealth": 20, "charisma": 78, "endurance": 70 },
-    "docs": []
+    "stats": {
+      "combat": 65,
+      "intelligence": 91,
+      "stealth": 20,
+      "charisma": 78,
+      "endurance": 70
+    },
+    "docs": [],
+    "occupation": "Lead Engineer \u2014 R&D Weapons"
   },
   {
     "id": "char-004",
     "name": "Lyra Fenwick",
     "race": "Demi-human (Fae-touched)",
     "height": "160 cm",
-    "traits": ["Empathic", "Mysterious", "Fierce"],
-    "likes": ["Nature", "Music", "Healing"],
-    "dislikes": ["Cruelty", "Iron", "Loud machinery"],
+    "traits": [
+      "Empathic",
+      "Mysterious",
+      "Fierce"
+    ],
+    "likes": [
+      "Nature",
+      "Music",
+      "Healing"
+    ],
+    "dislikes": [
+      "Cruelty",
+      "Iron",
+      "Loud machinery"
+    ],
     "accentColor": "#2ECC71",
     "thumbnail": "",
     "shortDesc": "Chief Medical Officer and leyline healer stationed at Morneven Central.",
-    "fullDesc": "Lyra Fenwick is a Fae-touched Demi-human who serves as the Chief Medical Officer of Morneven Institute. Her Fae heritage gives her an extraordinary connection to natural leyline energies, which she channels for healing purposes.\n\nShe can sense emotional states and physical ailments through touch, making her diagnostic abilities unmatched. However, prolonged exposure to heavy machinery and refined metals causes her significant discomfort — a common Fae-touched sensitivity.",
-    "stats": { "combat": 30, "intelligence": 85, "stealth": 55, "charisma": 90, "endurance": 50 },
-    "docs": []
+    "fullDesc": "Lyra Fenwick is a Fae-touched Demi-human who serves as the Chief Medical Officer of Morneven Institute. Her Fae heritage gives her an extraordinary connection to natural leyline energies, which she channels for healing purposes.\n\nShe can sense emotional states and physical ailments through touch, making her diagnostic abilities unmatched. However, prolonged exposure to heavy machinery and refined metals causes her significant discomfort \u2014 a common Fae-touched sensitivity.",
+    "stats": {
+      "combat": 30,
+      "intelligence": 85,
+      "stealth": 55,
+      "charisma": 90,
+      "endurance": 50
+    },
+    "docs": [],
+    "occupation": "Chief Medical Officer"
   }
 ]

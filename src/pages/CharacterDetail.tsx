@@ -45,6 +45,9 @@ export default function CharacterDetail() {
           </Link>
           <h1 className="font-display text-2xl md:text-3xl tracking-[0.1em]" style={{ color: accentColor }}>{char.name.toUpperCase()}</h1>
           <p className="text-sm font-heading tracking-wider text-muted-foreground mt-1">{char.race}</p>
+          {char.occupation && (
+            <p className="text-xs font-display tracking-[0.15em] uppercase mt-1" style={{ color: accentColor }}>{char.occupation}</p>
+          )}
         </div>
       </div>
 
@@ -59,6 +62,9 @@ export default function CharacterDetail() {
               <div className="space-y-2 text-sm font-body">
                 <div className="flex justify-between"><span className="text-muted-foreground">Height</span><span className="text-foreground">{char.height}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Race</span><span className="text-foreground">{char.race}</span></div>
+                {char.occupation && (
+                  <div className="flex justify-between gap-2"><span className="text-muted-foreground">Occupation</span><span className="text-foreground text-right">{char.occupation}</span></div>
+                )}
               </div>
             </div>
 

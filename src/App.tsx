@@ -19,6 +19,9 @@ import LorePage from "./pages/LorePage";
 import CharacterDetail from "./pages/CharacterDetail";
 import PlaceDetail from "./pages/PlaceDetail";
 import TechDetail from "./pages/TechDetail";
+import CreatureDetail from "./pages/CreatureDetail";
+import OtherDetail from "./pages/OtherDetail";
+import MapPage from "./pages/MapPage";
 import AuthorDashboard from "./pages/AuthorDashboard";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
@@ -49,6 +52,9 @@ function App() {
                 <Route path="/lore/characters/:id" element={<CharacterDetail />} />
                 <Route path="/lore/places/:id" element={<PlaceDetail />} />
                 <Route path="/lore/tech/:id" element={<TechDetail />} />
+                <Route path="/lore/creatures/:id" element={<CreatureDetail />} />
+                <Route path="/lore/other/:id" element={<OtherDetail />} />
+                <Route path="/maps" element={<MapPage />} />
                 <Route path="/author" element={<AuthorRoute><AuthorDashboard /></AuthorRoute>} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>

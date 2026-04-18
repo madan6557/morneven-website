@@ -1,5 +1,5 @@
 // Service layer — abstracts data access for future Express migration
-import type { Project, Character, Place, Technology, GalleryItem, NewsItem } from "@/types";
+import type { Project, Character, Place, Technology, GalleryItem, NewsItem, Creature, OtherLore, MapMarker } from "@/types";
 
 import projectsData from "@/data/projects.json";
 import charactersData from "@/data/characters.json";
@@ -7,6 +7,9 @@ import placesData from "@/data/places.json";
 import technologyData from "@/data/technology.json";
 import galleryData from "@/data/gallery.json";
 import newsData from "@/data/news.json";
+import creaturesData from "@/data/creatures.json";
+import otherData from "@/data/other.json";
+import mapData from "@/data/map.json";
 
 const STORAGE_KEYS = {
   projects: "morneven_projects",
@@ -14,6 +17,10 @@ const STORAGE_KEYS = {
   places: "morneven_places",
   technology: "morneven_technology",
   gallery: "morneven_gallery",
+  creatures: "morneven_creatures",
+  other: "morneven_other",
+  mapMarkers: "morneven_map_markers",
+  mapImage: "morneven_map_image",
 } as const;
 
 function hasStorage() {
@@ -49,9 +56,11 @@ let characters: Character[] = readCollection<Character>(STORAGE_KEYS.characters,
 let places: Place[] = readCollection<Place>(STORAGE_KEYS.places, placesData as Place[]);
 let technology: Technology[] = readCollection<Technology>(STORAGE_KEYS.technology, technologyData as Technology[]);
 let gallery: GalleryItem[] = readCollection<GalleryItem>(STORAGE_KEYS.gallery, galleryData as GalleryItem[]);
+let creatures: Creature[] = readCollection<Creature>(STORAGE_KEYS.creatures, creaturesData as Creature[]);
+let others: OtherLore[] = readCollection<OtherLore>(STORAGE_KEYS.other, otherData as OtherLore[]);
+let mapMarkers: MapMarker[] = readCollection<MapMarker>(STORAGE_KEYS.mapMarkers, (mapData as { markers: MapMarker[] }).markers);
 const news: NewsItem[] = [...newsData] as NewsItem[];
 
-// Helper to simulate async API calls
 const delay = (ms = 100) => new Promise((r) => setTimeout(r, ms));
 
 // ── Projects ────────────────────────────────────────
@@ -269,4 +278,107 @@ export async function addReply(galleryId: string, commentId: string, author: str
 export async function getNews(): Promise<NewsItem[]> {
   await delay();
   return [...news];
+}
+
+// ── Creatures ───────────────────────────────────────
+export async function getCreatures(): Promise<Creature[]> {
+  await delay();
+  return [...creatures];
+}
+
+export async function getCreature(id: string): Promise<Creature | undefined> {
+  await delay();
+  return creatures.find((c) => c.id === id);
+}
+
+export async function createCreature(creature: Omit<Creature, "id">): Promise<Creature> {
+  await delay();
+  const newCreature = { ...creature, id: `crea-${Date.now()}` };
+  creatures = [newCreature, ...creatures];
+  writeCollection(STORAGE_KEYS.creatures, creatures);
+  return newCreature;
+}
+
+export async function updateCreature(id: string, data: Partial<Creature>): Promise<Creature | undefined> {
+  await delay();
+  const idx = creatures.findIndex((c) => c.id === id);
+  if (idx === -1) return undefined;
+  creatures[idx] = { ...creatures[idx], ...data };
+  writeCollection(STORAGE_KEYS.creatures, creatures);
+  return creatures[idx];
+}
+
+export async function deleteCreature(id: string): Promise<boolean> {
+  await delay();
+  const len = creatures.length;
+  creatures = creatures.filter((c) => c.id !== id);
+  writeCollection(STORAGE_KEYS.creatures, creatures);
+  return creatures.length < len;
+}
+
+// ── Other Lore ──────────────────────────────────────
+export async function getOthers(): Promise<OtherLore[]> {
+  await delay();
+  return [...others];
+}
+
+export async function getOther(id: string): Promise<OtherLore | undefined> {
+  await delay();
+  return others.find((o) => o.id === id);
+}
+
+export async function createOther(item: Omit<OtherLore, "id">): Promise<OtherLore> {
+  await delay();
+  const newItem = { ...item, id: `other-${Date.now()}` };
+  others = [newItem, ...others];
+  writeCollection(STORAGE_KEYS.other, others);
+  return newItem;
+}
+
+export async function updateOther(id: string, data: Partial<OtherLore>): Promise<OtherLore | undefined> {
+  await delay();
+  const idx = others.findIndex((o) => o.id === id);
+  if (idx === -1) return undefined;
+  others[idx] = { ...others[idx], ...data };
+  writeCollection(STORAGE_KEYS.other, others);
+  return others[idx];
+}
+
+export async function deleteOther(id: string): Promise<boolean> {
+  await delay();
+  const len = others.length;
+  others = others.filter((o) => o.id !== id);
+  writeCollection(STORAGE_KEYS.other, others);
+  return others.length < len;
+}
+
+// ── Map Markers ─────────────────────────────────────
+export async function getMapMarkers(): Promise<MapMarker[]> {
+  await delay();
+  return [...mapMarkers];
+}
+
+export async function saveMapMarkers(next: MapMarker[]): Promise<MapMarker[]> {
+  await delay();
+  mapMarkers = [...next];
+  writeCollection(STORAGE_KEYS.mapMarkers, mapMarkers);
+  return [...mapMarkers];
+}
+
+export function getMapImage(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(STORAGE_KEYS.mapImage) || "";
+  } catch {
+    return "";
+  }
+}
+
+export function setMapImage(url: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEYS.mapImage, url);
+  } catch {
+    // ignore
+  }
 }

@@ -1,0 +1,41 @@
+{
+  "mapImage": "",
+  "markers": [
+    {
+      "id": "mk-001",
+      "name": "The Iron Citadel",
+      "status": "safe",
+      "x": 0.42,
+      "y": 0.55,
+      "description": "Morneven Institute primary HQ. Full services and resupply available.",
+      "loreLink": "/lore/places/place-001"
+    },
+    {
+      "id": "mk-002",
+      "name": "Scorched Wastes",
+      "status": "danger",
+      "x": 0.7,
+      "y": 0.4,
+      "description": "DL-4 anomaly hot zone. No solo approach.",
+      "loreLink": "/lore/places/place-002"
+    },
+    {
+      "id": "mk-003",
+      "name": "Verdant Hollows",
+      "status": "caution",
+      "x": 0.22,
+      "y": 0.7,
+      "description": "Fae-touched settlement. Diplomatic clearance required.",
+      "loreLink": "/lore/places/place-003"
+    },
+    {
+      "id": "mk-004",
+      "name": "Choir Substrate",
+      "status": "restricted",
+      "x": 0.55,
+      "y": 0.78,
+      "description": "Confirmed Hollow Choir presence. Access prohibited.",
+      "loreLink": "/lore/creatures/crea-002"
+    }
+  ]
+}

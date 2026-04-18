@@ -11,6 +11,7 @@ import {
   Shield,
   LogOut,
   User,
+  Map,
 } from "lucide-react";
 import {
   Tooltip,
@@ -25,6 +26,7 @@ const navItems = [
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Gallery", url: "/gallery", icon: Image },
   { title: "Lore / Wiki", url: "/lore", icon: BookOpen },
+  { title: "Maps", url: "/maps", icon: Map },
   { title: "Author Panel", url: "/author", icon: Shield, authorOnly: true },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
