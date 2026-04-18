@@ -561,6 +561,10 @@ export default function AuthorDashboard() {
                   <label className={labelClass}>Height</label>
                   <input type="text" value={editing.height || ""} onChange={(e) => setEditing({ ...editing, height: e.target.value })} className={inputClass} placeholder="e.g. 180 cm" />
                 </div>
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Occupation</label>
+                  <input type="text" value={editing.occupation || ""} onChange={(e) => setEditing({ ...editing, occupation: e.target.value })} className={inputClass} placeholder="e.g. Chief Tactician — Field Division" />
+                </div>
                 <div>
                   <label className={labelClass}>Accent Color</label>
                   <div className="flex items-center gap-2 mt-1">
@@ -576,9 +580,17 @@ export default function AuthorDashboard() {
                   <label className={labelClass}>Likes (comma-separated)</label>
                   <input type="text" value={(editing.likes || []).join(", ")} onChange={(e) => setEditing({ ...editing, likes: e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean) })} className={inputClass} />
                 </div>
-                <div className="md:col-span-2">
-                  <label className={labelClass}>Occupation</label>
-                  <input type="text" value={editing.occupation || ""} onChange={(e) => setEditing({ ...editing, occupation: e.target.value })} className={inputClass} placeholder="e.g. Chief Tactician — Field Division" />
+                <div>
+                  <label className={labelClass}>Dislikes (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={(editing.dislikes || []).join(", ")}
+                    onChange={(e) => setEditing({
+                      ...editing,
+                      dislikes: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
+                    })}
+                    className={inputClass}
+                  />
                 </div>
               </>
             )}
