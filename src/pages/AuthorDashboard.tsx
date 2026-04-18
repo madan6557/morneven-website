@@ -204,11 +204,15 @@ export default function AuthorDashboard() {
       setEditing({ title: "", status: "Planning", thumbnail: "", shortDesc: "", fullDesc: "", patches: [], docs: [] });
     } else if (activeTab === "lore") {
       if (loreSub === "characters") {
-        setEditing({ name: "", race: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 }, docs: [] });
+        setEditing({ name: "", race: "", occupation: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 }, docs: [] });
       } else if (loreSub === "places") {
         setEditing({ name: "", type: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
-      } else {
+      } else if (loreSub === "technology") {
         setEditing({ name: "", category: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
+      } else if (loreSub === "creatures") {
+        setEditing({ name: "", classification: "Safe", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
+      } else {
+        setEditing({ title: "", category: "World Systems", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
       }
     } else {
       setEditing({ type: "image", title: "", thumbnail: "", videoUrl: "", caption: "", tags: [], date: new Date().toISOString().split("T")[0], comments: [] });
@@ -237,6 +241,7 @@ export default function AuthorDashboard() {
         const payload: Omit<Character, "id"> = {
           name: editing.name ?? "",
           race: editing.race ?? "",
+          occupation: editing.occupation ?? "",
           height: editing.height ?? "",
           traits: editing.traits ?? [],
           likes: editing.likes ?? [],
@@ -265,7 +270,7 @@ export default function AuthorDashboard() {
         if (isCreating) await createPlace(payload);
         else if (editing.id) await updatePlace(editing.id, payload);
         setPlaces(await getPlaces());
-      } else {
+      } else if (loreSub === "technology") {
         const payload: Omit<Technology, "id"> = {
           name: editing.name ?? "",
           category: editing.category ?? "",
@@ -278,6 +283,35 @@ export default function AuthorDashboard() {
         if (isCreating) await createTech(payload);
         else if (editing.id) await updateTech(editing.id, payload);
         setTech(await getTechnology());
+      } else if (loreSub === "creatures") {
+        const payload: Omit<Creature, "id"> = {
+          name: editing.name ?? "",
+          classification: (editing.classification as CreatureClassification) ?? "Safe",
+          dangerLevel: (editing.dangerLevel as CreatureDangerLevel) ?? 1,
+          habitat: editing.habitat ?? "",
+          accentColor: editing.accentColor ?? "#7DD3FC",
+          thumbnail: editing.thumbnail ?? "",
+          shortDesc: editing.shortDesc ?? "",
+          fullDesc: editing.fullDesc ?? "",
+          docs: editing.docs ?? [],
+        };
+
+        if (isCreating) await createCreature(payload);
+        else if (editing.id) await updateCreature(editing.id, payload);
+        setCreatures(await getCreatures());
+      } else {
+        const payload: Omit<OtherLore, "id"> = {
+          title: editing.title ?? "",
+          category: editing.category ?? "World Systems",
+          thumbnail: editing.thumbnail ?? "",
+          shortDesc: editing.shortDesc ?? "",
+          fullDesc: editing.fullDesc ?? "",
+          docs: editing.docs ?? [],
+        };
+
+        if (isCreating) await createOther(payload);
+        else if (editing.id) await updateOther(editing.id, payload);
+        setOthers(await getOthers());
       }
     } else {
       const payload: Omit<GalleryItem, "id"> = {
