@@ -770,19 +770,89 @@ export default function AuthorDashboard() {
         </div>
       )}
 
+      {/* Map management */}
+      {isMap && (
+        <div className="hud-border bg-card p-4 md:p-6 space-y-5">
+          <div className="flex items-center gap-2">
+            <MapIcon className="h-4 w-4 text-accent-orange" />
+            <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase">Interactive Map</h3>
+          </div>
+          <div className="mecha-line" />
+
+          <FileUploadField
+            label="Map Background Image (optional)"
+            value={mapImageUrl}
+            onChange={(url) => { setMapImageUrl(url); setMapImage(url); window.dispatchEvent(new CustomEvent("morneven:map-changed")); }}
+            accept="image/*"
+          />
+
+          <div className="flex items-center justify-between">
+            <p className={labelClass}>Markers ({mapMarkers.length})</p>
+            <button
+              onClick={() => {
+                const next = [...mapMarkers, { id: `mk-${Date.now()}`, name: "New Marker", status: "safe" as MapZoneStatus, x: 0.5, y: 0.5, description: "", loreLink: "" }];
+                setMapMarkers(next);
+                saveMapMarkers(next);
+                window.dispatchEvent(new CustomEvent("morneven:map-changed"));
+              }}
+              className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors"
+            >
+              <Plus className="h-3 w-3" /> ADD MARKER
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {mapMarkers.map((m, idx) => (
+              <div key={m.id} className="p-3 bg-muted/50 rounded-sm border border-border space-y-2">
+                <div className="grid gap-2 md:grid-cols-2">
+                  <input type="text" value={m.name} onChange={(e) => { const next = [...mapMarkers]; next[idx] = { ...m, name: e.target.value }; setMapMarkers(next); }} placeholder="Marker name" className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                  <select value={m.status} onChange={(e) => { const next = [...mapMarkers]; next[idx] = { ...m, status: e.target.value as MapZoneStatus }; setMapMarkers(next); }} className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground">
+                    <option value="safe">Safe</option>
+                    <option value="caution">Caution</option>
+                    <option value="danger">Danger</option>
+                    <option value="restricted">Restricted</option>
+                    <option value="mission">Mission</option>
+                  </select>
+                  <label className="flex items-center gap-2 text-[10px] text-muted-foreground">X (0-1):
+                    <input type="number" min={0} max={1} step={0.01} value={m.x} onChange={(e) => { const next = [...mapMarkers]; next[idx] = { ...m, x: Number(e.target.value) }; setMapMarkers(next); }} className="flex-1 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                  </label>
+                  <label className="flex items-center gap-2 text-[10px] text-muted-foreground">Y (0-1):
+                    <input type="number" min={0} max={1} step={0.01} value={m.y} onChange={(e) => { const next = [...mapMarkers]; next[idx] = { ...m, y: Number(e.target.value) }; setMapMarkers(next); }} className="flex-1 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                  </label>
+                </div>
+                <input type="text" value={m.description} onChange={(e) => { const next = [...mapMarkers]; next[idx] = { ...m, description: e.target.value }; setMapMarkers(next); }} placeholder="Description" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                <input type="text" value={m.loreLink || ""} onChange={(e) => { const next = [...mapMarkers]; next[idx] = { ...m, loreLink: e.target.value }; setMapMarkers(next); }} placeholder="Lore link (e.g. /lore/places/place-001)" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                <div className="flex justify-end">
+                  <button onClick={() => { const next = mapMarkers.filter((_, i) => i !== idx); setMapMarkers(next); saveMapMarkers(next); window.dispatchEvent(new CustomEvent("morneven:map-changed")); }} className="text-muted-foreground hover:text-destructive">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-end">
+            <button onClick={() => { saveMapMarkers(mapMarkers); window.dispatchEvent(new CustomEvent("morneven:map-changed")); }} className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity">
+              <Save className="h-3 w-3" /> SAVE MARKERS
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Items List */}
-      {activeTab !== "homepage" && (
+      {activeTab !== "homepage" && activeTab !== "map" && (
         <div className="space-y-2">
           {getItems().map((item) => (
             <div key={item.id} className="hud-border-sm bg-card p-4 flex items-center justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <h3 className="font-heading text-sm text-foreground truncate">{getItemTitle(item)}</h3>
                 <p className="text-xs text-muted-foreground font-body truncate">{getItemDesc(item)}</p>
-                {"status" in item && <span className="text-[10px] font-display tracking-wider text-accent-orange uppercase">{item.status}</span>}
-                {"accentColor" in item && <span className="inline-block w-3 h-3 rounded-full ml-2 align-middle" style={{ backgroundColor: item.accentColor }} />}
+                {"status" in item && typeof (item as Project).status === "string" && <span className="text-[10px] font-display tracking-wider text-accent-orange uppercase">{(item as Project).status}</span>}
+                {"classification" in item && <span className="text-[10px] font-display tracking-wider text-accent-orange uppercase">{(item as Creature).classification} • DL-{(item as Creature).dangerLevel}</span>}
+                {"accentColor" in item && <span className="inline-block w-3 h-3 rounded-full ml-2 align-middle" style={{ backgroundColor: (item as { accentColor: string }).accentColor }} />}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <button onClick={() => { setEditing({ ...item }); setIsCreating(false); }} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
+                <button onClick={() => { setEditing({ ...item } as EditableState); setIsCreating(false); }} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
                 <button onClick={() => handleDelete(item.id, getItemTitle(item))} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
