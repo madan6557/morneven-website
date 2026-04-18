@@ -1,0 +1,109 @@
+import { useEffect, useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { getCreature } from "@/services/api";
+import type { Creature, DiscussionComment } from "@/types";
+import { ArrowLeft, ShieldAlert } from "lucide-react";
+import DiscussionSection from "@/components/DiscussionSection";
+
+const dangerLabel: Record<number, string> = {
+  1: "DL-1 — Negligible",
+  2: "DL-2 — Cautionary",
+  3: "DL-3 — Hostile",
+  4: "DL-4 — Lethal",
+  5: "DL-5 — Existential",
+};
+
+export default function CreatureDetail() {
+  const { id } = useParams<{ id: string }>();
+  const [creature, setCreature] = useState<Creature | null>(null);
+  const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
+
+  useEffect(() => {
+    if (id) getCreature(id).then((c) => setCreature(c ?? null));
+  }, [id]);
+
+  if (!creature) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+
+  const accent = creature.accentColor;
+
+  const handleAddComment = (author: string, text: string) => {
+    setDiscussion((prev) => [...prev, { id: `dc-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0], replies: [] }]);
+  };
+  const handleAddReply = (commentId: string, author: string, text: string) => {
+    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, replies: [...c.replies, { id: `dr-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0] }] } : c));
+  };
+
+  return (
+    <div className="space-y-0">
+      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={creature.thumbnail ? { backgroundImage: `url(${creature.thumbnail})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accent}20, transparent 60%)` }} />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent z-10" />
+        <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: accent }} />
+        {!creature.thumbnail && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="font-display text-6xl opacity-5 tracking-[0.3em]" style={{ color: accent }}>{creature.name.split(" ")[0].toUpperCase()}</span>
+          </div>
+        )}
+        <div className="relative z-20 p-6 md:p-8 w-full">
+          <Link to="/lore/creatures" className="inline-flex items-center gap-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors mb-3">
+            <ArrowLeft className="h-3 w-3" /> BACK TO LORE
+          </Link>
+          <h1 className="font-display text-2xl md:text-3xl tracking-[0.1em]" style={{ color: accent }}>{creature.name.toUpperCase()}</h1>
+        </div>
+      </div>
+
+      <div className="p-6 md:p-8 space-y-8">
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: `${accent}30` }}>
+            <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Classification</p>
+            <p className="text-lg font-heading" style={{ color: accent }}>{creature.classification}</p>
+          </div>
+          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: `${accent}30` }}>
+            <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Danger Level</p>
+            <p className="text-lg font-heading flex items-center gap-2 text-accent-orange"><ShieldAlert className="h-4 w-4" /> {dangerLabel[creature.dangerLevel]}</p>
+          </div>
+          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: `${accent}30` }}>
+            <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Habitat</p>
+            <p className="text-sm font-body text-foreground">{creature.habitat}</p>
+          </div>
+        </div>
+
+        <div className="max-w-3xl space-y-4">
+          <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Field Report</h2>
+          {creature.fullDesc.split("\n\n").map((para, i) => (
+            <p key={i} className="text-sm font-body text-foreground/80 leading-relaxed whitespace-pre-line">{para}</p>
+          ))}
+        </div>
+
+        {creature.docs && creature.docs.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Documentation</h2>
+            <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
+              {creature.docs.map((doc, i) => (
+                <div key={i} className="hud-border-sm bg-card overflow-hidden" style={{ borderColor: `${accent}20` }}>
+                  {doc.type === "video" && doc.url ? (
+                    <div className="aspect-video bg-muted">
+                      <iframe src={doc.url} className="w-full h-full" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title={`${creature.name} doc`} />
+                    </div>
+                  ) : doc.type === "image" && doc.url ? (
+                    <div className="aspect-video bg-muted overflow-hidden">
+                      <img src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="aspect-video bg-muted flex items-center justify-center">
+                      <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : "IMAGE"}</span>
+                    </div>
+                  )}
+                  <div className="p-3"><p className="text-xs font-body text-muted-foreground">{doc.caption}</p></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mecha-line" />
+        <DiscussionSection comments={discussion} onAddComment={handleAddComment} onAddReply={handleAddReply} accentColor={accent} />
+      </div>
+    </div>
+  );
+}
