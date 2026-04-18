@@ -583,7 +583,52 @@ export default function AuthorDashboard() {
               </>
             )}
 
-            {/* Character Stats */}
+            {/* Creature-specific fields */}
+            {isCreature && (
+              <>
+                <div>
+                  <label className={labelClass}>Classification</label>
+                  <select value={editing.classification || "Safe"} onChange={(e) => setEditing({ ...editing, classification: e.target.value as CreatureClassification })} className={inputClass}>
+                    <option>Safe</option>
+                    <option>Euclid</option>
+                    <option>Keter</option>
+                    <option>Thaumiel</option>
+                    <option>Apollyon</option>
+                    <option>Neutralized</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Danger Level (1-5)</label>
+                  <select value={editing.dangerLevel ?? 1} onChange={(e) => setEditing({ ...editing, dangerLevel: Number(e.target.value) as CreatureDangerLevel })} className={inputClass}>
+                    <option value={1}>DL-1 — Negligible</option>
+                    <option value={2}>DL-2 — Cautionary</option>
+                    <option value={3}>DL-3 — Hostile</option>
+                    <option value={4}>DL-4 — Lethal</option>
+                    <option value={5}>DL-5 — Existential</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Habitat</label>
+                  <input type="text" value={editing.habitat || ""} onChange={(e) => setEditing({ ...editing, habitat: e.target.value })} className={inputClass} placeholder="e.g. Scorched Wastes — crystalline canyons" />
+                </div>
+                <div>
+                  <label className={labelClass}>Accent Color</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input type="color" value={editing.accentColor || "#7DD3FC"} onChange={(e) => setEditing({ ...editing, accentColor: e.target.value })} className="h-10 w-16 border border-border rounded-sm cursor-pointer" />
+                    <input type="text" value={editing.accentColor || "#7DD3FC"} onChange={(e) => setEditing({ ...editing, accentColor: e.target.value })} className="flex-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Other lore: category */}
+            {isOther && (
+              <div>
+                <label className={labelClass}>Category</label>
+                <input type="text" value={editing.category || ""} onChange={(e) => setEditing({ ...editing, category: e.target.value })} className={inputClass} placeholder="e.g. World Systems, Cosmology" />
+              </div>
+            )}
+
             {isCharacter && editing.stats && (
               <>
                 {Object.keys(editing.stats).map((stat) => (
