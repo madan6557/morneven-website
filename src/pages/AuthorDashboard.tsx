@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { getProjects, createProject, updateProject, deleteProject, getCharacters, createCharacter, updateCharacter, deleteCharacter, getPlaces, createPlace, updatePlace, deletePlace, getTechnology, createTech, updateTech, deleteTech, getGallery, createGalleryItem, updateGalleryItem, deleteGalleryItem } from "@/services/api";
+import { getProjects, createProject, updateProject, deleteProject, getCharacters, createCharacter, updateCharacter, deleteCharacter, getPlaces, createPlace, updatePlace, deletePlace, getTechnology, createTech, updateTech, deleteTech, getGallery, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreatures, createCreature, updateCreature, deleteCreature, getOthers, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImage, setMapImage } from "@/services/api";
 import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, type CommandCenterSettings } from "@/services/commandCenterSettings";
-import type { Project, Character, Place, Technology, GalleryItem, DocItem, ProjectPatch } from "@/types";
-import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, Calendar, LayoutDashboard, RotateCcw } from "lucide-react";
+import type { Project, Character, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel } from "@/types";
+import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon } from "lucide-react";
 
-const dashTabs = ["projects", "lore", "gallery", "homepage"] as const;
-const loreSubs = ["characters", "places", "technology"] as const;
+const dashTabs = ["projects", "lore", "gallery", "homepage", "map"] as const;
+const loreSubs = ["characters", "places", "technology", "creatures", "other"] as const;
 const inputClass = "w-full mt-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 const labelClass = "font-heading text-xs tracking-wider text-muted-foreground uppercase";
 
@@ -29,9 +29,29 @@ function nextPatchVersion(prev?: string): string {
   return hasV ? `v${next}` : next;
 }
 
+// Compare two patch versions numerically (segment by segment) and return the
+// one that is greater. Handles optional leading "v".
+function compareVersion(a: string, b: string): number {
+  const norm = (v: string) => v.replace(/^v/i, "").split(".").map((n) => Number(n) || 0);
+  const aa = norm(a);
+  const bb = norm(b);
+  const len = Math.max(aa.length, bb.length);
+  for (let i = 0; i < len; i++) {
+    const av = aa[i] ?? 0;
+    const bv = bb[i] ?? 0;
+    if (av !== bv) return av - bv;
+  }
+  return 0;
+}
+
+function highestVersion(versions: string[]): string {
+  if (versions.length === 0) return "";
+  return versions.reduce((max, v) => (compareVersion(v, max) > 0 ? v : max), versions[0]);
+}
+
 type DashboardTab = typeof dashTabs[number];
 type LoreSub = typeof loreSubs[number];
-type DashboardItem = Project | Character | Place | Technology | GalleryItem;
+type DashboardItem = Project | Character | Place | Technology | GalleryItem | Creature | OtherLore;
 type EditableState = {
   id?: string;
   title?: string;
@@ -43,6 +63,7 @@ type EditableState = {
   patches?: ProjectPatch[];
   docs?: DocItem[];
   race?: string;
+  occupation?: string;
   height?: string;
   traits?: string[];
   likes?: string[];
@@ -56,6 +77,10 @@ type EditableState = {
   tags?: string[];
   date?: string;
   comments?: GalleryItem["comments"];
+  // Creature
+  classification?: CreatureClassification;
+  dangerLevel?: CreatureDangerLevel;
+  habitat?: string;
 };
 
 const isDashboardTab = (value: string | null): value is DashboardTab => {
@@ -127,6 +152,10 @@ export default function AuthorDashboard() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [tech, setTech] = useState<Technology[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [creatures, setCreatures] = useState<Creature[]>([]);
+  const [others, setOthers] = useState<OtherLore[]>([]);
+  const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
+  const [mapImageUrl, setMapImageUrl] = useState<string>("");
 
   const [editing, setEditing] = useState<EditableState | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -150,6 +179,10 @@ export default function AuthorDashboard() {
     setPlaces(await getPlaces());
     setTech(await getTechnology());
     setGallery(await getGallery());
+    setCreatures(await getCreatures());
+    setOthers(await getOthers());
+    setMapMarkers(await getMapMarkers());
+    setMapImageUrl(getMapImage());
   };
 
   if (role !== "author") {
@@ -171,11 +204,15 @@ export default function AuthorDashboard() {
       setEditing({ title: "", status: "Planning", thumbnail: "", shortDesc: "", fullDesc: "", patches: [], docs: [] });
     } else if (activeTab === "lore") {
       if (loreSub === "characters") {
-        setEditing({ name: "", race: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 }, docs: [] });
+        setEditing({ name: "", race: "", occupation: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 }, docs: [] });
       } else if (loreSub === "places") {
         setEditing({ name: "", type: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
-      } else {
+      } else if (loreSub === "technology") {
         setEditing({ name: "", category: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
+      } else if (loreSub === "creatures") {
+        setEditing({ name: "", classification: "Safe", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
+      } else {
+        setEditing({ title: "", category: "World Systems", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
       }
     } else {
       setEditing({ type: "image", title: "", thumbnail: "", videoUrl: "", caption: "", tags: [], date: new Date().toISOString().split("T")[0], comments: [] });
@@ -204,6 +241,7 @@ export default function AuthorDashboard() {
         const payload: Omit<Character, "id"> = {
           name: editing.name ?? "",
           race: editing.race ?? "",
+          occupation: editing.occupation ?? "",
           height: editing.height ?? "",
           traits: editing.traits ?? [],
           likes: editing.likes ?? [],
@@ -232,7 +270,7 @@ export default function AuthorDashboard() {
         if (isCreating) await createPlace(payload);
         else if (editing.id) await updatePlace(editing.id, payload);
         setPlaces(await getPlaces());
-      } else {
+      } else if (loreSub === "technology") {
         const payload: Omit<Technology, "id"> = {
           name: editing.name ?? "",
           category: editing.category ?? "",
@@ -245,6 +283,35 @@ export default function AuthorDashboard() {
         if (isCreating) await createTech(payload);
         else if (editing.id) await updateTech(editing.id, payload);
         setTech(await getTechnology());
+      } else if (loreSub === "creatures") {
+        const payload: Omit<Creature, "id"> = {
+          name: editing.name ?? "",
+          classification: (editing.classification as CreatureClassification) ?? "Safe",
+          dangerLevel: (editing.dangerLevel as CreatureDangerLevel) ?? 1,
+          habitat: editing.habitat ?? "",
+          accentColor: editing.accentColor ?? "#7DD3FC",
+          thumbnail: editing.thumbnail ?? "",
+          shortDesc: editing.shortDesc ?? "",
+          fullDesc: editing.fullDesc ?? "",
+          docs: editing.docs ?? [],
+        };
+
+        if (isCreating) await createCreature(payload);
+        else if (editing.id) await updateCreature(editing.id, payload);
+        setCreatures(await getCreatures());
+      } else {
+        const payload: Omit<OtherLore, "id"> = {
+          title: editing.title ?? "",
+          category: editing.category ?? "World Systems",
+          thumbnail: editing.thumbnail ?? "",
+          shortDesc: editing.shortDesc ?? "",
+          fullDesc: editing.fullDesc ?? "",
+          docs: editing.docs ?? [],
+        };
+
+        if (isCreating) await createOther(payload);
+        else if (editing.id) await updateOther(editing.id, payload);
+        setOthers(await getOthers());
       }
     } else {
       const payload: Omit<GalleryItem, "id"> = {
@@ -274,8 +341,10 @@ export default function AuthorDashboard() {
     else if (activeTab === "lore") {
       if (loreSub === "characters") { await deleteCharacter(id); setCharacters(await getCharacters()); }
       else if (loreSub === "places") { await deletePlace(id); setPlaces(await getPlaces()); }
-      else { await deleteTech(id); setTech(await getTechnology()); }
-    } else { await deleteGalleryItem(id); setGallery(await getGallery()); }
+      else if (loreSub === "technology") { await deleteTech(id); setTech(await getTechnology()); }
+      else if (loreSub === "creatures") { await deleteCreature(id); setCreatures(await getCreatures()); }
+      else { await deleteOther(id); setOthers(await getOthers()); }
+    } else if (activeTab === "gallery") { await deleteGalleryItem(id); setGallery(await getGallery()); }
   };
 
   const getItems = (): DashboardItem[] => {
@@ -283,9 +352,12 @@ export default function AuthorDashboard() {
     if (activeTab === "lore") {
       if (loreSub === "characters") return characters;
       if (loreSub === "places") return places;
-      return tech;
+      if (loreSub === "technology") return tech;
+      if (loreSub === "creatures") return creatures;
+      return others;
     }
-    return gallery;
+    if (activeTab === "gallery") return gallery;
+    return [];
   };
 
   const getItemTitle = (item: DashboardItem): string => {
@@ -314,12 +386,14 @@ export default function AuthorDashboard() {
     setEditing({ ...editing, docs });
   };
 
-  // Patch management for projects (auto-increments version from previous patch)
+  // Patch management for projects:
+  // - new patches are inserted at the TOP of the list
+  // - version auto-increments from the HIGHEST existing version
   const addPatch = () => {
     const existing = editing?.patches || [];
-    const lastVersion = existing.length > 0 ? existing[existing.length - 1].version : "";
-    const version = nextPatchVersion(lastVersion);
-    const patches = [...existing, { version, date: todayStr(), notes: "" }];
+    const highest = highestVersion(existing.map((p) => p.version).filter(Boolean));
+    const version = nextPatchVersion(highest);
+    const patches = [{ version, date: todayStr(), notes: "" }, ...existing];
     setEditing({ ...editing, patches });
   };
   const updatePatch = (idx: number, field: string, value: string) => {
@@ -336,9 +410,12 @@ export default function AuthorDashboard() {
   const isCharacter = activeTab === "lore" && loreSub === "characters";
   const isPlace = activeTab === "lore" && loreSub === "places";
   const isTech = activeTab === "lore" && loreSub === "technology";
+  const isCreature = activeTab === "lore" && loreSub === "creatures";
+  const isOther = activeTab === "lore" && loreSub === "other";
   const isProject = activeTab === "projects";
   const isGallery = activeTab === "gallery";
-  const hasDocs = isProject || isCharacter || isPlace || isTech;
+  const isMap = activeTab === "map";
+  const hasDocs = isProject || isCharacter || isPlace || isTech || isCreature || isOther;
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -366,7 +443,7 @@ export default function AuthorDashboard() {
         </div>
       )}
 
-      {activeTab !== "homepage" && (
+      {activeTab !== "homepage" && activeTab !== "map" && (
         <div className="flex justify-end">
           <button onClick={startCreate} className="flex items-center gap-1 px-3 py-1.5 text-xs font-display tracking-wider text-primary-foreground bg-primary rounded-sm hover:opacity-90 transition-opacity">
             <Plus className="h-3 w-3" /> CREATE NEW
@@ -499,14 +576,59 @@ export default function AuthorDashboard() {
                   <label className={labelClass}>Likes (comma-separated)</label>
                   <input type="text" value={(editing.likes || []).join(", ")} onChange={(e) => setEditing({ ...editing, likes: e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean) })} className={inputClass} />
                 </div>
-                <div>
-                  <label className={labelClass}>Dislikes (comma-separated)</label>
-                  <input type="text" value={(editing.dislikes || []).join(", ")} onChange={(e) => setEditing({ ...editing, dislikes: e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean) })} className={inputClass} />
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Occupation</label>
+                  <input type="text" value={editing.occupation || ""} onChange={(e) => setEditing({ ...editing, occupation: e.target.value })} className={inputClass} placeholder="e.g. Chief Tactician — Field Division" />
                 </div>
               </>
             )}
 
-            {/* Character Stats */}
+            {/* Creature-specific fields */}
+            {isCreature && (
+              <>
+                <div>
+                  <label className={labelClass}>Classification</label>
+                  <select value={editing.classification || "Safe"} onChange={(e) => setEditing({ ...editing, classification: e.target.value as CreatureClassification })} className={inputClass}>
+                    <option>Safe</option>
+                    <option>Euclid</option>
+                    <option>Keter</option>
+                    <option>Thaumiel</option>
+                    <option>Apollyon</option>
+                    <option>Neutralized</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Danger Level (1-5)</label>
+                  <select value={editing.dangerLevel ?? 1} onChange={(e) => setEditing({ ...editing, dangerLevel: Number(e.target.value) as CreatureDangerLevel })} className={inputClass}>
+                    <option value={1}>DL-1 — Negligible</option>
+                    <option value={2}>DL-2 — Cautionary</option>
+                    <option value={3}>DL-3 — Hostile</option>
+                    <option value={4}>DL-4 — Lethal</option>
+                    <option value={5}>DL-5 — Existential</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Habitat</label>
+                  <input type="text" value={editing.habitat || ""} onChange={(e) => setEditing({ ...editing, habitat: e.target.value })} className={inputClass} placeholder="e.g. Scorched Wastes — crystalline canyons" />
+                </div>
+                <div>
+                  <label className={labelClass}>Accent Color</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input type="color" value={editing.accentColor || "#7DD3FC"} onChange={(e) => setEditing({ ...editing, accentColor: e.target.value })} className="h-10 w-16 border border-border rounded-sm cursor-pointer" />
+                    <input type="text" value={editing.accentColor || "#7DD3FC"} onChange={(e) => setEditing({ ...editing, accentColor: e.target.value })} className="flex-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Other lore: category */}
+            {isOther && (
+              <div>
+                <label className={labelClass}>Category</label>
+                <input type="text" value={editing.category || ""} onChange={(e) => setEditing({ ...editing, category: e.target.value })} className={inputClass} placeholder="e.g. World Systems, Cosmology" />
+              </div>
+            )}
+
             {isCharacter && editing.stats && (
               <>
                 {Object.keys(editing.stats).map((stat) => (
@@ -648,19 +770,89 @@ export default function AuthorDashboard() {
         </div>
       )}
 
+      {/* Map management */}
+      {isMap && (
+        <div className="hud-border bg-card p-4 md:p-6 space-y-5">
+          <div className="flex items-center gap-2">
+            <MapIcon className="h-4 w-4 text-accent-orange" />
+            <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase">Interactive Map</h3>
+          </div>
+          <div className="mecha-line" />
+
+          <FileUploadField
+            label="Map Background Image (optional)"
+            value={mapImageUrl}
+            onChange={(url) => { setMapImageUrl(url); setMapImage(url); window.dispatchEvent(new CustomEvent("morneven:map-changed")); }}
+            accept="image/*"
+          />
+
+          <div className="flex items-center justify-between">
+            <p className={labelClass}>Markers ({mapMarkers.length})</p>
+            <button
+              onClick={() => {
+                const next = [...mapMarkers, { id: `mk-${Date.now()}`, name: "New Marker", status: "safe" as MapZoneStatus, x: 0.5, y: 0.5, description: "", loreLink: "" }];
+                setMapMarkers(next);
+                saveMapMarkers(next);
+                window.dispatchEvent(new CustomEvent("morneven:map-changed"));
+              }}
+              className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors"
+            >
+              <Plus className="h-3 w-3" /> ADD MARKER
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {mapMarkers.map((m, idx) => (
+              <div key={m.id} className="p-3 bg-muted/50 rounded-sm border border-border space-y-2">
+                <div className="grid gap-2 md:grid-cols-2">
+                  <input type="text" value={m.name} onChange={(e) => { const next = [...mapMarkers]; next[idx] = { ...m, name: e.target.value }; setMapMarkers(next); }} placeholder="Marker name" className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                  <select value={m.status} onChange={(e) => { const next = [...mapMarkers]; next[idx] = { ...m, status: e.target.value as MapZoneStatus }; setMapMarkers(next); }} className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground">
+                    <option value="safe">Safe</option>
+                    <option value="caution">Caution</option>
+                    <option value="danger">Danger</option>
+                    <option value="restricted">Restricted</option>
+                    <option value="mission">Mission</option>
+                  </select>
+                  <label className="flex items-center gap-2 text-[10px] text-muted-foreground">X (0-1):
+                    <input type="number" min={0} max={1} step={0.01} value={m.x} onChange={(e) => { const next = [...mapMarkers]; next[idx] = { ...m, x: Number(e.target.value) }; setMapMarkers(next); }} className="flex-1 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                  </label>
+                  <label className="flex items-center gap-2 text-[10px] text-muted-foreground">Y (0-1):
+                    <input type="number" min={0} max={1} step={0.01} value={m.y} onChange={(e) => { const next = [...mapMarkers]; next[idx] = { ...m, y: Number(e.target.value) }; setMapMarkers(next); }} className="flex-1 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                  </label>
+                </div>
+                <input type="text" value={m.description} onChange={(e) => { const next = [...mapMarkers]; next[idx] = { ...m, description: e.target.value }; setMapMarkers(next); }} placeholder="Description" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                <input type="text" value={m.loreLink || ""} onChange={(e) => { const next = [...mapMarkers]; next[idx] = { ...m, loreLink: e.target.value }; setMapMarkers(next); }} placeholder="Lore link (e.g. /lore/places/place-001)" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                <div className="flex justify-end">
+                  <button onClick={() => { const next = mapMarkers.filter((_, i) => i !== idx); setMapMarkers(next); saveMapMarkers(next); window.dispatchEvent(new CustomEvent("morneven:map-changed")); }} className="text-muted-foreground hover:text-destructive">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-end">
+            <button onClick={() => { saveMapMarkers(mapMarkers); window.dispatchEvent(new CustomEvent("morneven:map-changed")); }} className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity">
+              <Save className="h-3 w-3" /> SAVE MARKERS
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Items List */}
-      {activeTab !== "homepage" && (
+      {activeTab !== "homepage" && activeTab !== "map" && (
         <div className="space-y-2">
           {getItems().map((item) => (
             <div key={item.id} className="hud-border-sm bg-card p-4 flex items-center justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <h3 className="font-heading text-sm text-foreground truncate">{getItemTitle(item)}</h3>
                 <p className="text-xs text-muted-foreground font-body truncate">{getItemDesc(item)}</p>
-                {"status" in item && <span className="text-[10px] font-display tracking-wider text-accent-orange uppercase">{item.status}</span>}
-                {"accentColor" in item && <span className="inline-block w-3 h-3 rounded-full ml-2 align-middle" style={{ backgroundColor: item.accentColor }} />}
+                {"status" in item && typeof (item as Project).status === "string" && <span className="text-[10px] font-display tracking-wider text-accent-orange uppercase">{(item as Project).status}</span>}
+                {"classification" in item && <span className="text-[10px] font-display tracking-wider text-accent-orange uppercase">{(item as Creature).classification} • DL-{(item as Creature).dangerLevel}</span>}
+                {"accentColor" in item && <span className="inline-block w-3 h-3 rounded-full ml-2 align-middle" style={{ backgroundColor: (item as { accentColor: string }).accentColor }} />}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <button onClick={() => { setEditing({ ...item }); setIsCreating(false); }} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
+                <button onClick={() => { setEditing({ ...item } as EditableState); setIsCreating(false); }} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
                 <button onClick={() => handleDelete(item.id, getItemTitle(item))} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
