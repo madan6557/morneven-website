@@ -35,6 +35,7 @@ export interface Character {
   id: string;
   name: string;
   race: string;
+  occupation?: string;
   height: string;
   traits: string[];
   likes: string[];
@@ -44,6 +45,35 @@ export interface Character {
   shortDesc: string;
   fullDesc: string;
   stats: CharacterStats;
+  docs: DocItem[];
+}
+
+// Creature classification (SCP-style)
+export type CreatureClassification = "Safe" | "Euclid" | "Keter" | "Thaumiel" | "Apollyon" | "Neutralized";
+
+// Gemora danger level scale 1-5 (5 = world-ending)
+export type CreatureDangerLevel = 1 | 2 | 3 | 4 | 5;
+
+export interface Creature {
+  id: string;
+  name: string;
+  classification: CreatureClassification;
+  dangerLevel: CreatureDangerLevel;
+  habitat: string;
+  thumbnail: string;
+  accentColor: string;
+  shortDesc: string;
+  fullDesc: string;
+  docs: DocItem[];
+}
+
+export interface OtherLore {
+  id: string;
+  title: string;
+  category: string;
+  thumbnail: string;
+  shortDesc: string;
+  fullDesc: string;
   docs: DocItem[];
 }
 
@@ -113,6 +143,20 @@ export interface NewsItem {
   id: string;
   text: string;
   date: string;
+}
+
+export type MapZoneStatus = "safe" | "caution" | "danger" | "restricted" | "mission";
+
+export interface MapMarker {
+  id: string;
+  name: string;
+  status: MapZoneStatus;
+  // normalized 0-1 coordinates relative to map image
+  x: number;
+  y: number;
+  description: string;
+  // optional link to a lore entry, e.g. "/lore/places/place-001"
+  loreLink?: string;
 }
 
 export type UserRole = "author" | "viewer" | "guest";
