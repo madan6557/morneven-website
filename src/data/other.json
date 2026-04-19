@@ -1,20 +1,29 @@
 [
   {
     "id": "other-001",
-    "title": "Danger Level Classification",
+    "title": "Gemora Danger Level (DL) Scale",
     "category": "World Systems",
     "thumbnail": "",
     "shortDesc": "Definitions for the Gemora 1-5 danger scale used to rate creatures, anomalies, and zones.",
-    "fullDesc": "The Gemora Danger Level (DL) is a 1-5 scale used by Morneven Institute to communicate the threat profile of any catalogued entity, zone, or anomaly.\n\nDL-1 — Negligible. Trained personnel may approach without escort.\nDL-2 — Cautionary. Standard PPE required; solo approach permitted.\nDL-3 — Hostile. Minimum two-operative team, ranged armament authorized.\nDL-4 — Lethal. Specialist field team only; containment doctrine in force.\nDL-5 — Existential. No approach is sanctioned; observation from secure orbit only.\n\nThe DL rating is reviewed quarterly and may be elevated unilaterally by any Director-tier officer.",
+    "fullDesc": "The Gemora Danger Level (DL) is a 1-5 scale used by Morneven Institute to communicate the threat profile of any catalogued entity, zone, or anomaly.\n\nDL-1 — Negligible. Trained personnel may approach without escort.\nDL-2 — Cautionary. Standard PPE required; solo approach permitted.\nDL-3 — Hostile. Minimum two-operative team, ranged armament authorized.\nDL-4 — Lethal. Specialist field team only; containment doctrine in force.\nDL-5 — Existential. No approach is sanctioned; observation from secure orbit only.\n\nThe DL rating is reviewed quarterly and may be elevated unilaterally by any Director-tier officer. DL is independent of GEC classification — a low-classification entity can still earn a high DL if engaged carelessly.",
     "docs": []
   },
   {
     "id": "other-002",
-    "title": "Creature Classification System",
+    "title": "Gemora Entropy Classification (GEC) — Mark II",
     "category": "World Systems",
     "thumbnail": "",
-    "shortDesc": "Explanation of the Safe / Euclid / Keter / Thaumiel / Apollyon / Neutralized framework.",
-    "fullDesc": "Morneven adopted a six-tier classification system inspired by pre-apocalypse containment frameworks.\n\nSafe — Predictable behavior, containment is trivial.\nEuclid — Behavior is partially understood; active monitoring required.\nKeter — Actively hostile or escape-prone; containment consumes significant resources.\nThaumiel — Used by the Institute itself to contain other anomalies.\nApollyon — Cannot be contained by any known means.\nNeutralized — Permanently destroyed, dormant, or otherwise non-anomalous.\n\nClassification is independent of Danger Level; a Safe-class entity can still hold a high DL if engaged carelessly.",
+    "shortDesc": "The operational standard for categorizing anomalies by structural stability and elimination difficulty.",
+    "fullDesc": "The GEC system is the operational standard used by the Morneven Institute to categorize anomalies based on their structural stability and the tactical difficulty of their elimination. Each tier maps loosely to legacy SCP Foundation classifications, retained for cross-reference with pre-collapse archives.\n\n— AMORPHOUS (Stable) —\nLow energy signature; passive and non-reactive to the environment.\nProtocol: Routine Survey. Periodic observation. Elimination only if obstructing expansion paths.\nLegacy equivalent: Safe.\n\n— CRYSTALLINE (Reactive) —\nBegins forming attack/defense patterns. Shows collective intelligence or predatory instincts.\nProtocol: Tactical Analysis. Identify 'Fracture Points' via long-range observation before engagement.\nLegacy equivalent: Euclid.\n\n— METAMORPHIC (Adaptive) —\nCapable of mutating or shifting energy frequencies when attacked. Highly unpredictable.\nProtocol: High-Intensity Suppression. Immediate, massive force application before the entity can adapt.\nLegacy equivalent: Keter.\n\n— CATALYST (Symbiotic) —\nPossesses unique properties that stabilize or 'consume' energy from other anomalies.\nProtocol: Strategic Asset. Deployed to trigger decay in high-threat targets prior to military intervention.\nLegacy equivalent: Thaumiel.\n\n— SINGULARITY (Critical) —\nDistorts physical laws (gravity/time). High potential for sector-wide collapse.\nProtocol: Sector Purge. Approach strictly prohibited. Observation from secure orbit only. Elimination currently impossible.\nLegacy equivalent: Apollyon.\n\n— ZERO-STATE (Decayed) —\nStructure completely destroyed or permanently stripped of anomalous properties.\nProtocol: Confirmed Elimination. File closed. Residual materials processed for research or discarded.\nLegacy equivalent: Neutralized.",
+    "docs": []
+  },
+  {
+    "id": "other-004",
+    "title": "The Morneven Doctrine: Elimination Over Containment",
+    "category": "Doctrine",
+    "thumbnail": "",
+    "shortDesc": "Why the Institute rejects 'Secure, Contain, Protect' in favor of Observation, Neutralization, and Elimination.",
+    "fullDesc": "Unlike pre-apocalyptic frameworks that focused on 'Secure, Contain, Protect,' the Morneven Institute operates on a philosophy of Observation, Neutralization, and Elimination. This shift is driven by four core principles.\n\n— A. The Law of Crystalline Entropy —\nIn the Gemora system, anomalies act like a spreading crystal growth. Containing them in a single facility creates a 'pressure cooker' effect — concentrating anomalous energy until it inevitably mutates or breaches. For Morneven, containment is merely a delayed catastrophe.\n\n— B. Deep Space Resource Efficiency —\nMaintaining high-security containment sites across the void is logistically and energetically unsustainable. It is far more cost-effective to utilize those resources for permanent neutralization, ensuring that interstellar navigation routes remain 'clean' and predictable.\n\n— C. Post-Apocalyptic Pragmatism —\nThe world has already suffered a total collapse due to the failures of old-world systems. Morneven believes that human survival depends on the removal of uncontrollable variables. If an entity is anomalous, it is a 'flaw' in the structure of reality that must be corrected through removal.\n\n— D. Observation for Optimization —\nMorneven does not observe to 'understand' the life of an anomaly, but to find its Fracture Point. Every second of study is dedicated to finding the most efficient, low-cost method to shatter the entity's structure. We study the enemy solely to perfect the kill.",
     "docs": []
   },
   {
