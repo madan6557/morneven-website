@@ -210,7 +210,7 @@ export default function AuthorDashboard() {
       } else if (loreSub === "technology") {
         setEditing({ name: "", category: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
       } else if (loreSub === "creatures") {
-        setEditing({ name: "", classification: "Safe", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
+        setEditing({ name: "", classification: "Amorphous", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
       } else {
         setEditing({ title: "", category: "World Systems", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
       }
@@ -286,7 +286,7 @@ export default function AuthorDashboard() {
       } else if (loreSub === "creatures") {
         const payload: Omit<Creature, "id"> = {
           name: editing.name ?? "",
-          classification: (editing.classification as CreatureClassification) ?? "Safe",
+          classification: (editing.classification as CreatureClassification) ?? "Amorphous",
           dangerLevel: (editing.dangerLevel as CreatureDangerLevel) ?? 1,
           habitat: editing.habitat ?? "",
           accentColor: editing.accentColor ?? "#7DD3FC",
@@ -599,14 +599,14 @@ export default function AuthorDashboard() {
             {isCreature && (
               <>
                 <div>
-                  <label className={labelClass}>Classification</label>
-                  <select value={editing.classification || "Safe"} onChange={(e) => setEditing({ ...editing, classification: e.target.value as CreatureClassification })} className={inputClass}>
-                    <option>Safe</option>
-                    <option>Euclid</option>
-                    <option>Keter</option>
-                    <option>Thaumiel</option>
-                    <option>Apollyon</option>
-                    <option>Neutralized</option>
+                  <label className={labelClass}>Classification (GEC Mark II)</label>
+                  <select value={editing.classification || "Amorphous"} onChange={(e) => setEditing({ ...editing, classification: e.target.value as CreatureClassification })} className={inputClass}>
+                    <option value="Amorphous">Amorphous — Stable / Passive</option>
+                    <option value="Crystalline">Crystalline — Reactive / Predatory</option>
+                    <option value="Metamorphic">Metamorphic — Adaptive / Hostile</option>
+                    <option value="Catalyst">Catalyst — Symbiotic Asset</option>
+                    <option value="Singularity">Singularity — Critical / Forbidden</option>
+                    <option value="Zero-State">Zero-State — Decayed / Neutralized</option>
                   </select>
                 </div>
                 <div>
