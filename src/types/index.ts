@@ -48,8 +48,8 @@ export interface Character {
   docs: DocItem[];
 }
 
-// Creature classification (SCP-style)
-export type CreatureClassification = "Safe" | "Euclid" | "Keter" | "Thaumiel" | "Apollyon" | "Neutralized";
+// Creature classification — Gemora Entropy Classification (GEC) Mark II
+export type CreatureClassification = "Amorphous" | "Crystalline" | "Metamorphic" | "Catalyst" | "Singularity" | "Zero-State";
 
 // Gemora danger level scale 1-5 (5 = world-ending)
 export type CreatureDangerLevel = 1 | 2 | 3 | 4 | 5;
