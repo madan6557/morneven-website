@@ -4,6 +4,7 @@ import { getCharacters, getPlaces, getTechnology, getCreatures, getOthers } from
 import type { Character, Place, Technology, Creature, OtherLore } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { Plus, Search, ArrowUpDown, ShieldAlert } from "lucide-react";
+import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 
 const tabs = ["Characters", "Places", "Technology", "Creatures", "Other"] as const;
 type SortOption = "name" | "name-desc";
