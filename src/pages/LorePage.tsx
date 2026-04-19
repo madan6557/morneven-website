@@ -210,14 +210,21 @@ export default function LorePage() {
                     <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: c.accentColor }} />
                   </div>
                 )}
-                <div className="p-4 space-y-1">
+                <div className="p-4 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-sm font-heading text-foreground group-hover:text-primary transition-colors truncate">{c.name}</h3>
                     <span className={`flex items-center gap-1 text-[10px] font-display tracking-wider flex-shrink-0 ${dangerColor[c.dangerLevel]}`}>
                       <ShieldAlert className="h-3 w-3" /> DL-{c.dangerLevel}
                     </span>
                   </div>
-                  <p className="text-[10px] text-accent-orange font-display tracking-wider uppercase">{c.classification}</p>
+                  <Link
+                    to={`/lore/other/${GEC_LORE_ID}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className={`inline-block text-[10px] font-display tracking-wider uppercase px-1.5 py-0.5 rounded-sm border ${gecChipClass(c.classification)} hover:opacity-80 transition-opacity`}
+                    title="View GEC Mark II classification"
+                  >
+                    {c.classification}
+                  </Link>
                   <p className="text-xs text-muted-foreground font-body line-clamp-2 mt-1">{c.shortDesc}</p>
                 </div>
               </div>
