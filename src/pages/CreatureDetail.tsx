@@ -4,6 +4,7 @@ import { getCreature } from "@/services/api";
 import type { Creature, DiscussionComment } from "@/types";
 import { ArrowLeft, ShieldAlert } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
+import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 
 const dangerLabel: Record<number, string> = {
   1: "DL-1 — Negligible",
@@ -54,9 +55,15 @@ export default function CreatureDetail() {
 
       <div className="p-6 md:p-8 space-y-8">
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: `${accent}30` }}>
+          <div className="hud-border bg-card p-4 space-y-2" style={{ borderColor: `${accent}30` }}>
             <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Classification</p>
-            <p className="text-lg font-heading" style={{ color: accent }}>{creature.classification}</p>
+            <Link
+              to={`/lore/other/${GEC_LORE_ID}`}
+              className={`inline-flex items-center gap-1 text-xs font-display tracking-wider uppercase px-2 py-1 rounded-sm border ${gecChipClass(creature.classification)} hover:opacity-80 transition-opacity`}
+              title="View GEC Mark II classification"
+            >
+              {creature.classification}
+            </Link>
           </div>
           <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: `${accent}30` }}>
             <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Danger Level</p>
