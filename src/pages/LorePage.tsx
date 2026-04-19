@@ -88,12 +88,12 @@ export default function LorePage() {
 
       {/* Category buttons + Sort - stack on mobile */}
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto">
           {tabs.map((t) => (
             <button
               key={t}
               onClick={() => setActive(t)}
-              className={`flex-1 sm:flex-initial min-w-[80px] px-3 sm:px-4 py-2 text-[10px] sm:text-xs font-display tracking-[0.1em] uppercase border rounded-sm transition-colors
+              className={`w-full sm:w-auto px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-display tracking-[0.08em] sm:tracking-[0.1em] uppercase border rounded-sm transition-colors truncate
                 ${active === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}
             >
               {t}
