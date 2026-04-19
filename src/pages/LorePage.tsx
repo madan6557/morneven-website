@@ -88,7 +88,7 @@ export default function LorePage() {
       </div>
 
       {/* Category buttons + Sort - stack on mobile */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+      <div className="flex flex-col sm:flex-row gap-2 sm:items-end sm:justify-between">
         <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto">
           {tabs.map((t) => (
             <button
