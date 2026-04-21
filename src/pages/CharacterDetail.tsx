@@ -29,6 +29,22 @@ export default function CharacterDetail() {
     setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, replies: [...c.replies, { id: `dr-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0] }] } : c));
   };
 
+  const handleEditComment = (commentId: string, text: string) => {
+    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, text } : c));
+  };
+
+  const handleDeleteComment = (commentId: string) => {
+    setDiscussion((prev) => prev.filter((c) => c.id !== commentId));
+  };
+
+  const handleEditReply = (commentId: string, replyId: string, text: string) => {
+    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, replies: c.replies.map((r) => r.id === replyId ? { ...r, text } : r) } : c));
+  };
+
+  const handleDeleteReply = (commentId: string, replyId: string) => {
+    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, replies: c.replies.filter((r) => r.id !== replyId) } : c));
+  };
+
   return (
     <div className="space-y-0" style={{ "--char-accent": accentColor } as React.CSSProperties}>
       {/* Parallax header with custom accent and thumbnail */}
