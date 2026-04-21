@@ -139,8 +139,26 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
               className="text-[10px] font-display tracking-wider bg-card border border-border rounded-sm px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               aria-label="Personnel Level clearance switcher"
             >
-              {PERSONNEL_LEVELS.map((l) => (
-                <option key={l} value={l}>L{l}</option>
+              {selectableLevels.map((l) => (
+                <option key={l} value={l}>
+                  L{l}{l === PL_FULL_AUTHORITY ? " · Full" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor="track-switch" className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+              Track
+            </label>
+            <select
+              id="track-switch"
+              value={track}
+              onChange={(e) => setTrack(e.target.value as PersonnelTrack)}
+              className="text-[10px] font-display tracking-wider bg-card border border-border rounded-sm px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              aria-label="Personnel Track switcher"
+            >
+              {PERSONNEL_TRACKS.map((t) => (
+                <option key={t.key} value={t.key}>{t.short}</option>
               ))}
             </select>
           </div>
