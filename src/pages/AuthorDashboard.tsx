@@ -5,6 +5,7 @@ import { getProjects, createProject, updateProject, deleteProject, getCharacters
 import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, type CommandCenterSettings } from "@/services/commandCenterSettings";
 import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon } from "lucide-react";
+import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
 
 const dashTabs = ["projects", "lore", "gallery", "homepage", "map"] as const;
 const loreSubs = ["characters", "places", "technology", "creatures", "other"] as const;
