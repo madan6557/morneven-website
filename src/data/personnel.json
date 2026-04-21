@@ -1,0 +1,92 @@
+[
+  {
+    "id": "psn-001",
+    "username": "author",
+    "email": "author@morneven.org",
+    "role": "author",
+    "level": 7,
+    "track": "executive",
+    "note": "Founder · Full Authority",
+    "updatedAt": "2026-01-01"
+  },
+  {
+    "id": "psn-002",
+    "username": "admin",
+    "email": "admin@morneven.org",
+    "role": "author",
+    "level": 7,
+    "track": "executive",
+    "note": "System administrator",
+    "updatedAt": "2026-01-01"
+  },
+  {
+    "id": "psn-003",
+    "username": "v.kessler",
+    "email": "v.kessler@morneven.org",
+    "role": "viewer",
+    "level": 6,
+    "track": "executive",
+    "note": "Board of Trustees · oversees content + comment moderation",
+    "updatedAt": "2026-02-12"
+  },
+  {
+    "id": "psn-004",
+    "username": "m.varga",
+    "email": "m.varga@morneven.org",
+    "role": "viewer",
+    "level": 6,
+    "track": "field",
+    "note": "Global Operative · creature & map intel",
+    "updatedAt": "2026-02-15"
+  },
+  {
+    "id": "psn-005",
+    "username": "s.okafor",
+    "email": "s.okafor@morneven.org",
+    "role": "viewer",
+    "level": 6,
+    "track": "mechanic",
+    "note": "Chief Architect · technology vault",
+    "updatedAt": "2026-02-18"
+  },
+  {
+    "id": "psn-006",
+    "username": "h.kato",
+    "email": "h.kato@morneven.org",
+    "role": "viewer",
+    "level": 5,
+    "track": "logistics",
+    "note": "Logistics Director",
+    "updatedAt": "2026-02-20"
+  },
+  {
+    "id": "psn-007",
+    "username": "t.bremmer",
+    "email": "t.bremmer@morneven.org",
+    "role": "viewer",
+    "level": 4,
+    "track": "field",
+    "note": "Squad Leader",
+    "updatedAt": "2026-03-01"
+  },
+  {
+    "id": "psn-008",
+    "username": "r.alves",
+    "email": "r.alves@morneven.org",
+    "role": "viewer",
+    "level": 3,
+    "track": "executive",
+    "note": "Project Lead — onboarding cohort",
+    "updatedAt": "2026-03-05"
+  },
+  {
+    "id": "psn-009",
+    "username": "guest_visitor",
+    "email": "guest@morneven.org",
+    "role": "guest",
+    "level": 0,
+    "track": "executive",
+    "note": "External — escort required",
+    "updatedAt": "2026-03-10"
+  }
+]
