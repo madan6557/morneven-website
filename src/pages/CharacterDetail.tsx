@@ -5,6 +5,7 @@ import { getCharacter } from "@/services/api";
 import type { Character, DiscussionComment } from "@/types";
 import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
+import RedactedBlock from "@/components/RedactedBlock";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function CharacterDetail() {
@@ -180,9 +181,7 @@ export default function CharacterDetail() {
               <TabsContent value="background" className="mt-6 space-y-6">
                 <div className="space-y-4">
                   <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Background</h2>
-                  {char.fullDesc.split("\n\n").map((para, i) => (
-                    <p key={i} className="text-sm font-body text-foreground/80 leading-relaxed">{para}</p>
-                  ))}
+                  <RedactedBlock fullDesc={char.fullDesc} paragraphClass="text-sm font-body text-foreground/80 leading-relaxed" />
                 </div>
 
                 {/* Documentation */}
