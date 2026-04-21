@@ -490,7 +490,7 @@ export default function PersonnelManagementPage() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-sm text-muted-foreground font-body italic">
+                  <td colSpan={7} className="p-6 text-center text-sm text-muted-foreground font-body italic">
                     No personnel match the current filter.
                   </td>
                 </tr>
