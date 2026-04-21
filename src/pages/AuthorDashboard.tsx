@@ -86,6 +86,8 @@ type EditableState = {
   habitat?: string;
   // Character
   contributions?: CharacterContribution[];
+  // Gallery — preserved across edits so ownership doesn't transfer.
+  uploadedBy?: string;
 };
 
 const isDashboardTab = (value: string | null): value is DashboardTab => {
