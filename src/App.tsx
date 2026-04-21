@@ -30,7 +30,20 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+import { useEffect } from "react";
+
 function App() {
+  // Sync theme on mount
+  useEffect(() => {
+    const THEME_KEY = "theme";
+    const saved = typeof window !== "undefined" ? localStorage.getItem(THEME_KEY) : null;
+    let dark = false;
+    if (saved === "dark") dark = true;
+    else if (saved === "light") dark = false;
+    else if (typeof window !== "undefined") dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.classList.toggle("dark", dark);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <SpeedInsights />
