@@ -260,6 +260,10 @@ export default function CharacterDetail() {
                 comments={discussion}
                 onAddComment={handleAddComment}
                 onAddReply={handleAddReply}
+                onEditComment={handleEditComment}
+                onDeleteComment={handleDeleteComment}
+                onEditReply={handleEditReply}
+                onDeleteReply={handleDeleteReply}
                 accentColor={accentColor}
               />
             </div>

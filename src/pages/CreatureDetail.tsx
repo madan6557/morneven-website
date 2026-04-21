@@ -265,7 +265,16 @@ export default function CreatureDetail() {
         {/* Discussion Section - standalone, outside tabs */}
         <div className="max-w-3xl space-y-4 pt-4">
           <div className="mecha-line" />
-          <DiscussionSection comments={discussion} onAddComment={handleAddComment} onAddReply={handleAddReply} accentColor={accent} />
+          <DiscussionSection
+            comments={discussion}
+            onAddComment={handleAddComment}
+            onAddReply={handleAddReply}
+            onEditComment={handleEditComment}
+            onDeleteComment={handleDeleteComment}
+            onEditReply={handleEditReply}
+            onDeleteReply={handleDeleteReply}
+            accentColor={accent}
+          />
         </div>
       </div>
     </div>
