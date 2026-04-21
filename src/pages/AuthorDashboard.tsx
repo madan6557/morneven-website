@@ -5,6 +5,7 @@ import { getProjects, createProject, updateProject, deleteProject, getCharacters
 import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, type CommandCenterSettings } from "@/services/commandCenterSettings";
 import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon } from "lucide-react";
+import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
 
 const dashTabs = ["projects", "lore", "gallery", "homepage", "map"] as const;
 const loreSubs = ["characters", "places", "technology", "creatures", "other"] as const;
@@ -162,6 +163,7 @@ export default function AuthorDashboard() {
   const [editing, setEditing] = useState<EditableState | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [ccSettings, setCcSettings] = useState<CommandCenterSettings>(() => getCommandCenterSettings());
+  const fullDescRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -729,9 +731,14 @@ export default function AuthorDashboard() {
 
           {/* Full Description */}
           {editing.fullDesc !== undefined && (
-            <div>
+            <div className="space-y-2">
               <label className={labelClass}>Full Description</label>
-              <textarea value={editing.fullDesc || ""} onChange={(e) => setEditing({ ...editing, fullDesc: e.target.value })} rows={5} className={inputClass + " resize-y min-h-[120px]"} />
+              <RestrictedMarkerTool
+                textareaRef={fullDescRef}
+                value={editing.fullDesc || ""}
+                onChange={(next) => setEditing({ ...editing, fullDesc: next })}
+              />
+              <textarea ref={fullDescRef} value={editing.fullDesc || ""} onChange={(e) => setEditing({ ...editing, fullDesc: e.target.value })} rows={5} className={inputClass + " resize-y min-h-[120px]"} />
             </div>
           )}
 
