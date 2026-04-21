@@ -67,6 +67,18 @@ export default function CreatureDetail() {
   const handleAddReply = (commentId: string, author: string, text: string) => {
     setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, replies: [...c.replies, { id: `dr-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0] }] } : c));
   };
+  const handleEditComment = (commentId: string, text: string) => {
+    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, text } : c));
+  };
+  const handleDeleteComment = (commentId: string) => {
+    setDiscussion((prev) => prev.filter((c) => c.id !== commentId));
+  };
+  const handleEditReply = (commentId: string, replyId: string, text: string) => {
+    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, replies: c.replies.map((r) => r.id === replyId ? { ...r, text } : r) } : c));
+  };
+  const handleDeleteReply = (commentId: string, replyId: string) => {
+    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, replies: c.replies.filter((r) => r.id !== replyId) } : c));
+  };
 
   return (
     <div className="space-y-0">
@@ -253,7 +265,16 @@ export default function CreatureDetail() {
         {/* Discussion Section - standalone, outside tabs */}
         <div className="max-w-3xl space-y-4 pt-4">
           <div className="mecha-line" />
-          <DiscussionSection comments={discussion} onAddComment={handleAddComment} onAddReply={handleAddReply} accentColor={accent} />
+          <DiscussionSection
+            comments={discussion}
+            onAddComment={handleAddComment}
+            onAddReply={handleAddReply}
+            onEditComment={handleEditComment}
+            onDeleteComment={handleDeleteComment}
+            onEditReply={handleEditReply}
+            onDeleteReply={handleDeleteReply}
+            accentColor={accent}
+          />
         </div>
       </div>
     </div>
