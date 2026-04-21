@@ -504,11 +504,20 @@ export default function PersonnelManagementPage() {
           {filtered.map((p) => {
             const isEditing = editingId === p.id;
             return (
-              <div key={p.id} className="hud-border-sm bg-card p-3 space-y-2">
+              <div key={p.id} className={`hud-border-sm bg-card p-3 space-y-2 ${selected.has(p.id) ? "ring-1 ring-primary/40" : ""}`}>
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-heading text-sm text-foreground">{p.username}</p>
-                    <p className="text-[11px] text-muted-foreground font-body">{p.email}</p>
+                  <div className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${p.username}`}
+                      checked={selected.has(p.id)}
+                      onChange={() => toggleSelected(p.id)}
+                      className="h-4 w-4 mt-0.5 accent-primary cursor-pointer"
+                    />
+                    <div>
+                      <p className="font-heading text-sm text-foreground">{p.username}</p>
+                      <p className="text-[11px] text-muted-foreground font-body">{p.email}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
                     {!isEditing && (
