@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { ArrowLeft, Save, X, Pencil, Search, ShieldCheck, Plus, Trash2, UserPlus } from "lucide-react";
+import { ArrowLeft, Save, X, Pencil, Search, ShieldCheck, Plus, Trash2, UserPlus, Layers } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   PERSONNEL_LEVELS,
@@ -13,6 +13,7 @@ import {
 import {
   listPersonnel,
   updatePersonnel,
+  bulkUpdatePersonnel,
   createPersonnel,
   deletePersonnel,
 } from "@/services/personnelApi";
