@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { getProject } from "@/services/api";
 import type { Project } from "@/types";
 import { ArrowLeft, Calendar, Tag } from "lucide-react";
+import RedactedBlock from "@/components/RedactedBlock";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
