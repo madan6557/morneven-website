@@ -353,6 +353,11 @@ export default function AuthorDashboard() {
         tags: editing.tags ?? [],
         date: editing.date ?? new Date().toISOString().split("T")[0],
         comments: editing.comments ?? [],
+        // Stamp the uploader on creation; preserve on edit so ownership
+        // doesn't transfer when an author edits someone else's upload.
+        uploadedBy: isCreating
+          ? username
+          : ((editing as EditableState & { uploadedBy?: string }).uploadedBy ?? username),
       };
 
       if (isCreating) await createGalleryItem(payload);
