@@ -31,5 +31,37 @@
     "accentColor": "#65A30D",
     "shortDesc": "A docile herbivore whose carapace hosts living moss colonies, often used by Fae-touched as pack animals.",
     "fullDesc": "The Mossback Drifter is one of the few large mutated species considered fully benign. Its dorsal carapace is colonized by symbiotic moss that filters airborne Gemosphere particulates, making the creature a walking air-purifier in sealed habitats.\n\nGEC protocol is Routine Survey only — elimination is not authorized unless a herd obstructs an active expansion path. Drifters bond readily with handlers and have been integrated into Verdant Hollow caravans as low-impact pack animals. No incident has been recorded in 47 years of cohabitation."
+  {
+    "id": "crea-004",
+    "name": "Resonant Vessel",
+    "classification": "Catalyst",
+    "dangerLevel": 2,
+    "habitat": "Jewerlian ruins — resonance chambers",
+    "thumbnail": "",
+    "accentColor": "#EAB308",
+    "shortDesc": "A dormant crystalline construct that amplifies Gemosphere energy when properly attuned, repurposed by Morneven as a power source.",
+    "fullDesc": "The Resonant Vessel is not a living entity in the traditional sense, but rather a crystalline formation that emerged when concentrated Gemosphere deposits fused with decayed Jewerlian machinery. Unlike hostile anomalies, the Vessel exhibits a symbiotic relationship with controlled energy fields — it absorbs ambient resonance and redirects it in stable, harvestable pulses.\n\nMorneven Institute Directive: Vessels are designated as Strategic Assets under Protocol CATALYST-7. Field teams are authorized to locate, secure, and transport intact specimens to Institute facilities for integration into power generation systems. Destruction is prohibited without Executive override. All Vessels are logged as renewable resource nodes rather than threats."
+  },
+  {
+    "id": "crea-005",
+    "name": "Annihilation Pattern Theta",
+    "classification": "Singularity",
+    "dangerLevel": 5,
+    "habitat": "Forbidden Sector 7 — collapsed Jewerlian cathedral",
+    "thumbnail": "",
+    "accentColor": "#7A2A2A",
+    "shortDesc": "A self-propagating energy phenomenon that consumes all matter and energy in its radius, expanding exponentially if left unchecked.",
+    "fullDesc": "Annihilation Pattern Theta represents the absolute failure category of the GEC system — an entity that cannot be contained, negotiated with, or weaponized. It manifests as a geometric void approximately 3 meters in diameter, surrounded by a corona of inverted light. Anything crossing its event horizon — matter, energy, even Gemosphere resonance — ceases to exist.\n\nMorneven Doctrine is explicit: Singularity-class entities are Existential Threats requiring Immediate Neutralization. All available resources, including tactical nuclear assets and Fracture-Point teams, are authorized for deployment. Theta's containment zone is maintained by a perpetual bombardment of counter-resonance fields at the cost of 12 Institute operatives per quarter. If containment fails, Gemora's eastern hemisphere will be uninhabitable within 72 hours."
+  },
+  {
+    "id": "crea-006",
+    "name": "Echo Remnant",
+    "classification": "Zero-State",
+    "dangerLevel": 1,
+    "habitat": "Former battlegrounds — neutralized anomaly sites",
+    "thumbnail": "",
+    "accentColor": "#6B7280",
+    "shortDesc": "The inert residue of a previously active anomaly, now harmless but catalogued for historical and research purposes.",
+    "fullDesc": "Echo Remnants are the terminal state of Gemora anomalies that have been successfully neutralized through Morneven intervention. They appear as faintly luminescent crystalline dust or ashen formations, devoid of the energetic signatures that defined their active states. No behavioral patterns, no threat assessment, no Fracture Points — only the archaeological record remains.\n\nGEC Protocol ZS-1 applies: Zero-State entities are Closed Files. They require no tactical response, no observation protocols, and no resource allocation. Remnants are marked on survey maps solely to prevent redundant investigation by field teams. The presence of a Zero-State marker indicates a successful operation and the permanent elimination of a threat to human survival."
   }
 ]
