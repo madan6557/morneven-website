@@ -389,6 +389,27 @@ export default function AuthorDashboard() {
     setEditing({ ...editing, docs });
   };
 
+  // Character contribution helpers
+  const addContribution = () => {
+    if (!editing) return;
+    const contributions: CharacterContribution[] = [
+      { id: `ctr-${Date.now()}`, title: "", description: "", date: todayStr() },
+      ...(editing.contributions || []),
+    ];
+    setEditing({ ...editing, contributions });
+  };
+  const updateContribution = (idx: number, field: keyof CharacterContribution, value: string) => {
+    if (!editing) return;
+    const contributions = [...(editing.contributions || [])];
+    contributions[idx] = { ...contributions[idx], [field]: value };
+    setEditing({ ...editing, contributions });
+  };
+  const removeContribution = (idx: number) => {
+    if (!editing) return;
+    const contributions = (editing.contributions || []).filter((_, i) => i !== idx);
+    setEditing({ ...editing, contributions });
+  };
+
   // Patch management for projects:
   // - new patches are inserted at the TOP of the list
   // - version auto-increments from the HIGHEST existing version
