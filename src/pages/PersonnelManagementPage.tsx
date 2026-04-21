@@ -26,7 +26,7 @@ const trackTone: Record<PersonnelTrack, string> = {
   executive: "text-primary border-primary/40 bg-primary/10",
   field: "text-accent-orange border-accent-orange/40 bg-accent-orange/10",
   mechanic: "text-accent-yellow border-accent-yellow/40 bg-accent-yellow/10",
-  logistics: "text-secondary-foreground border-secondary/40 bg-secondary/10",
+  logistics: "text-muted-foreground border-secondary/40 bg-secondary/10",
 };
 
 const levelTone = (level: PersonnelLevel) => {
@@ -92,6 +92,8 @@ export default function PersonnelManagementPage() {
   }
 
   const startEdit = (p: PersonnelUser) => {
+    // Tidak bisa edit akun LV7
+    if (p.level >= PL_FULL_AUTHORITY) return;
     setEditingId(p.id);
     setDraft({ level: p.level, track: p.track, note: p.note ?? "" });
   };
@@ -260,7 +262,7 @@ export default function PersonnelManagementPage() {
                   {PERSONNEL_LEVELS.map((l) => (
                     <option key={l} value={l}>L{l}</option>
                   ))}
-                  <option value={PL_FULL_AUTHORITY}>L{PL_FULL_AUTHORITY} · Full Authority</option>
+                  {/* Tidak ada opsi L7 di create personnel */}
                 </select>
               </label>
               <label className="space-y-1">
@@ -336,7 +338,7 @@ export default function PersonnelManagementPage() {
                 {PERSONNEL_LEVELS.map((l) => (
                   <option key={l} value={l}>L{l}</option>
                 ))}
-                <option value={PL_FULL_AUTHORITY}>L{PL_FULL_AUTHORITY} · Full Authority</option>
+                {/* Tidak ada opsi L7 di bulk edit */}
               </select>
             </label>
             <label className="flex items-center gap-2">
@@ -427,7 +429,7 @@ export default function PersonnelManagementPage() {
                           {PERSONNEL_LEVELS.map((l) => (
                             <option key={l} value={l}>L{l}</option>
                           ))}
-                          <option value={PL_FULL_AUTHORITY}>L{PL_FULL_AUTHORITY}</option>
+                          {/* Tidak ada opsi L7 di edit kecuali user sendiri, tapi untuk keamanan, LV7 tidak bisa diedit sama sekali */}
                         </select>
                       ) : (
                         <span className={`inline-flex items-center justify-center text-[11px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border ${levelTone(p.level)}`}>
@@ -471,7 +473,12 @@ export default function PersonnelManagementPage() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 justify-end">
-                          <button onClick={() => startEdit(p)} className="text-muted-foreground hover:text-primary p-1.5" title="Edit">
+                          <button
+                            onClick={() => startEdit(p)}
+                            className="text-muted-foreground hover:text-primary p-1.5"
+                            title={p.level >= PL_FULL_AUTHORITY ? "L7 cannot be edited" : "Edit"}
+                            disabled={p.level >= PL_FULL_AUTHORITY}
+                          >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                           <button
