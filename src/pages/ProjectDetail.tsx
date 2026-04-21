@@ -52,9 +52,8 @@ export default function ProjectDetail() {
         {/* Description */}
         <div className="max-w-3xl space-y-4">
           <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Description</h2>
-          {project.fullDesc.split("\n\n").map((para, i) => (
-            <p key={i} className="text-sm font-body text-foreground/80 leading-relaxed">{para}</p>
-          ))}
+          <RedactedBlock fullDesc={project.fullDesc} />
+
         </div>
 
         {/* Patch Notes */}
