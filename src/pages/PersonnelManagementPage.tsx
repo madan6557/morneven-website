@@ -63,12 +63,6 @@ export default function PersonnelManagementPage() {
     listPersonnel().then(setPeople);
   }, []);
 
-  // L7-only guard. Render an explicit denial page rather than silently
-  // redirecting so the rule is visible.
-  if (!canManagePersonnel(personnelLevel)) {
-    return <Navigate to="/home" replace />;
-  }
-
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
     return people.filter((p) => {
@@ -81,6 +75,12 @@ export default function PersonnelManagementPage() {
       );
     });
   }, [people, filter, trackFilter]);
+
+  // L7-only guard. Render an explicit denial page rather than silently
+  // redirecting so the rule is visible.
+  if (!canManagePersonnel(personnelLevel)) {
+    return <Navigate to="/home" replace />;
+  }
 
   const startEdit = (p: PersonnelUser) => {
     setEditingId(p.id);
