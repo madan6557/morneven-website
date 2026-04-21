@@ -59,6 +59,7 @@ export const PERSONNEL_TRACKS: TrackTitles[] = [
     label: "Executive",
     short: "GOV",
     titles: {
+      7: "Full Authority",
       6: "Board of Trustees",
       5: "Division Director",
       4: "Senior Manager",
@@ -73,6 +74,7 @@ export const PERSONNEL_TRACKS: TrackTitles[] = [
     label: "Field Personnel",
     short: "OPS",
     titles: {
+      7: "Full Authority",
       6: "Global Operative",
       5: "Field Commander",
       4: "Squad Leader",
@@ -87,6 +89,7 @@ export const PERSONNEL_TRACKS: TrackTitles[] = [
     label: "Mechanic / Tech",
     short: "ENG",
     titles: {
+      7: "Full Authority",
       6: "Chief Architect",
       5: "Lead Systems Engineer",
       4: "Senior Technician",
@@ -101,6 +104,7 @@ export const PERSONNEL_TRACKS: TrackTitles[] = [
     label: "Logistics",
     short: "LOG",
     titles: {
+      7: "Full Authority",
       6: "Supply Chain Sovereign",
       5: "Logistics Director",
       4: "Distribution Manager",
