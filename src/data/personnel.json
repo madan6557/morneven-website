@@ -2,7 +2,7 @@
   {
     "id": "psn-001",
     "username": "author",
-    "email": "author@morneven.org",
+    "email": "author@morneven.com",
     "role": "author",
     "level": 7,
     "track": "executive",
@@ -12,7 +12,7 @@
   {
     "id": "psn-002",
     "username": "admin",
-    "email": "admin@morneven.org",
+    "email": "admin@morneven.com",
     "role": "author",
     "level": 7,
     "track": "executive",
@@ -22,7 +22,7 @@
   {
     "id": "psn-003",
     "username": "v.kessler",
-    "email": "v.kessler@morneven.org",
+    "email": "v.kessler@morneven.com",
     "role": "viewer",
     "level": 6,
     "track": "executive",
@@ -32,7 +32,7 @@
   {
     "id": "psn-004",
     "username": "m.varga",
-    "email": "m.varga@morneven.org",
+    "email": "m.varga@morneven.com",
     "role": "viewer",
     "level": 6,
     "track": "field",
@@ -42,7 +42,7 @@
   {
     "id": "psn-005",
     "username": "s.okafor",
-    "email": "s.okafor@morneven.org",
+    "email": "s.okafor@morneven.com",
     "role": "viewer",
     "level": 6,
     "track": "mechanic",
@@ -52,7 +52,7 @@
   {
     "id": "psn-006",
     "username": "h.kato",
-    "email": "h.kato@morneven.org",
+    "email": "h.kato@morneven.com",
     "role": "viewer",
     "level": 5,
     "track": "logistics",
@@ -62,7 +62,7 @@
   {
     "id": "psn-007",
     "username": "t.bremmer",
-    "email": "t.bremmer@morneven.org",
+    "email": "t.bremmer@morneven.com",
     "role": "viewer",
     "level": 4,
     "track": "field",
@@ -72,7 +72,7 @@
   {
     "id": "psn-008",
     "username": "r.alves",
-    "email": "r.alves@morneven.org",
+    "email": "r.alves@morneven.com",
     "role": "viewer",
     "level": 3,
     "track": "executive",
@@ -82,7 +82,7 @@
   {
     "id": "psn-009",
     "username": "guest_visitor",
-    "email": "guest@morneven.org",
+    "email": "guest@morneven.com",
     "role": "guest",
     "level": 0,
     "track": "executive",

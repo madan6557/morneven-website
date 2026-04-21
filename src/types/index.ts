@@ -145,6 +145,11 @@ export interface GalleryItem {
   tags: string[];
   date: string;
   comments: GalleryComment[];
+  // Username of the personnel who uploaded this item. Used to scope
+  // edit/delete permissions for L6 personnel — they may only modify
+  // gallery items they uploaded themselves. L7 (Full Authority) and the
+  // legacy "author" role bypass this check.
+  uploadedBy?: string;
 }
 
 export interface NewsItem {

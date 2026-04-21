@@ -86,6 +86,8 @@ type EditableState = {
   habitat?: string;
   // Character
   contributions?: CharacterContribution[];
+  // Gallery — preserved across edits so ownership doesn't transfer.
+  uploadedBy?: string;
 };
 
 const isDashboardTab = (value: string | null): value is DashboardTab => {
@@ -144,7 +146,7 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*" }:
 }
 
 export default function AuthorDashboard() {
-  const { role, personnelLevel, track } = useAuth();
+  const { role, username, personnelLevel, track } = useAuth();
   const [params] = useSearchParams();
   const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
     const tab = params.get("tab");
@@ -169,6 +171,15 @@ export default function AuthorDashboard() {
   const subAllowed = (s: LoreSub) =>
     role === "author" ||
     canAccessAuthorPanel({ level: personnelLevel, track, section: "lore", loreSub: s });
+
+  // Gallery ownership gate. L7 / "author" role bypasses; everyone else
+  // (i.e. L6) may only modify items they uploaded themselves. Items with
+  // no uploader stamp (legacy seed data) are treated as author-owned.
+  const canModifyGalleryItem = (item: GalleryItem): boolean => {
+    if (role === "author" || personnelLevel >= 7) return true;
+    if (!item.uploadedBy) return false;
+    return item.uploadedBy === username;
+  };
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -220,7 +231,7 @@ export default function AuthorDashboard() {
         <div className="hud-border bg-card p-8 text-center space-y-2">
           <p className="text-sm text-muted-foreground font-body">Access restricted.</p>
           <p className="text-xs text-muted-foreground font-body italic">
-            Author Panel requires an author account, L7 (Full Authority), or L6 with Executive / Field / Mechanic track.
+            Author Panel requires an author account, L7 (Full Authority), or L6 clearance.
           </p>
         </div>
       </div>
@@ -353,6 +364,11 @@ export default function AuthorDashboard() {
         tags: editing.tags ?? [],
         date: editing.date ?? new Date().toISOString().split("T")[0],
         comments: editing.comments ?? [],
+        // Stamp the uploader on creation; preserve on edit so ownership
+        // doesn't transfer when an author edits someone else's upload.
+        uploadedBy: isCreating
+          ? username
+          : ((editing as EditableState & { uploadedBy?: string }).uploadedBy ?? username),
       };
 
       if (isCreating) await createGalleryItem(payload);
@@ -386,7 +402,12 @@ export default function AuthorDashboard() {
       if (loreSub === "creatures") return creatures;
       return others;
     }
-    if (activeTab === "gallery") return gallery;
+    if (activeTab === "gallery") {
+      // L6 personnel only see their own uploads in the management list.
+      // L7 / author see everything.
+      if (role === "author" || personnelLevel >= 7) return gallery;
+      return gallery.filter((g) => g.uploadedBy === username);
+    }
     return [];
   };
 
@@ -501,7 +522,7 @@ export default function AuthorDashboard() {
             <Tooltip key={t} delayDuration={0}>
               <TooltipTrigger asChild><span>{button}</span></TooltipTrigger>
               <TooltipContent side="bottom" className="font-heading text-[10px] tracking-wider uppercase">
-                Locked · L7 or L6 Executive required
+                Locked · clearance / track does not permit this section
               </TooltipContent>
             </Tooltip>
           );
@@ -999,7 +1020,11 @@ export default function AuthorDashboard() {
       {/* Items List */}
       {activeTab !== "homepage" && activeTab !== "map" && canAccess(activeTab, loreSub) && (
         <div className="space-y-2">
-          {getItems().map((item) => (
+          {getItems().map((item) => {
+            // For Gallery, gate edit/delete by per-item ownership.
+            const canModify =
+              activeTab !== "gallery" || canModifyGalleryItem(item as GalleryItem);
+            return (
             <div key={item.id} className="hud-border-sm bg-card p-4 flex items-center justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <h3 className="font-heading text-sm text-foreground truncate">{getItemTitle(item)}</h3>
@@ -1007,17 +1032,38 @@ export default function AuthorDashboard() {
                 {"status" in item && typeof (item as Project).status === "string" && <span className="text-[10px] font-display tracking-wider text-accent-orange uppercase">{(item as Project).status}</span>}
                 {"classification" in item && <span className="text-[10px] font-display tracking-wider text-accent-orange uppercase">{(item as Creature).classification} • DL-{(item as Creature).dangerLevel}</span>}
                 {"accentColor" in item && <span className="inline-block w-3 h-3 rounded-full ml-2 align-middle" style={{ backgroundColor: (item as { accentColor: string }).accentColor }} />}
+                {activeTab === "gallery" && (item as GalleryItem).uploadedBy && (
+                  <span className="ml-2 text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+                    · by {(item as GalleryItem).uploadedBy}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <button onClick={() => { setEditing({ ...item } as EditableState); setIsCreating(false); }} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
-                <button onClick={() => handleDelete(item.id, getItemTitle(item))} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                {canModify ? (
+                  <>
+                    <button onClick={() => { setEditing({ ...item } as EditableState); setIsCreating(false); }} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button onClick={() => handleDelete(item.id, getItemTitle(item))} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <Tooltip delayDuration={0}>
+                    <TooltipTrigger asChild>
+                      <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase opacity-60 cursor-not-allowed">
+                        Locked
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="font-heading text-[10px] tracking-wider uppercase">
+                      You can only modify gallery items you uploaded
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
