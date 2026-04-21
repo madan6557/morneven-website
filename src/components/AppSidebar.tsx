@@ -132,19 +132,32 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
             <label htmlFor="pl-switch" className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
               Clearance
             </label>
-            <select
-              id="pl-switch"
-              value={personnelLevel}
-              onChange={(e) => setPersonnelLevel(Number(e.target.value) as PersonnelLevel)}
-              className="text-[10px] font-display tracking-wider bg-card border border-border rounded-sm px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              aria-label="Personnel Level clearance switcher"
-            >
-              {selectableLevels.map((l) => (
-                <option key={l} value={l}>
-                  L{l}{l === PL_FULL_AUTHORITY ? " · Full" : ""}
-                </option>
-              ))}
-            </select>
+            {role === "author" ? (
+              <select
+                id="pl-switch"
+                value={personnelLevel}
+                onChange={(e) => setPersonnelLevel(Number(e.target.value) as PersonnelLevel)}
+                className="text-[10px] font-display tracking-wider bg-card border border-border rounded-sm px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                aria-label="Personnel Level clearance switcher"
+              >
+                {selectableLevels.map((l) => (
+                  <option key={l} value={l}>
+                    L{l}{l === PL_FULL_AUTHORITY ? " · Full" : ""}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-[10px] font-display tracking-wider bg-muted border border-border/50 rounded-sm px-1.5 py-0.5 text-muted-foreground cursor-not-allowed">
+                    L{personnelLevel}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="font-heading text-xs">
+                  Clearance assigned by Personnel Management
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
           <div className="flex items-center justify-between gap-2">
             <label htmlFor="track-switch" className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
