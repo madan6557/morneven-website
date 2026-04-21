@@ -473,32 +473,91 @@ export default function AuthorDashboard() {
       <h1 className="font-display text-2xl tracking-[0.1em] text-primary">AUTHOR PANEL</h1>
       <div className="mecha-line w-32" />
 
-      {/* Tabs */}
+      {/* Tabs — disabled tabs render as locked with a tooltip explaining
+          the clearance gate (per L6 track scoping). */}
       <div className="flex flex-wrap gap-2">
-        {dashTabs.map((t) => (
-          <button key={t} onClick={() => { setActiveTab(t); setEditing(null); setIsCreating(false); }}
-            className={`px-3 md:px-4 py-1.5 text-xs font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${activeTab === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
-            {t === "homepage" ? "Command Center" : t}
-          </button>
-        ))}
+        {dashTabs.map((t) => {
+          const allowed = tabAllowed(t);
+          const button = (
+            <button
+              onClick={() => {
+                if (!allowed) return;
+                setActiveTab(t);
+                setEditing(null);
+                setIsCreating(false);
+              }}
+              disabled={!allowed}
+              className={`px-3 md:px-4 py-1.5 text-xs font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${
+                activeTab === t
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border text-muted-foreground hover:bg-muted"
+              } ${!allowed ? "opacity-40 cursor-not-allowed hover:bg-transparent" : ""}`}
+            >
+              {t === "homepage" ? "Command Center" : t}
+            </button>
+          );
+          if (allowed) return <div key={t}>{button}</div>;
+          return (
+            <Tooltip key={t} delayDuration={0}>
+              <TooltipTrigger asChild><span>{button}</span></TooltipTrigger>
+              <TooltipContent side="bottom" className="font-heading text-[10px] tracking-wider uppercase">
+                Locked · L7 or L6 Executive required
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
       </div>
 
       {activeTab === "lore" && (
         <div className="flex flex-wrap gap-2">
-          {loreSubs.map((s) => (
-            <button key={s} onClick={() => { setLoreSub(s); setEditing(null); setIsCreating(false); }}
-              className={`px-3 py-1 text-[10px] font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${loreSub === s ? "bg-secondary text-secondary-foreground border-secondary" : "border-border text-muted-foreground hover:bg-muted"}`}>
-              {s}
-            </button>
-          ))}
+          {loreSubs.map((s) => {
+            const allowed = subAllowed(s);
+            const button = (
+              <button
+                onClick={() => {
+                  if (!allowed) return;
+                  setLoreSub(s);
+                  setEditing(null);
+                  setIsCreating(false);
+                }}
+                disabled={!allowed}
+                className={`px-3 py-1 text-[10px] font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${
+                  loreSub === s
+                    ? "bg-secondary text-secondary-foreground border-secondary"
+                    : "border-border text-muted-foreground hover:bg-muted"
+                } ${!allowed ? "opacity-40 cursor-not-allowed hover:bg-transparent" : ""}`}
+              >
+                {s}
+              </button>
+            );
+            if (allowed) return <div key={s}>{button}</div>;
+            return (
+              <Tooltip key={s} delayDuration={0}>
+                <TooltipTrigger asChild><span>{button}</span></TooltipTrigger>
+                <TooltipContent side="bottom" className="font-heading text-[10px] tracking-wider uppercase">
+                  Locked · clearance/track mismatch
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
         </div>
       )}
 
-      {activeTab !== "homepage" && activeTab !== "map" && (
+      {activeTab !== "homepage" && activeTab !== "map" && canAccess(activeTab, loreSub) && (
         <div className="flex justify-end">
           <button onClick={startCreate} className="flex items-center gap-1 px-3 py-1.5 text-xs font-display tracking-wider text-primary-foreground bg-primary rounded-sm hover:opacity-90 transition-opacity">
             <Plus className="h-3 w-3" /> CREATE NEW
           </button>
+        </div>
+      )}
+
+      {/* Locked-section banner when current tab/sub is not accessible. */}
+      {!canAccess(activeTab, loreSub) && (
+        <div className="hud-border bg-card p-6 text-center space-y-2">
+          <p className="text-sm font-heading tracking-wider uppercase text-destructive">Section Locked</p>
+          <p className="text-xs text-muted-foreground font-body italic">
+            Your clearance (L{personnelLevel} · {track}) does not grant write access to this section.
+          </p>
         </div>
       )}
 
