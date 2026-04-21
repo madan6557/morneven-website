@@ -997,7 +997,7 @@ export default function AuthorDashboard() {
       )}
 
       {/* Items List */}
-      {activeTab !== "homepage" && activeTab !== "map" && (
+      {activeTab !== "homepage" && activeTab !== "map" && canAccess(activeTab, loreSub) && (
         <div className="space-y-2">
           {getItems().map((item) => (
             <div key={item.id} className="hud-border-sm bg-card p-4 flex items-center justify-between gap-4">
