@@ -22,6 +22,7 @@ import TechDetail from "./pages/TechDetail";
 import CreatureDetail from "./pages/CreatureDetail";
 import OtherDetail from "./pages/OtherDetail";
 import MapPage from "./pages/MapPage";
+import PersonnelLevelPage from "./pages/PersonnelLevelPage";
 import AuthorDashboard from "./pages/AuthorDashboard";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
@@ -54,6 +55,7 @@ function App() {
                 <Route path="/lore/tech/:id" element={<TechDetail />} />
                 <Route path="/lore/creatures/:id" element={<CreatureDetail />} />
                 <Route path="/lore/other/:id" element={<OtherDetail />} />
+                <Route path="/lore/personnel" element={<PersonnelLevelPage />} />
                 <Route path="/maps" element={<MapPage />} />
                 <Route path="/author" element={<AuthorRoute><AuthorDashboard /></AuthorRoute>} />
                 <Route path="/settings" element={<SettingsPage />} />
