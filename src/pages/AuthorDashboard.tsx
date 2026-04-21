@@ -730,9 +730,14 @@ export default function AuthorDashboard() {
 
           {/* Full Description */}
           {editing.fullDesc !== undefined && (
-            <div>
+            <div className="space-y-2">
               <label className={labelClass}>Full Description</label>
-              <textarea value={editing.fullDesc || ""} onChange={(e) => setEditing({ ...editing, fullDesc: e.target.value })} rows={5} className={inputClass + " resize-y min-h-[120px]"} />
+              <RestrictedMarkerTool
+                textareaRef={fullDescRef}
+                value={editing.fullDesc || ""}
+                onChange={(next) => setEditing({ ...editing, fullDesc: next })}
+              />
+              <textarea ref={fullDescRef} value={editing.fullDesc || ""} onChange={(e) => setEditing({ ...editing, fullDesc: e.target.value })} rows={5} className={inputClass + " resize-y min-h-[120px]"} />
             </div>
           )}
 
