@@ -313,6 +313,62 @@ export default function PersonnelManagementPage() {
           </div>
         </div>
 
+        {/* Bulk action toolbar — visible when 1+ rows are selected. Lets the
+            operator change level and/or track on every selected record in
+            a single round-trip via bulkUpdatePersonnel. */}
+        {selected.size > 0 && (
+          <div className="hud-border-sm bg-card/90 backdrop-blur p-3 md:p-4 sticky top-2 z-30 flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Layers className="h-4 w-4 text-accent-orange" />
+              <span className="font-display text-xs tracking-wider text-accent-orange uppercase">
+                {selected.size} selected
+              </span>
+            </div>
+            <div className="h-5 w-px bg-border" />
+            <label className="flex items-center gap-2">
+              <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Set Level</span>
+              <select
+                value={bulkLevel}
+                onChange={(e) => setBulkLevel(e.target.value === "" ? "" : Number(e.target.value) as PersonnelLevel)}
+                className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">— keep —</option>
+                {PERSONNEL_LEVELS.map((l) => (
+                  <option key={l} value={l}>L{l}</option>
+                ))}
+                <option value={PL_FULL_AUTHORITY}>L{PL_FULL_AUTHORITY} · Full Authority</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-2">
+              <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Set Track</span>
+              <select
+                value={bulkTrack}
+                onChange={(e) => setBulkTrack(e.target.value === "" ? "" : (e.target.value as PersonnelTrack))}
+                className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">— keep —</option>
+                {PERSONNEL_TRACKS.map((t) => (
+                  <option key={t.key} value={t.key}>{t.label}</option>
+                ))}
+              </select>
+            </label>
+            <div className="flex-1" />
+            <button
+              onClick={clearSelection}
+              className="px-3 py-1.5 text-[10px] font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors"
+            >
+              CLEAR
+            </button>
+            <button
+              onClick={applyBulk}
+              disabled={bulkSaving || (bulkLevel === "" && bulkTrack === "")}
+              className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Save className="h-3 w-3" /> {bulkSaving ? "APPLYING…" : "APPLY TO SELECTED"}
+            </button>
+          </div>
+        )}
+
         {/* Table — desktop */}
         <div className="hidden lg:block hud-border bg-card overflow-hidden">
           <table className="w-full text-sm font-body">
