@@ -6,6 +6,7 @@ import {
   type PersonnelLevel,
   type PersonnelTrack,
 } from "@/lib/pl";
+import { listPersonnel } from "@/services/personnelApi";
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -15,7 +16,7 @@ interface AuthState {
   track: PersonnelTrack;
   setPersonnelLevel: (level: PersonnelLevel) => void;
   setTrack: (track: PersonnelTrack) => void;
-  login: (email: string, password: string) => void;
+  login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, username: string) => void;
   guestLogin: () => void;
   logout: () => void;
@@ -66,8 +67,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }, [isAuthenticated, username, role, personnelLevel, track]);
 
-  const login = (email: string, _password: string) => {
-    const isAuthor = AUTHOR_ACCOUNTS.has(email.trim().toLowerCase());
+  const login = async (email: string, _password: string) => {
+    const emailNorm = email.trim().toLowerCase();
+    const isAuthor = AUTHOR_ACCOUNTS.has(emailNorm);
+    // Cari di personnel.json
+    const personnel = await listPersonnel();
+    const found = personnel.find((p) => p.email.trim().toLowerCase() === emailNorm);
+    if (found) {
+      setIsAuthenticated(true);
+      setUsername(found.username);
+      setRole(found.role as UserRole);
+      setPersonnelLevel(found.level as PersonnelLevel);
+      setTrack(found.track as PersonnelTrack);
+      return;
+    }
+    // fallback lama
     const nextRole: UserRole = isAuthor ? "author" : "viewer";
     setIsAuthenticated(true);
     setUsername(email.split("@")[0]);
