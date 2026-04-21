@@ -206,7 +206,7 @@ export default function AuthorDashboard() {
       setEditing({ title: "", status: "Planning", thumbnail: "", shortDesc: "", fullDesc: "", patches: [], docs: [] });
     } else if (activeTab === "lore") {
       if (loreSub === "characters") {
-        setEditing({ name: "", race: "", occupation: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 }, docs: [] });
+        setEditing({ name: "", race: "", occupation: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 }, docs: [], contributions: [] });
       } else if (loreSub === "places") {
         setEditing({ name: "", type: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
       } else if (loreSub === "technology") {
@@ -254,6 +254,7 @@ export default function AuthorDashboard() {
           fullDesc: editing.fullDesc ?? "",
           stats: editing.stats ?? { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 },
           docs: editing.docs ?? [],
+          contributions: editing.contributions ?? [],
         };
 
         if (isCreating) await createCharacter(payload);
