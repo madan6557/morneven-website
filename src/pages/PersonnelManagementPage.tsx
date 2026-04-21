@@ -374,6 +374,16 @@ export default function PersonnelManagementPage() {
           <table className="w-full text-sm font-body">
             <thead>
               <tr className="border-b border-border bg-muted/40">
+                <th className="p-3 w-10">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all visible personnel"
+                    checked={allFilteredSelected}
+                    ref={(el) => { if (el) el.indeterminate = someFilteredSelected; }}
+                    onChange={toggleSelectAllFiltered}
+                    className="h-4 w-4 accent-primary cursor-pointer"
+                  />
+                </th>
                 <th className="text-left p-3 font-display text-[10px] tracking-[0.15em] uppercase text-muted-foreground">User</th>
                 <th className="text-left p-3 font-display text-[10px] tracking-[0.15em] uppercase text-muted-foreground">Email</th>
                 <th className="text-left p-3 font-display text-[10px] tracking-[0.15em] uppercase text-muted-foreground w-28">Level</th>
@@ -386,7 +396,16 @@ export default function PersonnelManagementPage() {
               {filtered.map((p) => {
                 const isEditing = editingId === p.id;
                 return (
-                  <tr key={p.id} className="border-b border-border/60 last:border-b-0">
+                  <tr key={p.id} className={`border-b border-border/60 last:border-b-0 ${selected.has(p.id) ? "bg-primary/5" : ""}`}>
+                    <td className="p-3 align-top">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${p.username}`}
+                        checked={selected.has(p.id)}
+                        onChange={() => toggleSelected(p.id)}
+                        className="h-4 w-4 accent-primary cursor-pointer"
+                      />
+                    </td>
                     <td className="p-3 align-top">
                       <div className="flex items-center gap-2">
                         <span className="font-heading text-sm text-foreground">{p.username}</span>
