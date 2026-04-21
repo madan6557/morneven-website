@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { ArrowLeft, Save, X, Pencil, Search, ShieldCheck, Plus, Trash2, UserPlus } from "lucide-react";
+import { ArrowLeft, Save, X, Pencil, Search, ShieldCheck, Plus, Trash2, UserPlus, Layers } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   PERSONNEL_LEVELS,
@@ -13,6 +13,7 @@ import {
 import {
   listPersonnel,
   updatePersonnel,
+  bulkUpdatePersonnel,
   createPersonnel,
   deletePersonnel,
 } from "@/services/personnelApi";
@@ -58,6 +59,14 @@ export default function PersonnelManagementPage() {
     track: "executive",
     note: "",
   });
+
+  // Bulk selection state. `selected` holds personnel IDs marked for a
+  // bulk operation. `bulkLevel` / `bulkTrack` are tri-state: undefined
+  // means "leave as-is", which lets the operator change just one field.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkLevel, setBulkLevel] = useState<PersonnelLevel | "">("");
+  const [bulkTrack, setBulkTrack] = useState<PersonnelTrack | "">("");
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   useEffect(() => {
     listPersonnel().then(setPeople);
@@ -120,6 +129,65 @@ export default function PersonnelManagementPage() {
     setPeople((prev) => [created, ...prev]);
     setCreating(false);
     setNewUser({ username: "", email: "", role: "viewer", level: 2, track: "executive", note: "" });
+  };
+
+  // ─── Bulk selection helpers ────────────────────────────────────────────
+  const toggleSelected = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((p) => selected.has(p.id));
+  const someFilteredSelected =
+    filtered.some((p) => selected.has(p.id)) && !allFilteredSelected;
+
+  const toggleSelectAllFiltered = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        filtered.forEach((p) => next.delete(p.id));
+      } else {
+        filtered.forEach((p) => next.add(p.id));
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelected(new Set());
+
+  const applyBulk = async () => {
+    if (selected.size === 0) return;
+    if (bulkLevel === "" && bulkTrack === "") {
+      window.alert("Choose a new level and/or track to apply.");
+      return;
+    }
+    const patch: Partial<Pick<PersonnelUser, "level" | "track">> = {};
+    if (bulkLevel !== "") patch.level = bulkLevel;
+    if (bulkTrack !== "") patch.track = bulkTrack;
+
+    const ids = Array.from(selected);
+    const summary = [
+      bulkLevel !== "" ? `level → L${bulkLevel}` : null,
+      bulkTrack !== "" ? `track → ${PERSONNEL_TRACKS.find((t) => t.key === bulkTrack)?.label}` : null,
+    ].filter(Boolean).join(", ");
+    if (!window.confirm(`Apply ${summary} to ${ids.length} personnel record${ids.length === 1 ? "" : "s"}?`)) return;
+
+    setBulkSaving(true);
+    try {
+      const updated = await bulkUpdatePersonnel(ids, patch);
+      const updatedById = new Map(updated.map((u) => [u.id, u]));
+      setPeople((prev) => prev.map((p) => updatedById.get(p.id) ?? p));
+      clearSelection();
+      setBulkLevel("");
+      setBulkTrack("");
+    } finally {
+      setBulkSaving(false);
+    }
   };
 
   return (
@@ -245,11 +313,77 @@ export default function PersonnelManagementPage() {
           </div>
         </div>
 
+        {/* Bulk action toolbar — visible when 1+ rows are selected. Lets the
+            operator change level and/or track on every selected record in
+            a single round-trip via bulkUpdatePersonnel. */}
+        {selected.size > 0 && (
+          <div className="hud-border-sm bg-card/90 backdrop-blur p-3 md:p-4 sticky top-2 z-30 flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Layers className="h-4 w-4 text-accent-orange" />
+              <span className="font-display text-xs tracking-wider text-accent-orange uppercase">
+                {selected.size} selected
+              </span>
+            </div>
+            <div className="h-5 w-px bg-border" />
+            <label className="flex items-center gap-2">
+              <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Set Level</span>
+              <select
+                value={bulkLevel}
+                onChange={(e) => setBulkLevel(e.target.value === "" ? "" : Number(e.target.value) as PersonnelLevel)}
+                className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">— keep —</option>
+                {PERSONNEL_LEVELS.map((l) => (
+                  <option key={l} value={l}>L{l}</option>
+                ))}
+                <option value={PL_FULL_AUTHORITY}>L{PL_FULL_AUTHORITY} · Full Authority</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-2">
+              <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Set Track</span>
+              <select
+                value={bulkTrack}
+                onChange={(e) => setBulkTrack(e.target.value === "" ? "" : (e.target.value as PersonnelTrack))}
+                className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">— keep —</option>
+                {PERSONNEL_TRACKS.map((t) => (
+                  <option key={t.key} value={t.key}>{t.label}</option>
+                ))}
+              </select>
+            </label>
+            <div className="flex-1" />
+            <button
+              onClick={clearSelection}
+              className="px-3 py-1.5 text-[10px] font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors"
+            >
+              CLEAR
+            </button>
+            <button
+              onClick={applyBulk}
+              disabled={bulkSaving || (bulkLevel === "" && bulkTrack === "")}
+              className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Save className="h-3 w-3" /> {bulkSaving ? "APPLYING…" : "APPLY TO SELECTED"}
+            </button>
+          </div>
+        )}
+
         {/* Table — desktop */}
         <div className="hidden lg:block hud-border bg-card overflow-hidden">
           <table className="w-full text-sm font-body">
             <thead>
               <tr className="border-b border-border bg-muted/40">
+                <th className="p-3 w-10">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all visible personnel"
+                    checked={allFilteredSelected}
+                    ref={(el) => { if (el) el.indeterminate = someFilteredSelected; }}
+                    onChange={toggleSelectAllFiltered}
+                    className="h-4 w-4 accent-primary cursor-pointer"
+                  />
+                </th>
                 <th className="text-left p-3 font-display text-[10px] tracking-[0.15em] uppercase text-muted-foreground">User</th>
                 <th className="text-left p-3 font-display text-[10px] tracking-[0.15em] uppercase text-muted-foreground">Email</th>
                 <th className="text-left p-3 font-display text-[10px] tracking-[0.15em] uppercase text-muted-foreground w-28">Level</th>
@@ -262,7 +396,16 @@ export default function PersonnelManagementPage() {
               {filtered.map((p) => {
                 const isEditing = editingId === p.id;
                 return (
-                  <tr key={p.id} className="border-b border-border/60 last:border-b-0">
+                  <tr key={p.id} className={`border-b border-border/60 last:border-b-0 ${selected.has(p.id) ? "bg-primary/5" : ""}`}>
+                    <td className="p-3 align-top">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${p.username}`}
+                        checked={selected.has(p.id)}
+                        onChange={() => toggleSelected(p.id)}
+                        className="h-4 w-4 accent-primary cursor-pointer"
+                      />
+                    </td>
                     <td className="p-3 align-top">
                       <div className="flex items-center gap-2">
                         <span className="font-heading text-sm text-foreground">{p.username}</span>
@@ -347,7 +490,7 @@ export default function PersonnelManagementPage() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-sm text-muted-foreground font-body italic">
+                  <td colSpan={7} className="p-6 text-center text-sm text-muted-foreground font-body italic">
                     No personnel match the current filter.
                   </td>
                 </tr>
@@ -361,11 +504,20 @@ export default function PersonnelManagementPage() {
           {filtered.map((p) => {
             const isEditing = editingId === p.id;
             return (
-              <div key={p.id} className="hud-border-sm bg-card p-3 space-y-2">
+              <div key={p.id} className={`hud-border-sm bg-card p-3 space-y-2 ${selected.has(p.id) ? "ring-1 ring-primary/40" : ""}`}>
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-heading text-sm text-foreground">{p.username}</p>
-                    <p className="text-[11px] text-muted-foreground font-body">{p.email}</p>
+                  <div className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${p.username}`}
+                      checked={selected.has(p.id)}
+                      onChange={() => toggleSelected(p.id)}
+                      className="h-4 w-4 mt-0.5 accent-primary cursor-pointer"
+                    />
+                    <div>
+                      <p className="font-heading text-sm text-foreground">{p.username}</p>
+                      <p className="text-[11px] text-muted-foreground font-body">{p.email}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
                     {!isEditing && (
