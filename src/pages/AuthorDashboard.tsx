@@ -626,7 +626,7 @@ export default function AuthorDashboard() {
       )}
 
       {/* Edit Form */}
-      {editing && (
+      {editing && canAccess(activeTab, loreSub) && (
         <div className="hud-border bg-card p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase">
