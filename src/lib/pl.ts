@@ -112,33 +112,59 @@ export function canAccessRestricted(level: PersonnelLevel): boolean {
 export interface DescSegment {
   restricted: boolean;
   text: string;
+  // Minimum PL required to view this segment. Public segments use 0.
+  threshold: PersonnelLevel;
+  // Optional authoring hint for the audience track (executive/field/...). Not gated.
+  track?: PersonnelTrack;
 }
 
 export function splitRestricted(fullDesc: string): DescSegment[] {
   const segments: DescSegment[] = [];
   let cursor = 0;
   while (cursor < fullDesc.length) {
-    const open = fullDesc.indexOf(PL_RESTRICTED_OPEN, cursor);
-    if (open === -1) {
-      segments.push({ restricted: false, text: fullDesc.slice(cursor) });
+    const rest = fullDesc.slice(cursor);
+    const match = PL_OPEN_RE.exec(rest);
+    if (!match) {
+      segments.push({ restricted: false, text: fullDesc.slice(cursor), threshold: 0 });
       break;
     }
-    if (open > cursor) {
-      segments.push({ restricted: false, text: fullDesc.slice(cursor, open) });
+    const openIdx = cursor + match.index;
+    const openLen = match[0].length;
+    const threshold = Number(match[1]) as PersonnelLevel;
+    const track = match[2] as PersonnelTrack | undefined;
+
+    if (openIdx > cursor) {
+      segments.push({ restricted: false, text: fullDesc.slice(cursor, openIdx), threshold: 0 });
     }
-    const close = fullDesc.indexOf(PL_RESTRICTED_CLOSE, open + PL_RESTRICTED_OPEN.length);
-    if (close === -1) {
-      // Unclosed marker — treat the rest as restricted.
-      segments.push({ restricted: true, text: fullDesc.slice(open + PL_RESTRICTED_OPEN.length) });
+    const closeTag = `[/L${threshold}+]`;
+    const closeIdx = fullDesc.indexOf(closeTag, openIdx + openLen);
+    if (closeIdx === -1) {
+      segments.push({
+        restricted: true,
+        text: fullDesc.slice(openIdx + openLen),
+        threshold,
+        track,
+      });
       break;
     }
     segments.push({
       restricted: true,
-      text: fullDesc.slice(open + PL_RESTRICTED_OPEN.length, close),
+      text: fullDesc.slice(openIdx + openLen, closeIdx),
+      threshold,
+      track,
     });
-    cursor = close + PL_RESTRICTED_CLOSE.length;
+    cursor = closeIdx + closeTag.length;
   }
   return segments.filter((s) => s.text.trim().length > 0);
+}
+
+// Build the marker pair for a given threshold + optional track hint.
+export function buildRestrictedMarkers(
+  threshold: PersonnelLevel,
+  track?: PersonnelTrack,
+): { open: string; close: string } {
+  const trackPart = track ? ` track=${track}` : "";
+  return { open: `[L${threshold}+${trackPart}]`, close: `[/L${threshold}+]` };
 }
 
 export const PL_LORE_ID = "other-005";
