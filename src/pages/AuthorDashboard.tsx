@@ -522,7 +522,7 @@ export default function AuthorDashboard() {
             <Tooltip key={t} delayDuration={0}>
               <TooltipTrigger asChild><span>{button}</span></TooltipTrigger>
               <TooltipContent side="bottom" className="font-heading text-[10px] tracking-wider uppercase">
-                Locked · L7 or L6 Executive required
+                Locked · clearance / track does not permit this section
               </TooltipContent>
             </Tooltip>
           );
