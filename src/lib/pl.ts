@@ -13,10 +13,17 @@ export const PERSONNEL_LEVELS: PersonnelLevel[] = [0, 1, 2, 3, 4, 5, 6];
 // Reading restricted lore content requires PL >= this.
 export const PL_RESTRICTED_THRESHOLD: PersonnelLevel = 3;
 
-// Inline marker authors place inside fullDesc to flag a restricted block.
-// Everything between [L3+] and [/L3+] is hidden from PL < 3.
+// Inline markers authors place inside fullDesc to flag a restricted block.
+// Supported forms:
+//   [L3+] ... [/L3+]                    → require PL>=3
+//   [L5+] ... [/L5+]                    → require PL>=5
+//   [L4+ track=field] ... [/L4+]        → require PL>=4 AND (optional) track hint
+// The default authoring threshold (used by the legacy helpers) stays L3.
 export const PL_RESTRICTED_OPEN = "[L3+]";
 export const PL_RESTRICTED_CLOSE = "[/L3+]";
+
+// Matches an opening tag like [L3+] or [L4+ track=field]. Captures threshold + optional track.
+const PL_OPEN_RE = /\[L([0-6])\+(?:\s+track=([a-zA-Z]+))?\]/;
 
 // Default PL per auth role — used when seeding the user's clearance.
 export const DEFAULT_PL_BY_ROLE: Record<UserRole, PersonnelLevel> = {
