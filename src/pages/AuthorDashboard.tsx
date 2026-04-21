@@ -209,14 +209,19 @@ export default function AuthorDashboard() {
     setMapImageUrl(getMapImage());
   };
 
-  if (role !== "author") {
+  // Access gate: author role bypasses everything; otherwise PL+track must
+  // grant entry to at least one section.
+  const hasAnyAccess = role === "author" || canEnterAuthorPanel(personnelLevel, track);
+  if (!hasAnyAccess) {
     return (
       <div className="p-6 md:p-8 space-y-4">
         <h1 className="font-display text-2xl tracking-[0.1em] text-primary">AUTHOR PANEL</h1>
         <div className="mecha-line w-32" />
-        <div className="hud-border bg-card p-8 text-center">
-          <p className="text-sm text-muted-foreground font-body">Access restricted. Login with an author account to manage content.</p>
-          <p className="text-xs text-muted-foreground font-body mt-2 italic">Hint: Author access is available only for approved accounts (author@morneven.org or admin@morneven.org).</p>
+        <div className="hud-border bg-card p-8 text-center space-y-2">
+          <p className="text-sm text-muted-foreground font-body">Access restricted.</p>
+          <p className="text-xs text-muted-foreground font-body italic">
+            Author Panel requires an author account, L7 (Full Authority), or L6 with Executive / Field / Mechanic track.
+          </p>
         </div>
       </div>
     );
