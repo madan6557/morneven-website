@@ -232,16 +232,21 @@ export default function CharacterDetail() {
                 )}
               </TabsContent>
 
-              {/* Notes / Discussion */}
+              {/* Notes */}
               <TabsContent value="notes" className="mt-6 space-y-4">
-                <DiscussionSection
-                  comments={discussion}
-                  onAddComment={handleAddComment}
-                  onAddReply={handleAddReply}
-                  accentColor={accentColor}
-                />
+                <p className="text-sm font-body text-muted-foreground italic">Field notes and observations can be recorded here.</p>
               </TabsContent>
             </Tabs>
+
+            {/* Discussion Section - standalone, outside tabs */}
+            <div className="space-y-4 pt-6">
+              <DiscussionSection
+                comments={discussion}
+                onAddComment={handleAddComment}
+                onAddReply={handleAddReply}
+                accentColor={accentColor}
+              />
+            </div>
           </div>
         </div>
       </div>

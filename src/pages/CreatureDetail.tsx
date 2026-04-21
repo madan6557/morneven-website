@@ -246,12 +246,15 @@ export default function CreatureDetail() {
               ) : (
                 <p className="text-sm font-body text-muted-foreground">No standing doctrine notes on file.</p>
               )}
-
-              <div className="mecha-line" />
-              <DiscussionSection comments={discussion} onAddComment={handleAddComment} onAddReply={handleAddReply} accentColor={accent} />
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Discussion Section - standalone, outside tabs */}
+        <div className="max-w-3xl space-y-4 pt-4">
+          <div className="mecha-line" />
+          <DiscussionSection comments={discussion} onAddComment={handleAddComment} onAddReply={handleAddReply} accentColor={accent} />
+        </div>
       </div>
     </div>
   );
