@@ -60,6 +60,14 @@ export default function PersonnelManagementPage() {
     note: "",
   });
 
+  // Bulk selection state. `selected` holds personnel IDs marked for a
+  // bulk operation. `bulkLevel` / `bulkTrack` are tri-state: undefined
+  // means "leave as-is", which lets the operator change just one field.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkLevel, setBulkLevel] = useState<PersonnelLevel | "">("");
+  const [bulkTrack, setBulkTrack] = useState<PersonnelTrack | "">("");
+  const [bulkSaving, setBulkSaving] = useState(false);
+
   useEffect(() => {
     listPersonnel().then(setPeople);
   }, []);
