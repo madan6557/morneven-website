@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getProjects, createProject, updateProject, deleteProject, getCharacters, createCharacter, updateCharacter, deleteCharacter, getPlaces, createPlace, updatePlace, deletePlace, getTechnology, createTech, updateTech, deleteTech, getGallery, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreatures, createCreature, updateCreature, deleteCreature, getOthers, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImage, setMapImage } from "@/services/api";
 import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, type CommandCenterSettings } from "@/services/commandCenterSettings";
-import type { Project, Character, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel } from "@/types";
+import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon } from "lucide-react";
 
 const dashTabs = ["projects", "lore", "gallery", "homepage", "map"] as const;
@@ -81,6 +81,8 @@ type EditableState = {
   classification?: CreatureClassification;
   dangerLevel?: CreatureDangerLevel;
   habitat?: string;
+  // Character
+  contributions?: CharacterContribution[];
 };
 
 const isDashboardTab = (value: string | null): value is DashboardTab => {
