@@ -68,6 +68,28 @@ export async function updatePersonnel(
   return personnel[idx];
 }
 
+// Apply the same partial patch to many records in one round-trip. Mirrors a
+// future REST endpoint:
+//   PATCH /api/personnel/bulk  { ids: string[], patch: {...} }
+// Returns the updated records (only those that were found).
+export async function bulkUpdatePersonnel(
+  ids: string[],
+  patch: Partial<Omit<PersonnelUser, "id">>,
+): Promise<PersonnelUser[]> {
+  await delay();
+  const idSet = new Set(ids);
+  const today = new Date().toISOString().split("T")[0];
+  const updated: PersonnelUser[] = [];
+  personnel = personnel.map((p) => {
+    if (!idSet.has(p.id)) return p;
+    const next = { ...p, ...patch, updatedAt: today };
+    updated.push(next);
+    return next;
+  });
+  write(personnel);
+  return updated;
+}
+
 export async function createPersonnel(data: Omit<PersonnelUser, "id">): Promise<PersonnelUser> {
   await delay();
   const newUser: PersonnelUser = {
