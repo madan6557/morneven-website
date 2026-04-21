@@ -31,13 +31,33 @@ import {
 } from "@/lib/pl";
 import logoColor from "@/assets/logo-color.png";
 
-const navItems = [
+interface NavItem {
+  title: string;
+  url: string;
+  icon: typeof Home;
+  // Visibility predicate; receives current PL + track + role.
+  // Default: visible to everyone.
+  visible?: (ctx: { role: string; level: PersonnelLevel; track: PersonnelTrack }) => boolean;
+}
+
+const navItems: NavItem[] = [
   { title: "Command Center", url: "/home", icon: Home },
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Gallery", url: "/gallery", icon: Image },
   { title: "Lore / Wiki", url: "/lore", icon: BookOpen },
   { title: "Maps", url: "/maps", icon: Map },
-  { title: "Author Panel", url: "/author", icon: Shield, authorOnly: true },
+  {
+    title: "Author Panel",
+    url: "/author",
+    icon: Shield,
+    visible: ({ role, level, track }) => role === "author" || canEnterAuthorPanel(level, track),
+  },
+  {
+    title: "Personnel",
+    url: "/personnel",
+    icon: Users,
+    visible: ({ level }) => canManagePersonnel(level),
+  },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
@@ -52,13 +72,17 @@ interface AppSidebarProps {
 export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { role, username, logout, personnelLevel, setPersonnelLevel } = useAuth();
+  const { role, username, logout, personnelLevel, track, setPersonnelLevel, setTrack } = useAuth();
   const isActive = (path: string) => location.pathname.startsWith(path);
 
-  const filteredNav = navItems.filter((item) => {
-    if (item.authorOnly && role !== "author") return false;
-    return true;
-  });
+  const filteredNav = navItems.filter((item) =>
+    item.visible ? item.visible({ role, level: personnelLevel, track }) : true,
+  );
+
+  // Authors can preview every tier including the hidden L7 (Full Authority).
+  // Everyone else stops at the public ladder (L0–L6).
+  const selectableLevels: PersonnelLevel[] =
+    role === "author" ? [...PERSONNEL_LEVELS, PL_FULL_AUTHORITY] : PERSONNEL_LEVELS;
 
   const handleLogout = () => {
     logout();
