@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { getCharacters, getPlaces, getTechnology, getCreatures, getOthers } from "@/services/api";
 import type { Character, Place, Technology, Creature, OtherLore } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Search, ArrowUpDown, ShieldAlert } from "lucide-react";
+import { Plus, Search, ArrowUpDown, ShieldAlert, ShieldCheck } from "lucide-react";
 import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 
-const tabs = ["Characters", "Places", "Technology", "Creatures", "Other"] as const;
+const tabs = ["Characters", "Places", "Technology", "Creatures", "Other", "Personnel"] as const;
 type SortOption = "name" | "name-desc";
 
 const dangerColor: Record<number, string> = {
@@ -19,6 +19,7 @@ const dangerColor: Record<number, string> = {
 
 export default function LorePage() {
   const { category } = useParams<{ category?: string }>();
+  const navigate = useNavigate();
   const [active, setActive] = useState<string>(category ? category.charAt(0).toUpperCase() + category.slice(1) : "Characters");
   const [characters, setCharacters] = useState<Character[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
@@ -93,10 +94,17 @@ export default function LorePage() {
           {tabs.map((t) => (
             <button
               key={t}
-              onClick={() => setActive(t)}
-              className={`w-full sm:w-auto px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-display tracking-[0.08em] sm:tracking-[0.1em] uppercase border rounded-sm transition-colors truncate
+              onClick={() => {
+                if (t === "Personnel") {
+                  navigate("/lore/personnel");
+                  return;
+                }
+                setActive(t);
+              }}
+              className={`w-full sm:w-auto px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-display tracking-[0.08em] sm:tracking-[0.1em] uppercase border rounded-sm transition-colors truncate inline-flex items-center justify-center gap-1
                 ${active === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}
             >
+              {t === "Personnel" && <ShieldCheck className="h-3 w-3" />}
               {t}
             </button>
           ))}
