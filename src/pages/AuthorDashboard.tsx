@@ -562,7 +562,7 @@ export default function AuthorDashboard() {
       )}
 
       {/* Command Center settings panel */}
-      {activeTab === "homepage" && (
+      {activeTab === "homepage" && canAccess("homepage") && (
         <div className="hud-border bg-card p-4 md:p-6 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase flex items-center gap-2">
