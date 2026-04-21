@@ -144,7 +144,7 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*" }:
 }
 
 export default function AuthorDashboard() {
-  const { role, personnelLevel, track } = useAuth();
+  const { role, username, personnelLevel, track } = useAuth();
   const [params] = useSearchParams();
   const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
     const tab = params.get("tab");
@@ -220,7 +220,7 @@ export default function AuthorDashboard() {
         <div className="hud-border bg-card p-8 text-center space-y-2">
           <p className="text-sm text-muted-foreground font-body">Access restricted.</p>
           <p className="text-xs text-muted-foreground font-body italic">
-            Author Panel requires an author account, L7 (Full Authority), or L6 with Executive / Field / Mechanic track.
+            Author Panel requires an author account, L7 (Full Authority), or L6 clearance.
           </p>
         </div>
       </div>
