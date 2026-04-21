@@ -12,6 +12,7 @@ import {
   LogOut,
   User,
   Map,
+  Users,
 } from "lucide-react";
 import {
   Tooltip,
@@ -19,7 +20,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/contexts/AuthContext";
-import { PERSONNEL_LEVELS, type PersonnelLevel } from "@/lib/pl";
+import {
+  PERSONNEL_LEVELS,
+  PERSONNEL_TRACKS,
+  PL_FULL_AUTHORITY,
+  canManagePersonnel,
+  canEnterAuthorPanel,
+  type PersonnelLevel,
+  type PersonnelTrack,
+} from "@/lib/pl";
 import logoColor from "@/assets/logo-color.png";
 
 const navItems = [

@@ -24,6 +24,7 @@ import OtherDetail from "./pages/OtherDetail";
 import MapPage from "./pages/MapPage";
 import PersonnelLevelPage from "./pages/PersonnelLevelPage";
 import AuthorDashboard from "./pages/AuthorDashboard";
+import PersonnelManagementPage from "./pages/PersonnelManagementPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
@@ -58,6 +59,7 @@ function App() {
                 <Route path="/lore/personnel" element={<PersonnelLevelPage />} />
                 <Route path="/maps" element={<MapPage />} />
                 <Route path="/author" element={<AuthorRoute><AuthorDashboard /></AuthorRoute>} />
+                <Route path="/personnel" element={<AuthorRoute><PersonnelManagementPage /></AuthorRoute>} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
