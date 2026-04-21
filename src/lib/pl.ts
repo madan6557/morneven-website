@@ -201,9 +201,11 @@ export interface SectionAccessOpts {
 
 // L7 = unrestricted. L6 access depends on track:
 //   • executive   → full author panel + comment moderation
-//   • field       → only Creatures (lore sub) + Map
-//   • mechanic    → only Technology (lore sub)
-//   • logistics   → no author-panel access
+//   • field       → only Lore (Creatures + Places) + Gallery (own uploads)
+//   • mechanic    → only Projects + Lore (Technology) + Gallery (own uploads)
+//   • logistics   → only Gallery (own uploads)
+// All L6 tracks may enter the panel via Gallery, but Gallery edits are
+// scoped per-item to the original uploader (enforced in the UI layer).
 // L0–L5 → no author panel access.
 export function canAccessAuthorPanel(opts: SectionAccessOpts): boolean {
   const { level, track, section, loreSub } = opts;
@@ -212,13 +214,17 @@ export function canAccessAuthorPanel(opts: SectionAccessOpts): boolean {
 
   if (track === "executive") return true;
 
+  // Gallery is the shared L6 surface — any L6 may enter and manage their
+  // own uploads. Per-item ownership gating happens in AuthorDashboard.
+  if (section === "gallery") return true;
+
   if (track === "field") {
-    if (section === "map") return true;
-    if (section === "lore" && loreSub === "creatures") return true;
+    if (section === "lore" && (loreSub === "creatures" || loreSub === "places")) return true;
     return false;
   }
 
   if (track === "mechanic") {
+    if (section === "projects") return true;
     if (section === "lore" && loreSub === "technology") return true;
     return false;
   }
@@ -227,8 +233,8 @@ export function canAccessAuthorPanel(opts: SectionAccessOpts): boolean {
 
 export function canEnterAuthorPanel(level: PersonnelLevel, track: PersonnelTrack): boolean {
   if (level >= PL_FULL_AUTHORITY) return true;
-  if (level < 6) return false;
-  return track !== "logistics";
+  // Any L6 may enter — Gallery is now available to all tracks.
+  return level >= 6;
 }
 
 export function canModerateDiscussions(level: PersonnelLevel, track: PersonnelTrack): boolean {
