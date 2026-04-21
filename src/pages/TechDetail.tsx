@@ -4,6 +4,7 @@ import { getTech } from "@/services/api";
 import type { Technology, DiscussionComment } from "@/types";
 import { ArrowLeft } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
+import RedactedBlock from "@/components/RedactedBlock";
 
 export default function TechDetail() {
   const { id } = useParams<{ id: string }>();
@@ -45,9 +46,7 @@ export default function TechDetail() {
         <div className="mecha-line" />
         <div className="max-w-3xl space-y-4">
           <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Technical Specifications</h2>
-          {tech.fullDesc.split("\n\n").map((para, i) => (
-            <p key={i} className="text-sm font-body text-foreground/80 leading-relaxed">{para}</p>
-          ))}
+          <RedactedBlock fullDesc={tech.fullDesc} paragraphClass="text-sm font-body text-foreground/80 leading-relaxed" />
         </div>
 
         {tech.docs.length > 0 && (

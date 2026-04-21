@@ -4,6 +4,7 @@ import { getOther } from "@/services/api";
 import type { OtherLore, DiscussionComment } from "@/types";
 import { ArrowLeft } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
+import RedactedBlock from "@/components/RedactedBlock";
 
 export default function OtherDetail() {
   const { id } = useParams<{ id: string }>();
@@ -39,9 +40,7 @@ export default function OtherDetail() {
       <div className="p-6 md:p-8 space-y-8">
         <div className="mecha-line" />
         <div className="max-w-3xl space-y-4">
-          {item.fullDesc.split("\n\n").map((para, i) => (
-            <p key={i} className="text-sm font-body text-foreground/80 leading-relaxed whitespace-pre-line">{para}</p>
-          ))}
+          <RedactedBlock fullDesc={item.fullDesc} />
         </div>
 
         {item.docs && item.docs.length > 0 && (

@@ -19,6 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/contexts/AuthContext";
+import { PERSONNEL_LEVELS, type PersonnelLevel } from "@/lib/pl";
 import logoColor from "@/assets/logo-color.png";
 
 const navItems = [
@@ -42,7 +43,7 @@ interface AppSidebarProps {
 export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { role, username, logout } = useAuth();
+  const { role, username, logout, personnelLevel, setPersonnelLevel } = useAuth();
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   const filteredNav = navItems.filter((item) => {
@@ -84,7 +85,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
 
       {/* User info */}
       {isExpanded && (
-        <div className="px-4 py-3 border-b border-border">
+        <div className="px-4 py-3 border-b border-border space-y-2">
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center">
               <User className="h-3.5 w-3.5 text-primary" />
@@ -93,6 +94,22 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
               <p className="text-xs font-heading text-foreground truncate">{username}</p>
               <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">{role}</p>
             </div>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor="pl-switch" className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+              Clearance
+            </label>
+            <select
+              id="pl-switch"
+              value={personnelLevel}
+              onChange={(e) => setPersonnelLevel(Number(e.target.value) as PersonnelLevel)}
+              className="text-[10px] font-display tracking-wider bg-card border border-border rounded-sm px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              aria-label="Personnel Level clearance switcher"
+            >
+              {PERSONNEL_LEVELS.map((l) => (
+                <option key={l} value={l}>L{l}</option>
+              ))}
+            </select>
           </div>
         </div>
       )}

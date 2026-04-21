@@ -4,6 +4,7 @@ import { getCreature } from "@/services/api";
 import type { Creature, DiscussionComment } from "@/types";
 import { ArrowLeft, ShieldAlert, FileText, MapPin, NotebookPen, ExternalLink } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
+import RedactedBlock from "@/components/RedactedBlock";
 import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -179,9 +180,7 @@ export default function CreatureDetail() {
               <p className="text-sm font-body text-foreground/90 italic border-l-2 pl-4" style={{ borderColor: accent }}>
                 {creature.shortDesc}
               </p>
-              {creature.fullDesc.split("\n\n").map((para, i) => (
-                <p key={i} className="text-sm font-body text-foreground/80 leading-relaxed whitespace-pre-line">{para}</p>
-              ))}
+              <RedactedBlock fullDesc={creature.fullDesc} />
             </div>
 
             {creature.docs && creature.docs.length > 0 && (
