@@ -6,6 +6,8 @@ import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, t
 import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon } from "lucide-react";
 import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
+import { canAccessAuthorPanel, canEnterAuthorPanel } from "@/lib/pl";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const dashTabs = ["projects", "lore", "gallery", "homepage", "map"] as const;
 const loreSubs = ["characters", "places", "technology", "creatures", "other"] as const;
@@ -142,13 +144,31 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*" }:
 }
 
 export default function AuthorDashboard() {
-  const { role } = useAuth();
+  const { role, personnelLevel, track } = useAuth();
   const [params] = useSearchParams();
   const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
     const tab = params.get("tab");
     return isDashboardTab(tab) ? tab : "projects";
   });
   const [loreSub, setLoreSub] = useState<LoreSub>("characters");
+
+  // Per-section access predicate (PL + track aware).
+  const canAccess = (section: DashboardTab, sub?: LoreSub) =>
+    role === "author" ||
+    canAccessAuthorPanel({ level: personnelLevel, track, section, loreSub: sub });
+
+  const tabAllowed = (t: DashboardTab) => {
+    if (role === "author") return true;
+    if (t === "lore") {
+      // Allow if any sub-section is reachable.
+      return loreSubs.some((s) => canAccessAuthorPanel({ level: personnelLevel, track, section: "lore", loreSub: s }));
+    }
+    return canAccessAuthorPanel({ level: personnelLevel, track, section: t });
+  };
+
+  const subAllowed = (s: LoreSub) =>
+    role === "author" ||
+    canAccessAuthorPanel({ level: personnelLevel, track, section: "lore", loreSub: s });
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -189,14 +209,19 @@ export default function AuthorDashboard() {
     setMapImageUrl(getMapImage());
   };
 
-  if (role !== "author") {
+  // Access gate: author role bypasses everything; otherwise PL+track must
+  // grant entry to at least one section.
+  const hasAnyAccess = role === "author" || canEnterAuthorPanel(personnelLevel, track);
+  if (!hasAnyAccess) {
     return (
       <div className="p-6 md:p-8 space-y-4">
         <h1 className="font-display text-2xl tracking-[0.1em] text-primary">AUTHOR PANEL</h1>
         <div className="mecha-line w-32" />
-        <div className="hud-border bg-card p-8 text-center">
-          <p className="text-sm text-muted-foreground font-body">Access restricted. Login with an author account to manage content.</p>
-          <p className="text-xs text-muted-foreground font-body mt-2 italic">Hint: Author access is available only for approved accounts (author@morneven.org or admin@morneven.org).</p>
+        <div className="hud-border bg-card p-8 text-center space-y-2">
+          <p className="text-sm text-muted-foreground font-body">Access restricted.</p>
+          <p className="text-xs text-muted-foreground font-body italic">
+            Author Panel requires an author account, L7 (Full Authority), or L6 with Executive / Field / Mechanic track.
+          </p>
         </div>
       </div>
     );
@@ -448,28 +473,77 @@ export default function AuthorDashboard() {
       <h1 className="font-display text-2xl tracking-[0.1em] text-primary">AUTHOR PANEL</h1>
       <div className="mecha-line w-32" />
 
-      {/* Tabs */}
+      {/* Tabs — disabled tabs render as locked with a tooltip explaining
+          the clearance gate (per L6 track scoping). */}
       <div className="flex flex-wrap gap-2">
-        {dashTabs.map((t) => (
-          <button key={t} onClick={() => { setActiveTab(t); setEditing(null); setIsCreating(false); }}
-            className={`px-3 md:px-4 py-1.5 text-xs font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${activeTab === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
-            {t === "homepage" ? "Command Center" : t}
-          </button>
-        ))}
+        {dashTabs.map((t) => {
+          const allowed = tabAllowed(t);
+          const button = (
+            <button
+              onClick={() => {
+                if (!allowed) return;
+                setActiveTab(t);
+                setEditing(null);
+                setIsCreating(false);
+              }}
+              disabled={!allowed}
+              className={`px-3 md:px-4 py-1.5 text-xs font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${
+                activeTab === t
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border text-muted-foreground hover:bg-muted"
+              } ${!allowed ? "opacity-40 cursor-not-allowed hover:bg-transparent" : ""}`}
+            >
+              {t === "homepage" ? "Command Center" : t}
+            </button>
+          );
+          if (allowed) return <div key={t}>{button}</div>;
+          return (
+            <Tooltip key={t} delayDuration={0}>
+              <TooltipTrigger asChild><span>{button}</span></TooltipTrigger>
+              <TooltipContent side="bottom" className="font-heading text-[10px] tracking-wider uppercase">
+                Locked · L7 or L6 Executive required
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
       </div>
 
       {activeTab === "lore" && (
         <div className="flex flex-wrap gap-2">
-          {loreSubs.map((s) => (
-            <button key={s} onClick={() => { setLoreSub(s); setEditing(null); setIsCreating(false); }}
-              className={`px-3 py-1 text-[10px] font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${loreSub === s ? "bg-secondary text-secondary-foreground border-secondary" : "border-border text-muted-foreground hover:bg-muted"}`}>
-              {s}
-            </button>
-          ))}
+          {loreSubs.map((s) => {
+            const allowed = subAllowed(s);
+            const button = (
+              <button
+                onClick={() => {
+                  if (!allowed) return;
+                  setLoreSub(s);
+                  setEditing(null);
+                  setIsCreating(false);
+                }}
+                disabled={!allowed}
+                className={`px-3 py-1 text-[10px] font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${
+                  loreSub === s
+                    ? "bg-secondary text-secondary-foreground border-secondary"
+                    : "border-border text-muted-foreground hover:bg-muted"
+                } ${!allowed ? "opacity-40 cursor-not-allowed hover:bg-transparent" : ""}`}
+              >
+                {s}
+              </button>
+            );
+            if (allowed) return <div key={s}>{button}</div>;
+            return (
+              <Tooltip key={s} delayDuration={0}>
+                <TooltipTrigger asChild><span>{button}</span></TooltipTrigger>
+                <TooltipContent side="bottom" className="font-heading text-[10px] tracking-wider uppercase">
+                  Locked · clearance/track mismatch
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
         </div>
       )}
 
-      {activeTab !== "homepage" && activeTab !== "map" && (
+      {activeTab !== "homepage" && activeTab !== "map" && canAccess(activeTab, loreSub) && (
         <div className="flex justify-end">
           <button onClick={startCreate} className="flex items-center gap-1 px-3 py-1.5 text-xs font-display tracking-wider text-primary-foreground bg-primary rounded-sm hover:opacity-90 transition-opacity">
             <Plus className="h-3 w-3" /> CREATE NEW
@@ -477,8 +551,18 @@ export default function AuthorDashboard() {
         </div>
       )}
 
+      {/* Locked-section banner when current tab/sub is not accessible. */}
+      {!canAccess(activeTab, loreSub) && (
+        <div className="hud-border bg-card p-6 text-center space-y-2">
+          <p className="text-sm font-heading tracking-wider uppercase text-destructive">Section Locked</p>
+          <p className="text-xs text-muted-foreground font-body italic">
+            Your clearance (L{personnelLevel} · {track}) does not grant write access to this section.
+          </p>
+        </div>
+      )}
+
       {/* Command Center settings panel */}
-      {activeTab === "homepage" && (
+      {activeTab === "homepage" && canAccess("homepage") && (
         <div className="hud-border bg-card p-4 md:p-6 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase flex items-center gap-2">
@@ -542,7 +626,7 @@ export default function AuthorDashboard() {
       )}
 
       {/* Edit Form */}
-      {editing && (
+      {editing && canAccess(activeTab, loreSub) && (
         <div className="hud-border bg-card p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase">
@@ -844,7 +928,7 @@ export default function AuthorDashboard() {
       )}
 
       {/* Map management */}
-      {isMap && (
+      {isMap && canAccess("map") && (
         <div className="hud-border bg-card p-4 md:p-6 space-y-5">
           <div className="flex items-center gap-2">
             <MapIcon className="h-4 w-4 text-accent-orange" />
@@ -913,7 +997,7 @@ export default function AuthorDashboard() {
       )}
 
       {/* Items List */}
-      {activeTab !== "homepage" && activeTab !== "map" && (
+      {activeTab !== "homepage" && activeTab !== "map" && canAccess(activeTab, loreSub) && (
         <div className="space-y-2">
           {getItems().map((item) => (
             <div key={item.id} className="hud-border-sm bg-card p-4 flex items-center justify-between gap-4">

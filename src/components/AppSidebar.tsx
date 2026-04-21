@@ -12,6 +12,7 @@ import {
   LogOut,
   User,
   Map,
+  Users,
 } from "lucide-react";
 import {
   Tooltip,
@@ -19,16 +20,44 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/contexts/AuthContext";
-import { PERSONNEL_LEVELS, type PersonnelLevel } from "@/lib/pl";
+import {
+  PERSONNEL_LEVELS,
+  PERSONNEL_TRACKS,
+  PL_FULL_AUTHORITY,
+  canManagePersonnel,
+  canEnterAuthorPanel,
+  type PersonnelLevel,
+  type PersonnelTrack,
+} from "@/lib/pl";
 import logoColor from "@/assets/logo-color.png";
 
-const navItems = [
+interface NavItem {
+  title: string;
+  url: string;
+  icon: typeof Home;
+  // Visibility predicate; receives current PL + track + role.
+  // Default: visible to everyone.
+  visible?: (ctx: { role: string; level: PersonnelLevel; track: PersonnelTrack }) => boolean;
+}
+
+const navItems: NavItem[] = [
   { title: "Command Center", url: "/home", icon: Home },
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Gallery", url: "/gallery", icon: Image },
   { title: "Lore / Wiki", url: "/lore", icon: BookOpen },
   { title: "Maps", url: "/maps", icon: Map },
-  { title: "Author Panel", url: "/author", icon: Shield, authorOnly: true },
+  {
+    title: "Author Panel",
+    url: "/author",
+    icon: Shield,
+    visible: ({ role, level, track }) => role === "author" || canEnterAuthorPanel(level, track),
+  },
+  {
+    title: "Personnel",
+    url: "/personnel",
+    icon: Users,
+    visible: ({ level }) => canManagePersonnel(level),
+  },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
@@ -43,13 +72,17 @@ interface AppSidebarProps {
 export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { role, username, logout, personnelLevel, setPersonnelLevel } = useAuth();
+  const { role, username, logout, personnelLevel, track, setPersonnelLevel, setTrack } = useAuth();
   const isActive = (path: string) => location.pathname.startsWith(path);
 
-  const filteredNav = navItems.filter((item) => {
-    if (item.authorOnly && role !== "author") return false;
-    return true;
-  });
+  const filteredNav = navItems.filter((item) =>
+    item.visible ? item.visible({ role, level: personnelLevel, track }) : true,
+  );
+
+  // Authors can preview every tier including the hidden L7 (Full Authority).
+  // Everyone else stops at the public ladder (L0–L6).
+  const selectableLevels: PersonnelLevel[] =
+    role === "author" ? [...PERSONNEL_LEVELS, PL_FULL_AUTHORITY] : PERSONNEL_LEVELS;
 
   const handleLogout = () => {
     logout();
@@ -106,8 +139,26 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
               className="text-[10px] font-display tracking-wider bg-card border border-border rounded-sm px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               aria-label="Personnel Level clearance switcher"
             >
-              {PERSONNEL_LEVELS.map((l) => (
-                <option key={l} value={l}>L{l}</option>
+              {selectableLevels.map((l) => (
+                <option key={l} value={l}>
+                  L{l}{l === PL_FULL_AUTHORITY ? " · Full" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor="track-switch" className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+              Track
+            </label>
+            <select
+              id="track-switch"
+              value={track}
+              onChange={(e) => setTrack(e.target.value as PersonnelTrack)}
+              className="text-[10px] font-display tracking-wider bg-card border border-border rounded-sm px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              aria-label="Personnel Track switcher"
+            >
+              {PERSONNEL_TRACKS.map((t) => (
+                <option key={t.key} value={t.key}>{t.short}</option>
               ))}
             </select>
           </div>
