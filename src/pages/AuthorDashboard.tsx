@@ -928,7 +928,7 @@ export default function AuthorDashboard() {
       )}
 
       {/* Map management */}
-      {isMap && (
+      {isMap && canAccess("map") && (
         <div className="hud-border bg-card p-4 md:p-6 space-y-5">
           <div className="flex items-center gap-2">
             <MapIcon className="h-4 w-4 text-accent-orange" />
