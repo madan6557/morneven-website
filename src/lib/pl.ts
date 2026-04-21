@@ -4,11 +4,16 @@
 
 import type { UserRole } from "@/types";
 
-export type PersonnelLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export type PersonnelLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export type PersonnelTrack = "executive" | "field" | "mechanic" | "logistics";
 
+// Public ladder — what users see in the matrix and clearance switcher.
 export const PERSONNEL_LEVELS: PersonnelLevel[] = [0, 1, 2, 3, 4, 5, 6];
+
+// Hidden top tier. Author-only. Never rendered in the public matrix or
+// the regular clearance switcher.
+export const PL_FULL_AUTHORITY: PersonnelLevel = 7;
 
 // Reading restricted lore content requires PL >= this.
 export const PL_RESTRICTED_THRESHOLD: PersonnelLevel = 3;
@@ -26,10 +31,18 @@ export const PL_RESTRICTED_CLOSE = "[/L3+]";
 const PL_OPEN_RE = /\[L([0-6])\+(?:\s+track=([a-zA-Z]+))?\]/;
 
 // Default PL per auth role — used when seeding the user's clearance.
+// Authors start at L7 (Full Authority); they can voluntarily downshift via
+// the clearance switcher to preview lower tiers.
 export const DEFAULT_PL_BY_ROLE: Record<UserRole, PersonnelLevel> = {
-  author: 6,
+  author: 7,
   viewer: 2,
   guest: 0,
+};
+
+export const DEFAULT_TRACK_BY_ROLE: Record<UserRole, PersonnelTrack> = {
+  author: "executive",
+  viewer: "executive",
+  guest: "executive",
 };
 
 export interface TrackTitles {

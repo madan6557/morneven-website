@@ -168,3 +168,18 @@ export interface MapMarker {
 }
 
 export type UserRole = "author" | "viewer" | "guest";
+
+// Managed personnel record — stored separately from auth identity so a future
+// backend can swap localStorage for a real users table without touching the UI.
+export interface PersonnelUser {
+  id: string;
+  username: string;
+  email: string;
+  role: UserRole;
+  // 0-7. Level 7 ("Full Authority") is reserved for the Author and is
+  // never exposed in the public clearance matrix.
+  level: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  track: "executive" | "field" | "mechanic" | "logistics";
+  note?: string;
+  updatedAt?: string;
+}
