@@ -6,6 +6,8 @@ import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, t
 import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon } from "lucide-react";
 import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
+import { canAccessAuthorPanel, canEnterAuthorPanel } from "@/lib/pl";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const dashTabs = ["projects", "lore", "gallery", "homepage", "map"] as const;
 const loreSubs = ["characters", "places", "technology", "creatures", "other"] as const;
@@ -142,13 +144,31 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*" }:
 }
 
 export default function AuthorDashboard() {
-  const { role } = useAuth();
+  const { role, personnelLevel, track } = useAuth();
   const [params] = useSearchParams();
   const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
     const tab = params.get("tab");
     return isDashboardTab(tab) ? tab : "projects";
   });
   const [loreSub, setLoreSub] = useState<LoreSub>("characters");
+
+  // Per-section access predicate (PL + track aware).
+  const canAccess = (section: DashboardTab, sub?: LoreSub) =>
+    role === "author" ||
+    canAccessAuthorPanel({ level: personnelLevel, track, section, loreSub: sub });
+
+  const tabAllowed = (t: DashboardTab) => {
+    if (role === "author") return true;
+    if (t === "lore") {
+      // Allow if any sub-section is reachable.
+      return loreSubs.some((s) => canAccessAuthorPanel({ level: personnelLevel, track, section: "lore", loreSub: s }));
+    }
+    return canAccessAuthorPanel({ level: personnelLevel, track, section: t });
+  };
+
+  const subAllowed = (s: LoreSub) =>
+    role === "author" ||
+    canAccessAuthorPanel({ level: personnelLevel, track, section: "lore", loreSub: s });
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
