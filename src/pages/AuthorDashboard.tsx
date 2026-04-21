@@ -163,6 +163,7 @@ export default function AuthorDashboard() {
   const [editing, setEditing] = useState<EditableState | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [ccSettings, setCcSettings] = useState<CommandCenterSettings>(() => getCommandCenterSettings());
+  const fullDescRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { loadAll(); }, []);
 
