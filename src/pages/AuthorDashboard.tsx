@@ -1020,7 +1020,11 @@ export default function AuthorDashboard() {
       {/* Items List */}
       {activeTab !== "homepage" && activeTab !== "map" && canAccess(activeTab, loreSub) && (
         <div className="space-y-2">
-          {getItems().map((item) => (
+          {getItems().map((item) => {
+            // For Gallery, gate edit/delete by per-item ownership.
+            const canModify =
+              activeTab !== "gallery" || canModifyGalleryItem(item as GalleryItem);
+            return (
             <div key={item.id} className="hud-border-sm bg-card p-4 flex items-center justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <h3 className="font-heading text-sm text-foreground truncate">{getItemTitle(item)}</h3>
@@ -1028,17 +1032,38 @@ export default function AuthorDashboard() {
                 {"status" in item && typeof (item as Project).status === "string" && <span className="text-[10px] font-display tracking-wider text-accent-orange uppercase">{(item as Project).status}</span>}
                 {"classification" in item && <span className="text-[10px] font-display tracking-wider text-accent-orange uppercase">{(item as Creature).classification} • DL-{(item as Creature).dangerLevel}</span>}
                 {"accentColor" in item && <span className="inline-block w-3 h-3 rounded-full ml-2 align-middle" style={{ backgroundColor: (item as { accentColor: string }).accentColor }} />}
+                {activeTab === "gallery" && (item as GalleryItem).uploadedBy && (
+                  <span className="ml-2 text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+                    · by {(item as GalleryItem).uploadedBy}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <button onClick={() => { setEditing({ ...item } as EditableState); setIsCreating(false); }} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
-                <button onClick={() => handleDelete(item.id, getItemTitle(item))} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                {canModify ? (
+                  <>
+                    <button onClick={() => { setEditing({ ...item } as EditableState); setIsCreating(false); }} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button onClick={() => handleDelete(item.id, getItemTitle(item))} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <Tooltip delayDuration={0}>
+                    <TooltipTrigger asChild>
+                      <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase opacity-60 cursor-not-allowed">
+                        Locked
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" className="font-heading text-[10px] tracking-wider uppercase">
+                      You can only modify gallery items you uploaded
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
