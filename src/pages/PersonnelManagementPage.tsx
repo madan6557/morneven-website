@@ -131,6 +131,65 @@ export default function PersonnelManagementPage() {
     setNewUser({ username: "", email: "", role: "viewer", level: 2, track: "executive", note: "" });
   };
 
+  // ─── Bulk selection helpers ────────────────────────────────────────────
+  const toggleSelected = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((p) => selected.has(p.id));
+  const someFilteredSelected =
+    filtered.some((p) => selected.has(p.id)) && !allFilteredSelected;
+
+  const toggleSelectAllFiltered = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        filtered.forEach((p) => next.delete(p.id));
+      } else {
+        filtered.forEach((p) => next.add(p.id));
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelected(new Set());
+
+  const applyBulk = async () => {
+    if (selected.size === 0) return;
+    if (bulkLevel === "" && bulkTrack === "") {
+      window.alert("Choose a new level and/or track to apply.");
+      return;
+    }
+    const patch: Partial<Pick<PersonnelUser, "level" | "track">> = {};
+    if (bulkLevel !== "") patch.level = bulkLevel;
+    if (bulkTrack !== "") patch.track = bulkTrack;
+
+    const ids = Array.from(selected);
+    const summary = [
+      bulkLevel !== "" ? `level → L${bulkLevel}` : null,
+      bulkTrack !== "" ? `track → ${PERSONNEL_TRACKS.find((t) => t.key === bulkTrack)?.label}` : null,
+    ].filter(Boolean).join(", ");
+    if (!window.confirm(`Apply ${summary} to ${ids.length} personnel record${ids.length === 1 ? "" : "s"}?`)) return;
+
+    setBulkSaving(true);
+    try {
+      const updated = await bulkUpdatePersonnel(ids, patch);
+      const updatedById = new Map(updated.map((u) => [u.id, u]));
+      setPeople((prev) => prev.map((p) => updatedById.get(p.id) ?? p));
+      clearSelection();
+      setBulkLevel("");
+      setBulkTrack("");
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-0">
       {/* Header */}
