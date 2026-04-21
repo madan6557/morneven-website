@@ -27,6 +27,15 @@
     "docs": []
   },
   {
+    "id": "other-005",
+    "title": "Personnel Level (PL) Clearance Matrix",
+    "category": "World Systems",
+    "thumbnail": "",
+    "shortDesc": "The L0–L6 access clearance scale used across Executive, Field, Mechanic, and Logistics divisions.",
+    "fullDesc": "The Personnel Level (PL) is the Morneven Institute's standardized access-clearance scale. It runs from L0 (lowest, external/guest) to L6 (highest, executive sovereign). PL governs facility access, intel visibility, and operational authority — it is NOT a social caste, salary band, or measure of personal worth. A senior technician (L5 Mechanic) and a Division Director (L5 Executive) hold equivalent clearance within their respective tracks.\n\nThe Institute recognizes four parallel career tracks, each with its own L0–L6 ladder:\n\n— EXECUTIVE (Governance & Command) —\nL6 — Board of Trustees\nL5 — Division Director\nL4 — Senior Manager\nL3 — Project Lead\nL2 — Associate\nL1 — Intern / Assistant\nL0 — Visiting VIP\n\n— FIELD PERSONNEL (Operations & Recon) —\nL6 — Global Operative\nL5 — Field Commander\nL4 — Squad Leader\nL3 — Specialist Agent\nL2 — Field Agent\nL1 — Trainee\nL0 — Consultant\n\n— MECHANIC / TECH (Engineering & Sciences) —\nL6 — Chief Architect\nL5 — Lead Systems Engineer\nL4 — Senior Technician\nL3 — Maintenance Lead\nL2 — Junior Mechanic\nL1 — Apprentice\nL0 — External Contractor\n\n— LOGISTICS (Supply & Distribution) —\nL6 — Supply Chain Sovereign\nL5 — Logistics Director\nL4 — Distribution Manager\nL3 — Warehouse Supervisor\nL2 — Fleet Operator\nL1 — Cargo Handler\nL0 — Delivery Vendor\n\n— ACCESS NOTES —\n• L0 personnel require continuous escort by L2+ staff inside any restricted zone.\n• L3 is the minimum clearance to read unredacted GEC dossiers.\n• L5 is required to authorize a Sector Purge or activate DL-4+ engagement protocols.\n• L6 clearance carries cross-track override authority but is never delegated.\n\nPL is reviewed annually. Promotion between tracks (e.g. Field → Executive) requires Board ratification and resets the candidate one level below their previous PL during transition.",
+    "docs": []
+  },
+  {
     "id": "other-003",
     "title": "The Gemosphere",
     "category": "Cosmology",
