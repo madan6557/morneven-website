@@ -150,17 +150,30 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
             <label htmlFor="track-switch" className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
               Track
             </label>
-            <select
-              id="track-switch"
-              value={track}
-              onChange={(e) => setTrack(e.target.value as PersonnelTrack)}
-              className="text-[10px] font-display tracking-wider bg-card border border-border rounded-sm px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              aria-label="Personnel Track switcher"
-            >
-              {PERSONNEL_TRACKS.map((t) => (
-                <option key={t.key} value={t.key}>{t.short}</option>
-              ))}
-            </select>
+            {personnelLevel >= PL_FULL_AUTHORITY ? (
+              <select
+                id="track-switch"
+                value={track}
+                onChange={(e) => setTrack(e.target.value as PersonnelTrack)}
+                className="text-[10px] font-display tracking-wider bg-card border border-border rounded-sm px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                aria-label="Personnel Track switcher"
+              >
+                {PERSONNEL_TRACKS.map((t) => (
+                  <option key={t.key} value={t.key}>{t.short}</option>
+                ))}
+              </select>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-[10px] font-display tracking-wider bg-muted border border-border/50 rounded-sm px-1.5 py-0.5 text-muted-foreground cursor-not-allowed">
+                    {PERSONNEL_TRACKS.find((t) => t.key === track)?.short}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="font-heading text-xs">
+                  Track assigned by Personnel Management
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
       )}
