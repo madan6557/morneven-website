@@ -172,6 +172,15 @@ export default function AuthorDashboard() {
     role === "author" ||
     canAccessAuthorPanel({ level: personnelLevel, track, section: "lore", loreSub: s });
 
+  // Gallery ownership gate. L7 / "author" role bypasses; everyone else
+  // (i.e. L6) may only modify items they uploaded themselves. Items with
+  // no uploader stamp (legacy seed data) are treated as author-owned.
+  const canModifyGalleryItem = (item: GalleryItem): boolean => {
+    if (role === "author" || personnelLevel >= 7) return true;
+    if (!item.uploadedBy) return false;
+    return item.uploadedBy === username;
+  };
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
@@ -393,7 +402,12 @@ export default function AuthorDashboard() {
       if (loreSub === "creatures") return creatures;
       return others;
     }
-    if (activeTab === "gallery") return gallery;
+    if (activeTab === "gallery") {
+      // L6 personnel only see their own uploads in the management list.
+      // L7 / author see everything.
+      if (role === "author" || personnelLevel >= 7) return gallery;
+      return gallery.filter((g) => g.uploadedBy === username);
+    }
     return [];
   };
 
