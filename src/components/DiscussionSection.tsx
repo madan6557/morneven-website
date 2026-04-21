@@ -1,23 +1,42 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import type { DiscussionComment } from "@/types";
-import { MessageSquare, Reply, Send } from "lucide-react";
+import { MessageSquare, Reply, Send, Pencil, Trash2, Check, X } from "lucide-react";
 
 interface Props {
   comments: DiscussionComment[];
   onAddComment: (author: string, text: string) => void;
   onAddReply: (commentId: string, author: string, text: string) => void;
+  onEditComment?: (commentId: string, text: string) => void;
+  onDeleteComment?: (commentId: string) => void;
+  onEditReply?: (commentId: string, replyId: string, text: string) => void;
+  onDeleteReply?: (commentId: string, replyId: string) => void;
   accentColor?: string;
 }
 
-export default function DiscussionSection({ comments, onAddComment, onAddReply, accentColor }: Props) {
+export default function DiscussionSection({
+  comments,
+  onAddComment,
+  onAddReply,
+  onEditComment,
+  onDeleteComment,
+  onEditReply,
+  onDeleteReply,
+  accentColor,
+}: Props) {
   const { role, username } = useAuth();
   const [newComment, setNewComment] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [editingComment, setEditingComment] = useState<string | null>(null);
+  const [editingReply, setEditingReply] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
 
   const authorName = username || (role === "guest" ? "Guest" : "User");
   const canComment = role !== "guest";
+  const isAuthor = role === "author";
+
+  const canModify = (commentAuthor: string) => isAuthor && commentAuthor === username;
 
   const handleSubmitComment = () => {
     if (!newComment.trim()) return;
@@ -30,6 +49,38 @@ export default function DiscussionSection({ comments, onAddComment, onAddReply, 
     onAddReply(commentId, authorName, replyText.trim());
     setReplyText("");
     setReplyTo(null);
+  };
+
+  const startEditComment = (id: string, currentText: string) => {
+    setEditingComment(id);
+    setEditingReply(null);
+    setEditText(currentText);
+  };
+
+  const startEditReply = (replyId: string, currentText: string) => {
+    setEditingReply(replyId);
+    setEditingComment(null);
+    setEditText(currentText);
+  };
+
+  const saveEditComment = (id: string) => {
+    if (!editText.trim() || !onEditComment) return;
+    onEditComment(id, editText.trim());
+    setEditingComment(null);
+    setEditText("");
+  };
+
+  const saveEditReply = (commentId: string, replyId: string) => {
+    if (!editText.trim() || !onEditReply) return;
+    onEditReply(commentId, replyId, editText.trim());
+    setEditingReply(null);
+    setEditText("");
+  };
+
+  const cancelEdit = () => {
+    setEditingComment(null);
+    setEditingReply(null);
+    setEditText("");
   };
 
   const accent = accentColor || "hsl(var(--primary))";
@@ -73,21 +124,106 @@ export default function DiscussionSection({ comments, onAddComment, onAddReply, 
         {comments.map((c) => (
           <div key={c.id} className="hud-border-sm bg-card p-4 space-y-2" style={{ borderColor: `${accent}20` }}>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-heading tracking-wider" style={{ color: accent }}>{c.author}</span>
-              <span className="text-[10px] text-muted-foreground font-body">{c.date}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-heading tracking-wider" style={{ color: accent }}>{c.author}</span>
+                <span className="text-[10px] text-muted-foreground font-body">{c.date}</span>
+              </div>
+              {canModify(c.author) && editingComment !== c.id && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => startEditComment(c.id, c.text)}
+                    className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                    title="Edit"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => onDeleteComment?.(c.id)}
+                    className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
             </div>
-            <p className="text-sm font-body text-foreground/80">{c.text}</p>
+
+            {editingComment === c.id ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveEditComment(c.id);
+                    if (e.key === "Escape") cancelEdit();
+                  }}
+                  className="flex-1 px-2 py-1 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  autoFocus
+                />
+                <button onClick={() => saveEditComment(c.id)} className="text-xs px-2 py-1 rounded-sm" style={{ backgroundColor: accent, color: "#fff" }} title="Save">
+                  <Check className="h-3 w-3" />
+                </button>
+                <button onClick={cancelEdit} className="text-xs text-muted-foreground px-2 py-1" title="Cancel">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm font-body text-foreground/80">{c.text}</p>
+            )}
 
             {/* Replies */}
             {c.replies.length > 0 && (
               <div className="ml-4 border-l-2 pl-3 space-y-2 mt-2" style={{ borderColor: `${accent}30` }}>
                 {c.replies.map((r) => (
                   <div key={r.id} className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-heading tracking-wider text-muted-foreground">{r.author}</span>
-                      <span className="text-[10px] text-muted-foreground/60 font-body">{r.date}</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-heading tracking-wider text-muted-foreground">{r.author}</span>
+                        <span className="text-[10px] text-muted-foreground/60 font-body">{r.date}</span>
+                      </div>
+                      {canModify(r.author) && editingReply !== r.id && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => startEditReply(r.id, r.text)}
+                            className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                            title="Edit"
+                          >
+                            <Pencil className="h-2.5 w-2.5" />
+                          </button>
+                          <button
+                            onClick={() => onDeleteReply?.(c.id, r.id)}
+                            className="p-0.5 text-muted-foreground hover:text-destructive transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-2.5 w-2.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-xs font-body text-foreground/70">{r.text}</p>
+                    {editingReply === r.id ? (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveEditReply(c.id, r.id);
+                            if (e.key === "Escape") cancelEdit();
+                          }}
+                          className="flex-1 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          autoFocus
+                        />
+                        <button onClick={() => saveEditReply(c.id, r.id)} className="text-xs px-2 py-1 rounded-sm" style={{ backgroundColor: accent, color: "#fff" }} title="Save">
+                          <Check className="h-3 w-3" />
+                        </button>
+                        <button onClick={cancelEdit} className="text-xs text-muted-foreground px-2 py-1" title="Cancel">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-xs font-body text-foreground/70">{r.text}</p>
+                    )}
                   </div>
                 ))}
               </div>
