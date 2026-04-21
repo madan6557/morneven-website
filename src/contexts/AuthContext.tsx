@@ -24,7 +24,7 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null);
 
 const AUTH_KEY = "auth_state"; // localStorage key
-const AUTHOR_ACCOUNTS = new Set(["author@morneven.org", "admin@morneven.org"]);
+const AUTHOR_ACCOUNTS = new Set(["author@morneven.com", "admin@morneven.com"]);
 
 interface SavedAuth {
   isAuthenticated: boolean;

@@ -119,9 +119,6 @@ export default function Auth() {
           </button>
         </p>
 
-        <p className="text-center text-[10px] text-muted-foreground/50 font-body italic">
-          Author access is reserved for approved accounts (author@morneven.org or admin@morneven.org)
-        </p>
       </motion.div>
     </div>
   );
