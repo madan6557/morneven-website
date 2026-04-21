@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { getProject } from "@/services/api";
 import type { Project } from "@/types";
 import { ArrowLeft, Calendar, Tag } from "lucide-react";
+import RedactedBlock from "@/components/RedactedBlock";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -51,9 +52,8 @@ export default function ProjectDetail() {
         {/* Description */}
         <div className="max-w-3xl space-y-4">
           <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Description</h2>
-          {project.fullDesc.split("\n\n").map((para, i) => (
-            <p key={i} className="text-sm font-body text-foreground/80 leading-relaxed">{para}</p>
-          ))}
+          <RedactedBlock fullDesc={project.fullDesc} />
+
         </div>
 
         {/* Patch Notes */}
