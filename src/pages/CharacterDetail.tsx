@@ -3,8 +3,9 @@ import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { getCharacter } from "@/services/api";
 import type { Character, DiscussionComment } from "@/types";
-import { ArrowLeft, Heart, Frown } from "lucide-react";
+import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function CharacterDetail() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +19,7 @@ export default function CharacterDetail() {
   if (!char) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
 
   const accentColor = char.accentColor;
+  const contributions = char.contributions ?? [];
 
   const handleAddComment = (author: string, text: string) => {
     setDiscussion((prev) => [...prev, { id: `dc-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0], replies: [] }]);
@@ -54,20 +56,25 @@ export default function CharacterDetail() {
       <div className="p-6 md:p-8 space-y-8">
         <div className="h-px w-full" style={{ background: `linear-gradient(to right, transparent, ${accentColor}50, transparent)` }} />
 
-        <div className="grid gap-8 lg:grid-cols-3">
-          {/* Left: Stats & Info */}
-          <div className="space-y-6">
-            <div className="hud-border bg-card p-5 space-y-4" style={{ borderColor: `${accentColor}30` }}>
-              <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accentColor }}>Profile Data</h3>
-              <div className="space-y-2 text-sm font-body">
-                <div className="flex justify-between"><span className="text-muted-foreground">Height</span><span className="text-foreground">{char.height}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Race</span><span className="text-foreground">{char.race}</span></div>
-                {char.occupation && (
-                  <div className="flex justify-between gap-2"><span className="text-muted-foreground">Occupation</span><span className="text-foreground text-right">{char.occupation}</span></div>
-                )}
-              </div>
-            </div>
+        {/* Quick-read profile strip */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: `${accentColor}30` }}>
+            <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Race</p>
+            <p className="text-sm font-body text-foreground">{char.race}</p>
+          </div>
+          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: `${accentColor}30` }}>
+            <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Height</p>
+            <p className="text-sm font-body text-foreground">{char.height}</p>
+          </div>
+          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: `${accentColor}30` }}>
+            <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Occupation</p>
+            <p className="text-sm font-body text-foreground">{char.occupation || "—"}</p>
+          </div>
+        </div>
 
+        <div className="grid gap-8 lg:grid-cols-3">
+          {/* Left: Stats & Info (always visible sidebar) */}
+          <div className="space-y-6">
             {/* Stats bars */}
             <div className="hud-border bg-card p-5 space-y-4" style={{ borderColor: `${accentColor}30` }}>
               <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accentColor }}>Combat Stats</h3>
@@ -127,58 +134,114 @@ export default function CharacterDetail() {
             </div>
           </div>
 
-          {/* Right: Description, Docs, Discussion */}
-          <div className="lg:col-span-2 space-y-8">
-            <div className="space-y-4">
-              <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Background</h2>
-              {char.fullDesc.split("\n\n").map((para, i) => (
-                <p key={i} className="text-sm font-body text-foreground/80 leading-relaxed">{para}</p>
-              ))}
-            </div>
+          {/* Right: Tabbed sections */}
+          <div className="lg:col-span-2">
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 sm:w-auto sm:inline-flex">
+                <TabsTrigger value="overview" className="text-[11px] font-heading tracking-wider uppercase">
+                  <FileText className="h-3 w-3 mr-1.5" /> Overview
+                </TabsTrigger>
+                <TabsTrigger value="background" className="text-[11px] font-heading tracking-wider uppercase">
+                  <BookOpen className="h-3 w-3 mr-1.5" /> Background
+                </TabsTrigger>
+                <TabsTrigger value="contributions" className="text-[11px] font-heading tracking-wider uppercase">
+                  <Award className="h-3 w-3 mr-1.5" /> Contributions
+                </TabsTrigger>
+                <TabsTrigger value="notes" className="text-[11px] font-heading tracking-wider uppercase">
+                  <NotebookPen className="h-3 w-3 mr-1.5" /> Notes
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Documentation */}
-            {char.docs && char.docs.length > 0 && (
-              <div className="space-y-4">
-                <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Documentation</h2>
-                <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-                  {char.docs.map((doc, i) => (
-                    <div key={i} className="hud-border-sm bg-card overflow-hidden" style={{ borderColor: `${accentColor}20` }}>
-                      {doc.type === "video" && doc.url ? (
-                        <div className="aspect-video bg-muted">
-                          <iframe
-                            src={doc.url}
-                            className="w-full h-full"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            title={`${char.name} Documentation`}
-                          />
-                        </div>
-                      ) : doc.type === "image" && doc.url ? (
-                        <div className="aspect-video bg-muted overflow-hidden">
-                          <img src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
-                        </div>
-                      ) : (
-                        <div className="aspect-video bg-muted flex items-center justify-center">
-                          <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : "IMAGE"}</span>
-                        </div>
-                      )}
-                      <div className="p-3">
-                        <p className="text-xs font-body text-muted-foreground">{doc.caption}</p>
-                      </div>
-                    </div>
+              {/* Overview */}
+              <TabsContent value="overview" className="mt-6 space-y-4">
+                <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Field Brief</h2>
+                <p className="text-sm font-body text-foreground/90 italic border-l-2 pl-4" style={{ borderColor: accentColor }}>
+                  {char.shortDesc}
+                </p>
+              </TabsContent>
+
+              {/* Background */}
+              <TabsContent value="background" className="mt-6 space-y-6">
+                <div className="space-y-4">
+                  <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Background</h2>
+                  {char.fullDesc.split("\n\n").map((para, i) => (
+                    <p key={i} className="text-sm font-body text-foreground/80 leading-relaxed">{para}</p>
                   ))}
                 </div>
-              </div>
-            )}
 
-            {/* Discussion */}
-            <div className="h-px w-full" style={{ background: `linear-gradient(to right, transparent, ${accentColor}30, transparent)` }} />
-            <DiscussionSection
-              comments={discussion}
-              onAddComment={handleAddComment}
-              onAddReply={handleAddReply}
-              accentColor={accentColor}
-            />
+                {/* Documentation */}
+                {char.docs && char.docs.length > 0 && (
+                  <div className="space-y-4">
+                    <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Documentation</h2>
+                    <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
+                      {char.docs.map((doc, i) => (
+                        <div key={i} className="hud-border-sm bg-card overflow-hidden" style={{ borderColor: `${accentColor}20` }}>
+                          {doc.type === "video" && doc.url ? (
+                            <div className="aspect-video bg-muted">
+                              <iframe
+                                src={doc.url}
+                                className="w-full h-full"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                title={`${char.name} Documentation`}
+                              />
+                            </div>
+                          ) : doc.type === "image" && doc.url ? (
+                            <div className="aspect-video bg-muted overflow-hidden">
+                              <img src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className="aspect-video bg-muted flex items-center justify-center">
+                              <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : "IMAGE"}</span>
+                            </div>
+                          )}
+                          <div className="p-3">
+                            <p className="text-xs font-body text-muted-foreground">{doc.caption}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Contributions */}
+              <TabsContent value="contributions" className="mt-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-heading text-lg tracking-wider text-foreground uppercase flex items-center gap-2">
+                    <Award className="h-4 w-4" style={{ color: accentColor }} /> Contributions
+                  </h2>
+                  <span className="text-xs text-muted-foreground font-body">{contributions.length} entr{contributions.length === 1 ? "y" : "ies"}</span>
+                </div>
+                {contributions.length === 0 ? (
+                  <div className="hud-border bg-card p-6 text-center" style={{ borderColor: `${accentColor}20` }}>
+                    <p className="text-sm font-body text-muted-foreground">No catalogued contributions on file.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {contributions.map((c) => (
+                      <div key={c.id} className="hud-border bg-card p-4 space-y-2" style={{ borderColor: `${accentColor}30` }}>
+                        <div className="flex items-start justify-between gap-3">
+                          <h3 className="font-heading text-sm tracking-wider text-foreground uppercase">{c.title}</h3>
+                          {c.date && <span className="text-[10px] font-display tracking-wider text-muted-foreground whitespace-nowrap">{c.date}</span>}
+                        </div>
+                        <p className="text-sm font-body text-foreground/80 leading-relaxed">{c.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Notes / Discussion */}
+              <TabsContent value="notes" className="mt-6 space-y-4">
+                <DiscussionSection
+                  comments={discussion}
+                  onAddComment={handleAddComment}
+                  onAddReply={handleAddReply}
+                  accentColor={accentColor}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>

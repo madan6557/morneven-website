@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getProjects, createProject, updateProject, deleteProject, getCharacters, createCharacter, updateCharacter, deleteCharacter, getPlaces, createPlace, updatePlace, deletePlace, getTechnology, createTech, updateTech, deleteTech, getGallery, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreatures, createCreature, updateCreature, deleteCreature, getOthers, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImage, setMapImage } from "@/services/api";
 import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, type CommandCenterSettings } from "@/services/commandCenterSettings";
-import type { Project, Character, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel } from "@/types";
+import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon } from "lucide-react";
 
 const dashTabs = ["projects", "lore", "gallery", "homepage", "map"] as const;
@@ -81,6 +81,8 @@ type EditableState = {
   classification?: CreatureClassification;
   dangerLevel?: CreatureDangerLevel;
   habitat?: string;
+  // Character
+  contributions?: CharacterContribution[];
 };
 
 const isDashboardTab = (value: string | null): value is DashboardTab => {
@@ -204,7 +206,7 @@ export default function AuthorDashboard() {
       setEditing({ title: "", status: "Planning", thumbnail: "", shortDesc: "", fullDesc: "", patches: [], docs: [] });
     } else if (activeTab === "lore") {
       if (loreSub === "characters") {
-        setEditing({ name: "", race: "", occupation: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 }, docs: [] });
+        setEditing({ name: "", race: "", occupation: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 }, docs: [], contributions: [] });
       } else if (loreSub === "places") {
         setEditing({ name: "", type: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
       } else if (loreSub === "technology") {
@@ -252,6 +254,7 @@ export default function AuthorDashboard() {
           fullDesc: editing.fullDesc ?? "",
           stats: editing.stats ?? { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 },
           docs: editing.docs ?? [],
+          contributions: editing.contributions ?? [],
         };
 
         if (isCreating) await createCharacter(payload);
@@ -384,6 +387,27 @@ export default function AuthorDashboard() {
     if (!editing) return;
     const docs = (editing.docs || []).filter((_, i: number) => i !== idx);
     setEditing({ ...editing, docs });
+  };
+
+  // Character contribution helpers
+  const addContribution = () => {
+    if (!editing) return;
+    const contributions: CharacterContribution[] = [
+      { id: `ctr-${Date.now()}`, title: "", description: "", date: todayStr() },
+      ...(editing.contributions || []),
+    ];
+    setEditing({ ...editing, contributions });
+  };
+  const updateContribution = (idx: number, field: keyof CharacterContribution, value: string) => {
+    if (!editing) return;
+    const contributions = [...(editing.contributions || [])];
+    contributions[idx] = { ...contributions[idx], [field]: value };
+    setEditing({ ...editing, contributions });
+  };
+  const removeContribution = (idx: number) => {
+    if (!editing) return;
+    const contributions = (editing.contributions || []).filter((_, i) => i !== idx);
+    setEditing({ ...editing, contributions });
   };
 
   // Patch management for projects:
@@ -741,6 +765,36 @@ export default function AuthorDashboard() {
                     <input type="text" value={doc.caption} onChange={(e) => updateDoc(idx, "caption", e.target.value)} placeholder="Caption" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                   </div>
                   <button onClick={() => removeDoc(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Contributions (characters) */}
+          {isCharacter && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className={labelClass}>Contributions</label>
+                <button onClick={addContribution} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors">
+                  <Plus className="h-3 w-3" /> ADD CONTRIBUTION
+                </button>
+              </div>
+              {(editing.contributions || []).length === 0 && (
+                <p className="text-[11px] font-body text-muted-foreground italic">No contributions yet. Use ADD CONTRIBUTION to log notable achievements, missions, or works.</p>
+              )}
+              {(editing.contributions || []).map((ctr, idx) => (
+                <div key={ctr.id} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <input type="text" value={ctr.title} onChange={(e) => updateContribution(idx, "title", e.target.value)} placeholder="Title (e.g. Operation Blacklight)" className="flex-1 min-w-[180px] px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                      <input type="date" value={ctr.date || ""} onChange={(e) => updateContribution(idx, "date", e.target.value)} className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+                      <button type="button" onClick={() => updateContribution(idx, "date", todayStr())} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors" title="Set to today">
+                        <Calendar className="h-3 w-3" /> TODAY
+                      </button>
+                    </div>
+                    <textarea value={ctr.description} onChange={(e) => updateContribution(idx, "description", e.target.value)} placeholder="Describe the contribution..." rows={2} className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground resize-y min-h-[60px]" />
+                  </div>
+                  <button onClick={() => removeContribution(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
                 </div>
               ))}
             </div>

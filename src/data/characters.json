@@ -31,7 +31,21 @@
       "endurance": 76
     },
     "docs": [],
-    "occupation": "Chief Tactician \u2014 Field Division"
+    "occupation": "Chief Tactician \u2014 Field Division",
+    "contributions": [
+      {
+        "id": "ctr-001",
+        "title": "Operation Blacklight",
+        "description": "Led the covert extraction of three Morneven analysts from the Voidborn-occupied sector. Zero casualties, full intel package recovered.",
+        "date": "2024-08-12"
+      },
+      {
+        "id": "ctr-002",
+        "title": "Shadow-step Combat Doctrine",
+        "description": "Authored the Institute's standing manual on shadow-step engagement protocols, now mandatory training for all Field Division operatives.",
+        "date": "2025-01-30"
+      }
+    ]
   },
   {
     "id": "char-002",
@@ -65,7 +79,21 @@
       "endurance": 60
     },
     "docs": [],
-    "occupation": "Director \u2014 Morneven Institute"
+    "occupation": "Director \u2014 Morneven Institute",
+    "contributions": [
+      {
+        "id": "ctr-003",
+        "title": "Founding Charter of Morneven",
+        "description": "Drafted and ratified the cross-species cooperation charter that established the Institute as a neutral research and defense body.",
+        "date": "2018-04-02"
+      },
+      {
+        "id": "ctr-004",
+        "title": "Crystal Resonance Lattice",
+        "description": "Personally designed the Institute's primary leyline-stabilization lattice, currently powering 70% of Morneven Central's anomaly containment grid.",
+        "date": "2022-11-19"
+      }
+    ]
   },
   {
     "id": "char-003",

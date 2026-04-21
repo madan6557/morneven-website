@@ -31,6 +31,13 @@ export interface CharacterStats {
   endurance: number;
 }
 
+export interface CharacterContribution {
+  id: string;
+  title: string;
+  description: string;
+  date?: string;
+}
+
 export interface Character {
   id: string;
   name: string;
@@ -46,6 +53,7 @@ export interface Character {
   fullDesc: string;
   stats: CharacterStats;
   docs: DocItem[];
+  contributions?: CharacterContribution[];
 }
 
 // Creature classification — Gemora Entropy Classification (GEC) Mark II
