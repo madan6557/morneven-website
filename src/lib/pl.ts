@@ -185,3 +185,57 @@ export function buildRestrictedMarkers(
 }
 
 export const PL_LORE_ID = "other-005";
+
+// ────────────────────────────────────────────────────────────────────────────
+// Author Panel section access
+// ────────────────────────────────────────────────────────────────────────────
+export type AuthorSection = "projects" | "lore" | "gallery" | "homepage" | "map";
+export type LoreSubSection = "characters" | "places" | "technology" | "creatures" | "other";
+
+export interface SectionAccessOpts {
+  level: PersonnelLevel;
+  track: PersonnelTrack;
+  section: AuthorSection;
+  loreSub?: LoreSubSection;
+}
+
+// L7 = unrestricted. L6 access depends on track:
+//   • executive   → full author panel + comment moderation
+//   • field       → only Creatures (lore sub) + Map
+//   • mechanic    → only Technology (lore sub)
+//   • logistics   → no author-panel access
+// L0–L5 → no author panel access.
+export function canAccessAuthorPanel(opts: SectionAccessOpts): boolean {
+  const { level, track, section, loreSub } = opts;
+  if (level >= PL_FULL_AUTHORITY) return true;
+  if (level < 6) return false;
+
+  if (track === "executive") return true;
+
+  if (track === "field") {
+    if (section === "map") return true;
+    if (section === "lore" && loreSub === "creatures") return true;
+    return false;
+  }
+
+  if (track === "mechanic") {
+    if (section === "lore" && loreSub === "technology") return true;
+    return false;
+  }
+  return false;
+}
+
+export function canEnterAuthorPanel(level: PersonnelLevel, track: PersonnelTrack): boolean {
+  if (level >= PL_FULL_AUTHORITY) return true;
+  if (level < 6) return false;
+  return track !== "logistics";
+}
+
+export function canModerateDiscussions(level: PersonnelLevel, track: PersonnelTrack): boolean {
+  if (level >= PL_FULL_AUTHORITY) return true;
+  return level >= 6 && track === "executive";
+}
+
+export function canManagePersonnel(level: PersonnelLevel): boolean {
+  return level >= PL_FULL_AUTHORITY;
+}
