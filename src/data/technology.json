@@ -83,4 +83,105 @@
     "fullDesc": "The FA-3 is the standing-issue field analyzer for Tactical Analysis doctrine. It scans Crystalline and Metamorphic entities at standoff range (up to 800 m) and produces a heatmap of probable Fracture Points overlaid on the operator's HUD.\n\nThe analyzer cannot identify Fracture Points on Singularity-class entities (none exist) or Catalyst-class entities (irrelevant — Catalysts are not engaged). It is therefore tuned exclusively to the two engagement-relevant classes. Updates are pushed monthly from Morneven Central based on field encounter logs.",
     "docs": []
   }
+    ,
+    {
+      "id": "tech-012",
+      "name": "RAIL-H100 Stormpiercer",
+      "category": "Kinetic Weapon",
+      "thumbnail": "",
+      "shortDesc": "20mm tungsten railgun capable of Mach 8 muzzle velocity.",
+      "fullDesc": "The RAIL-H100 'Stormpiercer' is a nose-mounted kinetic railgun installed on the ECLIPSE-class starfighter. It fires 20mm tungsten projectiles at Mach 8, designed to penetrate the skulls of Mega-Creatures from up to 15km before the sound of impact reaches the target. The weapon is concealed within the airframe for stealth and is powered by the AREX-V4 Aetherium Core.",
+      "docs": [
+        { "type": "image", "url": "", "caption": "Stormpiercer railgun schematic" }
+      ]
+    },
+    {
+      "id": "tech-013",
+      "name": "PL-G3 Neon Reaper Pulse Gun",
+      "category": "Plasma Weapon",
+      "thumbnail": "",
+      "shortDesc": "1200 RPM plasma pulse gun with cauterizing effect.",
+      "fullDesc": "The PL-G3 'Neon Reaper' is a rapid-fire plasma weapon mounted on the ECLIPSE. Firing at 1200 rounds per minute, it cauterizes tissue at the point of contact, preventing regenerative creatures from healing. The weapon is powered directly by the AREX-V4 Core and is effective against high-threat biological entities.",
+      "docs": [
+        { "type": "image", "url": "", "caption": "Neon Reaper pulse gun blueprint" }
+      ]
+    },
+    {
+      "id": "tech-014",
+      "name": "X-L4 Sol-Aether Laser Array",
+      "category": "Laser Weapon",
+      "thumbnail": "",
+      "shortDesc": "Continuous laser array for precision nerve and wing severance.",
+      "fullDesc": "The X-L4 'Sol-Aether' Laser Array is a continuous-emission laser system powered by the ECLIPSE's core. It is used for precision strikes against agile or evasive targets, capable of severing nerves or wings with minimal collateral damage.",
+      "docs": [
+        { "type": "image", "url": "", "caption": "Sol-Aether laser array schematic" }
+      ]
+    },
+    {
+      "id": "tech-015",
+      "name": "AGM-32 Goshawk Guided Missile",
+      "category": "Guided Missile",
+      "thumbnail": "",
+      "shortDesc": "Biological signature-tracking missile with electronic scent sensors.",
+      "fullDesc": "The AGM-32 'Goshawk' is a guided missile system that locks onto biological pheromones emitted by hostile creatures. It uses advanced electronic scent sensors to pursue targets based on emotional state, ensuring high hit probability against evasive threats.",
+      "docs": [
+        { "type": "image", "url": "", "caption": "Goshawk missile cutaway" }
+      ]
+    },
+    {
+      "id": "tech-016",
+      "name": "HS-16 Swarm Homing Missile",
+      "category": "Micro-Missile",
+      "thumbnail": "",
+      "shortDesc": "Sixteen-missile micro-pod for anti-parasite defense.",
+      "fullDesc": "The HS-16 'Swarm' is a micro-missile pod containing sixteen independently guided projectiles. Upon detonation, each missile disperses thousands of plasma-charged fragments, designed to neutralize swarms of parasitic entities.",
+      "docs": [
+        { "type": "image", "url": "", "caption": "Swarm missile pod schematic" }
+      ]
+    },
+    {
+      "id": "tech-017",
+      "name": "HX-01 Molten Javelin",
+      "category": "Special Weapon",
+      "thumbnail": "",
+      "shortDesc": "Drill-missile with molten core for internal destruction of mega-creatures.",
+      "fullDesc": "The HX-01 'Molten Javelin' is a unique finned missile that drills into a target and injects a 5000°C molten metal core, destroying the heart or energy core of mega-creatures from within. It is the ECLIPSE's ultimate anti-creature weapon, reserved for existential threats.",
+      "docs": [
+        { "type": "image", "url": "", "caption": "Molten Javelin cutaway" }
+      ]
+    }
+    ,
+    {
+      "id": "tech-009",
+      "name": "AREX-V4 Aetherium Core",
+      "category": "Power Plant",
+      "thumbnail": "",
+      "shortDesc": "High-density Aetherium reactor core powering the ECLIPSE-class starfighter.",
+      "fullDesc": "The AREX-V4 is a next-generation Aetherium-Reactionary EXchanger Core, designed to convert liquid Aetherium into Aether-Plasma through high-velocity particle collisions. This process yields immense thermal and electromagnetic energy, enabling anti-gravity output and atmospheric resonance shielding. The core is the heart of the ECLIPSE-class starfighter, supporting VTOL, stealth, and kinetic shielding capabilities. Its passive resonance field hardens surrounding air molecules, reducing heat friction at supersonic speeds.",
+      "docs": [
+        { "type": "image", "url": "", "caption": "AREX-V4 core schematic" }
+      ]
+    },
+    {
+      "id": "tech-010",
+      "name": "Integrated Litho Forge (ILF-Mobile)",
+      "category": "Fabrication System",
+      "thumbnail": "",
+      "shortDesc": "Molecular printer enabling real-time fabrication and self-repair for ECLIPSE.",
+      "fullDesc": "The Integrated Litho Forge (ILF-Mobile) is a molecular-level fabrication unit installed in the ECLIPSE-class starfighter. It prints railgun projectiles and missile components mid-flight using reactor waste heat. The Litho Forge also enables rapid self-repair by channeling Aether-Paste to damaged areas, hardening the material with precision lasers. The system can adapt armor composition based on environmental threats, ensuring optimal survivability in hostile zones.",
+      "docs": [
+        { "type": "image", "url": "", "caption": "Litho Forge fabrication process" }
+      ]
+    },
+    {
+      "id": "tech-011",
+      "name": "Authority Maneuver System (AMS)",
+      "category": "Flight Control",
+      "thumbnail": "",
+      "shortDesc": "Three-tiered flight control system manipulating local physics for advanced maneuvers.",
+      "fullDesc": "The Authority Maneuver System (AMS) is a revolutionary flight control suite for the ECLIPSE-class starfighter. It operates in three levels: Standard (aerodynamic surfaces), Tactical (vectoring thrusters and inertia dampening), and Null-Gravity (full anti-gravity control). AMS enables maneuvers such as instant stops, lateral strafing, and 180-degree rotations without altering flight path, crucial for evading high-speed predators on Gemora.",
+      "docs": [
+        { "type": "image", "url": "", "caption": "AMS control interface" }
+      ]
+    }
 ]
