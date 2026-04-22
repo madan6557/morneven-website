@@ -33,5 +33,47 @@
       { "type": "image", "url": "", "caption": "Bioluminescent forest canopy" },
       { "type": "image", "url": "", "caption": "Fae-touched elder council chamber" }
     ]
+  },
+  {
+    "id": "place-004",
+    "name": "Forbidden Sector 7",
+    "type": "Quarantine Zone",
+    "thumbnail": "",
+    "shortDesc": "The collapsed Jewerlian cathedral that hosts Annihilation Pattern Theta. Approach is sanctioned for no living personnel.",
+    "fullDesc": "Forbidden Sector 7 is the standing designation for the collapsed Jewerlian cathedral that contains Annihilation Pattern Theta. The sector perimeter is maintained by an automated counter-resonance bombardment system at a standing operational cost of twelve Institute operatives per quarter — the operators rotate, but the role is permanent.\n\n[L3+]Sector 7 is the Institute's single largest standing expenditure. Doctrine holds that any breach in the bombardment grid renders Gemora's eastern hemisphere uninhabitable within 72 hours. No living personnel are sanctioned to enter the inner ring under any clearance, including L7. The Stellar Pass is the only credential ever observed to have crossed the inner ring; its holder declined to comment on what she saw.[/L3+]",
+    "docs": [
+      { "type": "image", "url": "", "caption": "Sector 7 outer ring — counter-resonance grid" }
+    ]
+  },
+  {
+    "id": "place-005",
+    "name": "Logistics Bay 4 — 'The Pantry'",
+    "type": "Support Facility",
+    "thumbnail": "",
+    "shortDesc": "Morneven Central's primary cold-storage and distribution bay. Sola's most frequent unscheduled stop.",
+    "fullDesc": "Logistics Bay 4, known across the Institute as 'The Pantry,' is Morneven Central's primary cold-storage and distribution facility. It services every Citadel mess hall and every outpost supply rotation.\n\nIt is also Sola's single most frequent unscheduled visit. Bay personnel of every level — including the L0 vendor rotation — are instructed to maintain a sealed Secret box on their person at all times during shift, in accordance with the standing Negotiation Protocol. The Bay maintains an internal joke-but-serious dashboard tracking 'Days Since Last Sola Visit.' It rarely exceeds three.",
+    "docs": [
+      { "type": "image", "url": "", "caption": "Bay 4 distribution floor" }
+    ]
+  },
+  {
+    "id": "place-006",
+    "name": "Mechanic Bay 11 — 'The Playroom'",
+    "type": "Engineering Workshop",
+    "thumbnail": "",
+    "shortDesc": "Open-floor mecha assembly bay where in-progress frames are routinely 'inspected' by Sola.",
+    "fullDesc": "Mechanic Bay 11 is the open-floor assembly bay where Morneven's in-progress mecha frames spend their final integration phase. It is also where Sola most often drops in to play — climbing onto half-assembled cockpits, rerouting cables for fun, and occasionally completing a torque sequence that the assigned engineer had not yet started.\n\nBay 11 personnel of every level carry the standing Secret box. The Bay's internal style guide requires that no in-progress frame be left in a state where Sola's casual handling could trigger an unintended power-on event. Compliance with this rule is the single most enforced item in the workshop.",
+    "docs": [
+      { "type": "image", "url": "", "caption": "Bay 11 floor — frame integration line" }
+    ]
+  },
+  {
+    "id": "place-007",
+    "name": "The Stellar Anchor",
+    "type": "Orbital Platform",
+    "thumbnail": "",
+    "shortDesc": "Standing orbital platform that hosts Solar's Lens. Permanently uncrewed.",
+    "fullDesc": "The Stellar Anchor is the geostationary orbital platform that hosts Solar's Lens. It is the only Morneven facility designed to operate without a permanent human crew — all maintenance is performed by self-repairing automated systems, with on-site work performed by Sola personally on the rare occasions she chooses to.\n\n[L5+ track=field]The Anchor's orbital coordinates and station-keeping schedule are sealed under MOR-LEN-01. Approach by any vessel other than Sola's own transit is treated as a hostile act and is met with automated counter-resonance fire from the Anchor itself. The system has not been tested against an actual intruder. The Institute prefers to keep it that way.[/L5+]",
+    "docs": []
   }
 ]

@@ -32,5 +32,55 @@
     "docs": [
       { "type": "image", "url": "", "caption": "VAS-7 array installation" }
     ]
+  },
+  {
+    "id": "tech-004",
+    "name": "Solar's Lens",
+    "category": "Orbital Strike Apparatus",
+    "thumbnail": "",
+    "shortDesc": "Orbital adapter that channels and shapes a single qualified caster's output into a Gemosphere-safe planetside strike.",
+    "fullDesc": "Solar's Lens is the orbital focusing platform that delivered the Pillar of Light strike during the War of Light. It is not a weapon in the conventional sense — it generates no energy of its own. Its function is to accept the resonant output of one qualified caster, condition that output through layered Gemosphere-safe filtration, and deliver it as a coherent vertical beam onto a planetside target without rupturing the crystalline atmospheric layer.\n\nThe Lens has only ever been calibrated to one operator: Sola. No second operator has ever been certified, and no attempt has been made. No Jewerlian has ever been harmed by operating the Lens.\n\n[L5+ track=field]The Lens remains in standing orbit and has not been fired since the War of Light. Doctrine requires unanimous Board ratification and Sola's personal consent for any future authorization — neither has ever been requested in the modern era. Calibration logs and orbital coordinates are filed under MOR-LEN-01.[/L5+]",
+    "docs": [
+      { "type": "image", "url": "", "caption": "Solar's Lens — orbital silhouette schematic" },
+      { "type": "image", "url": "", "caption": "Filtration stack cross-section" }
+    ]
+  },
+  {
+    "id": "tech-005",
+    "name": "Stellar Pass Token",
+    "category": "Access Credential",
+    "thumbnail": "",
+    "shortDesc": "Single-issue unrestricted clearance token. Currently held by Sola.",
+    "fullDesc": "The Stellar Pass is the only access credential issued by the Morneven Institute that overrides every door, vault, and observation cordon — including Forbidden Sectors. It is not delegated, copied, revoked, or audited. It exists because attempting to deny its current holder access has, in field tests, produced a worse outcome than letting her in.\n\nOnly one Stellar Pass exists. It is currently held by Sola. Personnel encountering the Pass in active use are instructed to acknowledge it without challenge and resume duties.",
+    "docs": []
+  },
+  {
+    "id": "tech-006",
+    "name": "Triad Resonance Rig MK-VII",
+    "category": "Anti-Anomaly Equipment",
+    "thumbnail": "",
+    "shortDesc": "Three-emitter counter-resonance rig used to neutralize Hollow Choir and similar Metamorphic colonial entities.",
+    "fullDesc": "The MK-VII Triad Rig is the standing field solution for Metamorphic colonial entities whose Fracture Points require spatially distributed counter-resonance. It deploys three independent emitters in a triangular configuration, synchronizing their broadcast within a 14.7 kHz target band for sustained periods.\n\nThe rig is requisition-controlled at L3+ clearance because deployment below the three-emitter threshold has historically resulted in total operative loss. All field issuances are logged against the standing Hollow Choir engagement protocol.",
+    "docs": [
+      { "type": "image", "url": "", "caption": "MK-VII emitter triad — deployment configuration" }
+    ]
+  },
+  {
+    "id": "tech-007",
+    "name": "Violet Veil Comm Mesh",
+    "category": "Communication Network",
+    "thumbnail": "",
+    "shortDesc": "Gemosphere-piggybacked comms mesh that uses violet-dawn refraction events as a daily signal floor.",
+    "fullDesc": "The Violet Veil is the Institute's primary low-bandwidth communications backbone outside the Citadel grid. It piggybacks on the daily violet-dawn refraction event in the Gemosphere to maintain a planet-wide signal floor that cannot be jammed by terrestrial means.\n\nThroughput is modest — text and short audio only — but coverage is total. Every Morneven outpost from the Verdant Hollows to the Forbidden Sectors maintains at least one Veil terminal. The protocol is the standing fallback when conventional comms degrade.",
+    "docs": []
+  },
+  {
+    "id": "tech-008",
+    "name": "Fracture-Point Analyzer FA-3",
+    "category": "Field Analysis",
+    "thumbnail": "",
+    "shortDesc": "Handheld scanner that identifies Fracture Points on Crystalline and Metamorphic entities at standoff range.",
+    "fullDesc": "The FA-3 is the standing-issue field analyzer for Tactical Analysis doctrine. It scans Crystalline and Metamorphic entities at standoff range (up to 800 m) and produces a heatmap of probable Fracture Points overlaid on the operator's HUD.\n\nThe analyzer cannot identify Fracture Points on Singularity-class entities (none exist) or Catalyst-class entities (irrelevant — Catalysts are not engaged). It is therefore tuned exclusively to the two engagement-relevant classes. Updates are pushed monthly from Morneven Central based on field encounter logs.",
+    "docs": []
   }
 ]

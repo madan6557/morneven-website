@@ -4,47 +4,19 @@
     "name": "Kael Vorthane",
     "race": "Demi-human (Shadow-kin)",
     "height": "186 cm",
-    "traits": [
-      "Strategist",
-      "Cold-blooded",
-      "Loyal"
-    ],
-    "likes": [
-      "Silence",
-      "Ancient texts",
-      "Black tea"
-    ],
-    "dislikes": [
-      "Incompetence",
-      "Crowds",
-      "Bright light"
-    ],
+    "traits": ["Strategist", "Cold-blooded", "Loyal"],
+    "likes": ["Silence", "Ancient texts", "Black tea"],
+    "dislikes": ["Incompetence", "Crowds", "Bright light"],
     "accentColor": "#4A90D9",
     "thumbnail": "",
     "shortDesc": "Shadow Operative and Chief Tactician of Morneven Institute's Field Division.",
     "fullDesc": "Kael Vorthane is a Shadow-kin Demi-human who serves as the primary field operative and tactical advisor for Morneven Institute. Born in the Underdark Territories, he was recruited at age 16 after single-handedly neutralizing a Voidborn scouting party.\n\nHis Shadow-kin heritage grants him enhanced night vision, shadow-step capabilities, and an innate resistance to psychic intrusion. Despite his cold exterior, Kael is fiercely loyal to Director Elynra and the Institute's mission.\n\n[L3+]Sealed dossier: Kael's recruitment file documents three deniable operations conducted prior to formal enlistment, including the Vael-Tarn extraction (acknowledged casualties: 0; unacknowledged: 11). His shadow-step ceiling is currently rated at 42 m unassisted, with rig-augmented reach to 110 m. Standing kill-list authorization extends to all DL-4 entities without prior Director approval.[/L3+]",
-    "stats": {
-      "combat": 92,
-      "intelligence": 88,
-      "stealth": 97,
-      "charisma": 45,
-      "endurance": 76
-    },
+    "stats": { "combat": 92, "intelligence": 88, "stealth": 97, "charisma": 45, "endurance": 76 },
     "docs": [],
-    "occupation": "Chief Tactician \u2014 Field Division",
+    "occupation": "Chief Tactician — Field Division",
     "contributions": [
-      {
-        "id": "ctr-001",
-        "title": "Operation Blacklight",
-        "description": "Led the covert extraction of three Morneven analysts from the Voidborn-occupied sector. Zero casualties, full intel package recovered.",
-        "date": "2024-08-12"
-      },
-      {
-        "id": "ctr-002",
-        "title": "Shadow-step Combat Doctrine",
-        "description": "Authored the Institute's standing manual on shadow-step engagement protocols, now mandatory training for all Field Division operatives.",
-        "date": "2025-01-30"
-      }
+      { "id": "ctr-001", "title": "Operation Blacklight", "description": "Led the covert extraction of three Morneven analysts from the Voidborn-occupied sector. Zero casualties, full intel package recovered.", "date": "2024-08-12" },
+      { "id": "ctr-002", "title": "Shadow-step Combat Doctrine", "description": "Authored the Institute's standing manual on shadow-step engagement protocols, now mandatory training for all Field Division operatives.", "date": "2025-01-30" }
     ]
   },
   {
@@ -52,47 +24,19 @@
     "name": "Elynra Moonveil",
     "race": "Jewerlian",
     "height": "172 cm",
-    "traits": [
-      "Visionary",
-      "Compassionate",
-      "Unyielding"
-    ],
-    "likes": [
-      "Crystal harmonics",
-      "Stargazing",
-      "Diplomatic discussions"
-    ],
-    "dislikes": [
-      "Violence",
-      "Deception",
-      "Waste of resources"
-    ],
+    "traits": ["Visionary", "Compassionate", "Unyielding"],
+    "likes": ["Crystal harmonics", "Stargazing", "Diplomatic discussions"],
+    "dislikes": ["Violence", "Deception", "Waste of resources"],
     "accentColor": "#9B59B6",
     "thumbnail": "",
     "shortDesc": "Director of Morneven Institute. A Jewerlian leader guiding cross-species cooperation.",
     "fullDesc": "Director Elynra Moonveil is the founding leader of Morneven Institute and one of the most influential Jewerlians of her generation. She established the Institute with the vision of uniting Jewerlians, Humans, and Demi-humans under a shared pursuit of knowledge and peace.\n\nHer mastery of crystal resonance technology is unparalleled, and she personally oversees the most sensitive research projects. Under her leadership, Morneven has become a beacon of hope in a world still scarred by the apocalypse.",
-    "stats": {
-      "combat": 35,
-      "intelligence": 98,
-      "stealth": 30,
-      "charisma": 95,
-      "endurance": 60
-    },
+    "stats": { "combat": 35, "intelligence": 98, "stealth": 30, "charisma": 95, "endurance": 60 },
     "docs": [],
-    "occupation": "Director \u2014 Morneven Institute",
+    "occupation": "Director — Morneven Institute",
     "contributions": [
-      {
-        "id": "ctr-003",
-        "title": "Founding Charter of Morneven",
-        "description": "Drafted and ratified the cross-species cooperation charter that established the Institute as a neutral research and defense body.",
-        "date": "2018-04-02"
-      },
-      {
-        "id": "ctr-004",
-        "title": "Crystal Resonance Lattice",
-        "description": "Personally designed the Institute's primary leyline-stabilization lattice, currently powering 70% of Morneven Central's anomaly containment grid.",
-        "date": "2022-11-19"
-      }
+      { "id": "ctr-003", "title": "Founding Charter of Morneven", "description": "Drafted and ratified the cross-species cooperation charter that established the Institute as a neutral research and defense body.", "date": "2018-04-02" },
+      { "id": "ctr-004", "title": "Crystal Resonance Lattice", "description": "Personally designed the Institute's primary leyline-stabilization lattice, currently powering 70% of Morneven Central's anomaly containment grid.", "date": "2022-11-19" }
     ]
   },
   {
@@ -100,67 +44,51 @@
     "name": "Rex Ashford",
     "race": "Human",
     "height": "180 cm",
-    "traits": [
-      "Reckless",
-      "Inventive",
-      "Humorous"
-    ],
-    "likes": [
-      "Explosions",
-      "Tinkering",
-      "Spicy food"
-    ],
-    "dislikes": [
-      "Bureaucracy",
-      "Sitting still",
-      "Formal events"
-    ],
+    "traits": ["Reckless", "Inventive", "Humorous"],
+    "likes": ["Explosions", "Tinkering", "Spicy food"],
+    "dislikes": ["Bureaucracy", "Sitting still", "Formal events"],
     "accentColor": "#E67E22",
     "thumbnail": "",
     "shortDesc": "Lead Engineer and head of Morneven's R&D Weapons Division.",
     "fullDesc": "Rex Ashford is a human engineer whose genius is matched only by his disregard for safety protocols. He heads the Research & Development Weapons Division at Morneven Institute, responsible for developing defensive technologies against Voidborn threats.\n\nDespite numerous lab incidents (17 at last count), his innovations have saved countless lives. His signature creation, the 'Ashford Repeater,' is standard issue for all Institute field operatives.",
-    "stats": {
-      "combat": 65,
-      "intelligence": 91,
-      "stealth": 20,
-      "charisma": 78,
-      "endurance": 70
-    },
+    "stats": { "combat": 65, "intelligence": 91, "stealth": 20, "charisma": 78, "endurance": 70 },
     "docs": [],
-    "occupation": "Lead Engineer \u2014 R&D Weapons"
+    "occupation": "Lead Engineer — R&D Weapons"
   },
   {
     "id": "char-004",
     "name": "Lyra Fenwick",
     "race": "Demi-human (Fae-touched)",
     "height": "160 cm",
-    "traits": [
-      "Empathic",
-      "Mysterious",
-      "Fierce"
-    ],
-    "likes": [
-      "Nature",
-      "Music",
-      "Healing"
-    ],
-    "dislikes": [
-      "Cruelty",
-      "Iron",
-      "Loud machinery"
-    ],
+    "traits": ["Empathic", "Mysterious", "Fierce"],
+    "likes": ["Nature", "Music", "Healing"],
+    "dislikes": ["Cruelty", "Iron", "Loud machinery"],
     "accentColor": "#2ECC71",
     "thumbnail": "",
     "shortDesc": "Chief Medical Officer and leyline healer stationed at Morneven Central.",
-    "fullDesc": "Lyra Fenwick is a Fae-touched Demi-human who serves as the Chief Medical Officer of Morneven Institute. Her Fae heritage gives her an extraordinary connection to natural leyline energies, which she channels for healing purposes.\n\nShe can sense emotional states and physical ailments through touch, making her diagnostic abilities unmatched. However, prolonged exposure to heavy machinery and refined metals causes her significant discomfort \u2014 a common Fae-touched sensitivity.",
-    "stats": {
-      "combat": 30,
-      "intelligence": 85,
-      "stealth": 55,
-      "charisma": 90,
-      "endurance": 50
-    },
+    "fullDesc": "Lyra Fenwick is a Fae-touched Demi-human who serves as the Chief Medical Officer of Morneven Institute. Her Fae heritage gives her an extraordinary connection to natural leyline energies, which she channels for healing purposes.\n\nShe can sense emotional states and physical ailments through touch, making her diagnostic abilities unmatched. However, prolonged exposure to heavy machinery and refined metals causes her significant discomfort — a common Fae-touched sensitivity.",
+    "stats": { "combat": 30, "intelligence": 85, "stealth": 55, "charisma": 90, "endurance": 50 },
     "docs": [],
     "occupation": "Chief Medical Officer"
+  },
+  {
+    "id": "char-005",
+    "name": "Sola",
+    "race": "Jewerlian",
+    "height": "Recorded variously at 168–171 cm; she does not stand still long enough to confirm.",
+    "traits": ["Unstoppable", "Playful", "Decisive when it matters"],
+    "likes": ["Fried chicken drumsticks", "Logistics break rooms", "Half-assembled mecha"],
+    "dislikes": ["Being told no", "Being told yes too quickly", "Empty snack boxes"],
+    "accentColor": "#F5A524",
+    "thumbnail": "/src/assets/sola.png",
+    "shortDesc": "Sole holder of the Stellar Pass and the only certified operator of Solar's Lens. Officially reports to no one.",
+    "fullDesc": "Sola is the strongest Jewerlian on record and the de facto leader of her kind — a status that exists by behavior rather than by appointment. Other Jewerlians make their own choices, but whenever Sola moves with intent, they move with her. The Morneven Archive Corps logs this as a phenomenon, not a hierarchy.\n\nShe holds the Stellar Pass, an unrestricted clearance token that overrides every door, vault, and observation cordon in every Morneven facility. She uses it almost exclusively to wander into Logistics for snacks and into Mechanic bays to play with whatever is currently being assembled. The Institute treats this as standard ambient activity.\n\nSola is functionally unstoppable — no catalogued weapon, restraint, or anomaly has produced a measurable effect on her. She can, however, be negotiated with: a small sealed box of fried chicken drumsticks (referred to internally as 'the Secret') will redirect her attention reliably. Standing carriers are L1 and L2 personnel across all tracks; L3 covers on rotation; Logistics and Mechanic personnel of every level carry one at all times during shift.\n\nHer default mode is fooling around. The single recognized exception — Field Doctrine designation 'Step-Forward Signal' — is when Sola physically steps forward toward a developing situation. She has never done so on a problem that was survivable by conventional means. Any operative who witnesses it is to broadcast Code Aurora and clear the engagement zone.\n\n[L5+ track=field]Sola is the sole certified operator of Solar's Lens, the orbital adapter that delivered the Pillar of Light during the War of Light. No second operator has ever been certified, and no attempt has been made — doctrine holds that the question is neither necessary nor obviously answerable. The Lens has not been fired since.[/L5+]",
+    "stats": { "combat": 100, "intelligence": 88, "stealth": 40, "charisma": 96, "endurance": 100 },
+    "docs": [],
+    "occupation": "Stellar Pass Holder · Operator of Solar's Lens",
+    "contributions": [
+      { "id": "ctr-005", "title": "The Pillar of Light", "description": "Sole caster of the Pillar of Light strike, delivered through Solar's Lens. Ended the War of Light in a single sustained beat. No Jewerlian harmed in operation.", "date": "Year of the War of Light" },
+      { "id": "ctr-006", "title": "Stellar Pass Charter", "description": "Subject and sole holder of the Institute's only unrestricted clearance token. Charter ratified unanimously and never amended.", "date": "Founding Era" }
+    ]
   }
 ]
