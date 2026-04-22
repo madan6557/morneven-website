@@ -7,6 +7,7 @@
     "caption": "Official character concept art for Kael Vorthane, Shadow Operative. Featuring his signature dark armor and dual-blade configuration.",
     "tags": ["character", "concept-art", "kael"],
     "date": "2026-04-12",
+    "uploadedBy": "author",
     "comments": [
       { "id": "c1", "author": "ArtFan42", "text": "The shadow effects on the armor are incredible!", "date": "2026-04-12", "replies": [
         { "id": "r1", "author": "Author", "text": "Thank you! I used a layered transparency technique for that.", "date": "2026-04-12" }
@@ -22,6 +23,7 @@
     "caption": "Panoramic view of the Iron Citadel at sunset, showing the Spire of Echoes and the surrounding crystal-reinforced walls.",
     "tags": ["environment", "citadel", "concept-art"],
     "date": "2026-04-08",
+    "uploadedBy": "author",
     "comments": [
       { "id": "c3", "author": "WorldBuilder", "text": "The scale of this is breathtaking. How large is it supposed to be?", "date": "2026-04-09", "replies": [
         { "id": "r2", "author": "Author", "text": "The Citadel spans roughly 12km in diameter. The Spire itself is about 800m tall.", "date": "2026-04-09" }
@@ -37,6 +39,7 @@
     "caption": "A brief teaser showcasing the world of Gemora, its landscapes, and the civilizations that inhabit it.",
     "tags": ["world", "teaser", "animation"],
     "date": "2026-03-30",
+    "uploadedBy": "author",
     "comments": [
       { "id": "c4", "author": "GemoraFan", "text": "Can't wait for the full series! The worldbuilding is top-tier.", "date": "2026-03-31", "replies": [] }
     ]
@@ -49,6 +52,7 @@
     "caption": "Official portrait of Director Elynra Moonveil in her ceremonial Jewerlian robes, with the Morneven Institute emblem visible.",
     "tags": ["character", "portrait", "elynra"],
     "date": "2026-03-25",
+    "uploadedBy": "author",
     "comments": []
   },
   {
@@ -59,6 +63,7 @@
     "caption": "Technical illustration of the Ashford Repeater energy weapon, showing internal Worldshard crystal mechanism.",
     "tags": ["technology", "weapon", "blueprint"],
     "date": "2026-03-18",
+    "uploadedBy": "author",
     "comments": []
   },
   {
@@ -70,6 +75,7 @@
     "caption": "360-degree character turnaround animation for Rex Ashford, Lead Engineer.",
     "tags": ["character", "animation", "rex"],
     "date": "2026-03-10",
+    "uploadedBy": "author",
     "comments": []
   },
   {
@@ -80,6 +86,7 @@
     "caption": "The bioluminescent trees of Verdant Hollows glowing under Gemora's twin moons.",
     "tags": ["environment", "night", "forest"],
     "date": "2026-03-05",
+    "uploadedBy": "author",
     "comments": []
   },
   {
@@ -90,6 +97,7 @@
     "caption": "Close-up render of the Nexus Drive's core crystal array during activation sequence.",
     "tags": ["technology", "render", "nexus"],
     "date": "2026-02-28",
+    "uploadedBy": "author",
     "comments": []
   },
   {
