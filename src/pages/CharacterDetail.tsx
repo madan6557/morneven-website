@@ -154,7 +154,7 @@ export default function CharacterDetail() {
           {/* Right: Tabbed sections */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 sm:w-auto sm:inline-flex">
+              <TabsList className="grid w-full grid-cols-2 gap-1 h-auto sm:h-10 sm:grid-cols-4 sm:w-auto sm:inline-flex sm:gap-0">
                 <TabsTrigger value="overview" className="text-[11px] font-heading tracking-wider uppercase">
                   <FileText className="h-3 w-3 mr-1.5" /> Overview
                 </TabsTrigger>
