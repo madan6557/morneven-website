@@ -91,5 +91,19 @@
     "tags": ["technology", "render", "nexus"],
     "date": "2026-02-28",
     "comments": []
+  },
+  {
+    "id": "gal-009",
+    "type": "image",
+    "title": "Sola — Stellar Pass Holder",
+    "thumbnail": "/src/assets/sola.png",
+    "caption": "Sola, sole holder of the Stellar Pass and only certified operator of Solar's Lens. Photographed mid-stride during a routine Pantry visit. Note the relaxed posture — this is not the Step-Forward Signal.",
+    "tags": ["character", "jewerlian", "sola", "portrait"],
+    "date": "2026-04-22",
+    "uploadedBy": "author",
+    "comments": [
+      { "id": "c5", "author": "h.kato", "text": "Confirming sighting — she cleared three Secret boxes that afternoon. Pantry stocks holding.", "date": "2026-04-22", "replies": [] },
+      { "id": "c6", "author": "j.huang", "text": "She rerouted half a cooling loop on the MK-IV frame and then left. It actually worked better.", "date": "2026-04-22", "replies": [] }
+    ]
   }
 ]
