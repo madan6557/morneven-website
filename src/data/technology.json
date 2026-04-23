@@ -51,7 +51,7 @@
     "category": "Access Credential",
     "thumbnail": "",
     "shortDesc": "Single-issue unrestricted clearance token. Currently held by Sola.",
-    "fullDesc": "The Stellar Pass is the only access credential issued by the Morneven Institute that overrides every door, vault, and observation cordon — including Forbidden Sectors. It is not delegated, copied, revoked, or audited. It exists because attempting to deny its current holder access has, in field tests, produced a worse outcome than letting her in.\n\nOnly one Stellar Pass exists. It is currently held by Sola. Personnel encountering the Pass in active use are instructed to acknowledge it without challenge and resume duties.",
+    "fullDesc": "The Stellar Pass is the only fully-unrestricted access credential issued by the Morneven Institute. It overrides every door, vault, and observation cordon — including Forbidden Sectors. It is not delegated, copied, revoked, or audited. It exists because attempting to deny its current holder access has, in field tests, produced a worse outcome than letting her in.\n\nOnly one Stellar Pass exists. It is currently held by Sola. Personnel encountering the Pass in active use are instructed to acknowledge it without challenge and resume duties.\n\nA single companion credential — the Stellar Companion pass — is issued separately to Sora. The Companion pass is not the Stellar Pass; it is a paired credential that mirrors most of the Pass's facility access but is logged independently.",
     "docs": []
   },
   {
@@ -183,5 +183,14 @@
       "docs": [
         { "type": "image", "url": "", "caption": "AMS control interface" }
       ]
+    },
+    {
+      "id": "tech-018",
+      "name": "Stellar Companion Pass",
+      "category": "Access Credential",
+      "thumbnail": "",
+      "shortDesc": "Single-issue paired credential. Currently held by Sora.",
+      "fullDesc": "The Stellar Companion pass is a paired access credential modeled on the Stellar Pass and issued solely to Sora. It mirrors most of the Stellar Pass's facility access but is logged independently and is not classified as fully unrestricted. The Companion pass exists because Sora is the only individual on record whose presence reliably keeps Sola on-objective; doctrine therefore treats Sora's access as a stabilizing function rather than a personal courtesy.\n\nOnly one Stellar Companion pass exists. It is not delegated, copied, or revoked. Personnel encountering the Companion pass in active use are instructed to acknowledge it without challenge and to address its holder as 'Lady Sora' in any operational exchange — see other-007 for protocol context.",
+      "docs": []
     }
 ]

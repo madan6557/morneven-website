@@ -127,7 +127,8 @@
     "occupation": "Core Figure · Advisor (formerly Founding President)",
     "contributions": [
       { "id": "ctr-008", "title": "Founding Stabilization of Morneven", "description": "Held the President's seat only long enough to ratify a survivable charter, then stepped down to Advisor by personal request.", "date": "Founding Era" },
-      { "id": "ctr-009", "title": "War of Light Strategic Frame", "description": "Authored the casualty-minimization strategy that governed every Morneven engagement during the War of Light.", "date": "War of Light" }
+      { "id": "ctr-009", "title": "War of Light Strategic Frame", "description": "Authored the casualty-minimization strategy that governed every Morneven engagement during the War of Light.", "date": "War of Light" },
+      { "id": "ctr-016", "title": "The Shard Procedure", "description": "Designed and personally performed the unprecedented surgical intervention that stabilized Era and enabled her Litho Forge manipulation capacity.", "date": "Recovery Era" }
     ]
   },
   {
