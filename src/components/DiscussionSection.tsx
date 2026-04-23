@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import type { DiscussionComment } from "@/types";
 import { MessageSquare, Reply, Send, Pencil, Trash2, Check, X } from "lucide-react";
+import MentionInput, { renderWithMentions } from "@/components/MentionInput";
 
 interface Props {
   comments: DiscussionComment[];
@@ -96,13 +97,13 @@ export default function DiscussionSection({
       {/* New comment input */}
       {canComment ? (
         <div className="flex gap-2">
-          <input
-            type="text"
+          <MentionInput
             value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSubmitComment()}
-            placeholder="Add to the discussion..."
-            className="flex-1 px-3 py-2 bg-card border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            onChange={setNewComment}
+            onSubmit={handleSubmitComment}
+            placeholder="Add to the discussion... use @ to mention personnel"
+            className="flex-1"
+            accentColor={accent}
           />
           <button
             onClick={handleSubmitComment}
@@ -150,15 +151,12 @@ export default function DiscussionSection({
 
             {editingComment === c.id ? (
               <div className="flex gap-2">
-                <input
-                  type="text"
+                <MentionInput
                   value={editText}
-                  onChange={(e) => setEditText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveEditComment(c.id);
-                    if (e.key === "Escape") cancelEdit();
-                  }}
-                  className="flex-1 px-2 py-1 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  onChange={setEditText}
+                  onSubmit={() => saveEditComment(c.id)}
+                  className="flex-1"
+                  accentColor={accent}
                   autoFocus
                 />
                 <button onClick={() => saveEditComment(c.id)} className="text-xs px-2 py-1 rounded-sm" style={{ backgroundColor: accent, color: "#fff" }} title="Save">
@@ -169,7 +167,7 @@ export default function DiscussionSection({
                 </button>
               </div>
             ) : (
-              <p className="text-sm font-body text-foreground/80">{c.text}</p>
+              <p className="text-sm font-body text-foreground/80">{renderWithMentions(c.text, accent)}</p>
             )}
 
             {/* Replies */}
@@ -203,15 +201,13 @@ export default function DiscussionSection({
                     </div>
                     {editingReply === r.id ? (
                       <div className="flex gap-2">
-                        <input
-                          type="text"
+                        <MentionInput
                           value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") saveEditReply(c.id, r.id);
-                            if (e.key === "Escape") cancelEdit();
-                          }}
-                          className="flex-1 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          onChange={setEditText}
+                          onSubmit={() => saveEditReply(c.id, r.id)}
+                          className="flex-1"
+                          size="sm"
+                          accentColor={accent}
                           autoFocus
                         />
                         <button onClick={() => saveEditReply(c.id, r.id)} className="text-xs px-2 py-1 rounded-sm" style={{ backgroundColor: accent, color: "#fff" }} title="Save">
@@ -222,7 +218,7 @@ export default function DiscussionSection({
                         </button>
                       </div>
                     ) : (
-                      <p className="text-xs font-body text-foreground/70">{r.text}</p>
+                      <p className="text-xs font-body text-foreground/70">{renderWithMentions(r.text, accent)}</p>
                     )}
                   </div>
                 ))}
@@ -234,13 +230,14 @@ export default function DiscussionSection({
               <>
                 {replyTo === c.id ? (
                   <div className="flex gap-2 mt-2">
-                    <input
-                      type="text"
+                    <MentionInput
                       value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleSubmitReply(c.id)}
-                      placeholder={`Reply to @${c.author}...`}
-                      className="flex-1 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      onChange={setReplyText}
+                      onSubmit={() => handleSubmitReply(c.id)}
+                      placeholder={`Reply to @${c.author}... use @ to mention`}
+                      className="flex-1"
+                      size="sm"
+                      accentColor={accent}
                       autoFocus
                     />
                     <button onClick={() => handleSubmitReply(c.id)} className="text-xs px-2 py-1 rounded-sm" style={{ backgroundColor: accent, color: "#fff" }}>
