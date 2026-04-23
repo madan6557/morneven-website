@@ -183,5 +183,14 @@
       "docs": [
         { "type": "image", "url": "", "caption": "AMS control interface" }
       ]
+    },
+    {
+      "id": "tech-018",
+      "name": "Stellar Companion Pass",
+      "category": "Access Credential",
+      "thumbnail": "",
+      "shortDesc": "Single-issue paired credential. Currently held by Sora.",
+      "fullDesc": "The Stellar Companion pass is a paired access credential modeled on the Stellar Pass and issued solely to Sora. It mirrors most of the Stellar Pass's facility access but is logged independently and is not classified as fully unrestricted. The Companion pass exists because Sora is the only individual on record whose presence reliably keeps Sola on-objective; doctrine therefore treats Sora's access as a stabilizing function rather than a personal courtesy.\n\nOnly one Stellar Companion pass exists. It is not delegated, copied, or revoked. Personnel encountering the Companion pass in active use are instructed to acknowledge it without challenge and to address its holder as 'Lady Sora' in any operational exchange — see other-007 for protocol context.",
+      "docs": []
     }
 ]
