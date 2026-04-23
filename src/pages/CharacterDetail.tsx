@@ -154,7 +154,10 @@ export default function CharacterDetail() {
           {/* Right: Tabbed sections */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 gap-1 h-auto sm:h-10 sm:grid-cols-4 sm:w-auto sm:inline-flex sm:gap-0">
+              <TabsList
+                className="grid w-full grid-cols-2 gap-1 h-auto sm:h-10 sm:grid-cols-4 sm:w-auto sm:inline-flex sm:gap-0 [&>[data-state=active]]:text-[color:var(--char-accent)] [&>[data-state=active]]:shadow-[inset_0_-2px_0_0_var(--char-accent)]"
+                style={{ borderColor: `${accentColor}30` }}
+              >
                 <TabsTrigger value="overview" className="text-[11px] font-heading tracking-wider uppercase">
                   <FileText className="h-3 w-3 mr-1.5" /> Overview
                 </TabsTrigger>
@@ -171,7 +174,7 @@ export default function CharacterDetail() {
 
               {/* Overview */}
               <TabsContent value="overview" className="mt-6 space-y-4">
-                <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Field Brief</h2>
+                <h2 className="font-heading text-lg tracking-wider text-foreground uppercase border-b pb-2" style={{ borderColor: `${accentColor}30` }}>Field Brief</h2>
                 <p className="text-sm font-body text-foreground/90 italic border-l-2 pl-4" style={{ borderColor: accentColor }}>
                   {char.shortDesc}
                 </p>
@@ -180,14 +183,14 @@ export default function CharacterDetail() {
               {/* Background */}
               <TabsContent value="background" className="mt-6 space-y-6">
                 <div className="space-y-4">
-                  <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Background</h2>
+                  <h2 className="font-heading text-lg tracking-wider text-foreground uppercase border-b pb-2" style={{ borderColor: `${accentColor}30` }}>Background</h2>
                   <RedactedBlock fullDesc={char.fullDesc} paragraphClass="text-sm font-body text-foreground/80 leading-relaxed" />
                 </div>
 
                 {/* Documentation */}
                 {char.docs && char.docs.length > 0 && (
                   <div className="space-y-4">
-                    <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Documentation</h2>
+                    <h2 className="font-heading text-lg tracking-wider text-foreground uppercase border-b pb-2" style={{ borderColor: `${accentColor}30` }}>Documentation</h2>
                     <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
                       {char.docs.map((doc, i) => (
                         <div key={i} className="hud-border-sm bg-card overflow-hidden" style={{ borderColor: `${accentColor}20` }}>
@@ -249,7 +252,10 @@ export default function CharacterDetail() {
 
               {/* Notes */}
               <TabsContent value="notes" className="mt-6 space-y-4">
-                <p className="text-sm font-body text-muted-foreground italic">Field notes and observations can be recorded here.</p>
+                <div className="hud-border bg-card p-6 text-center" style={{ borderColor: `${accentColor}30` }}>
+                  <NotebookPen className="h-5 w-5 mx-auto mb-2" style={{ color: accentColor }} />
+                  <p className="text-sm font-body text-muted-foreground italic">Field notes and observations can be recorded here.</p>
+                </div>
               </TabsContent>
             </Tabs>
 
