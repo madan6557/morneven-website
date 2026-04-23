@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     // fallback lama
-    const nextRole: UserRole = isAuthor ? "author" : "viewer";
+    const nextRole: UserRole = isAuthor ? "author" : "personel";
     setIsAuthenticated(true);
     setUsername(email.split("@")[0]);
     setRole(nextRole);
@@ -93,9 +93,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = (email: string, _password: string, name: string) => {
     setIsAuthenticated(true);
     setUsername(name.trim() || email.split("@")[0]);
-    setRole("viewer");
-    setPersonnelLevel(DEFAULT_PL_BY_ROLE.viewer);
-    setTrack(DEFAULT_TRACK_BY_ROLE.viewer);
+    setRole("personel");
+    setPersonnelLevel(DEFAULT_PL_BY_ROLE.personel);
+    setTrack(DEFAULT_TRACK_BY_ROLE.personel);
   };
 
   const guestLogin = () => {

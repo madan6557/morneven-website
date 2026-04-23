@@ -10,7 +10,7 @@ function RegisterProbe() {
 
   return (
     <div>
-      <button onClick={() => register("viewer@test.com", "secret123", "ChosenName")}>register</button>
+      <button onClick={() => register("personel@test.com", "secret123", "ChosenName")}>register</button>
       <span data-testid="username">{username}</span>
     </div>
   );
@@ -36,8 +36,8 @@ describe("author panel auth flow", () => {
   it("redirects non-author away from author route", () => {
     window.localStorage.setItem("auth_state", JSON.stringify({
       isAuthenticated: true,
-      username: "viewer",
-      role: "viewer",
+      username: "personel",
+      role: "personel",
     }));
 
     render(

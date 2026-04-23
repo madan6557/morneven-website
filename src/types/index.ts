@@ -172,7 +172,7 @@ export interface MapMarker {
   loreLink?: string;
 }
 
-export type UserRole = "author" | "viewer" | "guest";
+export type UserRole = "author" | "personel" | "guest";
 
 // Managed personnel record — stored separately from auth identity so a future
 // backend can swap localStorage for a real users table without touching the UI.

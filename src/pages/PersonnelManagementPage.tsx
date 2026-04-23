@@ -54,7 +54,7 @@ export default function PersonnelManagementPage() {
   const [newUser, setNewUser] = useState<Omit<PersonnelUser, "id" | "updatedAt">>({
     username: "",
     email: "",
-    role: "viewer",
+    role: "personel",
     level: 2,
     track: "executive",
     note: "",
@@ -130,7 +130,7 @@ export default function PersonnelManagementPage() {
     const created = await createPersonnel(newUser);
     setPeople((prev) => [created, ...prev]);
     setCreating(false);
-    setNewUser({ username: "", email: "", role: "viewer", level: 2, track: "executive", note: "" });
+    setNewUser({ username: "", email: "", role: "personel", level: 2, track: "executive", note: "" });
   };
 
   // ─── Bulk selection helpers ────────────────────────────────────────────

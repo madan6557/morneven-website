@@ -35,13 +35,13 @@ const PL_OPEN_RE = /\[L([0-6])\+(?:\s+track=([a-zA-Z]+))?\]/;
 // the clearance switcher to preview lower tiers.
 export const DEFAULT_PL_BY_ROLE: Record<UserRole, PersonnelLevel> = {
   author: 7,
-  viewer: 2,
+  personel: 2,
   guest: 0,
 };
 
 export const DEFAULT_TRACK_BY_ROLE: Record<UserRole, PersonnelTrack> = {
   author: "executive",
-  viewer: "executive",
+  personel: "executive",
   guest: "executive",
 };
 

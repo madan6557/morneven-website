@@ -81,7 +81,7 @@ Untuk list:
 ### 3.1 User Role
 
 - `author`
-- `viewer`
+- `personel`
 - `guest`
 
 ### 3.2 Personnel Level (PL)
@@ -153,7 +153,7 @@ Frontend akan parsing marker, tetapi backend tetap harus menyimpan `fullDesc` ap
     "id": "psn-001",
     "username": "Mikyl",
     "email": "user@morneven.com",
-    "role": "viewer",
+    "role": "personel",
     "level": 2,
     "track": "executive",
     "note": "Optional"
@@ -174,7 +174,7 @@ Frontend akan parsing marker, tetapi backend tetap harus menyimpan `fullDesc` ap
 ```
 
 - Rule:
-  - default role: `viewer`
+  - default role: `personel`
   - default level: `2`
   - default track: `executive`
 
@@ -499,7 +499,7 @@ interface PersonnelUser {
   id: string;
   username: string;
   email: string;
-  role: "author" | "viewer" | "guest";
+  role: "author" | "personel" | "guest";
   level: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
   track: "executive" | "field" | "mechanic" | "logistics";
   note?: string;
