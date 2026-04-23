@@ -90,5 +90,104 @@
       { "id": "ctr-005", "title": "The Pillar of Light", "description": "Sole caster of the Pillar of Light strike, delivered through Solar's Lens. Ended the War of Light in a single sustained beat. No Jewerlian harmed in operation.", "date": "Year of the War of Light" },
       { "id": "ctr-006", "title": "Stellar Pass Charter", "description": "Subject and sole holder of the Institute's only unrestricted clearance token. Charter ratified unanimously and never amended.", "date": "Founding Era" }
     ]
+  },
+  {
+    "id": "char-006",
+    "name": "Garnet",
+    "race": "Jewerlian (Core Figure)",
+    "height": "Unrecorded — Garnet has not asked, and no one has measured.",
+    "traits": ["Quiet", "Observant", "Respected"],
+    "likes": ["Swords", "Training fields", "Listening"],
+    "dislikes": ["Idle chatter", "Being interrupted mid-watch"],
+    "accentColor": "#C0392B",
+    "thumbnail": "",
+    "shortDesc": "Jewerlian Core Figure. Quiet squad-leader and geo-material specialist with PL4-OPS clearance.",
+    "fullDesc": "Garnet is one of the twelve Jewerlian Core Figures. Her demeanor is famously calm — sometimes overwhelmingly so. Conversations with Garnet often consist of a 'yes,' a 'no,' or a long, considered silence; none of it is unfriendly. She is, by every account, easy to talk to as long as you do not need her to fill the air for you.\n\nHer ability is the manipulation of geo-materials and minerals. She wields a sword forged from compacted red mineral, though combat doctrine notes she does not actually require a weapon — she simply likes swords. Despite her quiet nature, Garnet enjoys being around others and most often takes the role of listener.\n\nShe holds PL4-OPS clearance. The level is modest on paper, but her standing among Jewerlians and field personnel is not. The clearance was issued because Garnet routinely visits training fields to observe drills and assist instructors, not by mandate or appointment. When she leads a squad — which she does often — she is regarded as one of the most reliable field commanders the Institute has ever fielded.\n\n[L3+ track=field]Garnet's mineral-manipulation envelope has never been formally bounded; field tests are halted whenever instructors feel they are 'imposing.' Squads under her command have a recorded mission-success rate of 100% across logged operations. No casualty has ever been attributed to a Garnet-led engagement.[/L3+]",
+    "stats": { "combat": 90, "intelligence": 80, "stealth": 55, "charisma": 78, "endurance": 92 },
+    "docs": [],
+    "occupation": "Core Figure · Squad Leader (Field, by presence)",
+    "contributions": [
+      { "id": "ctr-007", "title": "Standing Field Mentorship", "description": "Unscheduled, unending presence at training grounds. Credited by instructors as the single largest factor in Field Division retention.", "date": "Ongoing" }
+    ]
+  },
+  {
+    "id": "char-007",
+    "name": "Ameth",
+    "race": "Jewerlian (Core Figure)",
+    "height": "Not on file. Ameth considers the question imprecise.",
+    "traits": ["Brilliant", "Cryptic", "Curious"],
+    "likes": ["Open research questions", "Cross-discipline labs", "Long answers"],
+    "dislikes": ["Administrative seating", "Being asked for short answers"],
+    "accentColor": "#8E44AD",
+    "thumbnail": "",
+    "shortDesc": "Jewerlian Core Figure. Founding 'President' of Morneven turned Advisor. PL6-GOV.",
+    "fullDesc": "Ameth is the Jewerlian Core Figure most associated with Morneven's intellectual backbone. She was the pioneering organizer of the Institute and served as its first 'President' — a title she accepted only long enough to stabilize the founding charter, and then handed off. Sitting in a chair of authority bored her; research did not.\n\nJewerlian society has no caste and no hierarchy. They simply follow specific reliable individuals, the ones Morneven documentation classifies as 'Core Jewerlians.' Ameth is one of them, and her contribution during the Dark Times was structural: she designed the resilience plans that allowed the civilization to survive, and authored the strategic frame for the War of Light that kept casualties at the lowest figure any post-war analyst has been able to model.\n\nShe currently holds PL6-GOV clearance, which she uses almost exclusively to wander into laboratories and divisions that interest her on a given day. She is approachable. Be warned, however: ask Ameth a question, and the answer will be technically correct, exhaustively complete, and not at all easy to parse on the first pass.\n\n[L4+ track=executive]Ameth's pre-war contingency models — internally referenced as the 'Ameth Frame' — remain the Institute's standing reference for civilizational-scale threat planning. Three of the seven branches have never been activated. Two of them cannot, by current understanding, be activated by anyone other than Ameth herself.[/L4+]",
+    "stats": { "combat": 55, "intelligence": 100, "stealth": 50, "charisma": 82, "endurance": 75 },
+    "docs": [],
+    "occupation": "Core Figure · Advisor (formerly Founding President)",
+    "contributions": [
+      { "id": "ctr-008", "title": "Founding Stabilization of Morneven", "description": "Held the President's seat only long enough to ratify a survivable charter, then stepped down to Advisor by personal request.", "date": "Founding Era" },
+      { "id": "ctr-009", "title": "War of Light Strategic Frame", "description": "Authored the casualty-minimization strategy that governed every Morneven engagement during the War of Light.", "date": "War of Light" }
+    ]
+  },
+  {
+    "id": "char-008",
+    "name": "Diana",
+    "race": "Jewerlian (Core Figure)",
+    "height": "Recorded as 'unchanged.' She has not moved from the altar long enough for a second measurement.",
+    "traits": ["Silent", "Immovable", "Unexpectedly gentle"],
+    "likes": ["Children visiting the Chamber", "Stillness", "Quiet observation"],
+    "dislikes": ["Threats to those under her watch"],
+    "accentColor": "#3498DB",
+    "thumbnail": "",
+    "shortDesc": "Jewerlian Core Figure. Telepathic Hub of the Jewerlian Chamber. The Embodiment of Immovable.",
+    "fullDesc": "Diana holds the position immediately after Sola among the Core Figures, and she is, in the most literal sense, silent. She is almost always found in the Jewerlian Chamber — a hall of massive pillars crowned with a single resonant crystal that responds to her, which legend holds to be part of her body. She stands at the center of the great altar, day and night, regardless of weather or season, serving as a guiding signal for every Jewerlian still operating beyond Morneven.\n\nDiana is widely assumed to be a defensive type, and she is — but her offense is unconventional. Where most defenders pull allies away from danger, Diana isolates the threat itself and crushes it inside its own pocket. Field personnel have learned not to offend her by accident. They have also learned that she is, when undisturbed, extraordinarily gentle: there are repeated reports of children entering the Chamber unsupervised and being treated with a kindness that has turned the location into what the locals now call 'the safest place in Gemora.' Families visit because the children play there. Diana, as a result, is not always alone.\n\nShe serves as the Jewerlian Telepathic Hub. Her catalogued abilities include transparent, indestructible barriers and the teleportation of herself or any chosen object or subject. Doctrine pairs her with Sola as an opposing constant: Sola is the Embodiment of Unstoppable, Diana is the Embodiment of Immovable. They share one trait — when either of them moves with intent, something significant is occurring.\n\nShe carries a great sword at all times. Analysts believe it functions as a focusing catalyst rather than a weapon. Her eyes are closed for the majority of every observation, but she is recorded to open them when something genuinely catches her attention, or simply for the sake of looking. She holds no PL clearance and has never requested one. Morneven receives her without challenge; she arrives by teleporting into whichever room she chooses. Her arrival is itself the message.\n\n[L4+]Approved Chamber-experiment protocol: any test on Diana's barrier system requires her direct, unambiguous consent given on-site. No proxy authorization is valid. To date, three barrier-stress experiments have been authorized; all three concluded when Diana, without comment, dismissed the apparatus.[/L4+]",
+    "stats": { "combat": 96, "intelligence": 90, "stealth": 60, "charisma": 88, "endurance": 100 },
+    "docs": [],
+    "occupation": "Core Figure · Jewerlian Telepathic Hub",
+    "contributions": [
+      { "id": "ctr-010", "title": "The Jewerlian Chamber", "description": "Continuous presence at the Chamber altar. Functions as the standing telepathic relay for every Jewerlian operating outside Morneven Central.", "date": "Ongoing" },
+      { "id": "ctr-011", "title": "Safest Place in Gemora", "description": "Emergent designation by local civilians. Children play in the Chamber unsupervised; no incident has ever been recorded inside its perimeter.", "date": "Ongoing" }
+    ]
+  },
+  {
+    "id": "char-009",
+    "name": "Sora",
+    "race": "Jewerlian (Core Figure)",
+    "height": "Comparable to Sola; refuses formal measurement on the grounds that 'a lady does not.'",
+    "traits": ["Calm", "Composed", "Deceptively firm"],
+    "likes": ["'How to be a Lady' magazines", "Being addressed politely", "Walking just behind Sola"],
+    "dislikes": ["Being treated like Sola", "Rudeness", "Snack negotiations going badly"],
+    "accentColor": "#F39C12",
+    "thumbnail": "",
+    "shortDesc": "Sola's twin and stabilizer. Holder of the Stellar Companion pass.",
+    "fullDesc": "Sora is Sola's twin and the calm counterpart to Sola's perpetual motion. Operationally, she is Sola's stabilizer — and the only individual on record whom Sola actually listens to. She is easy to interact with and possesses the full set of traits required to make Sola manageable in a shared room.\n\nThere is one rule. Sora prefers to be treated as a 'Fine Lady,' a preference she developed after accidentally finding a stack of 'How to be a Lady' magazines and reading every issue. Address her with the courtesy due to a lady and she will hear you out. If a Secret Box negotiation with Sola has gone sideways, Sora is the recommended fallback channel. Doctrine lists her as the second-line option before any escalation is even considered.\n\nShe follows Sola almost everywhere, separating only when asked to help test a new unit, prototype, or outfit — assignments she often accepts cheerfully, and which sometimes prompt Sola to insist on being a test subject as well. The twins are routinely cleared for high-risk testing because their survival ceiling is the highest the Institute has ever measured. Sora's role on these assignments is also stabilization: Sola has a famously short attention span and cannot be relied upon to reach an objective alone. With Sora present, the objective is reached. Field personnel report a measurable drop in ambient stress whenever the two are seen together.\n\nSora holds the 'Stellar Companion' pass — a credential modeled on the Stellar Pass and issued solely to her.\n\n[L3+ track=logistics]Standing Secret Box protocol escalation: if a primary Secret Box negotiation with Sola fails, route the situation through Sora before any other intervention. Address Sora as 'Lady Sora' in all such exchanges. This is not a courtesy note — it is the protocol.[/L3+]",
+    "stats": { "combat": 95, "intelligence": 92, "stealth": 55, "charisma": 95, "endurance": 100 },
+    "docs": [],
+    "occupation": "Core Figure · Stellar Companion",
+    "contributions": [
+      { "id": "ctr-012", "title": "Sola Stabilization Doctrine", "description": "Recognized as the only individual whose presence reliably keeps Sola on-objective. Standing pairing for any operation requiring sustained Sola engagement.", "date": "Ongoing" },
+      { "id": "ctr-013", "title": "High-Risk Test Subject Pairing", "description": "Co-cleared with Sola as the Institute's highest-survivability test pair. Used for prototype units, outfits, and unclassified rigs.", "date": "Ongoing" }
+    ]
+  },
+  {
+    "id": "char-010",
+    "name": "Era",
+    "race": "Human (Adopted by the Jewerlians)",
+    "height": "On file; updated annually by the Medical Office.",
+    "traits": ["Quietly resilient", "Curious", "Devoted to Sola"],
+    "likes": ["Litho Forge workshops", "Sola's company", "Small, careful experiments"],
+    "dislikes": ["Being asked about her past", "Being separated from Sola for long stretches"],
+    "accentColor": "#16A085",
+    "thumbnail": "",
+    "shortDesc": "Adopted Figure. Litho Forge specialist sustained by a shard of Sola's accumulated energy. PL6-ENG.",
+    "fullDesc": "Era is not a Jewerlian. The Jewerlians consider her family regardless. She was originally an ordinary girl whose hometown was destroyed in a stampede; Sola found her in the ruins in critical condition and brought her back to Morneven personally. Sola's affection for Era is documented and unmistakable, though the reason has never been explained, and no one — including Sora — has pressed the question.\n\nEra's condition deteriorated sharply during a period when Sola was away on a scouting deployment. To this day, it is Sola who functions as the vital support for Era's continued existence. Ameth intervened with a high-risk, unprecedented surgical procedure; the operation succeeded beyond projection. Era recovered, and emerged with molecular-manipulation abilities reminiscent of Sola's, though her control is constrained to a single material: Litho Forge.\n\nThe persistent rumor — neither confirmed nor denied at the executive level — is that Era was given a 'Shard' of Sola. Jewerlian physiology accumulates unspent energy in the chest cavity as a dense condensation that is often, incorrectly, assumed to be a heart. The rumor holds that Sola requested this shard transfer herself.\n\nEra holds PL6-ENG clearance. Her ability to shape Litho Forge — Morneven's primary structural and weaponized resource — makes her contribution to the Engineering track effectively foundational. A great deal about her remains under active research and validation. The Institute does not rush this work.\n\n[L5+ track=executive]Era-Sola dependency advisory: any operation that would separate Era from Sola for longer than the established interval requires direct executive sign-off and a contingency protocol filed in advance. The interval is not published in the standard clearance matrix.[/L5+]",
+    "stats": { "combat": 70, "intelligence": 90, "stealth": 60, "charisma": 78, "endurance": 88 },
+    "docs": [],
+    "occupation": "Adopted Figure · Litho Forge Specialist (Engineering)",
+    "contributions": [
+      { "id": "ctr-014", "title": "Litho Forge Manipulation", "description": "Sole non-Jewerlian on record capable of direct molecular manipulation of Litho Forge. Foundational to current Engineering output.", "date": "Post-Surgery" },
+      { "id": "ctr-015", "title": "The Shard Procedure", "description": "Subject of Ameth's unprecedented surgical intervention. Outcome: full recovery and emergent molecular-manipulation capacity.", "date": "Recovery Era" }
+    ]
   }
 ]
