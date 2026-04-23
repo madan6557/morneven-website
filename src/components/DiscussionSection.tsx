@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import type { DiscussionComment } from "@/types";
+import type { DiscussionComment, DiscussionMention } from "@/types";
 import { MessageSquare, Reply, Send, Pencil, Trash2, Check, X } from "lucide-react";
-import MentionInput, { renderWithMentions } from "@/components/MentionInput";
+import MentionInput, { extractMentions, renderWithMentions } from "@/components/MentionInput";
 
 interface Props {
   comments: DiscussionComment[];
-  onAddComment: (author: string, text: string) => void;
-  onAddReply: (commentId: string, author: string, text: string) => void;
-  onEditComment?: (commentId: string, text: string) => void;
+  onAddComment: (author: string, text: string, mentions?: DiscussionMention[]) => void | Promise<void>;
+  onAddReply: (commentId: string, author: string, text: string, mentions?: DiscussionMention[]) => void | Promise<void>;
+  onEditComment?: (commentId: string, text: string, mentions?: DiscussionMention[]) => void | Promise<void>;
   onDeleteComment?: (commentId: string) => void;
-  onEditReply?: (commentId: string, replyId: string, text: string) => void;
+  onEditReply?: (commentId: string, replyId: string, text: string, mentions?: DiscussionMention[]) => void | Promise<void>;
   onDeleteReply?: (commentId: string, replyId: string) => void;
   accentColor?: string;
 }
@@ -37,17 +37,19 @@ export default function DiscussionSection({
   const canComment = role !== "guest";
   const isAuthor = role === "author";
 
-  const canModify = (commentAuthor: string) => isAuthor && commentAuthor === username;
+  const canModify = (commentAuthor: string) => isAuthor || commentAuthor === username;
 
   const handleSubmitComment = () => {
     if (!newComment.trim()) return;
-    onAddComment(authorName, newComment.trim());
+    const text = newComment.trim();
+    onAddComment(authorName, text, extractMentions(text));
     setNewComment("");
   };
 
   const handleSubmitReply = (commentId: string) => {
     if (!replyText.trim()) return;
-    onAddReply(commentId, authorName, replyText.trim());
+    const text = replyText.trim();
+    onAddReply(commentId, authorName, text, extractMentions(text));
     setReplyText("");
     setReplyTo(null);
   };
@@ -66,14 +68,16 @@ export default function DiscussionSection({
 
   const saveEditComment = (id: string) => {
     if (!editText.trim() || !onEditComment) return;
-    onEditComment(id, editText.trim());
+    const text = editText.trim();
+    onEditComment(id, text, extractMentions(text));
     setEditingComment(null);
     setEditText("");
   };
 
   const saveEditReply = (commentId: string, replyId: string) => {
     if (!editText.trim() || !onEditReply) return;
-    onEditReply(commentId, replyId, editText.trim());
+    const text = editText.trim();
+    onEditReply(commentId, replyId, text, extractMentions(text));
     setEditingReply(null);
     setEditText("");
   };

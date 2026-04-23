@@ -17,6 +17,28 @@
     "contributions": [
       { "id": "ctr-001", "title": "Operation Blacklight", "description": "Led the covert extraction of three Morneven analysts from the Voidborn-occupied sector. Zero casualties, full intel package recovered.", "date": "2024-08-12" },
       { "id": "ctr-002", "title": "Shadow-step Combat Doctrine", "description": "Authored the Institute's standing manual on shadow-step engagement protocols, now mandatory training for all Field Division operatives.", "date": "2025-01-30" }
+    ],
+    "discussions": [
+      {
+        "id": "dc-char-001",
+        "author": "ops.delta",
+        "text": "Kael's night-mission briefing is ready. @h.kato, please run a final route check.",
+        "date": "2026-04-22",
+        "mentions": [
+          { "username": "h.kato", "start": 40, "end": 47 }
+        ],
+        "replies": [
+          {
+            "id": "dr-char-001",
+            "author": "h.kato",
+            "text": "Route is clear. Sending the matrix to @ops.delta now.",
+            "date": "2026-04-22",
+            "mentions": [
+              { "username": "ops.delta", "start": 38, "end": 48 }
+            ]
+          }
+        ]
+      }
     ]
   },
   {

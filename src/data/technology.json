@@ -9,6 +9,28 @@
     "docs": [
       { "type": "image", "url": "", "caption": "Nexus Drive core assembly" },
       { "type": "image", "url": "", "caption": "Crystal harmonic resonance pattern" }
+    ],
+    "discussions": [
+      {
+        "id": "dc-tech-001",
+        "author": "r.ashford",
+        "text": "The latest calibration batch is in. @e.moonveil, please approve the test window.",
+        "date": "2026-04-23",
+        "mentions": [
+          { "username": "e.moonveil", "start": 36, "end": 47 }
+        ],
+        "replies": [
+          {
+            "id": "dr-tech-001",
+            "author": "e.moonveil",
+            "text": "Approved. Coordinate the final pass with @r.ashford before 1900.",
+            "date": "2026-04-23",
+            "mentions": [
+              { "username": "r.ashford", "start": 41, "end": 51 }
+            ]
+          }
+        ]
+      }
     ]
   },
   {

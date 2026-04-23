@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getPlace } from "@/services/api";
-import type { Place, DiscussionComment } from "@/types";
+import {
+  getPlace,
+  addPlaceDiscussionComment,
+  addPlaceDiscussionReply,
+  editPlaceDiscussionComment,
+  deletePlaceDiscussionComment,
+  editPlaceDiscussionReply,
+  deletePlaceDiscussionReply,
+} from "@/services/api";
+import type { Place, DiscussionComment, DiscussionMention } from "@/types";
 import { ArrowLeft, Map } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
@@ -13,16 +21,72 @@ export default function PlaceDetail() {
   const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
 
   useEffect(() => {
-    if (id) getPlace(id).then((p) => setPlace(p ?? null));
+    if (id) {
+      getPlace(id).then((p) => {
+        setPlace(p ?? null);
+        setDiscussion(p?.discussions ?? []);
+      });
+    }
   }, [id]);
 
   if (!place) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
 
-  const handleAddComment = (author: string, text: string) => {
-    setDiscussion((prev) => [...prev, { id: `dc-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0], replies: [] }]);
+  const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
+    if (!place) return;
+    const updated = await addPlaceDiscussionComment(place.id, author, text, mentions);
+    if (!updated) return;
+    setPlace(updated);
+    setDiscussion(updated.discussions ?? []);
   };
-  const handleAddReply = (commentId: string, author: string, text: string) => {
-    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, replies: [...c.replies, { id: `dr-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0] }] } : c));
+
+  const handleAddReply = async (
+    commentId: string,
+    author: string,
+    text: string,
+    mentions: DiscussionMention[] = [],
+  ) => {
+    if (!place) return;
+    const updated = await addPlaceDiscussionReply(place.id, commentId, author, text, mentions);
+    if (!updated) return;
+    setPlace(updated);
+    setDiscussion(updated.discussions ?? []);
+  };
+
+  const handleEditComment = async (commentId: string, text: string, mentions: DiscussionMention[] = []) => {
+    if (!place) return;
+    const updated = await editPlaceDiscussionComment(place.id, commentId, text, mentions);
+    if (!updated) return;
+    setPlace(updated);
+    setDiscussion(updated.discussions ?? []);
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!place) return;
+    const updated = await deletePlaceDiscussionComment(place.id, commentId);
+    if (!updated) return;
+    setPlace(updated);
+    setDiscussion(updated.discussions ?? []);
+  };
+
+  const handleEditReply = async (
+    commentId: string,
+    replyId: string,
+    text: string,
+    mentions: DiscussionMention[] = [],
+  ) => {
+    if (!place) return;
+    const updated = await editPlaceDiscussionReply(place.id, commentId, replyId, text, mentions);
+    if (!updated) return;
+    setPlace(updated);
+    setDiscussion(updated.discussions ?? []);
+  };
+
+  const handleDeleteReply = async (commentId: string, replyId: string) => {
+    if (!place) return;
+    const updated = await deletePlaceDiscussionReply(place.id, commentId, replyId);
+    if (!updated) return;
+    setPlace(updated);
+    setDiscussion(updated.discussions ?? []);
   };
 
   return (
@@ -104,7 +168,15 @@ export default function PlaceDetail() {
         )}
 
         <div className="mecha-line" />
-        <DiscussionSection comments={discussion} onAddComment={handleAddComment} onAddReply={handleAddReply} />
+        <DiscussionSection
+          comments={discussion}
+          onAddComment={handleAddComment}
+          onAddReply={handleAddReply}
+          onEditComment={handleEditComment}
+          onDeleteComment={handleDeleteComment}
+          onEditReply={handleEditReply}
+          onDeleteReply={handleDeleteReply}
+        />
       </div>
     </div>
   );

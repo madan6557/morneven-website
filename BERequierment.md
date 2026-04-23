@@ -343,6 +343,46 @@ Scope per user (berdasarkan user id dari token).
 
 Write operation disarankan L7 only.
 
+## 5.13 Discussion Management
+
+Discussion dipakai lintas entity (minimal: place, technology, other, gallery). Backend harus mendukung pairing berdasarkan entity type + entity id.
+
+### GET /api/discussions/:entityType/:entityId
+
+- `entityType`: `places|technology|other|gallery|characters|creatures`
+- Response: list discussion thread milik entity.
+
+### POST /api/discussions/:entityType/:entityId/comments
+
+- Body:
+
+```json
+{
+  "text": "Status perimeter aman @j.huang",
+  "mentions": [
+    { "username": "j.huang", "start": 22, "end": 30 }
+  ]
+}
+```
+
+- `author` diambil dari token server-side.
+
+### POST /api/discussions/:entityType/:entityId/comments/:commentId/replies
+
+- Body sama dengan create comment.
+
+### PATCH /api/discussions/:entityType/:entityId/comments/:commentId
+### DELETE /api/discussions/:entityType/:entityId/comments/:commentId
+
+### PATCH /api/discussions/:entityType/:entityId/comments/:commentId/replies/:replyId
+### DELETE /api/discussions/:entityType/:entityId/comments/:commentId/replies/:replyId
+
+Rule akses:
+
+1. Guest tidak boleh create/edit/delete.
+2. Pemilik comment/reply boleh edit/delete miliknya.
+3. Moderator (L6 executive atau L7) boleh moderasi lintas user.
+
 ## 6. Variabel Data yang Diperlukan
 
 ## 6.1 Project
@@ -473,10 +513,40 @@ interface GalleryItem {
     author: string;
     text: string;
     date: string;
+    mentions?: { username: string; start: number; end: number }[];
     replies: { id: string; author: string; text: string; date: string }[];
   }[];
 }
 ```
+
+## 6.7.1 Discussion (Generic)
+
+```ts
+interface DiscussionMention {
+  username: string;
+  start: number;
+  end: number;
+}
+
+interface DiscussionReply {
+  id: string;
+  author: string;
+  text: string;
+  date: string;
+  mentions?: DiscussionMention[];
+}
+
+interface DiscussionComment {
+  id: string;
+  author: string;
+  text: string;
+  date: string;
+  mentions?: DiscussionMention[];
+  replies: DiscussionReply[];
+}
+```
+
+Untuk entity lore, gunakan field `discussions` pada object entity.
 
 ## 6.8 Map Marker
 
@@ -534,6 +604,8 @@ interface CommandCenterSettings {
 7. `type` media hanya `image|video`.
 8. `x` dan `y` map marker harus di rentang 0..1.
 9. `status` project dan map harus sesuai enum.
+10. Validasi mention index (`start < end`, range valid terhadap panjang text).
+11. Validasi `mentions[].username` harus ada di personnel registry.
 
 ## 8. Logika Bisnis Penting
 
@@ -543,6 +615,7 @@ interface CommandCenterSettings {
 4. Bulk personnel update hanya mengubah field yang dikirim.
 5. Semua write endpoint wajib audit trail minimal: `updatedAt`, `updatedBy` (disarankan).
 6. Gunakan soft-delete jika dibutuhkan histori moderation.
+7. Pairing discussion wajib berbasis `entityType + entityId` agar tidak tercampur antar konten.
 
 ## 9. Storage dan Migrasi
 

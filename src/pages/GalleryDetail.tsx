@@ -4,6 +4,7 @@ import { ArrowLeft, MessageCircle, Reply, AtSign } from "lucide-react";
 import { getGalleryItem, addComment, addReply } from "@/services/api";
 import type { GalleryItem } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
+import MentionInput, { extractMentions, renderWithMentions } from "@/components/MentionInput";
 
 export default function GalleryDetail() {
   const { id } = useParams<{ id: string }>();
@@ -21,14 +22,16 @@ export default function GalleryDetail() {
 
   const handleComment = async () => {
     if (!commentText.trim() || role === "guest") return;
-    const updated = await addComment(item.id, username, commentText);
+    const text = commentText.trim();
+    const updated = await addComment(item.id, username, text, extractMentions(text));
     if (updated) setItem({ ...updated });
     setCommentText("");
   };
 
   const handleReply = async (commentId: string) => {
     if (!replyText.trim() || role === "guest") return;
-    const updated = await addReply(item.id, commentId, username, replyText);
+    const text = replyText.trim();
+    const updated = await addReply(item.id, commentId, username, text, extractMentions(text));
     if (updated) setItem({ ...updated });
     setReplyText("");
     setReplyingTo(null);
@@ -90,13 +93,12 @@ export default function GalleryDetail() {
         {/* Add Comment */}
         {role !== "guest" ? (
           <div className="flex gap-2">
-            <input
-              type="text"
+            <MentionInput
               placeholder="Add a comment..."
               value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleComment()}
-              className="flex-1 px-3 py-2 bg-card border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              onChange={setCommentText}
+              onSubmit={handleComment}
+              className="flex-1"
             />
             <button onClick={handleComment} className="px-4 py-2 bg-primary text-primary-foreground text-xs font-display tracking-wider rounded-sm hover:opacity-90">
               POST
@@ -124,7 +126,7 @@ export default function GalleryDetail() {
                   </button>
                 )}
               </div>
-              <p className="text-sm font-body text-foreground/80">{comment.text}</p>
+              <p className="text-sm font-body text-foreground/80">{renderWithMentions(comment.text, "hsl(var(--primary))")}</p>
 
               {/* Replies */}
               {comment.replies.length > 0 && (
@@ -133,7 +135,7 @@ export default function GalleryDetail() {
                     <div key={reply.id}>
                       <span className="font-heading text-xs text-foreground">{reply.author}</span>
                       <span className="text-[10px] text-muted-foreground ml-2">{reply.date}</span>
-                      <p className="text-xs font-body text-foreground/80 mt-1">{reply.text}</p>
+                      <p className="text-xs font-body text-foreground/80 mt-1">{renderWithMentions(reply.text, "hsl(var(--primary))")}</p>
                     </div>
                   ))}
                 </div>
@@ -142,13 +144,13 @@ export default function GalleryDetail() {
               {/* Reply Input */}
               {replyingTo === comment.id && (
                 <div className="flex gap-2 ml-4">
-                  <input
-                    type="text"
+                  <MentionInput
                     placeholder={`Reply to @${comment.author}...`}
                     value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleReply(comment.id)}
-                    className="flex-1 px-3 py-1.5 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    onChange={setReplyText}
+                    onSubmit={() => handleReply(comment.id)}
+                    className="flex-1"
+                    size="sm"
                     autoFocus
                   />
                   <button onClick={() => handleReply(comment.id)} className="px-3 py-1.5 bg-primary text-primary-foreground text-[10px] font-display tracking-wider rounded-sm hover:opacity-90">

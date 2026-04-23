@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getTech } from "@/services/api";
-import type { Technology, DiscussionComment } from "@/types";
+import {
+  getTech,
+  addTechDiscussionComment,
+  addTechDiscussionReply,
+  editTechDiscussionComment,
+  deleteTechDiscussionComment,
+  editTechDiscussionReply,
+  deleteTechDiscussionReply,
+} from "@/services/api";
+import type { Technology, DiscussionComment, DiscussionMention } from "@/types";
 import { ArrowLeft } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
@@ -12,16 +20,72 @@ export default function TechDetail() {
   const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
 
   useEffect(() => {
-    if (id) getTech(id).then((t) => setTech(t ?? null));
+    if (id) {
+      getTech(id).then((t) => {
+        setTech(t ?? null);
+        setDiscussion(t?.discussions ?? []);
+      });
+    }
   }, [id]);
 
   if (!tech) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
 
-  const handleAddComment = (author: string, text: string) => {
-    setDiscussion((prev) => [...prev, { id: `dc-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0], replies: [] }]);
+  const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
+    if (!tech) return;
+    const updated = await addTechDiscussionComment(tech.id, author, text, mentions);
+    if (!updated) return;
+    setTech(updated);
+    setDiscussion(updated.discussions ?? []);
   };
-  const handleAddReply = (commentId: string, author: string, text: string) => {
-    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, replies: [...c.replies, { id: `dr-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0] }] } : c));
+
+  const handleAddReply = async (
+    commentId: string,
+    author: string,
+    text: string,
+    mentions: DiscussionMention[] = [],
+  ) => {
+    if (!tech) return;
+    const updated = await addTechDiscussionReply(tech.id, commentId, author, text, mentions);
+    if (!updated) return;
+    setTech(updated);
+    setDiscussion(updated.discussions ?? []);
+  };
+
+  const handleEditComment = async (commentId: string, text: string, mentions: DiscussionMention[] = []) => {
+    if (!tech) return;
+    const updated = await editTechDiscussionComment(tech.id, commentId, text, mentions);
+    if (!updated) return;
+    setTech(updated);
+    setDiscussion(updated.discussions ?? []);
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!tech) return;
+    const updated = await deleteTechDiscussionComment(tech.id, commentId);
+    if (!updated) return;
+    setTech(updated);
+    setDiscussion(updated.discussions ?? []);
+  };
+
+  const handleEditReply = async (
+    commentId: string,
+    replyId: string,
+    text: string,
+    mentions: DiscussionMention[] = [],
+  ) => {
+    if (!tech) return;
+    const updated = await editTechDiscussionReply(tech.id, commentId, replyId, text, mentions);
+    if (!updated) return;
+    setTech(updated);
+    setDiscussion(updated.discussions ?? []);
+  };
+
+  const handleDeleteReply = async (commentId: string, replyId: string) => {
+    if (!tech) return;
+    const updated = await deleteTechDiscussionReply(tech.id, commentId, replyId);
+    if (!updated) return;
+    setTech(updated);
+    setDiscussion(updated.discussions ?? []);
   };
 
   return (
@@ -84,7 +148,15 @@ export default function TechDetail() {
         )}
 
         <div className="mecha-line" />
-        <DiscussionSection comments={discussion} onAddComment={handleAddComment} onAddReply={handleAddReply} />
+        <DiscussionSection
+          comments={discussion}
+          onAddComment={handleAddComment}
+          onAddReply={handleAddReply}
+          onEditComment={handleEditComment}
+          onDeleteComment={handleDeleteComment}
+          onEditReply={handleEditReply}
+          onDeleteReply={handleDeleteReply}
+        />
       </div>
     </div>
   );

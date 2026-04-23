@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { listPersonnel } from "@/services/personnelApi";
+import type { DiscussionMention } from "@/types";
 
 interface Props {
   value: string;
@@ -210,4 +211,23 @@ export function renderWithMentions(
     }
     return <span key={i}>{part}</span>;
   });
+}
+
+export function extractMentions(text: string): DiscussionMention[] {
+  const matches = text.matchAll(/@([\w.\-]+)/g);
+  const result: DiscussionMention[] = [];
+
+  for (const m of matches) {
+    const raw = m[0];
+    const username = m[1];
+    const start = m.index ?? -1;
+    if (start < 0) continue;
+    result.push({
+      username,
+      start,
+      end: start + raw.length,
+    });
+  }
+
+  return result;
 }

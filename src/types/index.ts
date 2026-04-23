@@ -54,6 +54,7 @@ export interface Character {
   stats: CharacterStats;
   docs: DocItem[];
   contributions?: CharacterContribution[];
+  discussions?: DiscussionComment[];
 }
 
 // Creature classification — Gemora Entropy Classification (GEC) Mark II
@@ -73,6 +74,7 @@ export interface Creature {
   shortDesc: string;
   fullDesc: string;
   docs: DocItem[];
+  discussions?: DiscussionComment[];
 }
 
 export interface OtherLore {
@@ -83,6 +85,13 @@ export interface OtherLore {
   shortDesc: string;
   fullDesc: string;
   docs: DocItem[];
+  discussions?: DiscussionComment[];
+}
+
+export interface DiscussionMention {
+  username: string;
+  start: number;
+  end: number;
 }
 
 export interface DiscussionReply {
@@ -90,6 +99,7 @@ export interface DiscussionReply {
   author: string;
   text: string;
   date: string;
+  mentions?: DiscussionMention[];
 }
 
 export interface DiscussionComment {
@@ -97,6 +107,7 @@ export interface DiscussionComment {
   author: string;
   text: string;
   date: string;
+  mentions?: DiscussionMention[];
   replies: DiscussionReply[];
 }
 
@@ -108,6 +119,7 @@ export interface Place {
   shortDesc: string;
   fullDesc: string;
   docs: DocItem[];
+  discussions?: DiscussionComment[];
 }
 
 export interface Technology {
@@ -118,6 +130,7 @@ export interface Technology {
   shortDesc: string;
   fullDesc: string;
   docs: DocItem[];
+  discussions?: DiscussionComment[];
 }
 
 export interface CommentReply {
@@ -125,6 +138,7 @@ export interface CommentReply {
   author: string;
   text: string;
   date: string;
+  mentions?: DiscussionMention[];
 }
 
 export interface GalleryComment {
@@ -132,6 +146,7 @@ export interface GalleryComment {
   author: string;
   text: string;
   date: string;
+  mentions?: DiscussionMention[];
   replies: CommentReply[];
 }
 

@@ -9,7 +9,29 @@
     "accentColor": "#7DD3FC",
     "shortDesc": "A bipedal predator whose mutated hide regrew as Gemosphere quartz, refracting light into hypnotic patterns.",
     "fullDesc": "First catalogued by Field Team Echo near the eastern Scorched Wastes, the Glassfang Stalker is a post-apocalyptic descendant of canid mammals that integrated trace Gemosphere crystals into its keratin during gestation. Its plating is functionally translucent and acts as a passive optical lure: prey approaching at dusk perceive the creature as a shimmering pool of water.\n\nGEC protocol mandates Tactical Analysis: long-range observation to identify Fracture Points (typically the unarmored throat plating) before any engagement. Approach protocol DL-4 must be observed at all times.",
-    "docs": []
+    "docs": [],
+    "discussions": [
+      {
+        "id": "dc-crea-001",
+        "author": "field.echo",
+        "text": "Visual lure is active at dusk. @j.huang, please prepare sensor filters.",
+        "date": "2026-04-21",
+        "mentions": [
+          { "username": "j.huang", "start": 31, "end": 39 }
+        ],
+        "replies": [
+          {
+            "id": "dr-crea-001",
+            "author": "j.huang",
+            "text": "Optical filter package pushed to all visors. @field.echo, please verify v2.3.",
+            "date": "2026-04-21",
+            "mentions": [
+              { "username": "field.echo", "start": 45, "end": 56 }
+            ]
+          }
+        ]
+      }
+    ]
   },
   {
     "id": "crea-002",

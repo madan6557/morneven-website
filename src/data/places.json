@@ -9,6 +9,28 @@
     "docs": [
       { "type": "image", "url": "", "caption": "Iron Citadel aerial view" },
       { "type": "image", "url": "", "caption": "The Spire of Echoes" }
+    ],
+    "discussions": [
+      {
+        "id": "dc-place-001",
+        "author": "h.kato",
+        "text": "Perimeter status remains stable. @j.huang, can you recheck the east relay?",
+        "date": "2026-04-22",
+        "mentions": [
+          { "username": "j.huang", "start": 33, "end": 41 }
+        ],
+        "replies": [
+          {
+            "id": "dr-place-001",
+            "author": "j.huang",
+            "text": "East relay confirmed stable, @h.kato, all clear.",
+            "date": "2026-04-22",
+            "mentions": [
+              { "username": "h.kato", "start": 29, "end": 36 }
+            ]
+          }
+        ]
+      }
     ]
   },
   {

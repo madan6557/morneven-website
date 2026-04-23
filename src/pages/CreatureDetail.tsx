@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getCreature } from "@/services/api";
-import type { Creature, DiscussionComment } from "@/types";
+import {
+  getCreature,
+  addCreatureDiscussionComment,
+  addCreatureDiscussionReply,
+  editCreatureDiscussionComment,
+  deleteCreatureDiscussionComment,
+  editCreatureDiscussionReply,
+  deleteCreatureDiscussionReply,
+} from "@/services/api";
+import type { Creature, DiscussionComment, DiscussionMention } from "@/types";
 import { ArrowLeft, ShieldAlert, FileText, MapPin, NotebookPen, ExternalLink } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
@@ -54,7 +62,12 @@ export default function CreatureDetail() {
   const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
 
   useEffect(() => {
-    if (id) getCreature(id).then((c) => setCreature(c ?? null));
+    if (id) {
+      getCreature(id).then((c) => {
+        setCreature(c ?? null);
+        setDiscussion(c?.discussions ?? []);
+      });
+    }
   }, [id]);
 
   if (!creature) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
@@ -62,23 +75,62 @@ export default function CreatureDetail() {
   const accent = creature.accentColor;
   const doctrine = getDoctrine(creature.classification);
 
-  const handleAddComment = (author: string, text: string) => {
-    setDiscussion((prev) => [...prev, { id: `dc-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0], replies: [] }]);
+  const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
+    if (!creature) return;
+    const updated = await addCreatureDiscussionComment(creature.id, author, text, mentions);
+    if (!updated) return;
+    setCreature(updated);
+    setDiscussion(updated.discussions ?? []);
   };
-  const handleAddReply = (commentId: string, author: string, text: string) => {
-    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, replies: [...c.replies, { id: `dr-${Date.now()}`, author, text, date: new Date().toISOString().split("T")[0] }] } : c));
+
+  const handleAddReply = async (
+    commentId: string,
+    author: string,
+    text: string,
+    mentions: DiscussionMention[] = [],
+  ) => {
+    if (!creature) return;
+    const updated = await addCreatureDiscussionReply(creature.id, commentId, author, text, mentions);
+    if (!updated) return;
+    setCreature(updated);
+    setDiscussion(updated.discussions ?? []);
   };
-  const handleEditComment = (commentId: string, text: string) => {
-    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, text } : c));
+
+  const handleEditComment = async (commentId: string, text: string, mentions: DiscussionMention[] = []) => {
+    if (!creature) return;
+    const updated = await editCreatureDiscussionComment(creature.id, commentId, text, mentions);
+    if (!updated) return;
+    setCreature(updated);
+    setDiscussion(updated.discussions ?? []);
   };
-  const handleDeleteComment = (commentId: string) => {
-    setDiscussion((prev) => prev.filter((c) => c.id !== commentId));
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!creature) return;
+    const updated = await deleteCreatureDiscussionComment(creature.id, commentId);
+    if (!updated) return;
+    setCreature(updated);
+    setDiscussion(updated.discussions ?? []);
   };
-  const handleEditReply = (commentId: string, replyId: string, text: string) => {
-    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, replies: c.replies.map((r) => r.id === replyId ? { ...r, text } : r) } : c));
+
+  const handleEditReply = async (
+    commentId: string,
+    replyId: string,
+    text: string,
+    mentions: DiscussionMention[] = [],
+  ) => {
+    if (!creature) return;
+    const updated = await editCreatureDiscussionReply(creature.id, commentId, replyId, text, mentions);
+    if (!updated) return;
+    setCreature(updated);
+    setDiscussion(updated.discussions ?? []);
   };
-  const handleDeleteReply = (commentId: string, replyId: string) => {
-    setDiscussion((prev) => prev.map((c) => c.id === commentId ? { ...c, replies: c.replies.filter((r) => r.id !== replyId) } : c));
+
+  const handleDeleteReply = async (commentId: string, replyId: string) => {
+    if (!creature) return;
+    const updated = await deleteCreatureDiscussionReply(creature.id, commentId, replyId);
+    if (!updated) return;
+    setCreature(updated);
+    setDiscussion(updated.discussions ?? []);
   };
 
   return (

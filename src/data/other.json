@@ -6,7 +6,29 @@
     "thumbnail": "",
     "shortDesc": "Definitions for the Gemora 1-5 danger scale used to rate creatures, anomalies, and zones.",
     "fullDesc": "The Gemora Danger Level (DL) is a 1-5 scale used by Morneven Institute to communicate the threat profile of any catalogued entity, zone, or anomaly.\n\nDL-1 — Negligible. Trained personnel may approach without escort.\nDL-2 — Cautionary. Standard PPE required; solo approach permitted.\nDL-3 — Hostile. Minimum two-operative team, ranged armament authorized.\nDL-4 — Lethal. Specialist field team only; containment doctrine in force.\nDL-5 — Existential. No approach is sanctioned; observation from secure orbit only.\n\nThe DL rating is reviewed quarterly and may be elevated unilaterally by any Director-tier officer. DL is independent of GEC classification — a low-classification entity can still earn a high DL if engaged carelessly.",
-    "docs": []
+    "docs": [],
+    "discussions": [
+      {
+        "id": "dc-other-001",
+        "author": "ops.delta",
+        "text": "Proposed a stricter wording for DL-3. @e.moonveil, please review.",
+        "date": "2026-04-23",
+        "mentions": [
+          { "username": "e.moonveil", "start": 38, "end": 49 }
+        ],
+        "replies": [
+          {
+            "id": "dr-other-001",
+            "author": "e.moonveil",
+            "text": "Noted. Please sync with the field team, @ops.delta, before shift end.",
+            "date": "2026-04-23",
+            "mentions": [
+              { "username": "ops.delta", "start": 40, "end": 50 }
+            ]
+          }
+        ]
+      }
+    ]
   },
   {
     "id": "other-002",
