@@ -51,7 +51,7 @@
     "category": "Access Credential",
     "thumbnail": "",
     "shortDesc": "Single-issue unrestricted clearance token. Currently held by Sola.",
-    "fullDesc": "The Stellar Pass is the only access credential issued by the Morneven Institute that overrides every door, vault, and observation cordon — including Forbidden Sectors. It is not delegated, copied, revoked, or audited. It exists because attempting to deny its current holder access has, in field tests, produced a worse outcome than letting her in.\n\nOnly one Stellar Pass exists. It is currently held by Sola. Personnel encountering the Pass in active use are instructed to acknowledge it without challenge and resume duties.",
+    "fullDesc": "The Stellar Pass is the only fully-unrestricted access credential issued by the Morneven Institute. It overrides every door, vault, and observation cordon — including Forbidden Sectors. It is not delegated, copied, revoked, or audited. It exists because attempting to deny its current holder access has, in field tests, produced a worse outcome than letting her in.\n\nOnly one Stellar Pass exists. It is currently held by Sola. Personnel encountering the Pass in active use are instructed to acknowledge it without challenge and resume duties.\n\nA single companion credential — the Stellar Companion pass — is issued separately to Sora. The Companion pass is not the Stellar Pass; it is a paired credential that mirrors most of the Pass's facility access but is logged independently. See tech-009: Stellar Companion Pass.",
     "docs": []
   },
   {
