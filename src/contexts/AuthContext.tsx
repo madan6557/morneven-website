@@ -37,17 +37,43 @@ interface SavedAuth {
 
 function readSaved(): SavedAuth | null {
   if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(AUTH_KEY);
-  if (!raw) return null;
   try {
+    const raw = localStorage.getItem(AUTH_KEY);
+    if (!raw) return null;
     return JSON.parse(raw) as SavedAuth;
   } catch {
     return null;
   }
 }
 
+function writeSavedAuth(next: {
+  isAuthenticated: boolean;
+  username: string;
+  role: UserRole;
+  personnelLevel: PersonnelLevel;
+  track: PersonnelTrack;
+}) {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.setItem(AUTH_KEY, JSON.stringify(next));
+  } catch {
+    // Ignore storage failures and keep the in-memory auth state working.
+  }
+}
+
+function clearSavedAuth() {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.removeItem(AUTH_KEY);
+  } catch {
+    // Ignore storage failures on logout.
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const saved = readSaved();
+  const [saved] = useState(() => readSaved());
 
   const [isAuthenticated, setIsAuthenticated] = useState(saved?.isAuthenticated ?? false);
   const [username, setUsername] = useState(saved?.username ?? "Guest");
@@ -61,10 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Save to localStorage whenever auth state changes
   useEffect(() => {
-    localStorage.setItem(
-      AUTH_KEY,
-      JSON.stringify({ isAuthenticated, username, role, personnelLevel, track })
-    );
+    writeSavedAuth({ isAuthenticated, username, role, personnelLevel, track });
   }, [isAuthenticated, username, role, personnelLevel, track]);
 
   const login = async (email: string, _password: string) => {
@@ -112,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole("guest");
     setPersonnelLevel(DEFAULT_PL_BY_ROLE.guest);
     setTrack(DEFAULT_TRACK_BY_ROLE.guest);
-    localStorage.removeItem(AUTH_KEY);
+    clearSavedAuth();
   };
 
   return (

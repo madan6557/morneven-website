@@ -128,6 +128,23 @@ Frontend akan parsing marker, tetapi backend tetap harus menyimpan `fullDesc` ap
 8. `/personnel` -> personnel endpoint (L7 only).
 9. `/settings` -> settings endpoint per user.
 
+## 4.1 Author Panel Access Matrix
+
+Author panel adalah surface CRUD internal yang dipakai frontend untuk mengelola data konten. Backend harus membedakan akses berdasarkan `level` dan `track`.
+
+1. `L7` -> akses penuh ke semua section, termasuk moderasi diskusi dan seluruh CRUD.
+2. `L6 executive` -> akses penuh ke author panel, plus moderasi diskusi lintas user.
+3. `L6 field` -> dapat masuk panel untuk `lore/places`, `lore/creatures`, dan gallery milik sendiri.
+4. `L6 mechanic` -> dapat masuk panel untuk `projects`, `lore/technology`, dan gallery milik sendiri.
+5. `L6 logistics` -> hanya dapat masuk panel untuk gallery milik sendiri.
+6. `L0-L5` -> tidak memiliki akses write ke author panel.
+
+Catatan:
+
+1. Gallery write access tetap harus diverifikasi dengan ownership `uploadedBy` di backend.
+2. Untuk edit/delete komentar diskusi, aturan moderator mengikuti section 5.8 dan 5.13.
+3. Jika UI mengirim request ke section yang tidak sesuai track, backend harus menolak dengan `403`.
+
 ## 5. Daftar Endpoint Lengkap
 
 ## 5.1 Authentication
@@ -333,6 +350,48 @@ Rule tambahan:
 ### PUT /api/settings/command-center
 
 Scope per user (berdasarkan user id dari token).
+
+### 5.11.1 Command Center Settings
+
+Frontend memakai satu payload setting per user untuk mengontrol konten yang tampil di halaman `/home`.
+
+```ts
+interface CommandCenterSettings {
+  showStats: boolean;
+  showProjects: boolean;
+  showNews: boolean;
+  showCharacters: boolean;
+  showPlaces: boolean;
+  showTechnology: boolean;
+  showGallery: boolean;
+  showQuickActions: boolean;
+  welcomeMessage: string;
+}
+```
+
+Default value:
+
+```json
+{
+  "showStats": true,
+  "showProjects": true,
+  "showNews": true,
+  "showCharacters": true,
+  "showPlaces": true,
+  "showTechnology": true,
+  "showGallery": true,
+  "showQuickActions": true,
+  "welcomeMessage": "Here's your operational overview."
+}
+```
+
+Rule penting:
+
+1. Settings harus di-scope per user, bukan global.
+2. Update settings tidak boleh memodifikasi user lain.
+3. Jika backend mengubah settings, response harus mengembalikan object setting final yang sudah tersimpan.
+4. Frontend saat ini mengharapkan perubahan settings bisa dipakai segera di Command Center/HomePage setelah reload atau rehydrate session.
+5. Untuk migrasi dari localStorage, gunakan key referensi `morneven_cc_settings` sebagai mapping awal.
 
 ## 5.12 News
 
