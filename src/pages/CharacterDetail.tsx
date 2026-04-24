@@ -271,6 +271,41 @@ export default function CharacterDetail() {
               </TabsContent>
             </Tabs>
 
+            {/* Documentation - always visible (outside tabs) */}
+            {char.docs && char.docs.length > 0 && (
+              <div className="space-y-4 pt-6">
+                <h2 className="font-heading text-lg tracking-wider text-foreground uppercase border-b pb-2" style={{ borderColor: `${accentColor}30` }}>Documentation</h2>
+                <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
+                  {char.docs.map((doc, i) => (
+                    <div key={i} className="hud-border-sm bg-card overflow-hidden" style={{ borderColor: `${accentColor}20` }}>
+                      {doc.type === "video" && doc.url ? (
+                        <div className="aspect-video bg-muted">
+                          <iframe
+                            src={doc.url}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            title={`${char.name} Documentation`}
+                          />
+                        </div>
+                      ) : doc.type === "image" && doc.url ? (
+                        <div className="aspect-video bg-muted overflow-hidden">
+                          <img src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="aspect-video bg-muted flex items-center justify-center">
+                          <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : "IMAGE"}</span>
+                        </div>
+                      )}
+                      <div className="p-3">
+                        <p className="text-xs font-body text-muted-foreground">{doc.caption}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Discussion Section - standalone, outside tabs */}
             <div className="space-y-4 pt-6">
               <DiscussionSection
