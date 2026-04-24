@@ -235,32 +235,9 @@ export default function CreatureDetail() {
               <RedactedBlock fullDesc={creature.fullDesc} />
             </div>
 
-            {creature.docs && creature.docs.length > 0 && (
-              <div className="space-y-4">
-                <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Documentation</h2>
-                <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-                  {creature.docs.map((doc, i) => (
-                    <div key={i} className="hud-border-sm bg-card overflow-hidden" style={{ borderColor: `${accent}20` }}>
-                      {doc.type === "video" && doc.url ? (
-                        <div className="aspect-video bg-muted">
-                          <iframe src={doc.url} className="w-full h-full" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title={`${creature.name} doc`} />
-                        </div>
-                      ) : doc.type === "image" && doc.url ? (
-                        <div className="aspect-video bg-muted overflow-hidden">
-                          <img src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
-                        </div>
-                      ) : (
-                        <div className="aspect-video bg-muted flex items-center justify-center">
-                          <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : "IMAGE"}</span>
-                        </div>
-                      )}
-                      <div className="p-3"><p className="text-xs font-body text-muted-foreground">{doc.caption}</p></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </TabsContent>
+
+          <TabsContent value="habitat" className="mt-6 space-y-6">
             <div className="max-w-3xl space-y-4">
               <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Operational Environment</h2>
               <div className="hud-border bg-card p-5 space-y-3" style={{ borderColor: `${accent}30` }}>
