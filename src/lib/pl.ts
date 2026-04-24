@@ -189,7 +189,7 @@ export const PL_LORE_ID = "other-005";
 // ────────────────────────────────────────────────────────────────────────────
 // Author Panel section access
 // ────────────────────────────────────────────────────────────────────────────
-export type AuthorSection = "projects" | "lore" | "gallery" | "homepage" | "map";
+export type AuthorSection = "projects" | "lore" | "gallery" | "homepage" | "map" | "news";
 export type LoreSubSection = "characters" | "places" | "technology" | "creatures" | "other";
 
 export interface SectionAccessOpts {
@@ -213,6 +213,9 @@ export function canAccessAuthorPanel(opts: SectionAccessOpts): boolean {
   if (level < 6) return false;
 
   if (track === "executive") return true;
+
+  // News is executive-only at L7+; L6 non-executive tracks have no access.
+  if (section === "news") return false;
 
   // Gallery is the shared L6 surface - any L6 may enter and manage their
   // own uploads. Per-item ownership gating happens in AuthorDashboard.
