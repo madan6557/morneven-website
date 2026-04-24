@@ -167,10 +167,26 @@ export interface GalleryItem {
   uploadedBy?: string;
 }
 
+export interface NewsAttachment {
+  type: "image" | "video" | "link";
+  url: string;
+  caption?: string;
+}
+
 export interface NewsItem {
   id: string;
+  // Headline shown in the Command Center feed.
   text: string;
   date: string;
+  // Optional long-form body. Only relevant when hasDetail is true.
+  body?: string;
+  // Optional thumbnail used on the detail page.
+  thumbnail?: string;
+  // Optional rich attachments (images, videos, external links).
+  attachments?: NewsAttachment[];
+  // When true, the feed entry links to /news/:id. When false (or omitted),
+  // the entry is rendered as a plain note with no detail page.
+  hasDetail?: boolean;
 }
 
 export type MapZoneStatus = "safe" | "caution" | "danger" | "restricted" | "mission";
