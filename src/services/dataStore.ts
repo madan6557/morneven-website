@@ -28,6 +28,7 @@ export const STORAGE_KEYS = {
   gallery: "morneven_gallery",
   creatures: "morneven_creatures",
   other: "morneven_other",
+  news: "morneven_news",
   mapMarkers: "morneven_map_markers",
   mapImage: "morneven_map_image",
 } as const;
@@ -73,7 +74,7 @@ export const db = {
     STORAGE_KEYS.mapMarkers,
     (mapData as { markers: MapMarker[] }).markers,
   ),
-  news: [...newsData] as NewsItem[],
+  news: readCollection<NewsItem>(STORAGE_KEYS.news, newsData as NewsItem[]),
 };
 
 export function todayISO(): string {

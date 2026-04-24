@@ -121,12 +121,16 @@ export default function DiscussionSection({
         <p className="text-xs text-muted-foreground font-body italic">Login to join the discussion.</p>
       )}
 
-      {/* Comments list */}
+      {/* Comments list — newest first. Sort by parsable date desc when
+          available, otherwise fall back to original (insertion) order
+          reversed. */}
       <div className="space-y-3">
         {comments.length === 0 && (
           <p className="text-xs text-muted-foreground font-body text-center py-4">No discussion yet. Be the first to comment.</p>
         )}
-        {comments.map((c) => (
+        {[...comments]
+          .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+          .map((c) => (
           <div key={c.id} className="hud-border-sm bg-card p-4 space-y-2" style={{ borderColor: `${accent}20` }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -177,7 +181,9 @@ export default function DiscussionSection({
             {/* Replies */}
             {c.replies.length > 0 && (
               <div className="ml-4 border-l-2 pl-3 space-y-2 mt-2" style={{ borderColor: `${accent}30` }}>
-                {c.replies.map((r) => (
+                {[...c.replies]
+                  .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+                  .map((r) => (
                   <div key={r.id} className="space-y-1">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
