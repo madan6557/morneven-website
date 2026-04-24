@@ -6,10 +6,12 @@ import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, t
 import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon } from "lucide-react";
 import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
+import NewsManagementSection from "@/components/NewsManagementSection";
+import CommandCenterSelectionPanel from "@/components/CommandCenterSelectionPanel";
 import { canAccessAuthorPanel, canEnterAuthorPanel } from "@/lib/pl";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const dashTabs = ["projects", "lore", "gallery", "homepage", "map"] as const;
+const dashTabs = ["projects", "lore", "gallery", "news", "homepage", "map"] as const;
 const loreSubs = ["characters", "places", "technology", "creatures", "other"] as const;
 const inputClass = "w-full mt-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 const labelClass = "font-heading text-xs tracking-wider text-muted-foreground uppercase";
