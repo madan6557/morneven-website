@@ -654,6 +654,12 @@ export default function AuthorDashboard() {
             </div>
           </div>
 
+          <div className="mecha-line" />
+          <CommandCenterSelectionPanel
+            settings={ccSettings}
+            onChange={(next) => setCcSettings(next)}
+          />
+
           <div className="flex justify-end">
             <button
               onClick={() => { saveCommandCenterSettings(ccSettings); }}
