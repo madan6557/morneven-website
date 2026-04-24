@@ -26,6 +26,7 @@ import PersonnelLevelPage from "./pages/PersonnelLevelPage";
 import AuthorDashboard from "./pages/AuthorDashboard";
 import PersonnelManagementPage from "./pages/PersonnelManagementPage";
 import SettingsPage from "./pages/SettingsPage";
+import NewsDetail from "./pages/NewsDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -74,6 +75,7 @@ function App() {
                 <Route path="/author" element={<AuthorRoute><AuthorDashboard /></AuthorRoute>} />
                 <Route path="/personnel" element={<AuthorRoute><PersonnelManagementPage /></AuthorRoute>} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/news/:id" element={<NewsDetail />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
