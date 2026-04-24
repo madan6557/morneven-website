@@ -261,8 +261,6 @@ export default function CreatureDetail() {
               </div>
             )}
           </TabsContent>
-
-          <TabsContent value="habitat" className="mt-6 space-y-6">
             <div className="max-w-3xl space-y-4">
               <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Operational Environment</h2>
               <div className="hud-border bg-card p-5 space-y-3" style={{ borderColor: `${accent}30` }}>
