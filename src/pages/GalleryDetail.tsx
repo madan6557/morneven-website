@@ -108,9 +108,11 @@ export default function GalleryDetail() {
           <p className="text-xs text-muted-foreground font-body italic">Login to comment.</p>
         )}
 
-        {/* Comments List */}
+        {/* Comments List — newest first */}
         <div className="space-y-4">
-          {item.comments.map((comment) => (
+          {[...item.comments]
+            .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+            .map((comment) => (
             <div key={comment.id} className="hud-border-sm bg-card p-4 space-y-3">
               <div className="flex items-start justify-between">
                 <div>
