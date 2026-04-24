@@ -136,7 +136,7 @@ export default function HomePage() {
               </div>
               <div className="mecha-line" />
               <div className="space-y-3">
-                {projects.map((p) => (
+                {visibleProjects.map((p) => (
                   <Link
                     key={p.id}
                     to={`/projects/${p.id}`}
@@ -164,15 +164,31 @@ export default function HomePage() {
               </h3>
               <div className="mecha-line" />
               <ul className="space-y-3">
-                {news.map((n) => (
-                  <li key={n.id} className="flex items-start gap-3 text-sm">
-                    <Clock className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <div className="min-w-0">
-                      <p className="font-body text-foreground/80 break-words">{n.text}</p>
-                      <p className="text-[10px] font-display tracking-wider text-muted-foreground mt-0.5">{n.date}</p>
-                    </div>
-                  </li>
-                ))}
+                {visibleNews.map((n) => {
+                  const inner = (
+                    <>
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-body text-foreground/80 break-words">{n.text}</p>
+                        <p className="text-[10px] font-display tracking-wider text-muted-foreground mt-0.5">{n.date}</p>
+                      </div>
+                    </>
+                  );
+                  return n.hasDetail ? (
+                    <li key={n.id}>
+                      <Link
+                        to={`/news/${n.id}`}
+                        className="flex items-start gap-3 text-sm rounded-sm p-1 -m-1 hover:bg-background/60 transition-colors"
+                      >
+                        {inner}
+                      </Link>
+                    </li>
+                  ) : (
+                    <li key={n.id} className="flex items-start gap-3 text-sm">
+                      {inner}
+                    </li>
+                  );
+                })}
               </ul>
             </motion.div>
           )}
@@ -194,7 +210,7 @@ export default function HomePage() {
               </div>
               <div className="mecha-line" />
               <div className="space-y-3">
-                {characters.slice(0, 3).map((c) => (
+                {visibleCharacters.map((c) => (
                   <Link
                     key={c.id}
                     to={`/lore/characters/${c.id}`}
@@ -234,14 +250,14 @@ export default function HomePage() {
               </div>
               <div className="mecha-line" />
               <div className="space-y-3">
-                {places.slice(0, 3).map((p) => (
+                {visiblePlaces.map((p) => (
                   <Link
                     key={p.id}
                     to={`/lore/places/${p.id}`}
                     className="block p-2 rounded-md hover:bg-background/50 transition-colors group"
                   >
                     <p className="text-sm font-heading text-foreground group-hover:text-primary transition-colors truncate">{p.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{p.type} — {p.shortDesc}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{p.type} · {p.shortDesc}</p>
                   </Link>
                 ))}
               </div>
@@ -260,7 +276,7 @@ export default function HomePage() {
               </div>
               <div className="mecha-line" />
               <div className="space-y-3">
-                {tech.slice(0, 3).map((t) => (
+                {visibleTech.map((t) => (
                   <Link
                     key={t.id}
                     to={`/lore/tech/${t.id}`}
@@ -289,7 +305,7 @@ export default function HomePage() {
           </div>
           <div className="mecha-line" />
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {gallery.slice(0, 4).map((g) => (
+            {visibleGallery.map((g) => (
               <Link
                 key={g.id}
                 to={`/gallery/${g.id}`}
