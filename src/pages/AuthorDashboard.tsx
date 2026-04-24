@@ -578,12 +578,17 @@ export default function AuthorDashboard() {
         </div>
       )}
 
-      {activeTab !== "homepage" && activeTab !== "map" && canAccess(activeTab, loreSub) && (
+      {activeTab !== "homepage" && activeTab !== "map" && activeTab !== "news" && canAccess(activeTab, loreSub) && (
         <div className="flex justify-end">
           <button onClick={startCreate} className="flex items-center gap-1 px-3 py-1.5 text-xs font-display tracking-wider text-primary-foreground bg-primary rounded-sm hover:opacity-90 transition-opacity">
             <Plus className="h-3 w-3" /> CREATE NEW
           </button>
         </div>
+      )}
+
+      {/* News management */}
+      {activeTab === "news" && canAccess("news") && (
+        <NewsManagementSection />
       )}
 
       {/* Locked-section banner when current tab/sub is not accessible. */}
