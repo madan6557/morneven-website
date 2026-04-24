@@ -181,7 +181,9 @@ export default function DiscussionSection({
             {/* Replies */}
             {c.replies.length > 0 && (
               <div className="ml-4 border-l-2 pl-3 space-y-2 mt-2" style={{ borderColor: `${accent}30` }}>
-                {c.replies.map((r) => (
+                {[...c.replies]
+                  .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+                  .map((r) => (
                   <div key={r.id} className="space-y-1">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
