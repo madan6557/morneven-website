@@ -1,9 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getProjects, getCharacters, getNews, getGallery, getPlaces, getTechnology } from "@/services/api";
-import { getCommandCenterSettings, type CommandCenterSettings } from "@/services/commandCenterSettings";
+import {
+  getCommandCenterSettings,
+  resolveSectionItems,
+  type CommandCenterSettings,
+} from "@/services/commandCenterSettings";
 import type { Project, Character, NewsItem, GalleryItem, Place, Technology } from "@/types";
 import {
   Activity,
@@ -75,6 +79,13 @@ export default function HomePage() {
 
   const activeProjects = projects.filter((p) => p.status === "On Progress").length;
   const totalLore = characters.length + places.length + tech.length;
+
+  const visibleProjects = useMemo(() => resolveSectionItems("projects", projects, settings), [projects, settings]);
+  const visibleNews = useMemo(() => resolveSectionItems("news", news, settings), [news, settings]);
+  const visibleCharacters = useMemo(() => resolveSectionItems("characters", characters, settings), [characters, settings]);
+  const visiblePlaces = useMemo(() => resolveSectionItems("places", places, settings), [places, settings]);
+  const visibleTech = useMemo(() => resolveSectionItems("technology", tech, settings), [tech, settings]);
+  const visibleGallery = useMemo(() => resolveSectionItems("gallery", gallery, settings), [gallery, settings]);
 
   const statusColor: Record<string, string> = {
     "On Progress": "text-accent-yellow",
