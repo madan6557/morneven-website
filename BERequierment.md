@@ -2,6 +2,18 @@
 
 Dokumen ini adalah spesifikasi backend yang disesuaikan dengan fitur frontend saat ini. Tujuannya agar development backend bisa langsung berjalan tanpa ambigu, termasuk kontrak route, logika akses, variabel request/response, validasi, dan format error.
 
+## Update Sistem (April 2026)
+
+Analisa codebase terbaru menunjukkan beberapa perubahan penting yang wajib tercermin di backend:
+
+1. News sekarang mendukung detail page (`hasDetail`) dan lampiran (`attachments`).
+2. Command Center Settings bertambah `itemLimits` dan `manualSelections`.
+3. Discussion untuk lore disimpan sebagai field `discussions` pada entity lore; gallery tetap memakai `comments`.
+4. Author panel L6 non-executive tidak memiliki akses write ke news.
+5. Endpoint gallery comments perlu dukung edit/delete reply.
+
+Dokumen ini sudah diperbarui agar selaras dengan kontrak data frontend saat ini sekaligus menjaga keamanan backend (validasi server-side + RBAC).
+
 ## 1. Ruang Lingkup Fitur
 
 Backend wajib mendukung modul berikut:
@@ -106,6 +118,7 @@ Untuk list:
 5. L6 logistics: hanya gallery milik sendiri.
 6. L0-L5: read-only (sesuai batas restricted block).
 7. Personnel management: hanya L7.
+8. News write (create/update/delete): hanya L7 atau L6 executive.
 
 ### 3.5 Restricted Block (Lore)
 
@@ -138,6 +151,7 @@ Author panel adalah surface CRUD internal yang dipakai frontend untuk mengelola 
 4. `L6 mechanic` -> dapat masuk panel untuk `projects`, `lore/technology`, dan gallery milik sendiri.
 5. `L6 logistics` -> hanya dapat masuk panel untuk gallery milik sendiri.
 6. `L0-L5` -> tidak memiliki akses write ke author panel.
+7. `News` section -> hanya `L7` atau `L6 executive`.
 
 Catatan:
 
@@ -310,6 +324,8 @@ Rule:
 
 ### PUT /api/gallery/:id/comments/:commentId
 ### DELETE /api/gallery/:id/comments/:commentId
+### PUT /api/gallery/:id/comments/:commentId/replies/:replyId
+### DELETE /api/gallery/:id/comments/:commentId/replies/:replyId
 
 Rule moderasi:
 
@@ -366,6 +382,22 @@ interface CommandCenterSettings {
   showGallery: boolean;
   showQuickActions: boolean;
   welcomeMessage: string;
+  itemLimits: {
+    projects: number;
+    news: number;
+    characters: number;
+    places: number;
+    technology: number;
+    gallery: number;
+  };
+  manualSelections: {
+    projects: string[];
+    news: string[];
+    characters: string[];
+    places: string[];
+    technology: string[];
+    gallery: string[];
+  };
 }
 ```
 
@@ -381,7 +413,23 @@ Default value:
   "showTechnology": true,
   "showGallery": true,
   "showQuickActions": true,
-  "welcomeMessage": "Here's your operational overview."
+  "welcomeMessage": "Here's your operational overview.",
+  "itemLimits": {
+    "projects": 5,
+    "news": 6,
+    "characters": 3,
+    "places": 3,
+    "technology": 3,
+    "gallery": 4
+  },
+  "manualSelections": {
+    "projects": [],
+    "news": [],
+    "characters": [],
+    "places": [],
+    "technology": [],
+    "gallery": []
+  }
 }
 ```
 
@@ -396,19 +444,50 @@ Rule penting:
 ## 5.12 News
 
 ### GET /api/news
+### GET /api/news/:id
 ### POST /api/news
 ### PUT /api/news/:id
 ### DELETE /api/news/:id
 
-Write operation disarankan L7 only.
+Write operation: L7 atau L6 executive.
+
+### 5.12.1 News Payload (Updated)
+
+Frontend saat ini memakai field berikut:
+
+```ts
+interface NewsAttachment {
+  type: "image" | "video" | "link";
+  url: string;
+  caption?: string;
+}
+
+interface NewsItem {
+  id: string;
+  text: string;
+  date: string; // YYYY-MM-DD
+  hasDetail?: boolean;
+  thumbnail?: string;
+  body?: string;
+  attachments?: NewsAttachment[];
+}
+```
+
+Rule:
+
+1. Jika `hasDetail !== true`, `body`, `thumbnail`, dan `attachments` boleh kosong.
+2. Jika `hasDetail === true`, backend wajib menerima dan menyimpan `body` (opsional untuk legacy data lama).
+3. `attachments[].type` wajib salah satu `image|video|link`.
 
 ## 5.13 Discussion Management
 
-Discussion dipakai lintas entity (minimal: place, technology, other, gallery). Backend harus mendukung pairing berdasarkan entity type + entity id.
+Discussion dipakai lintas entity lore dan disimpan sebagai field `discussions` pada object entity.
+Entity aktif: `places|technology|other|characters|creatures`.
+Gallery menggunakan endpoint komentar terpisah pada section 5.8.
 
 ### GET /api/discussions/:entityType/:entityId
 
-- `entityType`: `places|technology|other|gallery|characters|creatures`
+- `entityType`: `places|technology|other|characters|creatures`
 - Response: list discussion thread milik entity.
 
 ### POST /api/discussions/:entityType/:entityId/comments
@@ -441,6 +520,11 @@ Rule akses:
 1. Guest tidak boleh create/edit/delete.
 2. Pemilik comment/reply boleh edit/delete miliknya.
 3. Moderator (L6 executive atau L7) boleh moderasi lintas user.
+
+Catatan implementasi:
+
+1. Untuk kompatibilitas frontend saat ini, backend boleh mengembalikan payload entity lengkap yang sudah berisi field `discussions`.
+2. Bila memakai endpoint `/api/discussions/*`, sinkronisasi tetap harus menulis ke field `discussions` pada entity terkait.
 
 ## 6. Variabel Data yang Diperlukan
 
@@ -492,6 +576,7 @@ interface Character {
   };
   docs: { type: "image" | "video"; url: string; caption: string }[];
   contributions?: { id: string; title: string; description: string; date?: string }[];
+  discussions?: DiscussionComment[];
 }
 ```
 
@@ -506,6 +591,7 @@ interface Place {
   shortDesc: string;
   fullDesc: string;
   docs: { type: "image" | "video"; url: string; caption: string }[];
+  discussions?: DiscussionComment[];
 }
 ```
 
@@ -520,6 +606,7 @@ interface Technology {
   shortDesc: string;
   fullDesc: string;
   docs: { type: "image" | "video"; url: string; caption: string }[];
+  discussions?: DiscussionComment[];
 }
 ```
 
@@ -537,6 +624,7 @@ interface Creature {
   shortDesc: string;
   fullDesc: string;
   docs: { type: "image" | "video"; url: string; caption: string }[];
+  discussions?: DiscussionComment[];
 }
 ```
 
@@ -551,6 +639,7 @@ interface OtherLore {
   shortDesc: string;
   fullDesc: string;
   docs: { type: "image" | "video"; url: string; caption: string }[];
+  discussions?: DiscussionComment[];
 }
 ```
 
@@ -649,6 +738,22 @@ interface CommandCenterSettings {
   showGallery: boolean;
   showQuickActions: boolean;
   welcomeMessage: string;
+  itemLimits: {
+    projects: number;
+    news: number;
+    characters: number;
+    places: number;
+    technology: number;
+    gallery: number;
+  };
+  manualSelections: {
+    projects: string[];
+    news: string[];
+    characters: string[];
+    places: string[];
+    technology: string[];
+    gallery: string[];
+  };
 }
 ```
 
@@ -665,6 +770,9 @@ interface CommandCenterSettings {
 9. `status` project dan map harus sesuai enum.
 10. Validasi mention index (`start < end`, range valid terhadap panjang text).
 11. Validasi `mentions[].username` harus ada di personnel registry.
+12. `NewsAttachment.type` hanya `image|video|link`.
+13. Untuk `manualSelections`, setiap ID harus ada di collection section terkait.
+14. Untuk `itemLimits`, nilai harus bilangan bulat `>= 0`.
 
 ## 8. Logika Bisnis Penting
 
@@ -675,6 +783,7 @@ interface CommandCenterSettings {
 5. Semua write endpoint wajib audit trail minimal: `updatedAt`, `updatedBy` (disarankan).
 6. Gunakan soft-delete jika dibutuhkan histori moderation.
 7. Pairing discussion wajib berbasis `entityType + entityId` agar tidak tercampur antar konten.
+8. Role `author` tidak boleh diberikan bebas; penerbitan role ini harus mengikuti whitelist/policy internal.
 
 ## 9. Storage dan Migrasi
 
@@ -692,6 +801,7 @@ Frontend saat ini memakai localStorage keys berikut (untuk referensi migrasi):
 10. `morneven_personnel`
 11. `morneven_cc_settings`
 12. `auth_state`
+13. `morneven_news`
 
 Backend harus mengganti pola ini menjadi persistence DB + API tanpa mengubah kontrak data frontend.
 
