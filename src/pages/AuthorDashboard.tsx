@@ -195,6 +195,18 @@ export default function AuthorDashboard() {
   const [isCreating, setIsCreating] = useState(false);
   const [ccSettings, setCcSettings] = useState<CommandCenterSettings>(() => getCommandCenterSettings());
   const fullDescRef = useRef<HTMLTextAreaElement>(null);
+  const editFormRef = useRef<HTMLDivElement>(null);
+
+  // Whenever a new edit/create form opens, scroll it into view so users
+  // editing items at the bottom of long lists don't have to scroll up.
+  useEffect(() => {
+    if (!editing) return;
+    // Defer to next frame so the form has rendered.
+    const id = window.requestAnimationFrame(() => {
+      editFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [editing]);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -648,7 +660,7 @@ export default function AuthorDashboard() {
 
       {/* Edit Form */}
       {editing && canAccess(activeTab, loreSub) && (
-        <div className="hud-border bg-card p-6 space-y-4">
+        <div ref={editFormRef} className="hud-border bg-card p-6 space-y-4 scroll-mt-4">
           <div className="flex items-center justify-between">
             <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase">
               {isCreating ? "Create New" : "Edit"} {activeTab === "lore" ? loreSub.slice(0, -1) : activeTab.slice(0, -1)}
