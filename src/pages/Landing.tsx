@@ -163,7 +163,7 @@ export default function Landing() {
                 Human physicists and Demi-human bio-architects to push the boundaries of what's possible.
               </p>
               <p className="font-body text-sm text-muted-foreground leading-relaxed">
-                Our mission extends beyond mere research — we seek to preserve the forgotten histories buried
+                Our mission extends beyond mere research - we seek to preserve the forgotten histories buried
                 beneath Gemora's surface and build a future where all species can thrive together.
               </p>
             </motion.div>

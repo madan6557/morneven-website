@@ -14,7 +14,7 @@
     "docs": [
       { "type": "image", "url": "", "caption": "Aethon Drive schematic v3" },
       { "type": "image", "url": "", "caption": "Crystal array configuration" },
-      { "type": "video", "url": "", "caption": "Test firing footage — Lab 7" }
+      { "type": "video", "url": "", "caption": "Test firing footage - Lab 7" }
     ]
   },
   {
@@ -37,7 +37,7 @@
     "status": "On Hold",
     "thumbnail": "",
     "shortDesc": "Digitization and preservation of pre-apocalypse Earth records recovered from deep vaults.",
-    "fullDesc": "The Stellarum Archives project is dedicated to recovering, digitizing, and preserving records from the pre-apocalypse era — what the people of Gemora call 'Modern Earth.' These documents, data drives, and artifacts provide crucial insights into the catastrophe that transformed Earth into Gemora.\n\nCurrently on hold due to instability in the excavation sites caused by recent seismic activity near the Northern Vault complex.",
+    "fullDesc": "The Stellarum Archives project is dedicated to recovering, digitizing, and preserving records from the pre-apocalypse era - what the people of Gemora call 'Modern Earth.' These documents, data drives, and artifacts provide crucial insights into the catastrophe that transformed Earth into Gemora.\n\nCurrently on hold due to instability in the excavation sites caused by recent seismic activity near the Northern Vault complex.",
     "patches": [
       { "version": "0.2.1", "date": "2025-12-20", "notes": "Recovered 12,000 additional data fragments from Vault 7-B." },
       { "version": "0.2.0", "date": "2025-11-10", "notes": "New decryption algorithm deployed for Ancient-format storage media." }
@@ -65,7 +65,7 @@
     "status": "Completed",
     "thumbnail": "",
     "shortDesc": "Terraforming barren zones of Gemora using modified Jewerlian biotech to restore ecosystems.",
-    "fullDesc": "The Genesis Protocol is an ambitious terraforming initiative that seeks to restore life to the Scorched Wastes — vast barren zones created during the apocalypse. Using modified Jewerlian biological technology combined with Worldshard energy, the project aims to accelerate ecological recovery.\n\nEarly simulations show a 73% success rate for grassland restoration within a 5-year timeline.",
+    "fullDesc": "The Genesis Protocol is an ambitious terraforming initiative that seeks to restore life to the Scorched Wastes - vast barren zones created during the apocalypse. Using modified Jewerlian biological technology combined with Worldshard energy, the project aims to accelerate ecological recovery.\n\nEarly simulations show a 73% success rate for grassland restoration within a 5-year timeline.",
     "patches": [],
     "docs": [
       { "type": "image", "url": "", "caption": "Scorched Wastes aerial survey" },
@@ -78,7 +78,7 @@
     "status": "On Progress",
     "thumbnail": "",
     "shortDesc": "Registry and beam-vector mapping of every known Heliograph Spire on Gemora.",
-    "fullDesc": "Project SOLSTICE is the Mechanic Division's standing registry of all known Heliograph Spires — the Catalyst-class crystal towers that capture violet-dawn refraction and release it as collimated daily energy beams. Each registered Spire is mapped, vector-charted, and integrated into the Violet Veil grid as an off-grid power relay.\n\nThe project's secondary mandate is hazard prevention: unregistered Spires have been responsible for two flash-vaporization incidents involving unbriefed handlers. SOLSTICE survey teams are dispatched the moment a candidate plateau is reported.",
+    "fullDesc": "Project SOLSTICE is the Mechanic Division's standing registry of all known Heliograph Spires - the Catalyst-class crystal towers that capture violet-dawn refraction and release it as collimated daily energy beams. Each registered Spire is mapped, vector-charted, and integrated into the Violet Veil grid as an off-grid power relay.\n\nThe project's secondary mandate is hazard prevention: unregistered Spires have been responsible for two flash-vaporization incidents involving unbriefed handlers. SOLSTICE survey teams are dispatched the moment a candidate plateau is reported.",
     "patches": [
       { "version": "1.2.0", "date": "2026-04-18", "notes": "Registry now contains 312 confirmed Spires across 41 plateaus." },
       { "version": "1.1.0", "date": "2026-02-02", "notes": "Beam-vector overlay integrated into standard field HUD." }
@@ -93,7 +93,7 @@
     "status": "On Progress",
     "thumbnail": "",
     "shortDesc": "Logistics-led standing supply program to keep every shift fully provisioned with sealed Secret boxes.",
-    "fullDesc": "The Pantry Continuity Initiative is the Logistics Division's standing program to ensure that every shift, in every Morneven facility, is fully provisioned with sealed Secret boxes (chicken-drum) in accordance with the Negotiation Protocol.\n\nThe project sounds light. It is not. A failed handoff during the Year of Lanterns produced a Step-Forward Signal alert that turned out to be Sola's response to a snack shortage rather than an actual catastrophe — but the resulting evacuation cost the Institute approximately three days of continental productivity. The Initiative now operates with the same uptime targets as the Violet Veil.",
+    "fullDesc": "The Pantry Continuity Initiative is the Logistics Division's standing program to ensure that every shift, in every Morneven facility, is fully provisioned with sealed Secret boxes (chicken-drum) in accordance with the Negotiation Protocol.\n\nThe project sounds light. It is not. A failed handoff during the Year of Lanterns produced a Step-Forward Signal alert that turned out to be Sola's response to a snack shortage rather than an actual catastrophe - but the resulting evacuation cost the Institute approximately three days of continental productivity. The Initiative now operates with the same uptime targets as the Violet Veil.",
     "patches": [
       { "version": "3.4.1", "date": "2026-04-15", "notes": "Box rotation cycle reduced from 8h to 6h. Zero stockouts in current quarter." },
       { "version": "3.4.0", "date": "2026-03-01", "notes": "Mechanic Bay 11 added to priority distribution tier." }

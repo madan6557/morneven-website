@@ -315,7 +315,7 @@ export default function PersonnelManagementPage() {
           </div>
         </div>
 
-        {/* Bulk action toolbar — visible when 1+ rows are selected. Lets the
+        {/* Bulk action toolbar - visible when 1+ rows are selected. Lets the
             operator change level and/or track on every selected record in
             a single round-trip via bulkUpdatePersonnel. */}
         {selected.size > 0 && (
@@ -334,7 +334,7 @@ export default function PersonnelManagementPage() {
                 onChange={(e) => setBulkLevel(e.target.value === "" ? "" : Number(e.target.value) as PersonnelLevel)}
                 className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                <option value="">— keep —</option>
+                <option value=""> -  keep - </option>
                 {PERSONNEL_LEVELS.map((l) => (
                   <option key={l} value={l}>L{l}</option>
                 ))}
@@ -348,7 +348,7 @@ export default function PersonnelManagementPage() {
                 onChange={(e) => setBulkTrack(e.target.value === "" ? "" : (e.target.value as PersonnelTrack))}
                 className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                <option value="">— keep —</option>
+                <option value=""> -  keep - </option>
                 {PERSONNEL_TRACKS.map((t) => (
                   <option key={t.key} value={t.key}>{t.label}</option>
                 ))}
@@ -371,7 +371,7 @@ export default function PersonnelManagementPage() {
           </div>
         )}
 
-        {/* Table — desktop */}
+        {/* Table - desktop */}
         <div className="hidden lg:block hud-border bg-card overflow-hidden">
           <table className="w-full text-sm font-body">
             <thead>
@@ -458,7 +458,7 @@ export default function PersonnelManagementPage() {
                       {isEditing && draft ? (
                         <input value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} className={inputClass} />
                       ) : (
-                        p.note || <span className="italic text-muted-foreground">—</span>
+                        p.note || <span className="italic text-muted-foreground"> - </span>
                       )}
                     </td>
                     <td className="p-3 align-top text-right">
@@ -506,7 +506,7 @@ export default function PersonnelManagementPage() {
           </table>
         </div>
 
-        {/* Cards — mobile/tablet */}
+        {/* Cards - mobile/tablet */}
         <div className="lg:hidden space-y-3">
           {filtered.map((p) => {
             const isEditing = editingId === p.id;

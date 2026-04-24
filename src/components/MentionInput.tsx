@@ -12,7 +12,7 @@ interface Props {
   onSubmit?: () => void;
   placeholder?: string;
   className?: string;
-  // visual size variant — only affects suggestion popup font sizing
+  // visual size variant - only affects suggestion popup font sizing
   size?: "sm" | "md";
   // ref allows the caller to focus the input
   inputRef?: React.RefObject<HTMLInputElement>;

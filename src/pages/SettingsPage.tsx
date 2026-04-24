@@ -35,7 +35,7 @@ export default function SettingsPage() {
         <div className="hud-border bg-card p-5 space-y-4">
           <h3 className="font-heading text-sm tracking-[0.15em] text-accent-orange uppercase">About</h3>
           <p className="text-xs font-body text-muted-foreground leading-relaxed">
-            Morneven Institute Official Portal — v0.4.2. Built to showcase the world of Gemora, 
+            Morneven Institute Official Portal - v0.4.2. Built to showcase the world of Gemora, 
             its characters, technology, and ongoing projects.
           </p>
         </div>

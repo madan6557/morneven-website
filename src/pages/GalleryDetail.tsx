@@ -108,7 +108,7 @@ export default function GalleryDetail() {
           <p className="text-xs text-muted-foreground font-body italic">Login to comment.</p>
         )}
 
-        {/* Comments List — newest first */}
+        {/* Comments List - newest first */}
         <div className="space-y-4">
           {[...item.comments]
             .sort((a, b) => (b.date || "").localeCompare(a.date || ""))

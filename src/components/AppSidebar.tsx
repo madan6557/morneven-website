@@ -306,7 +306,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
       <div className="h-full overflow-hidden">
         {sidebarContent}
       </div>
-      {/* Chevron button on the edge of the sidebar — sticky inside aside so it stays visible while scrolling */}
+      {/* Chevron button on the edge of the sidebar - sticky inside aside so it stays visible while scrolling */}
       <button
         onClick={onToggleExpand}
         className="absolute top-7 -right-3 z-50 h-6 w-6 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted transition-colors shadow-sm"

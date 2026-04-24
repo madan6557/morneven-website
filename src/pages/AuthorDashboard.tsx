@@ -6,10 +6,12 @@ import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, t
 import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon } from "lucide-react";
 import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
+import NewsManagementSection from "@/components/NewsManagementSection";
+import CommandCenterSelectionPanel from "@/components/CommandCenterSelectionPanel";
 import { canAccessAuthorPanel, canEnterAuthorPanel } from "@/lib/pl";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const dashTabs = ["projects", "lore", "gallery", "homepage", "map"] as const;
+const dashTabs = ["projects", "lore", "gallery", "news", "homepage", "map"] as const;
 const loreSubs = ["characters", "places", "technology", "creatures", "other"] as const;
 const inputClass = "w-full mt-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 const labelClass = "font-heading text-xs tracking-wider text-muted-foreground uppercase";
@@ -86,7 +88,7 @@ type EditableState = {
   habitat?: string;
   // Character
   contributions?: CharacterContribution[];
-  // Gallery — preserved across edits so ownership doesn't transfer.
+  // Gallery - preserved across edits so ownership doesn't transfer.
   uploadedBy?: string;
 };
 
@@ -506,7 +508,7 @@ export default function AuthorDashboard() {
       <h1 className="font-display text-2xl tracking-[0.1em] text-primary">AUTHOR PANEL</h1>
       <div className="mecha-line w-32" />
 
-      {/* Tabs — disabled tabs render as locked with a tooltip explaining
+      {/* Tabs - disabled tabs render as locked with a tooltip explaining
           the clearance gate (per L6 track scoping). */}
       <div className="flex flex-wrap gap-2">
         {dashTabs.map((t) => {
@@ -576,12 +578,17 @@ export default function AuthorDashboard() {
         </div>
       )}
 
-      {activeTab !== "homepage" && activeTab !== "map" && canAccess(activeTab, loreSub) && (
+      {activeTab !== "homepage" && activeTab !== "map" && activeTab !== "news" && canAccess(activeTab, loreSub) && (
         <div className="flex justify-end">
           <button onClick={startCreate} className="flex items-center gap-1 px-3 py-1.5 text-xs font-display tracking-wider text-primary-foreground bg-primary rounded-sm hover:opacity-90 transition-opacity">
             <Plus className="h-3 w-3" /> CREATE NEW
           </button>
         </div>
+      )}
+
+      {/* News management */}
+      {activeTab === "news" && canAccess("news") && (
+        <NewsManagementSection />
       )}
 
       {/* Locked-section banner when current tab/sub is not accessible. */}
@@ -647,6 +654,12 @@ export default function AuthorDashboard() {
             </div>
           </div>
 
+          <div className="mecha-line" />
+          <CommandCenterSelectionPanel
+            settings={ccSettings}
+            onChange={(next) => setCcSettings(next)}
+          />
+
           <div className="flex justify-end">
             <button
               onClick={() => { saveCommandCenterSettings(ccSettings); }}
@@ -706,7 +719,7 @@ export default function AuthorDashboard() {
                 </div>
                 <div className="md:col-span-2">
                   <label className={labelClass}>Occupation</label>
-                  <input type="text" value={editing.occupation || ""} onChange={(e) => setEditing({ ...editing, occupation: e.target.value })} className={inputClass} placeholder="e.g. Chief Tactician — Field Division" />
+                  <input type="text" value={editing.occupation || ""} onChange={(e) => setEditing({ ...editing, occupation: e.target.value })} className={inputClass} placeholder="e.g. Chief Tactician - Field Division" />
                 </div>
                 <div>
                   <label className={labelClass}>Accent Color</label>
@@ -744,27 +757,27 @@ export default function AuthorDashboard() {
                 <div>
                   <label className={labelClass}>Classification (GEC Mark II)</label>
                   <select value={editing.classification || "Amorphous"} onChange={(e) => setEditing({ ...editing, classification: e.target.value as CreatureClassification })} className={inputClass}>
-                    <option value="Amorphous">Amorphous — Stable / Passive</option>
-                    <option value="Crystalline">Crystalline — Reactive / Predatory</option>
-                    <option value="Metamorphic">Metamorphic — Adaptive / Hostile</option>
-                    <option value="Catalyst">Catalyst — Symbiotic Asset</option>
-                    <option value="Singularity">Singularity — Critical / Forbidden</option>
-                    <option value="Zero-State">Zero-State — Decayed / Neutralized</option>
+                    <option value="Amorphous">Amorphous - Stable / Passive</option>
+                    <option value="Crystalline">Crystalline - Reactive / Predatory</option>
+                    <option value="Metamorphic">Metamorphic - Adaptive / Hostile</option>
+                    <option value="Catalyst">Catalyst - Symbiotic Asset</option>
+                    <option value="Singularity">Singularity - Critical / Forbidden</option>
+                    <option value="Zero-State">Zero-State - Decayed / Neutralized</option>
                   </select>
                 </div>
                 <div>
                   <label className={labelClass}>Danger Level (1-5)</label>
                   <select value={editing.dangerLevel ?? 1} onChange={(e) => setEditing({ ...editing, dangerLevel: Number(e.target.value) as CreatureDangerLevel })} className={inputClass}>
-                    <option value={1}>DL-1 — Negligible</option>
-                    <option value={2}>DL-2 — Cautionary</option>
-                    <option value={3}>DL-3 — Hostile</option>
-                    <option value={4}>DL-4 — Lethal</option>
-                    <option value={5}>DL-5 — Existential</option>
+                    <option value={1}>DL-1 - Negligible</option>
+                    <option value={2}>DL-2 - Cautionary</option>
+                    <option value={3}>DL-3 - Hostile</option>
+                    <option value={4}>DL-4 - Lethal</option>
+                    <option value={5}>DL-5 - Existential</option>
                   </select>
                 </div>
                 <div className="md:col-span-2">
                   <label className={labelClass}>Habitat</label>
-                  <input type="text" value={editing.habitat || ""} onChange={(e) => setEditing({ ...editing, habitat: e.target.value })} className={inputClass} placeholder="e.g. Scorched Wastes — crystalline canyons" />
+                  <input type="text" value={editing.habitat || ""} onChange={(e) => setEditing({ ...editing, habitat: e.target.value })} className={inputClass} placeholder="e.g. Scorched Wastes - crystalline canyons" />
                 </div>
                 <div>
                   <label className={labelClass}>Accent Color</label>
@@ -1030,7 +1043,7 @@ export default function AuthorDashboard() {
       )}
 
       {/* Items List */}
-      {activeTab !== "homepage" && activeTab !== "map" && canAccess(activeTab, loreSub) && (
+      {activeTab !== "homepage" && activeTab !== "map" && activeTab !== "news" && canAccess(activeTab, loreSub) && (
         <div className="space-y-2">
           {getItems().map((item) => {
             // For Gallery, gate edit/delete by per-item ownership.
