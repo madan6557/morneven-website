@@ -1043,7 +1043,7 @@ export default function AuthorDashboard() {
       )}
 
       {/* Items List */}
-      {activeTab !== "homepage" && activeTab !== "map" && canAccess(activeTab, loreSub) && (
+      {activeTab !== "homepage" && activeTab !== "map" && activeTab !== "news" && canAccess(activeTab, loreSub) && (
         <div className="space-y-2">
           {getItems().map((item) => {
             // For Gallery, gate edit/delete by per-item ownership.
