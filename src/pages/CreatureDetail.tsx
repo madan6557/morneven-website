@@ -17,11 +17,11 @@ import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const dangerLabel: Record<number, string> = {
-  1: "DL-1 — Negligible",
-  2: "DL-2 — Cautionary",
-  3: "DL-3 — Hostile",
-  4: "DL-4 — Lethal",
-  5: "DL-5 — Existential",
+  1: "DL-1 - Negligible",
+  2: "DL-2 - Cautionary",
+  3: "DL-3 - Hostile",
+  4: "DL-4 - Lethal",
+  5: "DL-5 - Existential",
 };
 
 // GEC tier → Morneven doctrine snippet shown as a linked chip on the detail page
@@ -39,7 +39,7 @@ const gecTierDoctrine: Record<string, { protocol: string; summary: string }> = {
     summary: "Adaptive / hostile. Saturate before the entity completes its adaptive cycle.",
   },
   catalyst: {
-    protocol: "Strategic Asset — CATALYST-7",
+    protocol: "Strategic Asset - CATALYST-7",
     summary: "Symbiotic resonance source. Secure and transport intact. Destruction prohibited.",
   },
   singularity: {
@@ -47,7 +47,7 @@ const gecTierDoctrine: Record<string, { protocol: string; summary: string }> = {
     summary: "Existential threat. All assets authorized, including tactical ordnance.",
   },
   "zero-state": {
-    protocol: "ZS-1 — Closed File",
+    protocol: "ZS-1 - Closed File",
     summary: "Neutralized residue. No response required; catalogued for historical record.",
   },
 };
@@ -175,7 +175,7 @@ export default function CreatureDetail() {
           </div>
         </div>
 
-        {/* GEC documentation chips — clickable, route to GEC lore entry */}
+        {/* GEC documentation chips - clickable, route to GEC lore entry */}
         <div className="space-y-3">
           <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">GEC Documentation</p>
           <div className="flex flex-wrap gap-2">

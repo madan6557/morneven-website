@@ -5,7 +5,7 @@
     "category": "FTL Technology",
     "thumbnail": "",
     "shortDesc": "Experimental faster-than-light propulsion system using Worldshard crystal resonance.",
-    "fullDesc": "The Nexus Drive is Morneven Institute's most ambitious technological achievement — a faster-than-light propulsion system that harnesses the resonant frequencies of Worldshard crystals to fold space-time. Unlike conventional warp drives theorized in the pre-apocalypse era, the Nexus Drive works by creating a harmonic bridge between two points in the crystal lattice network.\n\nCurrent limitations include the requirement for a Jewerlian operator to maintain the crystal harmonic during transit, and a maximum range of approximately 12 light-years per jump.\n\n[L3+]Tactical specification (sealed): the harmonic bridge requires a 4.21 GHz pilot signal anchored to a Class-A Worldshard. Substituting a fractured shard collapses the bridge mid-transit, producing a localized Singularity-class event. Maintenance schematics, anchor coordinates, and the failover purge sequence are filed under MOR-NEX-09 and require L3+ clearance to view in unredacted form.[/L3+]",
+    "fullDesc": "The Nexus Drive is Morneven Institute's most ambitious technological achievement - a faster-than-light propulsion system that harnesses the resonant frequencies of Worldshard crystals to fold space-time. Unlike conventional warp drives theorized in the pre-apocalypse era, the Nexus Drive works by creating a harmonic bridge between two points in the crystal lattice network.\n\nCurrent limitations include the requirement for a Jewerlian operator to maintain the crystal harmonic during transit, and a maximum range of approximately 12 light-years per jump.\n\n[L3+]Tactical specification (sealed): the harmonic bridge requires a 4.21 GHz pilot signal anchored to a Class-A Worldshard. Substituting a fractured shard collapses the bridge mid-transit, producing a localized Singularity-class event. Maintenance schematics, anchor coordinates, and the failover purge sequence are filed under MOR-NEX-09 and require L3+ clearance to view in unredacted form.[/L3+]",
     "docs": [
       { "type": "image", "url": "", "caption": "Nexus Drive core assembly" },
       { "type": "image", "url": "", "caption": "Crystal harmonic resonance pattern" }
@@ -39,7 +39,7 @@
     "category": "Defensive Weapon",
     "thumbnail": "",
     "shortDesc": "Standard-issue energy weapon developed by Rex Ashford for Institute field operatives.",
-    "fullDesc": "The Ashford Repeater is a compact energy weapon that fires concentrated leyline energy pulses. Developed by Lead Engineer Rex Ashford, it has become the standard sidearm for all Morneven Institute field operatives.\n\nThe weapon draws power from a miniaturized Worldshard crystal, giving it approximately 200 shots before requiring recharge. Its unique design includes a variable output mode — from non-lethal stun to armor-piercing — making it versatile for both peacekeeping and combat operations.",
+    "fullDesc": "The Ashford Repeater is a compact energy weapon that fires concentrated leyline energy pulses. Developed by Lead Engineer Rex Ashford, it has become the standard sidearm for all Morneven Institute field operatives.\n\nThe weapon draws power from a miniaturized Worldshard crystal, giving it approximately 200 shots before requiring recharge. Its unique design includes a variable output mode - from non-lethal stun to armor-piercing - making it versatile for both peacekeeping and combat operations.",
     "docs": [
       { "type": "image", "url": "", "caption": "Repeater blueprint v4" }
     ]
@@ -61,9 +61,9 @@
     "category": "Orbital Strike Apparatus",
     "thumbnail": "",
     "shortDesc": "Orbital adapter that channels and shapes a single qualified caster's output into a Gemosphere-safe planetside strike.",
-    "fullDesc": "Solar's Lens is the orbital focusing platform that delivered the Pillar of Light strike during the War of Light. It is not a weapon in the conventional sense — it generates no energy of its own. Its function is to accept the resonant output of one qualified caster, condition that output through layered Gemosphere-safe filtration, and deliver it as a coherent vertical beam onto a planetside target without rupturing the crystalline atmospheric layer.\n\nThe Lens has only ever been calibrated to one operator: Sola. No second operator has ever been certified, and no attempt has been made. No Jewerlian has ever been harmed by operating the Lens.\n\n[L5+ track=field]The Lens remains in standing orbit and has not been fired since the War of Light. Doctrine requires unanimous Board ratification and Sola's personal consent for any future authorization — neither has ever been requested in the modern era. Calibration logs and orbital coordinates are filed under MOR-LEN-01.[/L5+]",
+    "fullDesc": "Solar's Lens is the orbital focusing platform that delivered the Pillar of Light strike during the War of Light. It is not a weapon in the conventional sense - it generates no energy of its own. Its function is to accept the resonant output of one qualified caster, condition that output through layered Gemosphere-safe filtration, and deliver it as a coherent vertical beam onto a planetside target without rupturing the crystalline atmospheric layer.\n\nThe Lens has only ever been calibrated to one operator: Sola. No second operator has ever been certified, and no attempt has been made. No Jewerlian has ever been harmed by operating the Lens.\n\n[L5+ track=field]The Lens remains in standing orbit and has not been fired since the War of Light. Doctrine requires unanimous Board ratification and Sola's personal consent for any future authorization - neither has ever been requested in the modern era. Calibration logs and orbital coordinates are filed under MOR-LEN-01.[/L5+]",
     "docs": [
-      { "type": "image", "url": "", "caption": "Solar's Lens — orbital silhouette schematic" },
+      { "type": "image", "url": "", "caption": "Solar's Lens - orbital silhouette schematic" },
       { "type": "image", "url": "", "caption": "Filtration stack cross-section" }
     ]
   },
@@ -73,7 +73,7 @@
     "category": "Access Credential",
     "thumbnail": "",
     "shortDesc": "Single-issue unrestricted clearance token. Currently held by Sola.",
-    "fullDesc": "The Stellar Pass is the only fully-unrestricted access credential issued by the Morneven Institute. It overrides every door, vault, and observation cordon — including Forbidden Sectors. It is not delegated, copied, revoked, or audited. It exists because attempting to deny its current holder access has, in field tests, produced a worse outcome than letting her in.\n\nOnly one Stellar Pass exists. It is currently held by Sola. Personnel encountering the Pass in active use are instructed to acknowledge it without challenge and resume duties.\n\nA single companion credential — the Stellar Companion pass — is issued separately to Sora. The Companion pass is not the Stellar Pass; it is a paired credential that mirrors most of the Pass's facility access but is logged independently.",
+    "fullDesc": "The Stellar Pass is the only fully-unrestricted access credential issued by the Morneven Institute. It overrides every door, vault, and observation cordon - including Forbidden Sectors. It is not delegated, copied, revoked, or audited. It exists because attempting to deny its current holder access has, in field tests, produced a worse outcome than letting her in.\n\nOnly one Stellar Pass exists. It is currently held by Sola. Personnel encountering the Pass in active use are instructed to acknowledge it without challenge and resume duties.\n\nA single companion credential - the Stellar Companion pass - is issued separately to Sora. The Companion pass is not the Stellar Pass; it is a paired credential that mirrors most of the Pass's facility access but is logged independently.",
     "docs": []
   },
   {
@@ -84,7 +84,7 @@
     "shortDesc": "Three-emitter counter-resonance rig used to neutralize Hollow Choir and similar Metamorphic colonial entities.",
     "fullDesc": "The MK-VII Triad Rig is the standing field solution for Metamorphic colonial entities whose Fracture Points require spatially distributed counter-resonance. It deploys three independent emitters in a triangular configuration, synchronizing their broadcast within a 14.7 kHz target band for sustained periods.\n\nThe rig is requisition-controlled at L3+ clearance because deployment below the three-emitter threshold has historically resulted in total operative loss. All field issuances are logged against the standing Hollow Choir engagement protocol.",
     "docs": [
-      { "type": "image", "url": "", "caption": "MK-VII emitter triad — deployment configuration" }
+      { "type": "image", "url": "", "caption": "MK-VII emitter triad - deployment configuration" }
     ]
   },
   {
@@ -93,7 +93,7 @@
     "category": "Communication Network",
     "thumbnail": "",
     "shortDesc": "Gemosphere-piggybacked comms mesh that uses violet-dawn refraction events as a daily signal floor.",
-    "fullDesc": "The Violet Veil is the Institute's primary low-bandwidth communications backbone outside the Citadel grid. It piggybacks on the daily violet-dawn refraction event in the Gemosphere to maintain a planet-wide signal floor that cannot be jammed by terrestrial means.\n\nThroughput is modest — text and short audio only — but coverage is total. Every Morneven outpost from the Verdant Hollows to the Forbidden Sectors maintains at least one Veil terminal. The protocol is the standing fallback when conventional comms degrade.",
+    "fullDesc": "The Violet Veil is the Institute's primary low-bandwidth communications backbone outside the Citadel grid. It piggybacks on the daily violet-dawn refraction event in the Gemosphere to maintain a planet-wide signal floor that cannot be jammed by terrestrial means.\n\nThroughput is modest - text and short audio only - but coverage is total. Every Morneven outpost from the Verdant Hollows to the Forbidden Sectors maintains at least one Veil terminal. The protocol is the standing fallback when conventional comms degrade.",
     "docs": []
   },
   {
@@ -102,7 +102,7 @@
     "category": "Field Analysis",
     "thumbnail": "",
     "shortDesc": "Handheld scanner that identifies Fracture Points on Crystalline and Metamorphic entities at standoff range.",
-    "fullDesc": "The FA-3 is the standing-issue field analyzer for Tactical Analysis doctrine. It scans Crystalline and Metamorphic entities at standoff range (up to 800 m) and produces a heatmap of probable Fracture Points overlaid on the operator's HUD.\n\nThe analyzer cannot identify Fracture Points on Singularity-class entities (none exist) or Catalyst-class entities (irrelevant — Catalysts are not engaged). It is therefore tuned exclusively to the two engagement-relevant classes. Updates are pushed monthly from Morneven Central based on field encounter logs.",
+    "fullDesc": "The FA-3 is the standing-issue field analyzer for Tactical Analysis doctrine. It scans Crystalline and Metamorphic entities at standoff range (up to 800 m) and produces a heatmap of probable Fracture Points overlaid on the operator's HUD.\n\nThe analyzer cannot identify Fracture Points on Singularity-class entities (none exist) or Catalyst-class entities (irrelevant - Catalysts are not engaged). It is therefore tuned exclusively to the two engagement-relevant classes. Updates are pushed monthly from Morneven Central based on field encounter logs.",
     "docs": []
   }
     ,
@@ -212,7 +212,7 @@
       "category": "Access Credential",
       "thumbnail": "",
       "shortDesc": "Single-issue paired credential. Currently held by Sora.",
-      "fullDesc": "The Stellar Companion pass is a paired access credential modeled on the Stellar Pass and issued solely to Sora. It mirrors most of the Stellar Pass's facility access but is logged independently and is not classified as fully unrestricted. The Companion pass exists because Sora is the only individual on record whose presence reliably keeps Sola on-objective; doctrine therefore treats Sora's access as a stabilizing function rather than a personal courtesy.\n\nOnly one Stellar Companion pass exists. It is not delegated, copied, or revoked. Personnel encountering the Companion pass in active use are instructed to acknowledge it without challenge and to address its holder as 'Lady Sora' in any operational exchange — see other-007 for protocol context.",
+      "fullDesc": "The Stellar Companion pass is a paired access credential modeled on the Stellar Pass and issued solely to Sora. It mirrors most of the Stellar Pass's facility access but is logged independently and is not classified as fully unrestricted. The Companion pass exists because Sora is the only individual on record whose presence reliably keeps Sola on-objective; doctrine therefore treats Sora's access as a stabilizing function rather than a personal courtesy.\n\nOnly one Stellar Companion pass exists. It is not delegated, copied, or revoked. Personnel encountering the Companion pass in active use are instructed to acknowledge it without challenge and to address its holder as 'Lady Sora' in any operational exchange - see other-007 for protocol context.",
       "docs": []
     }
 ]

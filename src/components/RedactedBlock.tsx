@@ -36,7 +36,7 @@ export default function RedactedBlock({
               <div className="flex items-center gap-2 text-accent-orange">
                 <Lock className="h-3.5 w-3.5" />
                 <span className="text-[10px] font-display tracking-[0.15em] uppercase">
-                  Restricted — Clearance L{seg.threshold}+ Required
+                  Restricted - Clearance L{seg.threshold}+ Required
                   {seg.track ? ` · ${seg.track.toUpperCase()} track` : ""}
                 </span>
               </div>
@@ -56,7 +56,7 @@ export default function RedactedBlock({
           );
         }
 
-        // Render paragraph(s) — split on blank lines like the rest of the app.
+        // Render paragraph(s) - split on blank lines like the rest of the app.
         return seg.text
           .split("\n\n")
           .filter((p) => p.trim().length > 0)

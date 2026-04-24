@@ -51,7 +51,7 @@ export default function MapPage() {
     <div className="p-4 sm:p-6 md:p-8 space-y-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="font-display text-xl sm:text-2xl tracking-[0.1em] text-primary">GEMORA — INTERACTIVE MAP</h1>
+          <h1 className="font-display text-xl sm:text-2xl tracking-[0.1em] text-primary">GEMORA - INTERACTIVE MAP</h1>
           <div className="mecha-line w-32 mt-2" />
           <p className="text-xs sm:text-sm font-body text-muted-foreground mt-2">Drag to pan, use the controls to zoom. Click any marker to view its details.</p>
         </div>

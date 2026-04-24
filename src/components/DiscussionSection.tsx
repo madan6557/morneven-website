@@ -121,7 +121,7 @@ export default function DiscussionSection({
         <p className="text-xs text-muted-foreground font-body italic">Login to join the discussion.</p>
       )}
 
-      {/* Comments list — newest first. Sort by parsable date desc when
+      {/* Comments list - newest first. Sort by parsable date desc when
           available, otherwise fall back to original (insertion) order
           reversed. */}
       <div className="space-y-3">

@@ -132,7 +132,7 @@ export default function CharacterDetail() {
           </div>
           <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: `${accentColor}30` }}>
             <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Occupation</p>
-            <p className="text-sm font-body text-foreground">{char.occupation || "—"}</p>
+            <p className="text-sm font-body text-foreground">{char.occupation || " - "}</p>
           </div>
         </div>
 

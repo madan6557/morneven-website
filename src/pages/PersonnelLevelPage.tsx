@@ -111,7 +111,7 @@ export default function PersonnelLevelPage() {
           ))}
         </div>
 
-        {/* Matrix table — desktop */}
+        {/* Matrix table - desktop */}
         <div className="hidden md:block hud-border bg-card overflow-hidden">
           <table className="w-full text-sm font-body">
             <thead>

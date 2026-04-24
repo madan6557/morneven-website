@@ -1,4 +1,4 @@
-// Personnel Level (PL) — Morneven Institute clearance scale.
+// Personnel Level (PL) - Morneven Institute clearance scale.
 // L0 (lowest, external/guest) → L6 (executive sovereign).
 // PL is access clearance, NOT social caste, salary band, or worth.
 
@@ -8,7 +8,7 @@ export type PersonnelLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export type PersonnelTrack = "executive" | "field" | "mechanic" | "logistics";
 
-// Public ladder — what users see in the matrix and clearance switcher.
+// Public ladder - what users see in the matrix and clearance switcher.
 export const PERSONNEL_LEVELS: PersonnelLevel[] = [0, 1, 2, 3, 4, 5, 6];
 
 // Hidden top tier. Author-only. Never rendered in the public matrix or
@@ -30,7 +30,7 @@ export const PL_RESTRICTED_CLOSE = "[/L3+]";
 // Matches an opening tag like [L3+] or [L4+ track=field]. Captures threshold + optional track.
 const PL_OPEN_RE = /\[L([0-6])\+(?:\s+track=([a-zA-Z]+))?\]/;
 
-// Default PL per auth role — used when seeding the user's clearance.
+// Default PL per auth role - used when seeding the user's clearance.
 // Authors start at L7 (Full Authority); they can voluntarily downshift via
 // the clearance switcher to preview lower tiers.
 export const DEFAULT_PL_BY_ROLE: Record<UserRole, PersonnelLevel> = {
@@ -214,7 +214,7 @@ export function canAccessAuthorPanel(opts: SectionAccessOpts): boolean {
 
   if (track === "executive") return true;
 
-  // Gallery is the shared L6 surface — any L6 may enter and manage their
+  // Gallery is the shared L6 surface - any L6 may enter and manage their
   // own uploads. Per-item ownership gating happens in AuthorDashboard.
   if (section === "gallery") return true;
 
@@ -233,7 +233,7 @@ export function canAccessAuthorPanel(opts: SectionAccessOpts): boolean {
 
 export function canEnterAuthorPanel(level: PersonnelLevel, track: PersonnelTrack): boolean {
   if (level >= PL_FULL_AUTHORITY) return true;
-  // Any L6 may enter — Gallery is now available to all tracks.
+  // Any L6 may enter - Gallery is now available to all tracks.
   return level >= 6;
 }
 
