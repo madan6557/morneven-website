@@ -133,7 +133,9 @@ export default function GalleryDetail() {
               {/* Replies */}
               {comment.replies.length > 0 && (
                 <div className="ml-4 border-l-2 border-border pl-4 space-y-3">
-                  {comment.replies.map((reply) => (
+                  {[...comment.replies]
+                    .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+                    .map((reply) => (
                     <div key={reply.id}>
                       <span className="font-heading text-xs text-foreground">{reply.author}</span>
                       <span className="text-[10px] text-muted-foreground ml-2">{reply.date}</span>
