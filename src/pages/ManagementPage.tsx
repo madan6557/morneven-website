@@ -12,6 +12,8 @@ import {
   pl4Status,
   monthKey,
   yearKey,
+  reviewerForRequest,
+  canDecideRequest,
   type MgmtRequest,
   type Team,
   type RequestKind,
