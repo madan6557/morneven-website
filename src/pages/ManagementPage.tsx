@@ -72,26 +72,10 @@ export default function ManagementPage() {
 
   // ── Reviewer queue: requests this user can decide on ──────────────────────
   const reviewable = useMemo(() => {
-    return requests.filter((r) => {
-      if (r.status !== "pending") return false;
-      if (personnelLevel >= 7) return true;
-      // PL5 reviews transfers + executive promotions for their track
-      if (personnelLevel >= 5 && (r.kind === "transfer" || r.kind === "executive_promotion")) {
-        return r.requesterTrack === track;
-      }
-      // PL4 reviews clearance upgrades, personal submissions, team projects, team changes within same track
-      if (personnelLevel >= 4) {
-        return (
-          r.requesterTrack === track &&
-          (r.kind === "clearance" ||
-            r.kind === "submission_personal" ||
-            r.kind === "submission_team" ||
-            r.kind === "team_change")
-        );
-      }
-      return false;
-    });
-  }, [requests, personnelLevel, track]);
+    return requests.filter((r) =>
+      canDecideRequest(r, { level: personnelLevel, track, username }),
+    );
+  }, [requests, personnelLevel, track, username]);
 
   const decide = async (id: string, decision: "approved" | "rejected", note: string) => {
     await decideRequest(id, decision, username, note);
