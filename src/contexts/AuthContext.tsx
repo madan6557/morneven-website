@@ -114,11 +114,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = (email: string, _password: string, name: string) => {
+    // Per Personnel Management spec: new accounts start as PL1-GOV (Intern).
     setIsAuthenticated(true);
     setUsername(name.trim() || email.split("@")[0]);
     setRole("personel");
-    setPersonnelLevel(DEFAULT_PL_BY_ROLE.personel);
-    setTrack(DEFAULT_TRACK_BY_ROLE.personel);
+    setPersonnelLevel(1);
+    setTrack("executive"); // GOV
   };
 
   const guestLogin = () => {
