@@ -177,3 +177,23 @@ ESLint exited with an error due to missing generated timestamped Vite config art
 
 **Release Readiness (strict QA standard):** **Conditional / Not fully approved until lint issue is resolved.**
 
+
+
+---
+
+## 11) Remediation Update (2026-04-25)
+
+Recommended action **"Fix lint environment issue first"** has been executed.
+
+### Actions applied
+1. Removed unnecessary regex escape sequences in `MentionInput` so ESLint no longer fails on `no-useless-escape`.
+2. Replaced a non-reassigned `let` with `const` in management quota store to satisfy `prefer-const`.
+3. Re-ran quality checks:
+   - `npm run lint` → **PASS** (warnings only, no errors)
+   - `npm test` → **PASS**
+   - `npm run build` → **PASS** (warnings remain for Browserslist freshness and chunk size)
+
+### Updated QA verdict
+**Functional Verdict after remediation: PASS (with non-blocking warnings).**
+
+Release readiness can proceed with standard caution for remaining warnings and future optimization tasks.
