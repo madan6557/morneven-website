@@ -252,3 +252,74 @@ export function pl4Status(q: QuotaRecord): { met: boolean; count: number; target
 }
 
 export { monthKey, yearKey };
+
+// ─── Reviewer authority ─────────────────────────────────────────────────────
+// Returns who is authorised to decide a given request, plus a quick predicate
+// for the current viewer. Centralised so the UI and any future server logic
+// agree on the same rules.
+export interface ReviewerInfo {
+  label: string; // e.g. "PL5 GOV"
+  description: string; // human-readable rule
+}
+
+export function reviewerForRequest(req: MgmtRequest): ReviewerInfo {
+  switch (req.kind) {
+    case "transfer":
+      return {
+        label: `PL5 ${req.payload.targetTrack ? String(req.payload.targetTrack).toUpperCase() : req.requesterTrack.toUpperCase()}`,
+        description: "Reviewed by the target track's PL5 (Division Director).",
+      };
+    case "clearance":
+      return {
+        label: `PL4 ${req.requesterTrack.toUpperCase()}`,
+        description: "Reviewed by PL4 supervisor of the requester's track.",
+      };
+    case "submission_personal":
+      return {
+        label: `PL4 ${req.requesterTrack.toUpperCase()}`,
+        description: "Personal submissions reviewed by PL4 of the same track.",
+      };
+    case "submission_team":
+      return {
+        label: `PL4 ${req.requesterTrack.toUpperCase()}`,
+        description: "Team projects reviewed by PL4 supervisor of the same track.",
+      };
+    case "team_change":
+      return {
+        label: `PL4 ${req.requesterTrack.toUpperCase()}`,
+        description: "Team membership changes reviewed by PL4 of the same track.",
+      };
+    case "executive_promotion":
+      return {
+        label: "PL6 + PL7",
+        description: "Executive Promotion reviewed by Board (PL6) and Full Authority (PL7).",
+      };
+  }
+}
+
+export function canDecideRequest(
+  req: MgmtRequest,
+  viewer: { level: PersonnelLevel; track: PersonnelTrack; username: string },
+): boolean {
+  if (req.status !== "pending") return false;
+  if (req.requester === viewer.username) return false; // can't self-approve
+  if (viewer.level >= 7) return true;
+
+  switch (req.kind) {
+    case "executive_promotion":
+      // PL6 (any track) or PL7 only
+      return viewer.level >= 6;
+    case "transfer": {
+      // Reviewed by PL5 of the TARGET track
+      const target = (req.payload.targetTrack as PersonnelTrack) ?? req.requesterTrack;
+      return viewer.level >= 5 && viewer.track === target;
+    }
+    case "clearance":
+    case "submission_personal":
+    case "submission_team":
+    case "team_change":
+      return viewer.level >= 4 && viewer.track === req.requesterTrack;
+    default:
+      return false;
+  }
+}
