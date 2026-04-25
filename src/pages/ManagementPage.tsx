@@ -205,11 +205,15 @@ export default function ManagementPage() {
         </TabsContent>
 
         <TabsContent value="queue">
-          <RequestList list={reviewable} canDecide onDecide={decide} />
+          <RequestList
+            list={reviewable}
+            viewer={{ level: personnelLevel, track, username }}
+            onDecide={decide}
+          />
         </TabsContent>
 
         <TabsContent value="mine">
-          <RequestList list={myRequests} />
+          <RequestList list={myRequests} viewer={{ level: personnelLevel, track, username }} />
         </TabsContent>
       </Tabs>
     </div>
