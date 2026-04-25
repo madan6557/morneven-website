@@ -13,6 +13,7 @@ import {
   User,
   Map,
   Users,
+  ClipboardList,
 } from "lucide-react";
 import {
   Tooltip,
@@ -46,6 +47,12 @@ const navItems: NavItem[] = [
   { title: "Gallery", url: "/gallery", icon: Image },
   { title: "Lore / Wiki", url: "/lore", icon: BookOpen },
   { title: "Maps", url: "/maps", icon: Map },
+  {
+    title: "Management",
+    url: "/management",
+    icon: ClipboardList,
+    visible: ({ role }) => role !== "guest",
+  },
   {
     title: "Author Panel",
     url: "/author",

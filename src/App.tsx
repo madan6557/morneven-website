@@ -27,6 +27,7 @@ import AuthorDashboard from "./pages/AuthorDashboard";
 import PersonnelManagementPage from "./pages/PersonnelManagementPage";
 import SettingsPage from "./pages/SettingsPage";
 import NewsDetail from "./pages/NewsDetail";
+import ManagementPage from "./pages/ManagementPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -76,6 +77,7 @@ function App() {
                 <Route path="/personnel" element={<AuthorRoute><PersonnelManagementPage /></AuthorRoute>} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/news/:id" element={<NewsDetail />} />
+                <Route path="/management" element={<ManagementPage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
