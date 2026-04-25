@@ -555,61 +555,84 @@ function ExecutivePromotionForm({
 
 function RequestList({
   list,
-  canDecide = false,
+  viewer,
   onDecide,
 }: {
   list: MgmtRequest[];
-  canDecide?: boolean;
+  viewer: { level: PersonnelLevel; track: PersonnelTrack; username: string };
   onDecide?: (id: string, d: "approved" | "rejected", note: string) => void;
 }) {
   const [notes, setNotes] = useState<Record<string, string>>({});
   if (list.length === 0) return <p className="p-4 text-sm text-muted-foreground">No requests.</p>;
   return (
     <div className="space-y-2">
-      {list.map((r) => (
-        <Card key={r.id} className="p-3 space-y-2">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div>
-              <p className="font-heading text-sm">
-                {KIND_LABEL[r.kind]} <span className="text-muted-foreground">· {r.requester}</span>
-              </p>
+      {list.map((r) => {
+        const reviewer = reviewerForRequest(r);
+        const canDecide = canDecideRequest(r, viewer);
+        const isOwn = r.requester === viewer.username;
+        return (
+          <Card key={r.id} className="p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <p className="font-heading text-sm">
+                  {KIND_LABEL[r.kind]} <span className="text-muted-foreground">· {r.requester}</span>
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  L{r.requesterLevel} {r.requesterTrack.toUpperCase()} · {r.createdAt}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge
+                  variant="outline"
+                  className="text-[10px]"
+                  title={reviewer.description}
+                >
+                  Reviewer: {reviewer.label}
+                </Badge>
+                <Badge
+                  variant={r.status === "approved" ? "default" : r.status === "rejected" ? "destructive" : "outline"}
+                >
+                  {r.status}
+                </Badge>
+              </div>
+            </div>
+            <p className="text-xs">{r.reason}</p>
+            {Object.keys(r.payload).length > 0 && (
+              <pre className="text-[10px] bg-muted p-2 rounded overflow-x-auto">{JSON.stringify(r.payload, null, 2)}</pre>
+            )}
+            {r.reviewer && (
               <p className="text-[10px] text-muted-foreground">
-                L{r.requesterLevel} {r.requesterTrack.toUpperCase()} · {r.createdAt}
+                Reviewed by {r.reviewer} on {r.decidedAt}{r.reviewNote ? ` - ${r.reviewNote}` : ""}
               </p>
-            </div>
-            <Badge
-              variant={r.status === "approved" ? "default" : r.status === "rejected" ? "destructive" : "outline"}
-            >
-              {r.status}
-            </Badge>
-          </div>
-          <p className="text-xs">{r.reason}</p>
-          {Object.keys(r.payload).length > 0 && (
-            <pre className="text-[10px] bg-muted p-2 rounded overflow-x-auto">{JSON.stringify(r.payload, null, 2)}</pre>
-          )}
-          {r.reviewer && (
-            <p className="text-[10px] text-muted-foreground">
-              Reviewed by {r.reviewer} on {r.decidedAt}{r.reviewNote ? ` — ${r.reviewNote}` : ""}
-            </p>
-          )}
-          {canDecide && r.status === "pending" && onDecide && (
-            <div className="flex gap-2 items-center">
-              <Input
-                placeholder="Review note (optional)"
-                value={notes[r.id] ?? ""}
-                onChange={(e) => setNotes({ ...notes, [r.id]: e.target.value })}
-                className="flex-1"
-              />
-              <Button size="sm" onClick={() => onDecide(r.id, "approved", notes[r.id] ?? "")}>
-                Approve
-              </Button>
-              <Button size="sm" variant="destructive" onClick={() => onDecide(r.id, "rejected", notes[r.id] ?? "")}>
-                Reject
-              </Button>
-            </div>
-          )}
-        </Card>
-      ))}
+            )}
+            {r.status === "pending" && onDecide && (
+              canDecide ? (
+                <div className="flex gap-2 items-center">
+                  <Input
+                    placeholder="Review note (optional)"
+                    value={notes[r.id] ?? ""}
+                    onChange={(e) => setNotes({ ...notes, [r.id]: e.target.value })}
+                    className="flex-1"
+                  />
+                  <Button size="sm" onClick={() => onDecide(r.id, "approved", notes[r.id] ?? "")}>
+                    Approve
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => onDecide(r.id, "rejected", notes[r.id] ?? "")}>
+                    Reject
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-[10px] text-muted-foreground italic">
+                  {isOwn
+                    ? "You cannot decide on your own request. Awaiting "
+                    : "You lack authority to decide. Awaiting "}
+                  {reviewer.label}.
+                </p>
+              )
+            )}
+          </Card>
+        );
+      })}
     </div>
   );
 }
