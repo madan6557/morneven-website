@@ -130,26 +130,32 @@ export default function ManagementPage() {
           <p className="font-heading text-xs uppercase tracking-wider text-muted-foreground mb-3">
             Obligation Status — {username} · L{personnelLevel} · {track.toUpperCase()}
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-            <ObligationCell
-              label={`PL2 Monthly (${monthKey()})`}
-              value={`${quota.pl2.count} / 1`}
-              ok={quota.pl2.met}
-              relevant={personnelLevel === 2}
-            />
-            <ObligationCell
-              label={`PL3 Yearly (${yearKey()})`}
-              value={`${quota.pl3.count} / 1`}
-              ok={quota.pl3.met}
-              relevant={personnelLevel === 3}
-            />
-            <ObligationCell
-              label={`PL4 Supervision (${yearKey()})`}
-              value={`${quota.pl4.count} / ${quota.pl4.target}`}
-              ok={quota.pl4.met}
-              relevant={personnelLevel >= 4}
-            />
-          </div>
+          {personnelLevel >= 7 ? (
+            <p className="text-xs text-muted-foreground">
+              PL7 (Full Authority) holds no submission, supervision, or clearance obligations.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+              <ObligationCell
+                label={`PL2 Monthly (${monthKey()})`}
+                value={`${quota.pl2.count} / 1`}
+                ok={quota.pl2.met}
+                relevant={personnelLevel === 2}
+              />
+              <ObligationCell
+                label={`PL3 Yearly (${yearKey()})`}
+                value={`${quota.pl3.count} / 1`}
+                ok={quota.pl3.met}
+                relevant={personnelLevel === 3}
+              />
+              <ObligationCell
+                label={`PL4 Supervision (${yearKey()})`}
+                value={`${quota.pl4.count} / ${quota.pl4.target}`}
+                ok={quota.pl4.met}
+                relevant={personnelLevel >= 4 && personnelLevel < 7}
+              />
+            </div>
+          )}
         </Card>
       )}
 
