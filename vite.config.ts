@@ -23,31 +23,8 @@ export default defineConfig(({ mode }) => ({
     chunkSizeWarningLimit: 650,
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return undefined;
-
-          if (
-            id.includes("react") ||
-            id.includes("scheduler") ||
-            id.includes("react-router")
-          ) {
-            return "vendor-react";
-          }
-
-          if (id.includes("@radix-ui") || id.includes("lucide-react")) {
-            return "vendor-ui";
-          }
-
-          if (id.includes("@tanstack")) {
-            return "vendor-query";
-          }
-
-          if (id.includes("framer-motion") || id.includes("recharts")) {
-            return "vendor-visual";
-          }
-
-          return "vendor-misc";
-        },
+        // Single-bundle output avoids environments that aggressively cap file requests.
+        inlineDynamicImports: true,
       },
     },
   },
