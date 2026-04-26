@@ -168,8 +168,15 @@ export default function HomePage() {
                   const inner = (
                     <>
                       <Clock className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="font-body text-foreground/80 break-words">{n.text}</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start gap-2 flex-wrap">
+                          <p className="font-body text-foreground/80 break-words flex-1">{n.text}</p>
+                          {n.hasDetail && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-display tracking-wider uppercase px-1.5 py-0.5 rounded-sm border border-primary/40 text-primary flex-shrink-0">
+                              <BookOpen className="h-2.5 w-2.5" /> Detail
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[10px] font-display tracking-wider text-muted-foreground mt-0.5">{n.date}</p>
                       </div>
                     </>

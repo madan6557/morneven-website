@@ -21,6 +21,11 @@ export interface Project {
   fullDesc: string;
   patches: ProjectPatch[];
   docs: DocItem[];
+  // Archived projects are hidden from active lists but remain accessible
+  // through the dedicated Archives view.
+  archived?: boolean;
+  // Original author / contributor of the project.
+  contributor?: string;
 }
 
 export interface CharacterStats {
@@ -55,6 +60,8 @@ export interface Character {
   docs: DocItem[];
   contributions?: CharacterContribution[];
   discussions?: DiscussionComment[];
+  // Original author / contributor for attribution.
+  contributor?: string;
 }
 
 // Creature classification — Gemora Entropy Classification (GEC) Mark II

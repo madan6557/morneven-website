@@ -89,6 +89,7 @@ function App() {
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/news/:id" element={<NewsDetail />} />
                   <Route path="/management" element={<ManagementPage />} />
+                  <Route path="/chat" element={<ChatPage />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

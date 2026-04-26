@@ -785,6 +785,122 @@ interface CommandCenterSettings {
 7. Pairing discussion wajib berbasis `entityType + entityId` agar tidak tercampur antar konten.
 8. Role `author` tidak boleh diberikan bebas; penerbitan role ini harus mengikuti whitelist/policy internal.
 
+## 8.X Update Sistem (April 24, 2026) - Personnel & Content Management
+
+Penambahan modul Management, Notifications, Chat, dan Project archiving wajib didukung backend:
+
+### 8.X.1 Management Requests
+
+Tabel `mgmt_requests`:
+
+- `id`, `kind` (transfer | clearance | submission_personal | submission_team | team_change | executive_promotion)
+- `requester` (username), `requesterTrack`, `requesterLevel`
+- `payload` (JSON; lihat per-kind di bawah), `reason`, `status` (pending | approved | rejected)
+- `reviewer`, `reviewNote`, `createdAt`, `decidedAt`
+
+Endpoint:
+
+- `GET    /api/mgmt/requests` (filter: kind, status, requester)
+- `POST   /api/mgmt/requests`
+- `POST   /api/mgmt/requests/:id/decision` body `{ decision, reviewNote }`
+
+Aturan reviewer (server-side wajib enforce, tidak boleh hanya UI):
+
+- transfer → PL5 dari `payload.targetTrack`
+- clearance | submission_personal | submission_team | team_change → PL4 same track
+- executive_promotion → PL6 (any track) atau PL7
+- Self-approval terlarang. PL7 bypass semua selain self-approval.
+
+Side effects on `approved`:
+
+1. transfer → `personnel.track := payload.targetTrack` + sync chat division group + push notification.
+2. clearance → `personnel.level := payload.targetLevel` + push notification.
+3. submission_personal → `gallery.create({...payload.item, uploadedBy: requester})` + bump `quota.monthly[YYYY-MM]` + notif.
+4. submission_team → `projects.create({...payload.project, contributor: requester})` + bump `quota.yearly[YYYY]` (requester) + bump `quota.supervised[YYYY]` (reviewer) + notif.
+5. team_change → mutate `teams.members` + sync team chat group.
+6. executive_promotion → `personnel.level := 5` + notif.
+
+### 8.X.2 Teams
+
+Tabel `teams`:
+
+- `id`, `name`, `leader`, `members[]`, `track`, `createdAt`, `cycleYear`, `completed`
+
+Endpoint:
+
+- `GET  /api/mgmt/teams` (filter: leader, member)
+- `POST /api/mgmt/teams` (PL3+ same track only; auto create chat group `kind: team`)
+
+### 8.X.3 Quotas
+
+Tabel `mgmt_quotas`:
+
+- `username`, `monthly: { "YYYY-MM": n }`, `yearly: { "YYYY": n }`, `supervised: { "YYYY": n }`
+
+Endpoint: `GET /api/mgmt/quota/:username`
+
+Obligation rules (frontend visualisasi, backend wajib expose count yang akurat):
+
+- PL2: 1 personal submission / bulan
+- PL3: 1 team project / tahun
+- PL4: 2 supervised approvals / tahun
+- PL5/PL6: tidak ada quota wajib
+- PL7: dikecualikan dari semua obligation
+
+### 8.X.4 Authorization Caps (baru)
+
+- PL7 tidak boleh memfile transfer request (track-agnostic).
+- Clearance ladder otomatis: hanya L1→L4 lewat clearance form. L4→L5 hanya via executive_promotion. L5→L6 dan L6→L7 tidak tersedia di self-service (assignment manual oleh PL7).
+- Default registrasi user baru: `level=1, track=executive` (PL1-GOV / Intern).
+
+### 8.X.5 Notifications
+
+Tabel `notifications`:
+
+- `id`, `kind` (info | warning | system | mention | request)
+- `title`, `body`, `recipient` (username), `sender`, `link?`, `read`, `createdAt`
+
+Endpoint:
+
+- `GET  /api/notifications?recipient=...`
+- `POST /api/notifications` (server-internal pada side effect approval)
+- `POST /api/notifications/:id/read`
+
+### 8.X.6 Chat
+
+Tabel `conversations`:
+
+- `id`, `kind` (dm | group | team | division)
+- `name`, `members[]`, `linkedTeamId?`, `linkedTrack?`, `createdAt`
+
+Tabel `messages`:
+
+- `id`, `conversationId`, `sender`, `body`, `createdAt`
+
+Endpoint:
+
+- `GET  /api/chat/conversations?member=...`
+- `POST /api/chat/conversations` (manual group / DM)
+- `GET  /api/chat/conversations/:id/messages`
+- `POST /api/chat/conversations/:id/messages`
+
+Auto-sync wajib:
+
+- `team_change` approval → roster `kind: team` di-update.
+- `transfer` approval → user dipindah dari `kind: division` lama ke baru.
+- `createTeam` → buat conversation `kind: team`.
+
+### 8.X.7 Projects - Archiving & Attribution
+
+Field tambahan pada Project:
+
+- `archived: boolean` (default false)
+- `contributor: string` (username submitter; auto-set dari side effect submission_team)
+
+Endpoint patch yang sudah ada (`PUT /api/projects/:id`) wajib mendukung kedua field. Filter list:
+
+- `GET /api/projects?archived=true|false`
+
 ## 9. Storage dan Migrasi
 
 Frontend saat ini memakai localStorage keys berikut (untuk referensi migrasi):
@@ -802,6 +918,13 @@ Frontend saat ini memakai localStorage keys berikut (untuk referensi migrasi):
 11. `morneven_cc_settings`
 12. `auth_state`
 13. `morneven_news`
+14. `morneven_mgmt_requests`
+15. `morneven_mgmt_teams`
+16. `morneven_mgmt_quotas`
+17. `morneven_mgmt_seeded_v1`
+18. `morneven_notifications`
+19. `morneven_chat_conversations`
+20. `morneven_chat_messages`
 
 Backend harus mengganti pola ini menjadi persistence DB + API tanpa mengubah kontrak data frontend.
 
