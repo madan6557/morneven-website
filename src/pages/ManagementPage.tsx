@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   listRequests,
@@ -38,9 +39,23 @@ const KIND_LABEL: Record<RequestKind, string> = {
   executive_promotion: "Executive Promotion",
 };
 
+const TAB_VALUES = ["transfer", "clearance", "submission", "team", "executive", "queue", "mine"] as const;
+type MgmtTab = typeof TAB_VALUES[number];
+
 export default function ManagementPage() {
   const { username, personnelLevel, track, role } = useAuth();
   const { toast } = useToast();
+  const [params, setParams] = useSearchParams();
+  const initialTab = (params.get("tab") as MgmtTab) ?? "transfer";
+  const [tab, setTab] = useState<MgmtTab>(TAB_VALUES.includes(initialTab) ? initialTab : "transfer");
+
+  useEffect(() => {
+    const next = new URLSearchParams(params);
+    if (tab === "transfer") next.delete("tab");
+    else next.set("tab", tab);
+    setParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   const [requests, setRequests] = useState<MgmtRequest[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -159,7 +174,7 @@ export default function ManagementPage() {
         </Card>
       )}
 
-      <Tabs defaultValue="transfer" className="w-full">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as MgmtTab)} className="w-full">
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="transfer">Transfer</TabsTrigger>
           <TabsTrigger value="clearance">Clearance</TabsTrigger>
