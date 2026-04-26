@@ -84,7 +84,7 @@ function write<T>(key: string, value: T) {
 
 let requests: MgmtRequest[] = read<MgmtRequest[]>(KEY_REQ, []);
 let teams: Team[] = read<Team[]>(KEY_TEAMS, []);
-let quotas: QuotaRecord[] = read<QuotaRecord[]>(KEY_QUOTA, []);
+const quotas: QuotaRecord[] = read<QuotaRecord[]>(KEY_QUOTA, []);
 
 const delay = (ms = 60) => new Promise((r) => setTimeout(r, ms));
 const todayISO = () => new Date().toISOString().split("T")[0];
