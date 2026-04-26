@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   listRequests,
@@ -38,9 +39,23 @@ const KIND_LABEL: Record<RequestKind, string> = {
   executive_promotion: "Executive Promotion",
 };
 
+const TAB_VALUES = ["transfer", "clearance", "submission", "team", "executive", "queue", "mine"] as const;
+type MgmtTab = typeof TAB_VALUES[number];
+
 export default function ManagementPage() {
   const { username, personnelLevel, track, role } = useAuth();
   const { toast } = useToast();
+  const [params, setParams] = useSearchParams();
+  const initialTab = (params.get("tab") as MgmtTab) ?? "transfer";
+  const [tab, setTab] = useState<MgmtTab>(TAB_VALUES.includes(initialTab) ? initialTab : "transfer");
+
+  useEffect(() => {
+    const next = new URLSearchParams(params);
+    if (tab === "transfer") next.delete("tab");
+    else next.set("tab", tab);
+    setParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   const [requests, setRequests] = useState<MgmtRequest[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -159,7 +174,7 @@ export default function ManagementPage() {
         </Card>
       )}
 
-      <Tabs defaultValue="transfer" className="w-full">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as MgmtTab)} className="w-full">
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="transfer">Transfer</TabsTrigger>
           <TabsTrigger value="clearance">Clearance</TabsTrigger>
@@ -173,7 +188,7 @@ export default function ManagementPage() {
         </TabsList>
 
         <TabsContent value="transfer">
-          <TransferForm currentTrack={track} onSubmit={submit} />
+          <TransferForm currentTrack={track} level={personnelLevel} onSubmit={submit} />
         </TabsContent>
 
         <TabsContent value="clearance">
@@ -249,15 +264,29 @@ function ObligationCell({
 
 function TransferForm({
   currentTrack,
+  level,
   onSubmit,
 }: {
   currentTrack: PersonnelTrack;
+  level: PersonnelLevel;
   onSubmit: (k: RequestKind, p: Record<string, unknown>, r: string, t?: PersonnelTrack) => void;
 }) {
   const [target, setTarget] = useState<PersonnelTrack>(
     PERSONNEL_TRACKS.find((t) => t.key !== currentTrack)!.key,
   );
   const [reason, setReason] = useState("");
+
+  // PL7 (Full Authority) cannot transfer; their authority is global.
+  if (level >= 7) {
+    return (
+      <Card className="p-4">
+        <p className="text-sm text-muted-foreground">
+          PL7 (Full Authority) operates above tracks and cannot file a transfer request.
+        </p>
+      </Card>
+    );
+  }
+
   return (
     <Card className="p-4 space-y-3">
       <p className="font-heading text-sm">Apply to transfer to a different track. Reviewed by the target track's PL5.</p>

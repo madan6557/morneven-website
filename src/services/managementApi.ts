@@ -88,6 +88,87 @@ let requests: MgmtRequest[] = read<MgmtRequest[]>(KEY_REQ, []);
 let teams: Team[] = read<Team[]>(KEY_TEAMS, []);
 const quotas: QuotaRecord[] = read<QuotaRecord[]>(KEY_QUOTA, []);
 
+// First-run seed: populate a small set of demo teams + pending requests so
+// the Management UI is browsable on a fresh install. Re-seeds only when the
+// stored arrays are completely empty (so production data is never overwritten).
+const KEY_SEED = "morneven_mgmt_seeded_v1";
+if (typeof window !== "undefined" && !window.localStorage.getItem(KEY_SEED)) {
+  if (teams.length === 0) {
+    teams = [
+      {
+        id: "team-seed-ops",
+        name: "Field Recon Alpha",
+        leader: "ops.delta",
+        members: ["h.kato", "j.fenris"],
+        track: "field",
+        createdAt: "2026-04-10",
+        cycleYear: new Date().getFullYear(),
+        completed: 0,
+      },
+      {
+        id: "team-seed-eng",
+        name: "Nexus Maintenance Cell",
+        leader: "r.ashford",
+        members: ["m.veyra"],
+        track: "mechanic",
+        createdAt: "2026-04-12",
+        cycleYear: new Date().getFullYear(),
+        completed: 1,
+      },
+    ];
+    write(KEY_TEAMS, teams);
+  }
+  if (requests.length === 0) {
+    requests = [
+      {
+        id: "req-seed-1",
+        kind: "clearance",
+        requester: "h.kato",
+        requesterTrack: "field",
+        requesterLevel: 2,
+        payload: { targetLevel: 3 },
+        reason: "Six months of completed recon ops; ready to lead a sub-team.",
+        status: "pending",
+        createdAt: "2026-04-20",
+      },
+      {
+        id: "req-seed-2",
+        kind: "transfer",
+        requester: "m.veyra",
+        requesterTrack: "logistics",
+        requesterLevel: 2,
+        payload: { targetTrack: "mechanic" },
+        reason: "Background in propulsion systems; better fit with ENG track.",
+        status: "pending",
+        createdAt: "2026-04-21",
+      },
+      {
+        id: "req-seed-3",
+        kind: "submission_personal",
+        requester: "j.fenris",
+        requesterTrack: "field",
+        requesterLevel: 2,
+        payload: {
+          item: {
+            type: "image",
+            title: "Patrol Log: West Ridge",
+            thumbnail: "/placeholder.svg",
+            caption: "Visual log from the West Ridge boundary sweep.",
+            tags: ["recon", "field"],
+            date: "2026-04-22",
+            comments: [],
+          },
+        },
+        reason: "Monthly personal submission for April quota.",
+        status: "pending",
+        createdAt: "2026-04-22",
+      },
+    ];
+    write(KEY_REQ, requests);
+  }
+  try { window.localStorage.setItem(KEY_SEED, "1"); } catch { /* ignore */ }
+}
+
 const delay = (ms = 60) => new Promise((r) => setTimeout(r, ms));
 const todayISO = () => new Date().toISOString().split("T")[0];
 const monthKey = (d = new Date()) =>
