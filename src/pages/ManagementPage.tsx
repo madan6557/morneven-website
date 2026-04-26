@@ -128,7 +128,7 @@ export default function ManagementPage() {
       {quota && (
         <Card className="p-4">
           <p className="font-heading text-xs uppercase tracking-wider text-muted-foreground mb-3">
-            Obligation Status — {username} · L{personnelLevel} · {track.toUpperCase()}
+            Obligation Status - {username} · L{personnelLevel} · {track.toUpperCase()}
           </p>
           {personnelLevel >= 7 ? (
             <p className="text-xs text-muted-foreground">
@@ -270,7 +270,7 @@ function TransferForm({
           className="bg-card border border-border rounded-sm px-2 py-1 text-sm"
         >
           {PERSONNEL_TRACKS.filter((t) => t.key !== currentTrack).map((t) => (
-            <option key={t.key} value={t.key}>{t.short} — {t.label}</option>
+            <option key={t.key} value={t.key}>{t.short} - {t.label}</option>
           ))}
         </select>
       </div>
@@ -489,7 +489,7 @@ function TeamPanel({
         ) : myTeams.map((t) => (
           <div key={t.id} className="border border-border rounded-sm p-2">
             <p className="font-heading text-sm">{t.name} <Badge variant="outline" className="ml-2">{t.track.toUpperCase()}</Badge></p>
-            <p className="text-xs text-muted-foreground">Leader: {t.leader} · Members: {t.members.join(", ") || "—"} · Completed {t.completed}</p>
+            <p className="text-xs text-muted-foreground">Leader: {t.leader} · Members: {t.members.join(", ") || "-"} · Completed {t.completed}</p>
           </div>
         ))}
       </Card>
@@ -542,7 +542,7 @@ function ExecutivePromotionForm({
 
   return (
     <Card className="p-4 space-y-3">
-      <p className="font-heading text-sm">Operational Test — Strategic Development Plan</p>
+      <p className="font-heading text-sm">Operational Test - Strategic Development Plan</p>
       <Textarea placeholder="Strategic plan for your track unit" rows={6} value={plan} onChange={(e) => setPlan(e.target.value)} />
       <Textarea placeholder="Justification & dedication record" value={reason} onChange={(e) => setReason(e.target.value)} />
       <Button
