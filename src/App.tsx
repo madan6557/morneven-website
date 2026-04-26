@@ -34,6 +34,7 @@ const PersonnelManagementPage = lazy(() => import("./pages/PersonnelManagementPa
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const NewsDetail = lazy(() => import("./pages/NewsDetail"));
 const ManagementPage = lazy(() => import("./pages/ManagementPage"));
+const ChatPage = lazy(() => import("./pages/ChatPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 function RouteFallback() {
@@ -89,6 +90,7 @@ function App() {
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/news/:id" element={<NewsDetail />} />
                   <Route path="/management" element={<ManagementPage />} />
+                  <Route path="/chat" element={<ChatPage />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
