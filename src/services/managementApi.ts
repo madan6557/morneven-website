@@ -8,6 +8,8 @@ import type { PersonnelLevel, PersonnelTrack } from "@/lib/pl";
 import { updatePersonnel, listPersonnel } from "@/services/personnelApi";
 import { createGalleryItem } from "@/services/galleryApi";
 import { createProject } from "@/services/projectsApi";
+import { syncTeamGroup, syncDivisionMembership } from "@/services/chatApi";
+import { pushNotification } from "@/services/notificationsApi";
 import type { GalleryItem, Project } from "@/types";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -150,24 +152,56 @@ async function applySideEffects(req: MgmtRequest) {
     case "transfer": {
       const newTrack = req.payload.targetTrack as PersonnelTrack;
       await updatePersonnel(target.id, { track: newTrack });
+      // Re-sync division chat membership.
+      syncDivisionMembership(target.username, newTrack);
+      pushNotification({
+        kind: "system",
+        title: "Track transfer approved",
+        body: `You have been transferred to ${newTrack.toUpperCase()}.`,
+        recipient: target.username,
+        sender: req.reviewer ?? "system",
+      });
       break;
     }
     case "clearance": {
       const newLevel = req.payload.targetLevel as PersonnelLevel;
       await updatePersonnel(target.id, { level: newLevel });
+      pushNotification({
+        kind: "system",
+        title: "Clearance upgrade approved",
+        body: `You are now L${newLevel}.`,
+        recipient: target.username,
+        sender: req.reviewer ?? "system",
+      });
       break;
     }
     case "submission_personal": {
       const item = req.payload.item as Omit<GalleryItem, "id">;
       await createGalleryItem({ ...item, uploadedBy: req.requester });
       bumpQuota(req.requester, "monthly", monthKey());
+      pushNotification({
+        kind: "info",
+        title: "Submission approved",
+        body: `"${item.title}" is now in the Gallery.`,
+        recipient: target.username,
+        sender: req.reviewer ?? "system",
+        link: "/gallery",
+      });
       break;
     }
     case "submission_team": {
       const project = req.payload.project as Omit<Project, "id">;
-      await createProject(project);
+      await createProject({ ...project, contributor: req.requester });
       bumpQuota(req.requester, "yearly", yearKey());
       if (req.reviewer) bumpQuota(req.reviewer, "supervised", yearKey());
+      pushNotification({
+        kind: "info",
+        title: "Team project approved",
+        body: `"${project.title}" is now active.`,
+        recipient: target.username,
+        sender: req.reviewer ?? "system",
+        link: "/projects",
+      });
       break;
     }
     case "team_change": {
@@ -179,11 +213,20 @@ async function applySideEffects(req: MgmtRequest) {
         if (action === "add" && !t.members.includes(member)) t.members.push(member);
         if (action === "remove") t.members = t.members.filter((m) => m !== member);
         write(KEY_TEAMS, teams);
+        // Sync team chat group with new roster.
+        syncTeamGroup(t.id, t.name, [t.leader, ...t.members]);
       }
       break;
     }
     case "executive_promotion": {
       await updatePersonnel(target.id, { level: 5 });
+      pushNotification({
+        kind: "system",
+        title: "Executive promotion approved",
+        body: "You are now L5.",
+        recipient: target.username,
+        sender: req.reviewer ?? "system",
+      });
       break;
     }
   }
