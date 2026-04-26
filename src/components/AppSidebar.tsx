@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -86,6 +87,7 @@ interface AppSidebarProps {
 export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const mobileSidebarRef = useRef<HTMLElement | null>(null);
   const { role, username, logout, personnelLevel, track, setPersonnelLevel, setTrack } = useAuth();
   const isActive = (path: string) => location.pathname.startsWith(path);
 
@@ -103,9 +105,23 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
     navigate("/");
   };
 
-  const handleNavClick = () => {
-    if (isMobile) onClose();
-  };
+  useEffect(() => {
+    if (!isMobile || !open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const sidebarNode = mobileSidebarRef.current;
+      if (!sidebarNode) return;
+      const target = event.target;
+      if (target instanceof Node && !sidebarNode.contains(target)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+    };
+  }, [isMobile, open, onClose]);
 
   const isExpanded = isMobile ? true : expanded;
   const sidebarWidth = isExpanded ? 256 : 64;
@@ -212,7 +228,6 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
           const link = (
             <Link
               to={item.url}
-              onClick={handleNavClick}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all group relative
                 ${active
                   ? "bg-primary/10 text-primary font-medium"
@@ -295,6 +310,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
               className="fixed inset-0 bg-black/50 z-40"
             />
             <motion.aside
+              ref={mobileSidebarRef}
               initial={{ x: -256 }}
               animate={{ x: 0 }}
               exit={{ x: -256 }}
