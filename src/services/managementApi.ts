@@ -254,6 +254,8 @@ export async function createTeam(data: Omit<Team, "id" | "createdAt" | "complete
   };
   teams = [next, ...teams];
   write(KEY_TEAMS, teams);
+  // Auto-create team chat group with leader + members.
+  syncTeamGroup(next.id, next.name, [next.leader, ...next.members]);
   return next;
 }
 
