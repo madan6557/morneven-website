@@ -8,6 +8,8 @@ import type { PersonnelLevel, PersonnelTrack } from "@/lib/pl";
 import { updatePersonnel, listPersonnel } from "@/services/personnelApi";
 import { createGalleryItem } from "@/services/galleryApi";
 import { createProject } from "@/services/projectsApi";
+import { syncTeamGroup, syncDivisionMembership } from "@/services/chatApi";
+import { pushNotification } from "@/services/notificationsApi";
 import type { GalleryItem, Project } from "@/types";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -86,6 +88,87 @@ let requests: MgmtRequest[] = read<MgmtRequest[]>(KEY_REQ, []);
 let teams: Team[] = read<Team[]>(KEY_TEAMS, []);
 const quotas: QuotaRecord[] = read<QuotaRecord[]>(KEY_QUOTA, []);
 
+// First-run seed: populate a small set of demo teams + pending requests so
+// the Management UI is browsable on a fresh install. Re-seeds only when the
+// stored arrays are completely empty (so production data is never overwritten).
+const KEY_SEED = "morneven_mgmt_seeded_v1";
+if (typeof window !== "undefined" && !window.localStorage.getItem(KEY_SEED)) {
+  if (teams.length === 0) {
+    teams = [
+      {
+        id: "team-seed-ops",
+        name: "Field Recon Alpha",
+        leader: "ops.delta",
+        members: ["h.kato", "j.fenris"],
+        track: "field",
+        createdAt: "2026-04-10",
+        cycleYear: new Date().getFullYear(),
+        completed: 0,
+      },
+      {
+        id: "team-seed-eng",
+        name: "Nexus Maintenance Cell",
+        leader: "r.ashford",
+        members: ["m.veyra"],
+        track: "mechanic",
+        createdAt: "2026-04-12",
+        cycleYear: new Date().getFullYear(),
+        completed: 1,
+      },
+    ];
+    write(KEY_TEAMS, teams);
+  }
+  if (requests.length === 0) {
+    requests = [
+      {
+        id: "req-seed-1",
+        kind: "clearance",
+        requester: "h.kato",
+        requesterTrack: "field",
+        requesterLevel: 2,
+        payload: { targetLevel: 3 },
+        reason: "Six months of completed recon ops; ready to lead a sub-team.",
+        status: "pending",
+        createdAt: "2026-04-20",
+      },
+      {
+        id: "req-seed-2",
+        kind: "transfer",
+        requester: "m.veyra",
+        requesterTrack: "logistics",
+        requesterLevel: 2,
+        payload: { targetTrack: "mechanic" },
+        reason: "Background in propulsion systems; better fit with ENG track.",
+        status: "pending",
+        createdAt: "2026-04-21",
+      },
+      {
+        id: "req-seed-3",
+        kind: "submission_personal",
+        requester: "j.fenris",
+        requesterTrack: "field",
+        requesterLevel: 2,
+        payload: {
+          item: {
+            type: "image",
+            title: "Patrol Log: West Ridge",
+            thumbnail: "/placeholder.svg",
+            caption: "Visual log from the West Ridge boundary sweep.",
+            tags: ["recon", "field"],
+            date: "2026-04-22",
+            comments: [],
+          },
+        },
+        reason: "Monthly personal submission for April quota.",
+        status: "pending",
+        createdAt: "2026-04-22",
+      },
+    ];
+    write(KEY_REQ, requests);
+  }
+  try { window.localStorage.setItem(KEY_SEED, "1"); } catch { /* ignore */ }
+}
+
 const delay = (ms = 60) => new Promise((r) => setTimeout(r, ms));
 const todayISO = () => new Date().toISOString().split("T")[0];
 const monthKey = (d = new Date()) =>
@@ -150,24 +233,56 @@ async function applySideEffects(req: MgmtRequest) {
     case "transfer": {
       const newTrack = req.payload.targetTrack as PersonnelTrack;
       await updatePersonnel(target.id, { track: newTrack });
+      // Re-sync division chat membership.
+      syncDivisionMembership(target.username, newTrack);
+      pushNotification({
+        kind: "system",
+        title: "Track transfer approved",
+        body: `You have been transferred to ${newTrack.toUpperCase()}.`,
+        recipient: target.username,
+        sender: req.reviewer ?? "system",
+      });
       break;
     }
     case "clearance": {
       const newLevel = req.payload.targetLevel as PersonnelLevel;
       await updatePersonnel(target.id, { level: newLevel });
+      pushNotification({
+        kind: "system",
+        title: "Clearance upgrade approved",
+        body: `You are now L${newLevel}.`,
+        recipient: target.username,
+        sender: req.reviewer ?? "system",
+      });
       break;
     }
     case "submission_personal": {
       const item = req.payload.item as Omit<GalleryItem, "id">;
       await createGalleryItem({ ...item, uploadedBy: req.requester });
       bumpQuota(req.requester, "monthly", monthKey());
+      pushNotification({
+        kind: "info",
+        title: "Submission approved",
+        body: `"${item.title}" is now in the Gallery.`,
+        recipient: target.username,
+        sender: req.reviewer ?? "system",
+        link: "/gallery",
+      });
       break;
     }
     case "submission_team": {
       const project = req.payload.project as Omit<Project, "id">;
-      await createProject(project);
+      await createProject({ ...project, contributor: req.requester });
       bumpQuota(req.requester, "yearly", yearKey());
       if (req.reviewer) bumpQuota(req.reviewer, "supervised", yearKey());
+      pushNotification({
+        kind: "info",
+        title: "Team project approved",
+        body: `"${project.title}" is now active.`,
+        recipient: target.username,
+        sender: req.reviewer ?? "system",
+        link: "/projects",
+      });
       break;
     }
     case "team_change": {
@@ -179,11 +294,20 @@ async function applySideEffects(req: MgmtRequest) {
         if (action === "add" && !t.members.includes(member)) t.members.push(member);
         if (action === "remove") t.members = t.members.filter((m) => m !== member);
         write(KEY_TEAMS, teams);
+        // Sync team chat group with new roster.
+        syncTeamGroup(t.id, t.name, [t.leader, ...t.members]);
       }
       break;
     }
     case "executive_promotion": {
       await updatePersonnel(target.id, { level: 5 });
+      pushNotification({
+        kind: "system",
+        title: "Executive promotion approved",
+        body: "You are now L5.",
+        recipient: target.username,
+        sender: req.reviewer ?? "system",
+      });
       break;
     }
   }
@@ -211,6 +335,8 @@ export async function createTeam(data: Omit<Team, "id" | "createdAt" | "complete
   };
   teams = [next, ...teams];
   write(KEY_TEAMS, teams);
+  // Auto-create team chat group with leader + members.
+  syncTeamGroup(next.id, next.name, [next.leader, ...next.members]);
   return next;
 }
 

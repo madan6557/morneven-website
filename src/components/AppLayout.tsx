@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
+import NotificationBell from "./NotificationBell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Menu } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -28,7 +29,7 @@ export function AppLayout() {
         />
         <main className="flex-1 min-w-0 overflow-x-hidden">
           {/* Mobile header with hamburger */}
-          {isMobile && (
+          {isMobile ? (
             <div className="sticky top-0 z-30 h-12 flex items-center px-4 border-b border-border bg-background/80 backdrop-blur-sm">
               <button
                 onClick={() => setMobileOpen(true)}
@@ -39,6 +40,11 @@ export function AppLayout() {
               <span className="ml-2 font-display text-xs tracking-[0.2em] text-primary uppercase">
                 Morneven
               </span>
+              <div className="ml-auto"><NotificationBell /></div>
+            </div>
+          ) : (
+            <div className="sticky top-0 z-30 h-12 flex items-center justify-end px-4 border-b border-border/50 bg-background/60 backdrop-blur-sm">
+              <NotificationBell />
             </div>
           )}
           <Outlet />
