@@ -188,7 +188,7 @@ export default function ManagementPage() {
         </TabsList>
 
         <TabsContent value="transfer">
-          <TransferForm currentTrack={track} onSubmit={submit} />
+          <TransferForm currentTrack={track} level={personnelLevel} onSubmit={submit} />
         </TabsContent>
 
         <TabsContent value="clearance">
@@ -264,15 +264,29 @@ function ObligationCell({
 
 function TransferForm({
   currentTrack,
+  level,
   onSubmit,
 }: {
   currentTrack: PersonnelTrack;
+  level: PersonnelLevel;
   onSubmit: (k: RequestKind, p: Record<string, unknown>, r: string, t?: PersonnelTrack) => void;
 }) {
   const [target, setTarget] = useState<PersonnelTrack>(
     PERSONNEL_TRACKS.find((t) => t.key !== currentTrack)!.key,
   );
   const [reason, setReason] = useState("");
+
+  // PL7 (Full Authority) cannot transfer; their authority is global.
+  if (level >= 7) {
+    return (
+      <Card className="p-4">
+        <p className="text-sm text-muted-foreground">
+          PL7 (Full Authority) operates above tracks and cannot file a transfer request.
+        </p>
+      </Card>
+    );
+  }
+
   return (
     <Card className="p-4 space-y-3">
       <p className="font-heading text-sm">Apply to transfer to a different track. Reviewed by the target track's PL5.</p>
