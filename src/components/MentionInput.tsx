@@ -28,7 +28,7 @@ interface Suggestion {
 
 // Match the trigger token at the caret: @ followed by word chars, with no
 // whitespace between the @ and the caret position.
-const TRIGGER_RE = /(?:^|\s)@([\w.\-]*)$/;
+const TRIGGER_RE = /(?:^|\s)@([\w.-]*)$/;
 
 export default function MentionInput({
   value,
@@ -99,7 +99,7 @@ export default function MentionInput({
     const before = value.slice(0, caret);
     const after = value.slice(caret);
     // Replace the trailing "@partial" with "@username "
-    const replaced = before.replace(/(^|\s)@([\w.\-]*)$/, (_m, lead) => `${lead}@${username} `);
+    const replaced = before.replace(/(^|\s)@([\w.-]*)$/, (_m, lead) => `${lead}@${username} `);
     const next = replaced + after;
     onChange(next);
     setOpen(false);
@@ -196,7 +196,7 @@ export function renderWithMentions(
 ): React.ReactNode {
   // Split on @username tokens (word chars, dots, dashes). Preserve surrounding
   // whitespace so the rendered output reads identically to the source.
-  const parts = text.split(/(@[\w.\-]+)/g);
+  const parts = text.split(/(@[\w.-]+)/g);
   return parts.map((part, i) => {
     if (part.startsWith("@") && part.length > 1) {
       return (
@@ -214,7 +214,7 @@ export function renderWithMentions(
 }
 
 export function extractMentions(text: string): DiscussionMention[] {
-  const matches = text.matchAll(/@([\w.\-]+)/g);
+  const matches = text.matchAll(/@([\w.-]+)/g);
   const result: DiscussionMention[] = [];
 
   for (const m of matches) {
