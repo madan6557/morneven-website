@@ -222,11 +222,10 @@ export default function AuthorDashboard() {
   useEffect(() => {
     const tab = params.get("tab");
     if (isDashboardTab(tab)) {
-      setActiveTab(tab);
+      setActiveTabRaw(tab);
       return;
     }
-
-    setActiveTab("projects");
+    setActiveTabRaw("projects");
   }, [params]);
 
   const loadAll = async () => {
