@@ -149,11 +149,18 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*" }:
 
 export default function AuthorDashboard() {
   const { role, username, personnelLevel, track } = useAuth();
-  const [params] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
+  const [params, setParams] = useSearchParams();
+  const [activeTab, setActiveTabRaw] = useState<DashboardTab>(() => {
     const tab = params.get("tab");
     return isDashboardTab(tab) ? tab : "projects";
   });
+  const setActiveTab = (t: DashboardTab) => {
+    setActiveTabRaw(t);
+    const next = new URLSearchParams(params);
+    if (t === "projects") next.delete("tab");
+    else next.set("tab", t);
+    setParams(next, { replace: true });
+  };
   const [loreSub, setLoreSub] = useState<LoreSub>("characters");
 
   // Per-section access predicate (PL + track aware).
