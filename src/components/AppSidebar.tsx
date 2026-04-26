@@ -14,6 +14,7 @@ import {
   Map,
   Users,
   ClipboardList,
+  MessageCircle,
 } from "lucide-react";
 import {
   Tooltip,
@@ -51,6 +52,12 @@ const navItems: NavItem[] = [
     title: "Management",
     url: "/management",
     icon: ClipboardList,
+    visible: ({ role }) => role !== "guest",
+  },
+  {
+    title: "Chat",
+    url: "/chat",
+    icon: MessageCircle,
     visible: ({ role }) => role !== "guest",
   },
   {
