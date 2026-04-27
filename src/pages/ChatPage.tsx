@@ -309,7 +309,7 @@ export default function ChatPage() {
         </Button>
       </div>
 
-      <div className="grid md:grid-cols-[300px_1fr] gap-4 h-[70vh] min-h-[520px] md:h-[72vh] md:min-h-[620px] max-h-[820px]">
+      <div className="grid grid-rows-[220px_minmax(0,1fr)] md:grid-rows-1 md:grid-cols-[300px_minmax(0,1fr)] gap-4 h-[calc(100dvh-9.5rem)] min-h-0 md:h-[72vh] md:min-h-[620px] max-h-[900px]">
         {/* Sidebar */}
         <div className="hud-border bg-card p-3 space-y-3 h-full flex flex-col">
           <div className="flex gap-1">
