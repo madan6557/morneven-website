@@ -56,7 +56,10 @@ Deploy otomatis ke Vercel. Analytics dan Speed Insights aktif jika di-deploy di 
 ## Dokumen Kesiapan
 - `docs/chat-readiness-assessment-2026-04-27.md` - penilaian khusus modul chat.
 - `docs/full-platform-readiness-assessment-2026-04-27.md` - penilaian kesiapan demo seluruh fitur utama.
+<<<<<<< codex/validate-feature-for-demo-readiness
 - `docs/backend-requirements-full-platform-2026-04-27.md` - requirement BE detail lintas semua fitur untuk meminimalkan revisi implementasi.
+=======
+>>>>>>> main
 
 
 ## Kontribusi
