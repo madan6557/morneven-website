@@ -148,6 +148,11 @@ export default function ChatPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages.length, active]);
 
+  // Clear pending reply when switching conversations.
+  useEffect(() => {
+    setReplyTo(null);
+  }, [active]);
+
   const activeConv = useMemo(() => convs.find((c) => c.id === active) ?? null, [convs, active]);
   const myRole: MemberRole | null = activeConv ? getMemberRole(activeConv, username) : null;
   const iCanManage = activeConv ? canManage(activeConv, username) : false;
