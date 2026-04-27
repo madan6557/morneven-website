@@ -548,6 +548,37 @@ function ensureInstituteGroup(): Conversation {
   return inst;
 }
 
+function seedInstituteConversationHistory(inst: Conversation, personnel: PersonnelUser[]) {
+  const alreadySeeded = messages.some((m) => m.conversationId === inst.id && !m.system);
+  if (alreadySeeded) return;
+
+  const roster = personnel
+    .map((p) => p.username)
+    .filter((u) => u !== "author")
+    .slice(0, 6);
+  if (roster.length < 2) return;
+
+  const base = Date.now();
+  const at = (minsAgo: number) => new Date(base - minsAgo * 60_000).toISOString();
+  const sampleLines = [
+    "Morning check-in complete. Field route update posted.",
+    "Logistics confirms supply batch has arrived at staging.",
+    "Mechanic bay reports two units are now operational.",
+    "Division lead approved the revised patrol timing.",
+    "Ops note: keep comms channel clear during handoff window.",
+    "Reminder: submit end-of-shift summary before 20:00 UTC.",
+  ];
+
+  const seeded = sampleLines.map((text, idx) => ({
+    id: `msg-inst-sample-${idx + 1}`,
+    conversationId: inst.id,
+    author: roster[idx % roster.length],
+    text,
+    createdAt: at(180 - idx * 15),
+  }));
+  messages = [...messages, ...seeded];
+}
+
 // Ensures one division group per track exists.
 function ensureDivisionGroup(track: PersonnelTrack): Conversation {
   let group = conversations.find((c) => c.kind === "division" && c.source?.track === track);
@@ -581,6 +612,7 @@ export function reconcileAutoMemberships(personnel: PersonnelUser[]) {
   inst.members.forEach((m) => {
     if (!activeUsernames.has(m.username) && m.username !== "system") m.status = "removed";
   });
+  seedInstituteConversationHistory(inst, personnel);
 
   // 2. PL7 auto-join every division group; otherwise stay only in own track.
   for (const p of personnel) {
