@@ -22,6 +22,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   PERSONNEL_LEVELS,
@@ -222,44 +223,46 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
       )}
 
       {/* Nav items */}
-      <nav className="flex-1 py-3 space-y-1 px-2 overflow-y-auto">
-        {filteredNav.map((item) => {
-          const active = isActive(item.url);
-          const link = (
-            <Link
-              to={item.url}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all group relative
-                ${active
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent"
-                }`}
-            >
-              {active && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r" />
-              )}
-              <item.icon className={`h-4 w-4 flex-shrink-0 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
-              {isExpanded && (
-                <span className="font-heading text-sm tracking-wide truncate">
-                  {item.title}
-                </span>
-              )}
-            </Link>
-          );
-
-          if (!isExpanded) {
-            return (
-              <Tooltip key={item.title} delayDuration={0}>
-                <TooltipTrigger asChild>{link}</TooltipTrigger>
-                <TooltipContent side="right" className="font-heading">
-                  {item.title}
-                </TooltipContent>
-              </Tooltip>
+      <ScrollArea className="flex-1">
+        <nav className="py-3 space-y-1 px-2">
+          {filteredNav.map((item) => {
+            const active = isActive(item.url);
+            const link = (
+              <Link
+                to={item.url}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all group relative
+                  ${active
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent"
+                  }`}
+              >
+                {active && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r" />
+                )}
+                <item.icon className={`h-4 w-4 flex-shrink-0 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
+                {isExpanded && (
+                  <span className="font-heading text-sm tracking-wide truncate">
+                    {item.title}
+                  </span>
+                )}
+              </Link>
             );
-          }
 
-          return <div key={item.title}>{link}</div>;
-        })}
-      </nav>
+            if (!isExpanded) {
+              return (
+                <Tooltip key={item.title} delayDuration={0}>
+                  <TooltipTrigger asChild>{link}</TooltipTrigger>
+                  <TooltipContent side="right" className="font-heading">
+                    {item.title}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            return <div key={item.title}>{link}</div>;
+          })}
+        </nav>
+      </ScrollArea>
 
       {/* Footer */}
       <div className="border-t border-border p-2 space-y-1">
