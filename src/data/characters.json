@@ -232,5 +232,45 @@
       { "id": "ctr-017", "title": "Coastal Logistics Cooperation", "description": "Recurrent, unscheduled escort of Logistics expeditions in and around the Coral Reach. Standing record of zero submersion-related casualties on missions she has accompanied.", "date": "Ongoing" },
       { "id": "ctr-018", "title": "Sola Liaison (Coastal)", "description": "Sole reliable contact for Sola's coastal visits. Performs requested liquid-manipulation displays for Sola; doctrine treats this as a stabilizing recurrence, not a public event.", "date": "Ongoing" }
     ]
-  }
+  },
+  {
+    "id": "char-012",
+    "name": "John Halberd",
+    "race": "Human",
+    "height": "174 cm",
+    "traits": ["Talkative", "Over-enthusiastic", "Surprisingly competent"],
+    "likes": ["Checklist stickers", "Snack corridors", "Unscheduled \"quick improvements\""],
+    "dislikes": ["Awkward silence", "Being ignored", "Forms that say 'Do not touch'"],
+    "accentColor": "#869c93",
+    "thumbnail": "",
+    "shortDesc": "Logistics Support Coordinator known for useful fixes delivered at the worst possible timing. PL2-LOG.",
+    "fullDesc": "John Halberd serves in Logistics Support as a floating coordinator assigned to route balancing, bay turnover, and low-priority process cleanup. His file records above-average completion rates and below-average situational restraint. He holds PL2-LOG clearance, limited to operational logistics lanes and support-adjacent facilities. When John identifies an inefficiency, he tends to solve it immediately, regardless of whether the room is currently in briefing, calibration, or controlled silence.\n\nThis behavior has produced a distinct institutional pattern: many departments appreciate his outcomes, while specific high-sensitivity personnel strongly prefer distance. John has repeatedly entered the edges of restricted workflows with unrequested 'help,' then exited with the task technically improved and the atmosphere significantly worse. No major incident has been attributed to him, but minor operational friction around his presence is considered persistent and predictable.\n\nThe Sola-Era-Marine overlap in negative preference indexing is documented with specific causes. Marine's objection is behavioral: John repeatedly seeks attention during coastal downtime and attempts to insert himself into moments where silence is preferred. Sola's objection is incident-based: John interrupted her while she was watching one of Marine's liquid-manipulation shows, an event now referenced in logistics notes as a preventable etiquette failure. Era's objection is associative rather than direct; because Sola does not want John near her priority spaces, Era mirrors that boundary by default. Current doctrine does not classify John as hostile, unstable, or malicious. He is classified as 'timing-risk, human-factor type B': high utility, high interruption probability.\n\n[L2+ track=logistics]Standing handling note: if John appears in an active high-sensitivity lane, assign him one bounded micro-task and a clear completion exit. Unassigned presence leads to improvisation. Improvisation leads to new process notes. The process notes are usually correct.[/L2+]",
+    "stats": { "combat": 28, "intelligence": 81, "stealth": 34, "charisma": 67, "endurance": 72 },
+    "docs": [],
+    "occupation": "Logistics Support Coordinator",
+    "contributions": [
+      { "id": "ctr-019", "title": "Turnover Loop Compression", "description": "Reworked handoff markers across three logistics corridors, reducing average bay-reset latency by 19% over one quarter.", "date": "2025-09-14" },
+      { "id": "ctr-020", "title": "Emergency Snack Routing Patch", "description": "During a supply-map mismatch, rerouted culinary deliveries to preserve standing Secret Box distribution without schedule collapse.", "date": "2026-02-03" }
+    ]
+  },
+  {
+  "id": "char-013",
+  "name": "Mira Halden",
+  "race": "Human",
+  "height": "169 cm",
+  "traits": ["Composed", "Diplomatic", "Meticulous"],
+  "likes": ["Accurate maps", "Quiet briefing rooms", "Mutual agreements"],
+  "dislikes": ["Ambiguous orders", "Symbolic hostility", "Wasted aid shipments"],
+  "accentColor": "#b7579e",
+  "thumbnail": "",
+  "shortDesc": "Commons Coordinator and cross-settlement liaison for Morneven's civilian corridors. PL4-GOV.",
+  "fullDesc": "Mira Halden serves as Morneven's Commons Coordinator, responsible for maintaining stable relations between the Institute and external human settlements. Recruited from a post-war convoy network, she was brought in after repeatedly resolving supply disputes without security escalation.\n\nHer specialty is operational diplomacy: translating strategic directives into language and timelines that civilian councils can accept, then converting local constraints back into executable Institute plans. She holds PL4-GOV clearance for cross-division administrative access, but does not carry combat authority.\n\nWithin Morneven, Mira is known for reducing friction before it becomes incident. She coordinates delegation routes, allocates neutral meeting windows, and enforces documentation standards that prevent mission drift between Logistics, Executive, and Field support lanes.\n\n[L3+ track=executive]Mira maintains the Quiet Corridor Protocol, a contingency channel used when external settlements require aid while refusing visible Institute security presence. The protocol has prevented three projected border flashpoints from escalating into armed conflict.[/L3+]",
+  "stats": { "combat": 32, "intelligence": 89, "stealth": 51, "charisma": 86, "endurance": 68 },
+  "docs": [],
+  "occupation": "Commons Coordinator · External Liaison Office",
+  "contributions": [
+    { "id": "ctr-021", "title": "Quiet Corridor Protocol", "description": "Authored and deployed a low-visibility aid-delivery framework for high-tension border settlements, reducing armed escort incidents across three sectors.", "date": "2025-12-08" },
+    { "id": "ctr-022", "title": "Delegation Window Standard", "description": "Standardized cross-species delegation timing and venue rules, cutting negotiation cancellations by 41% over two reporting cycles.", "date": "2026-03-17" }
+  ]
+}
 ]
