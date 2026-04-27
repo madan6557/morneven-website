@@ -182,21 +182,10 @@ export default function ChatPage() {
   useEffect(() => {
     if (!active || messages.length === 0) return;
 
-    const markConversationRead = () => {
-      const latestSeen = messages[messages.length - 1]?.createdAt;
-      if (!latestSeen) return;
-      setReadMap((prev) => {
-        if (prev[active] === latestSeen) return prev;
-        const next = { ...prev, [active]: latestSeen };
-        writeReadMap(next);
-        return next;
-      });
-    };
-
     if (shouldScrollToLatestRef.current) {
       endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
       shouldScrollToLatestRef.current = false;
-      markConversationRead();
+      markConversationRead(active, messages);
       return;
     }
 
@@ -219,7 +208,6 @@ export default function ChatPage() {
       }
 
       pendingOpenScrollRef.current = false;
-      markConversationRead();
     }
   }, [active, messages, readMap, username]);
 
@@ -356,6 +344,20 @@ export default function ChatPage() {
   const eligibleToInvite = personnel
     .filter((p) => p.username !== username)
     .filter((p) => !activeConv?.members.some((m) => m.username === p.username && m.status !== "removed"));
+  const markConversationRead = (conversationId: string, source: ChatMessage[]) => {
+    const latestSeen = source[source.length - 1]?.createdAt;
+    if (!latestSeen) return;
+    setReadMap((prev) => {
+      if (prev[conversationId] === latestSeen) return prev;
+      const next = { ...prev, [conversationId]: latestSeen };
+      writeReadMap(next);
+      return next;
+    });
+  };
+  const markActiveConversationRead = () => {
+    if (!active || messages.length === 0) return;
+    markConversationRead(active, messages);
+  };
   const getUnreadCount = (conversationId: string) => {
     const lastReadAt = readMap[conversationId];
     return listMessages(conversationId).filter(
@@ -476,6 +478,9 @@ export default function ChatPage() {
                 <Button variant="ghost" size="sm" onClick={() => setDialog("settings")} className="h-8">
                   <Settings className="h-3.5 w-3.5" />
                 </Button>
+                <Button variant="outline" size="sm" onClick={markActiveConversationRead} className="h-8 text-[10px]">
+                  Mark as read
+                </Button>
               </div>
 
               <ScrollArea className="flex-1 min-h-0">
@@ -496,6 +501,11 @@ export default function ChatPage() {
                     const mine = m.author === username;
                     const canDelete = mine || iCanManage;
                     const isHighlighted = highlightId === m.id;
+                    const messageIsUnread =
+                      !m.system &&
+                      m.author !== username &&
+                      activeConv &&
+                      (!readMap[activeConv.id] || m.createdAt > readMap[activeConv.id]);
                     return (
                       <div
                         key={m.id}
@@ -509,6 +519,11 @@ export default function ChatPage() {
                             <p className="font-heading text-xs tracking-wider text-muted-foreground">
                               {m.author} · {new Date(m.createdAt).toLocaleTimeString()}
                             </p>
+                            {!mine && (
+                              <span className={`text-[9px] font-display tracking-wider ${messageIsUnread ? "text-destructive" : "text-muted-foreground"}`}>
+                                {messageIsUnread ? "UNREAD" : "READ"}
+                              </span>
+                            )}
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                               <button
                                 onClick={() => setReplyTo(buildReplyPreview(m))}
@@ -554,11 +569,15 @@ export default function ChatPage() {
                                     {isImg ? (
                                       <img src={a.dataUrl} alt={a.name} className="max-h-48 rounded-sm" />
                                     ) : null}
-                                    <div className="flex items-center justify-between gap-2 mt-1">
-                                      <span className="text-xs font-body truncate">
+                                    <div className="flex items-start justify-between gap-2 mt-1">
+                                      <span className="flex-1 min-w-0 pr-1 text-xs font-body break-all whitespace-normal">
                                         {a.name} <span className="text-muted-foreground">({formatBytes(a.size)})</span>
                                       </span>
-                                      <a href={a.dataUrl} download={a.name} className="text-primary hover:text-primary/80">
+                                      <a
+                                        href={a.dataUrl}
+                                        download={a.name}
+                                        className="text-primary hover:text-primary/80 flex-shrink-0"
+                                      >
                                         <Download className="h-3 w-3" />
                                       </a>
                                     </div>
