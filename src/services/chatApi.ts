@@ -1,10 +1,33 @@
-// Minimal chat service: DMs, manual groups, and auto groups (team/division).
-// Persisted to localStorage. A future backend can swap each function for
-// a REST/WebSocket call without touching the UI.
+// Chat service (demo / localStorage-backed) — wired so a future backend can
+// swap each function with a REST/WebSocket call without touching the UI.
+//
+// Demo capabilities:
+//  - DM, manual group, auto team/division, institute-wide channel
+//  - Member roles: owner | admin | member
+//  - Invite + accept/reject flow (in-app)
+//  - Kick / leave / promote / demote
+//  - Attachments (stored as data URLs locally; backend will swap to presigned S3)
+//  - PL7 auto-join all division groups
+//  - Institute group with all active personnel
+//
+// All mutations dispatch a single `morneven:chat-changed` event so the UI can
+// refresh without polling. This mirrors the future WebSocket fan-out events.
 
-import type { PersonnelTrack } from "@/lib/pl";
+import type { PersonnelTrack, PersonnelLevel } from "@/lib/pl";
+import type { PersonnelUser } from "@/types";
 
-export type ConversationKind = "dm" | "group" | "team" | "division";
+export type ConversationKind = "dm" | "group" | "team" | "division" | "institute";
+export type MemberRole = "owner" | "admin" | "member";
+export type MemberStatus = "active" | "invited" | "removed";
+
+export interface ChatAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  // Demo: data URL. Backend equivalent: signed download URL + storage_key.
+  dataUrl: string;
+}
 
 export interface ChatMessage {
   id: string;
@@ -12,21 +35,35 @@ export interface ChatMessage {
   author: string;
   text: string;
   createdAt: string;
+  attachments?: ChatAttachment[];
+  // System messages render with a neutral style (e.g. "X invited Y").
+  system?: boolean;
+}
+
+export interface ConversationMember {
+  username: string;
+  role: MemberRole;
+  status: MemberStatus;
+  invitedBy?: string;
+  joinedAt: string;
 }
 
 export interface Conversation {
   id: string;
   kind: ConversationKind;
   name: string;
-  members: string[]; // usernames
-  // For team/division auto-groups, we tag the source so we can reconcile
-  // membership when personnel transfer or teams change.
-  source?: { teamId?: string; track?: PersonnelTrack };
+  members: ConversationMember[];
+  // For team/division/institute auto-groups, tag the source so we can
+  // reconcile membership when personnel transfer or teams change.
+  source?: { teamId?: string; track?: PersonnelTrack; institute?: boolean };
+  // System-managed conversations cannot be renamed/deleted by users.
+  systemManaged?: boolean;
+  createdBy: string;
   createdAt: string;
 }
 
-const KEY_CONV = "morneven_chat_conversations";
-const KEY_MSG = "morneven_chat_messages";
+const KEY_CONV = "morneven_chat_conversations_v2";
+const KEY_MSG = "morneven_chat_messages_v2";
 const EVT = "morneven:chat-changed";
 
 function read<T>(key: string, fallback: T): T {
@@ -48,15 +85,90 @@ function write<T>(key: string, value: T) {
   }
 }
 
+// One-time migration from the v1 (members: string[]) shape.
+function migrateLegacy() {
+  if (typeof window === "undefined") return;
+  if (window.localStorage.getItem(KEY_CONV)) return;
+  try {
+    const legacyRaw = window.localStorage.getItem("morneven_chat_conversations");
+    if (!legacyRaw) return;
+    const legacy = JSON.parse(legacyRaw) as Array<{
+      id: string;
+      kind: ConversationKind;
+      name: string;
+      members: string[];
+      source?: Conversation["source"];
+      createdAt: string;
+    }>;
+    const migrated: Conversation[] = legacy.map((c) => ({
+      ...c,
+      systemManaged: c.kind !== "dm" && c.kind !== "group",
+      createdBy: c.members[0] ?? "system",
+      members: c.members.map((u, i) => ({
+        username: u,
+        role: i === 0 && (c.kind === "group" || c.kind === "dm") ? "owner" : "member",
+        status: "active",
+        joinedAt: c.createdAt,
+      })),
+    }));
+    window.localStorage.setItem(KEY_CONV, JSON.stringify(migrated));
+    const legacyMsg = window.localStorage.getItem("morneven_chat_messages");
+    if (legacyMsg) window.localStorage.setItem(KEY_MSG, legacyMsg);
+  } catch {
+    /* ignore */
+  }
+}
+migrateLegacy();
+
 let conversations: Conversation[] = read<Conversation[]>(KEY_CONV, []);
 let messages: ChatMessage[] = read<ChatMessage[]>(KEY_MSG, []);
 
 const todayISO = () => new Date().toISOString();
+const uid = (p = "id") => `${p}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+// -------- Helpers --------------------------------------------------------
+
+function persist() {
+  write(KEY_CONV, conversations);
+  write(KEY_MSG, messages);
+}
+
+function ensureMember(conv: Conversation, username: string, role: MemberRole = "member", invitedBy?: string, status: MemberStatus = "active") {
+  const existing = conv.members.find((m) => m.username === username);
+  if (existing) {
+    if (existing.status === "removed") existing.status = status;
+    return existing;
+  }
+  const m: ConversationMember = { username, role, status, invitedBy, joinedAt: todayISO() };
+  conv.members.push(m);
+  return m;
+}
+
+function activeMembers(conv: Conversation): ConversationMember[] {
+  return conv.members.filter((m) => m.status === "active");
+}
+
+function pushSystemMessage(conversationId: string, text: string) {
+  messages.push({
+    id: uid("msg"),
+    conversationId,
+    author: "system",
+    text,
+    createdAt: todayISO(),
+    system: true,
+  });
+}
+
+// -------- Queries --------------------------------------------------------
 
 export function listConversationsFor(username: string): Conversation[] {
   return conversations
-    .filter((c) => c.members.includes(username))
+    .filter((c) => c.members.some((m) => m.username === username && m.status === "active"))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export function listInvitesFor(username: string): Conversation[] {
+  return conversations.filter((c) => c.members.some((m) => m.username === username && m.status === "invited"));
 }
 
 export function getConversation(id: string): Conversation | undefined {
@@ -64,89 +176,228 @@ export function getConversation(id: string): Conversation | undefined {
 }
 
 export function listMessages(conversationId: string): ChatMessage[] {
-  return messages
-    .filter((m) => m.conversationId === conversationId)
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  return messages.filter((m) => m.conversationId === conversationId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-export function sendMessage(conversationId: string, author: string, text: string): ChatMessage {
+export function getMemberRole(conv: Conversation, username: string): MemberRole | null {
+  const m = conv.members.find((mm) => mm.username === username && mm.status === "active");
+  return m?.role ?? null;
+}
+
+export function canManage(conv: Conversation, username: string): boolean {
+  const role = getMemberRole(conv, username);
+  return role === "owner" || role === "admin";
+}
+
+// -------- Messaging ------------------------------------------------------
+
+export function sendMessage(conversationId: string, author: string, text: string, attachments?: ChatAttachment[]): ChatMessage {
   const next: ChatMessage = {
-    id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    id: uid("msg"),
     conversationId,
     author,
     text,
     createdAt: todayISO(),
+    attachments,
   };
   messages = [...messages, next];
-  write(KEY_MSG, messages);
+  persist();
   return next;
 }
+
+export function deleteMessage(messageId: string, actor: string): boolean {
+  const idx = messages.findIndex((m) => m.id === messageId);
+  if (idx === -1) return false;
+  const msg = messages[idx];
+  const conv = getConversation(msg.conversationId);
+  if (!conv) return false;
+  // Sender can delete own; admin/owner can moderate.
+  if (msg.author !== actor && !canManage(conv, actor)) return false;
+  messages.splice(idx, 1);
+  persist();
+  return true;
+}
+
+// -------- Conversation creation -----------------------------------------
 
 export function createDM(a: string, b: string): Conversation {
   const existing = conversations.find(
-    (c) => c.kind === "dm" && c.members.length === 2 && c.members.includes(a) && c.members.includes(b),
+    (c) => c.kind === "dm" && c.members.length === 2 && c.members.every((m) => m.username === a || m.username === b),
   );
   if (existing) return existing;
   const next: Conversation = {
-    id: `conv-${Date.now()}`,
+    id: uid("conv"),
     kind: "dm",
     name: `DM ${a} & ${b}`,
-    members: [a, b],
+    members: [
+      { username: a, role: "owner", status: "active", joinedAt: todayISO() },
+      { username: b, role: "owner", status: "active", joinedAt: todayISO() },
+    ],
+    createdBy: a,
     createdAt: todayISO(),
   };
   conversations = [next, ...conversations];
-  write(KEY_CONV, conversations);
+  persist();
   return next;
 }
 
-export function createManualGroup(name: string, creator: string, members: string[]): Conversation {
-  const all = Array.from(new Set([creator, ...members]));
+export function createManualGroup(name: string, creator: string, invitees: string[]): Conversation {
   const next: Conversation = {
-    id: `conv-${Date.now()}`,
+    id: uid("conv"),
     kind: "group",
     name,
-    members: all,
+    members: [
+      { username: creator, role: "owner", status: "active", joinedAt: todayISO() },
+      ...invitees
+        .filter((u) => u !== creator)
+        .map<ConversationMember>((u) => ({ username: u, role: "member", status: "invited", invitedBy: creator, joinedAt: todayISO() })),
+    ],
+    createdBy: creator,
     createdAt: todayISO(),
   };
   conversations = [next, ...conversations];
-  write(KEY_CONV, conversations);
+  pushSystemMessage(next.id, `${creator} created group "${name}"`);
+  persist();
   return next;
 }
 
-// Idempotent: ensures a team auto-group exists with the right members.
-export function syncTeamGroup(
-  teamId: string,
-  teamName: string,
-  members: string[],
-): Conversation {
+// -------- Member management (manual groups) -----------------------------
+
+export function inviteMembers(conversationId: string, actor: string, usernames: string[]): boolean {
+  const conv = getConversation(conversationId);
+  if (!conv) return false;
+  if (conv.systemManaged) return false;
+  if (!canManage(conv, actor)) return false;
+  for (const u of usernames) {
+    if (u === actor) continue;
+    const existing = conv.members.find((m) => m.username === u);
+    if (existing && existing.status === "active") continue;
+    if (existing) {
+      existing.status = "invited";
+      existing.invitedBy = actor;
+    } else {
+      conv.members.push({ username: u, role: "member", status: "invited", invitedBy: actor, joinedAt: todayISO() });
+    }
+    pushSystemMessage(conv.id, `${actor} invited ${u}`);
+  }
+  persist();
+  return true;
+}
+
+export function acceptInvite(conversationId: string, username: string): boolean {
+  const conv = getConversation(conversationId);
+  if (!conv) return false;
+  const m = conv.members.find((mm) => mm.username === username && mm.status === "invited");
+  if (!m) return false;
+  m.status = "active";
+  pushSystemMessage(conv.id, `${username} joined the group`);
+  persist();
+  return true;
+}
+
+export function rejectInvite(conversationId: string, username: string): boolean {
+  const conv = getConversation(conversationId);
+  if (!conv) return false;
+  const idx = conv.members.findIndex((mm) => mm.username === username && mm.status === "invited");
+  if (idx === -1) return false;
+  conv.members.splice(idx, 1);
+  persist();
+  return true;
+}
+
+export function kickMember(conversationId: string, actor: string, target: string): boolean {
+  const conv = getConversation(conversationId);
+  if (!conv) return false;
+  if (conv.systemManaged) return false;
+  if (!canManage(conv, actor)) return false;
+  const targetMember = conv.members.find((m) => m.username === target);
+  if (!targetMember) return false;
+  if (targetMember.role === "owner") return false; // can't kick owner
+  const actorMember = conv.members.find((m) => m.username === actor);
+  if (actorMember?.role === "admin" && targetMember.role === "admin") return false; // admin can't kick admin
+  targetMember.status = "removed";
+  pushSystemMessage(conv.id, `${actor} removed ${target}`);
+  persist();
+  return true;
+}
+
+export function leaveConversation(conversationId: string, username: string): boolean {
+  const conv = getConversation(conversationId);
+  if (!conv) return false;
+  if (conv.systemManaged) return false;
+  const m = conv.members.find((mm) => mm.username === username);
+  if (!m) return false;
+  m.status = "removed";
+  // Owner leaving: promote earliest active admin or member.
+  if (m.role === "owner") {
+    const successor = activeMembers(conv).find((mm) => mm.role === "admin") ?? activeMembers(conv)[0];
+    if (successor) successor.role = "owner";
+  }
+  pushSystemMessage(conv.id, `${username} left the group`);
+  persist();
+  return true;
+}
+
+export function setMemberRole(conversationId: string, actor: string, target: string, role: MemberRole): boolean {
+  const conv = getConversation(conversationId);
+  if (!conv) return false;
+  if (conv.systemManaged) return false;
+  // Only owner can promote/demote.
+  if (getMemberRole(conv, actor) !== "owner") return false;
+  const m = conv.members.find((mm) => mm.username === target && mm.status === "active");
+  if (!m) return false;
+  if (role === "owner") {
+    // Transfer ownership.
+    const actorMember = conv.members.find((mm) => mm.username === actor);
+    if (actorMember) actorMember.role = "admin";
+  }
+  m.role = role;
+  pushSystemMessage(conv.id, `${actor} set ${target} as ${role}`);
+  persist();
+  return true;
+}
+
+export function renameConversation(conversationId: string, actor: string, name: string): boolean {
+  const conv = getConversation(conversationId);
+  if (!conv || conv.systemManaged) return false;
+  if (!canManage(conv, actor)) return false;
+  conv.name = name;
+  persist();
+  return true;
+}
+
+// -------- Auto-managed groups -------------------------------------------
+
+export function syncTeamGroup(teamId: string, teamName: string, members: string[]): Conversation {
   const existing = conversations.find((c) => c.kind === "team" && c.source?.teamId === teamId);
   if (existing) {
-    existing.members = Array.from(new Set([...existing.members, ...members]));
+    members.forEach((u) => ensureMember(existing, u, "member"));
     existing.name = `Team · ${teamName}`;
-    write(KEY_CONV, conversations);
+    persist();
     return existing;
   }
   const next: Conversation = {
     id: `conv-team-${teamId}`,
     kind: "team",
     name: `Team · ${teamName}`,
-    members: Array.from(new Set(members)),
+    members: members.map<ConversationMember>((u) => ({ username: u, role: "member", status: "active", joinedAt: todayISO() })),
     source: { teamId },
+    systemManaged: true,
+    createdBy: "system",
     createdAt: todayISO(),
   };
   conversations = [next, ...conversations];
-  write(KEY_CONV, conversations);
+  persist();
   return next;
 }
 
-// Idempotent: ensures one division auto-group per track and adds the user.
 export function syncDivisionMembership(username: string, track: PersonnelTrack) {
-  // Remove user from any other division groups first
-  conversations = conversations.map((c) => {
+  // Remove user from other division groups.
+  conversations.forEach((c) => {
     if (c.kind === "division" && c.source?.track && c.source.track !== track) {
-      return { ...c, members: c.members.filter((m) => m !== username) };
+      const m = c.members.find((mm) => mm.username === username);
+      if (m) m.status = "removed";
     }
-    return c;
   });
   let group = conversations.find((c) => c.kind === "division" && c.source?.track === track);
   if (!group) {
@@ -154,17 +405,93 @@ export function syncDivisionMembership(username: string, track: PersonnelTrack) 
       id: `conv-div-${track}`,
       kind: "division",
       name: `Division · ${track.toUpperCase()}`,
-      members: [username],
+      members: [{ username, role: "member", status: "active", joinedAt: todayISO() }],
       source: { track },
+      systemManaged: true,
+      createdBy: "system",
       createdAt: todayISO(),
     };
     conversations = [group, ...conversations];
-  } else if (!group.members.includes(username)) {
-    group.members = [...group.members, username];
+  } else {
+    ensureMember(group, username, "member");
   }
-  write(KEY_CONV, conversations);
+  persist();
   return group;
 }
+
+// Ensures the singleton institute conversation exists.
+function ensureInstituteGroup(): Conversation {
+  let inst = conversations.find((c) => c.kind === "institute");
+  if (!inst) {
+    inst = {
+      id: "conv-institute",
+      kind: "institute",
+      name: "Institute · All Personnel",
+      members: [],
+      source: { institute: true },
+      systemManaged: true,
+      createdBy: "system",
+      createdAt: todayISO(),
+    };
+    conversations = [inst, ...conversations];
+  }
+  return inst;
+}
+
+// Ensures one division group per track exists.
+function ensureDivisionGroup(track: PersonnelTrack): Conversation {
+  let group = conversations.find((c) => c.kind === "division" && c.source?.track === track);
+  if (!group) {
+    group = {
+      id: `conv-div-${track}`,
+      kind: "division",
+      name: `Division · ${track.toUpperCase()}`,
+      members: [],
+      source: { track },
+      systemManaged: true,
+      createdBy: "system",
+      createdAt: todayISO(),
+    };
+    conversations = [group, ...conversations];
+  }
+  return group;
+}
+
+// Big idempotent reconciler — call on app boot. Mirrors a future cron worker.
+export function reconcileAutoMemberships(personnel: PersonnelUser[]) {
+  const inst = ensureInstituteGroup();
+  const tracks: PersonnelTrack[] = ["executive", "field", "mechanic", "logistics"];
+  tracks.forEach(ensureDivisionGroup);
+
+  // 1. Institute: every active personnel is a member.
+  const activeUsers = personnel.filter((p) => (p.level as PersonnelLevel) >= 1);
+  const activeUsernames = new Set(activeUsers.map((p) => p.username));
+  activeUsers.forEach((p) => ensureMember(inst, p.username, "member"));
+  // Soft-remove anyone in institute no longer in roster.
+  inst.members.forEach((m) => {
+    if (!activeUsernames.has(m.username) && m.username !== "system") m.status = "removed";
+  });
+
+  // 2. PL7 auto-join every division group; otherwise stay only in own track.
+  for (const p of personnel) {
+    const isPL7 = (p.level as PersonnelLevel) >= 7;
+    for (const t of tracks) {
+      const g = ensureDivisionGroup(t);
+      const m = g.members.find((mm) => mm.username === p.username);
+      const shouldBeMember = isPL7 || p.track === t;
+      if (shouldBeMember) {
+        if (!m) g.members.push({ username: p.username, role: isPL7 ? "admin" : "member", status: "active", joinedAt: todayISO() });
+        else m.status = "active";
+      } else if (m && m.status === "active") {
+        m.status = "removed";
+      }
+    }
+  }
+
+  persist();
+}
+
+// -------- Subscription --------------------------------------------------
 
 export function subscribeChat(cb: () => void): () => void {
   if (typeof window === "undefined") return () => undefined;
