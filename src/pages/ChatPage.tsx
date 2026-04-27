@@ -478,6 +478,9 @@ export default function ChatPage() {
                 <Button variant="ghost" size="sm" onClick={() => setDialog("settings")} className="h-8">
                   <Settings className="h-3.5 w-3.5" />
                 </Button>
+                <Button variant="outline" size="sm" onClick={markActiveConversationRead} className="h-8 text-[10px]">
+                  Mark as read
+                </Button>
               </div>
 
               <ScrollArea className="flex-1 min-h-0">
