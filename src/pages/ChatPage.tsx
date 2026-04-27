@@ -364,6 +364,8 @@ export default function ChatPage() {
       (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
     ).length;
   };
+  const sampleUnreadConv = convs.find((c) => getUnreadCount(c.id) > 0) ?? null;
+  const sampleReadConv = convs.find((c) => getUnreadCount(c.id) === 0) ?? null;
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto">
@@ -374,13 +376,20 @@ export default function ChatPage() {
           <p className="text-xs font-body text-muted-foreground mt-2">
             Direct messages, manual groups, auto-synced team / division channels, and the institute-wide channel.
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-display tracking-wider">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-destructive/40 text-destructive">
-              <span className="h-1.5 w-1.5 rounded-full bg-destructive" /> UNREAD SAMPLE
-            </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border text-muted-foreground">
-              <Check className="h-2.5 w-2.5" /> READ SAMPLE
-            </span>
+          <div className="mt-3 space-y-1 text-[10px] font-mono text-muted-foreground">
+            <p className="font-display tracking-wider text-[10px] uppercase text-foreground">Conversation Data Sample</p>
+            <p>
+              unread:{" "}
+              {sampleUnreadConv
+                ? `${sampleUnreadConv.name} (count=${getUnreadCount(sampleUnreadConv.id)})`
+                : "none"}
+            </p>
+            <p>
+              read:{" "}
+              {sampleReadConv
+                ? `${sampleReadConv.name} (lastRead=${readMap[sampleReadConv.id] ?? "not-marked"})`
+                : "none"}
+            </p>
           </div>
         </div>
         <Button
