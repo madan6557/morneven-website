@@ -162,9 +162,20 @@ export default function ChatPage() {
 
   const refresh = () => {
     if (!isAuthenticated) return;
-    setConvs(listConversationsFor(username));
+    const visibleConvs = listConversationsFor(username);
+    setConvs(visibleConvs);
     setInvites(listInvitesFor(username));
-    if (active) setMessages(listMessages(active));
+    if (active) {
+      setMessages(listMessages(active));
+      return;
+    }
+    if (visibleConvs.length > 0) {
+      const firstId = visibleConvs[0].id;
+      setActive((prev) => prev ?? firstId);
+      setMessages(listMessages(firstId));
+    } else {
+      setMessages([]);
+    }
   };
 
   useEffect(() => {
