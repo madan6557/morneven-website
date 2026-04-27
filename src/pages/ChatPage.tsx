@@ -397,23 +397,55 @@ export default function ChatPage() {
                     }
                     const mine = m.author === username;
                     const canDelete = mine || iCanManage;
+                    const isHighlighted = highlightId === m.id;
                     return (
-                      <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} group`}>
-                        <div className={`max-w-[70%] rounded-md px-3 py-1.5 text-xs ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"}`}>
+                      <div
+                        key={m.id}
+                        ref={(el) => { messageRefs.current[m.id] = el; }}
+                        className={`flex ${mine ? "justify-end" : "justify-start"} group`}
+                      >
+                        <div
+                          className={`max-w-[70%] rounded-md px-3 py-1.5 text-xs transition-shadow ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
+                        >
                           <div className="flex items-center justify-between gap-2 mb-0.5">
                             <p className="font-heading text-[10px] tracking-wider text-muted-foreground">
                               {m.author} · {new Date(m.createdAt).toLocaleTimeString()}
                             </p>
-                            {canDelete && (
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                               <button
-                                onClick={() => deleteMessage(m.id, username)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                                aria-label="Delete message"
+                                onClick={() => setReplyTo(buildReplyPreview(m))}
+                                className="text-muted-foreground hover:text-primary"
+                                aria-label="Reply to message"
+                                title="Reply"
                               >
-                                <Trash2 className="h-3 w-3" />
+                                <Reply className="h-3 w-3" />
                               </button>
-                            )}
+                              {canDelete && (
+                                <button
+                                  onClick={() => deleteMessage(m.id, username)}
+                                  className="text-muted-foreground hover:text-destructive"
+                                  aria-label="Delete message"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
                           </div>
+                          {m.replyTo && (
+                            <button
+                              type="button"
+                              onClick={() => jumpToMessage(m.replyTo!.messageId)}
+                              className="w-full text-left mb-1 border-l-2 border-primary/70 bg-background/40 hover:bg-background/60 transition-colors rounded-sm px-2 py-1"
+                            >
+                              <p className="text-[10px] font-display tracking-wider text-primary truncate">
+                                ↳ {m.replyTo.author}
+                              </p>
+                              <p className="text-[11px] font-body text-muted-foreground line-clamp-2">
+                                {m.replyTo.text || (m.replyTo.hasAttachments ? "[attachment]" : "")}
+                              </p>
+                            </button>
+                          )}
                           {m.text && <p className="font-body whitespace-pre-wrap break-words">{m.text}</p>}
                           {m.attachments && m.attachments.length > 0 && (
                             <div className="mt-2 space-y-1.5">
