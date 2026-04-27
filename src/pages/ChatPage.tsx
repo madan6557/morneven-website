@@ -375,6 +375,11 @@ export default function ChatPage() {
       (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
     ).length;
   };
+  const markActiveConversationRead = () => {
+    if (!active) return;
+    const currentMessages = messages.length > 0 ? messages : listMessages(active);
+    markConversationRead(active, currentMessages);
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto">
