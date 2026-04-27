@@ -171,9 +171,10 @@ export default function ChatPage() {
     if (pendingFiles.length) {
       attachments = await Promise.all(pendingFiles.map(fileToAttachment));
     }
-    const msg = sendMessage(active, username, input.trim(), attachments);
+    const msg = sendMessage(active, username, input.trim(), attachments, replyTo ?? undefined);
     setInput("");
     setPendingFiles([]);
+    setReplyTo(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
 
     const conv = listConversationsFor(username).find((c) => c.id === active);
