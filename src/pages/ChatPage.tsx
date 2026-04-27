@@ -21,10 +21,12 @@ import {
   canManage,
   getMemberRole,
   subscribeChat,
+  buildReplyPreview,
   type Conversation,
   type ChatMessage,
   type ChatAttachment,
   type MemberRole,
+  type ReplyPreview,
 } from "@/services/chatApi";
 import type { PersonnelUser } from "@/types";
 import {
@@ -46,6 +48,8 @@ import {
   Trash2,
   Download,
   Check,
+  Reply,
+  CornerDownRight,
 } from "lucide-react";
 import {
   Dialog,
