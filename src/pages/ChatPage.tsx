@@ -271,6 +271,15 @@ export default function ChatPage() {
     refresh();
   }
 
+  // Scroll to a quoted message and briefly highlight it.
+  function jumpToMessage(id: string) {
+    const el = messageRefs.current[id];
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightId(id);
+    window.setTimeout(() => setHighlightId((cur) => (cur === id ? null : cur)), 1600);
+  }
+
   // -------- Render ------------------------------------------------------
 
   const eligibleToInvite = personnel
