@@ -116,7 +116,7 @@ export default function ChatPage() {
   const [renameValue, setRenameValue] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [replyTo, setReplyTo] = useState<ReplyPreview | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -145,7 +145,7 @@ export default function ChatPage() {
 
   // Auto-scroll to bottom on new messages.
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages.length, active]);
 
   // Clear pending reply when switching conversations.
@@ -311,7 +311,7 @@ export default function ChatPage() {
 
       <div className="grid md:grid-cols-[300px_1fr] gap-4 h-[70vh] min-h-[520px] md:h-[72vh] md:min-h-[620px] max-h-[820px]">
         {/* Sidebar */}
-        <div className="hud-border bg-card p-3 space-y-3 overflow-y-auto h-full">
+        <div className="hud-border bg-card p-3 space-y-3 h-full flex flex-col">
           <div className="flex gap-1">
             <button
               onClick={() => setDialog("dm")}
@@ -327,28 +327,30 @@ export default function ChatPage() {
             </button>
           </div>
 
-          <div className="space-y-1 pt-2">
-            {convs.length === 0 && (
-              <p className="text-[11px] text-muted-foreground font-body italic px-2">No conversations.</p>
-            )}
-            {convs.map((c) => {
-              const Icon = KIND_ICON[c.kind];
-              const activeCount = c.members.filter((m) => m.status === "active").length;
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => setActive(c.id)}
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-sm transition-colors ${
-                    active === c.id ? "bg-primary/10 text-primary" : "hover:bg-muted text-foreground"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="text-sm font-heading truncate flex-1">{c.name}</span>
-                  <span className="text-[9px] font-display uppercase text-muted-foreground">{activeCount}</span>
-                </button>
-              );
-            })}
-          </div>
+          <ScrollArea className="flex-1 min-h-0 pt-2">
+            <div className="space-y-1 pr-2">
+              {convs.length === 0 && (
+                <p className="text-[11px] text-muted-foreground font-body italic px-2">No conversations.</p>
+              )}
+              {convs.map((c) => {
+                const Icon = KIND_ICON[c.kind];
+                const activeCount = c.members.filter((m) => m.status === "active").length;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setActive(c.id)}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-sm transition-colors ${
+                      active === c.id ? "bg-primary/10 text-primary" : "hover:bg-muted text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="text-sm font-heading truncate flex-1">{c.name}</span>
+                    <span className="text-[9px] font-display uppercase text-muted-foreground">{activeCount}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </ScrollArea>
         </div>
 
         {/* Conversation */}
@@ -381,11 +383,12 @@ export default function ChatPage() {
                 </Button>
               </div>
 
-              <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
-                {messages.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic text-center">No messages yet.</p>
-                ) : (
-                  messages.map((m) => {
+              <ScrollArea className="flex-1 min-h-0">
+                <div className="p-4 space-y-3">
+                  {messages.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic text-center">No messages yet.</p>
+                  ) : (
+                    messages.map((m) => {
                     if (m.system) {
                       return (
                         <div key={m.id} className="flex justify-center">
@@ -472,9 +475,11 @@ export default function ChatPage() {
                         </div>
                       </div>
                     );
-                  })
-                )}
-              </div>
+                    })
+                  )}
+                  <div ref={endOfMessagesRef} />
+                </div>
+              </ScrollArea>
 
               {/* Pending attachments preview */}
               {pendingFiles.length > 0 && (
