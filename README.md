@@ -53,6 +53,11 @@ Website ini adalah portal utama Morneven Institute, dibangun menggunakan React, 
 ## Deployment
 Deploy otomatis ke Vercel. Analytics dan Speed Insights aktif jika di-deploy di Vercel.
 
+## Dokumen Kesiapan
+- `docs/chat-readiness-assessment-2026-04-27.md` - penilaian khusus modul chat.
+- `docs/full-platform-readiness-assessment-2026-04-27.md` - penilaian kesiapan demo seluruh fitur utama.
+
+
 ## Kontribusi
 Pull request dan issue sangat diterima.
 

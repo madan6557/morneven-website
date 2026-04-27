@@ -4,7 +4,7 @@
 
 ## Executive summary
 
-**Overall readiness: 5/10 (beta-ready, not production-ready).**
+**Overall readiness: 6/10 (demo-ready/beta-ready, not production-ready).**
 
 The chat module has strong feature coverage for a prototype/beta (DMs, manual groups, invites, roles, moderation delete, reply previews, attachments, and auto-managed institute/division channels), but it is still architected as a browser-local system (`localStorage` + client-side auth/authorization). That creates major gaps for security, auditability, cross-device consistency, and operational scalability.
 
@@ -87,8 +87,15 @@ The chat module has strong feature coverage for a prototype/beta (DMs, manual gr
    - Add rate limits and abuse controls.
    - Add chat integration/unit tests for critical RBAC and membership edge cases.
 
+## Demo readiness decision (2026-04-27)
+
+**Ready for demo:** **Yes**.  
+**Ready for production:** **No**.
+
+The current implementation is stable for showcasing end-to-end chat flows in a single environment/session, but still lacks backend authority, security hardening, and operations controls required for production.
+
 ## Validation run (2026-04-27)
 
 - `npm test -- --run`: pass (10/10 tests).
-- `npm run lint`: pass with warnings (0 errors, 11 warnings).
+- `npm run lint`: pass with warnings (0 errors, 12 warnings).
 - `npm run build`: pass with non-blocking warnings (Browserslist age + large chunk warning).
