@@ -140,13 +140,39 @@ export default function ChatPage() {
   const [renameValue, setRenameValue] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const endOfMessagesRef = useRef<HTMLDivElement>(null);
+  const conversationScrollRootRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const shouldScrollToLatestRef = useRef(false);
   const pendingOpenScrollRef = useRef(false);
   const [replyTo, setReplyTo] = useState<ReplyPreview | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [readMap, setReadMap] = useState<ReadMap>(() => readReadMap());
+
+  const getConversationViewport = () =>
+    conversationScrollRootRef.current?.querySelector<HTMLElement>("[data-radix-scroll-area-viewport]") ?? null;
+
+  const scrollConversationToBottom = (behavior: ScrollBehavior = "smooth") => {
+    const viewport = getConversationViewport();
+    if (!viewport) return;
+    viewport.scrollTo({ top: viewport.scrollHeight, behavior });
+  };
+
+  const scrollMessageIntoView = (id: string, block: "center" | "start" = "center") => {
+    const viewport = getConversationViewport();
+    const el = messageRefs.current[id];
+    if (!viewport || !el) return false;
+    const viewportRect = viewport.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const offsetWithinViewport = elRect.top - viewportRect.top;
+    const centeredTop =
+      viewport.scrollTop + offsetWithinViewport - viewport.clientHeight / 2 + el.clientHeight / 2;
+    const startTop = viewport.scrollTop + offsetWithinViewport;
+    viewport.scrollTo({
+      top: block === "center" ? centeredTop : startTop,
+      behavior: "smooth",
+    });
+    return true;
+  };
 
   // Boot: reconcile PL7 + institute auto memberships once personnel loads.
   useEffect(() => {
@@ -194,7 +220,7 @@ export default function ChatPage() {
     if (!active || messages.length === 0) return;
 
     if (shouldScrollToLatestRef.current) {
-      endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      scrollConversationToBottom("smooth");
       shouldScrollToLatestRef.current = false;
       markConversationRead(active, messages);
       return;
@@ -207,9 +233,8 @@ export default function ChatPage() {
       );
 
       if (oldestUnread) {
-        const el = messageRefs.current[oldestUnread.id];
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        const didScroll = scrollMessageIntoView(oldestUnread.id, "center");
+        if (didScroll) {
           setHighlightId(oldestUnread.id);
           window.setTimeout(
             () => setHighlightId((cur) => (cur === oldestUnread.id ? null : cur)),
@@ -358,9 +383,8 @@ export default function ChatPage() {
 
   // Scroll to a quoted message and briefly highlight it.
   function jumpToMessage(id: string) {
-    const el = messageRefs.current[id];
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const didScroll = scrollMessageIntoView(id, "center");
+    if (!didScroll) return;
     setHighlightId(id);
     window.setTimeout(() => setHighlightId((cur) => (cur === id ? null : cur)), 1600);
   }
@@ -499,7 +523,7 @@ export default function ChatPage() {
                 </Button>
               </div>
 
-              <ScrollArea className="flex-1 min-h-0">
+              <ScrollArea ref={conversationScrollRootRef} className="flex-1 min-h-0">
                 <div className="p-4 space-y-3">
                   {messages.length === 0 ? (
                     <p className="text-xs text-muted-foreground italic text-center">No messages yet.</p>
@@ -526,7 +550,7 @@ export default function ChatPage() {
                       <div
                         key={m.id}
                         ref={(el) => { messageRefs.current[m.id] = el; }}
-                        className={`flex group ${mine ? "justify-start md:justify-end" : "justify-start"}`}
+                        className={`flex group ${mine ? "justify-end" : "justify-start"}`}
                       >
                         <div
                           className={`w-full max-w-full md:max-w-[80%] rounded-md px-3 py-2 text-sm transition-shadow ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
@@ -607,7 +631,6 @@ export default function ChatPage() {
                     );
                     })
                   )}
-                  <div ref={endOfMessagesRef} />
                 </div>
               </ScrollArea>
 
