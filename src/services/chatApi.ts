@@ -169,6 +169,72 @@ function pushSystemMessage(conversationId: string, text: string) {
   });
 }
 
+function seedDemoChatData() {
+  if (conversations.length > 0 || messages.length > 0) return;
+  const base = Date.now();
+  const at = (minsAgo: number) => new Date(base - minsAgo * 60_000).toISOString();
+
+  conversations = [
+    {
+      id: "conv-demo-dm",
+      kind: "dm",
+      name: "DM · author & j.huang",
+      members: [
+        { username: "author", role: "owner", status: "active", joinedAt: at(70) },
+        { username: "j.huang", role: "owner", status: "active", joinedAt: at(70) },
+      ],
+      createdBy: "author",
+      createdAt: at(70),
+    },
+    {
+      id: "conv-demo-group",
+      kind: "group",
+      name: "Ops Sample Chat",
+      members: [
+        { username: "author", role: "owner", status: "active", joinedAt: at(65) },
+        { username: "j.huang", role: "member", status: "active", joinedAt: at(65) },
+        { username: "s.okafor", role: "member", status: "active", joinedAt: at(65) },
+      ],
+      createdBy: "author",
+      createdAt: at(65),
+    },
+  ];
+
+  messages = [
+    {
+      id: "msg-demo-1",
+      conversationId: "conv-demo-dm",
+      author: "j.huang",
+      text: "Morning, author. Please review field log delta-7.",
+      createdAt: at(50),
+    },
+    {
+      id: "msg-demo-2",
+      conversationId: "conv-demo-dm",
+      author: "author",
+      text: "Received. I will review after command briefing.",
+      createdAt: at(49),
+    },
+    {
+      id: "msg-demo-3",
+      conversationId: "conv-demo-group",
+      author: "s.okafor",
+      text: "Ops sample: drone telemetry uploaded to archive.",
+      createdAt: at(12),
+    },
+    {
+      id: "msg-demo-4",
+      conversationId: "conv-demo-group",
+      author: "j.huang",
+      text: "Unread sample message: standby for next instruction.",
+      createdAt: at(5),
+    },
+  ];
+
+  persist();
+}
+seedDemoChatData();
+
 // -------- Queries --------------------------------------------------------
 
 export function listConversationsFor(username: string): Conversation[] {
