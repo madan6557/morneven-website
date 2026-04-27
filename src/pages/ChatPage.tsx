@@ -226,6 +226,21 @@ export default function ChatPage() {
   const myRole: MemberRole | null = activeConv ? getMemberRole(activeConv, username) : null;
   const iCanManage = activeConv ? canManage(activeConv, username) : false;
 
+  // Demo helper: for institute channel, pre-mark roughly half history as read
+  // on first open so unread auto-scroll behavior is easy to verify.
+  useEffect(() => {
+    if (!activeConv || activeConv.kind !== "institute") return;
+    if (readMap[activeConv.id]) return;
+    const peerMessages = messages.filter((m) => !m.system && m.author !== username);
+    if (peerMessages.length < 2) return;
+    const midpoint = Math.floor(peerMessages.length / 2) - 1;
+    const pivot = peerMessages[Math.max(0, midpoint)];
+    if (!pivot) return;
+    const next = { ...readMap, [activeConv.id]: pivot.createdAt };
+    writeReadMap(next);
+    setReadMap(next);
+  }, [activeConv, messages, readMap, username]);
+
   if (!isAuthenticated) {
     return <div className="p-8 text-muted-foreground">Login to use chat.</div>;
   }
