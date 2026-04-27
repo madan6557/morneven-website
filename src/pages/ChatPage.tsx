@@ -356,6 +356,12 @@ export default function ChatPage() {
   const eligibleToInvite = personnel
     .filter((p) => p.username !== username)
     .filter((p) => !activeConv?.members.some((m) => m.username === p.username && m.status !== "removed"));
+  const getUnreadCount = (conversationId: string) => {
+    const lastReadAt = readMap[conversationId];
+    return listMessages(conversationId).filter(
+      (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
+    ).length;
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto">
@@ -366,6 +372,14 @@ export default function ChatPage() {
           <p className="text-xs font-body text-muted-foreground mt-2">
             Direct messages, manual groups, auto-synced team / division channels, and the institute-wide channel.
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-display tracking-wider">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-destructive/40 text-destructive">
+              <span className="h-1.5 w-1.5 rounded-full bg-destructive" /> UNREAD SAMPLE
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border text-muted-foreground">
+              <Check className="h-2.5 w-2.5" /> READ SAMPLE
+            </span>
+          </div>
         </div>
         <Button
           variant="outline"
@@ -406,6 +420,7 @@ export default function ChatPage() {
               {convs.map((c) => {
                 const Icon = KIND_ICON[c.kind];
                 const activeCount = c.members.filter((m) => m.status === "active").length;
+                const unreadCount = getUnreadCount(c.id);
                 return (
                   <button
                     key={c.id}
@@ -416,6 +431,15 @@ export default function ChatPage() {
                   >
                     <Icon className="h-3.5 w-3.5 flex-shrink-0" />
                     <span className="text-sm font-heading truncate flex-1">{c.name}</span>
+                    {unreadCount > 0 ? (
+                      <span className="px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-display">
+                        {unreadCount}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center text-[9px] text-muted-foreground">
+                        <Check className="h-2.5 w-2.5" />
+                      </span>
+                    )}
                     <span className="text-[9px] font-display uppercase text-muted-foreground">{activeCount}</span>
                   </button>
                 );
@@ -476,10 +500,10 @@ export default function ChatPage() {
                       <div
                         key={m.id}
                         ref={(el) => { messageRefs.current[m.id] = el; }}
-                        className={`flex ${mine ? "justify-end" : "justify-start"} group`}
+                        className={`flex group ${mine ? "justify-start md:justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[80%] rounded-md px-3 py-2 text-sm transition-shadow ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
+                          className={`w-full max-w-full md:max-w-[80%] rounded-md px-3 py-2 text-sm transition-shadow ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
                         >
                           <div className="flex items-center justify-between gap-2 mb-0.5">
                             <p className="font-heading text-xs tracking-wider text-muted-foreground">
