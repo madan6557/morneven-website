@@ -65,6 +65,30 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB demo cap
+const READ_KEY = "morneven_chat_last_read_v1";
+
+type ReadMap = Record<string, string>;
+
+function readReadMap(): ReadMap {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(READ_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? (parsed as ReadMap) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeReadMap(next: ReadMap) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(READ_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+}
 
 function fileToAttachment(file: File): Promise<ChatAttachment> {
   return new Promise((resolve, reject) => {
@@ -116,9 +140,13 @@ export default function ChatPage() {
   const [renameValue, setRenameValue] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const shouldScrollToLatestRef = useRef(false);
+  const pendingOpenScrollRef = useRef(false);
   const [replyTo, setReplyTo] = useState<ReplyPreview | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [readMap, setReadMap] = useState<ReadMap>(() => readReadMap());
 
   // Boot: reconcile PL7 + institute auto memberships once personnel loads.
   useEffect(() => {
@@ -145,7 +173,55 @@ export default function ChatPage() {
   // Clear pending reply when switching conversations.
   useEffect(() => {
     setReplyTo(null);
+    pendingOpenScrollRef.current = !!active;
   }, [active]);
+
+  // Scroll behavior:
+  // 1) after sending -> scroll to latest
+  // 2) when opening conversation -> scroll to oldest unread (if any)
+  useEffect(() => {
+    if (!active || messages.length === 0) return;
+
+    const markConversationRead = () => {
+      const latestSeen = messages[messages.length - 1]?.createdAt;
+      if (!latestSeen) return;
+      setReadMap((prev) => {
+        if (prev[active] === latestSeen) return prev;
+        const next = { ...prev, [active]: latestSeen };
+        writeReadMap(next);
+        return next;
+      });
+    };
+
+    if (shouldScrollToLatestRef.current) {
+      endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      shouldScrollToLatestRef.current = false;
+      markConversationRead();
+      return;
+    }
+
+    if (pendingOpenScrollRef.current) {
+      const lastReadAt = readMap[active];
+      const oldestUnread = messages.find(
+        (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
+      );
+
+      if (oldestUnread) {
+        const el = messageRefs.current[oldestUnread.id];
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          setHighlightId(oldestUnread.id);
+          window.setTimeout(
+            () => setHighlightId((cur) => (cur === oldestUnread.id ? null : cur)),
+            1600,
+          );
+        }
+      }
+
+      pendingOpenScrollRef.current = false;
+      markConversationRead();
+    }
+  }, [active, messages, readMap, username]);
 
   const activeConv = useMemo(() => convs.find((c) => c.id === active) ?? null, [convs, active]);
   const myRole: MemberRole | null = activeConv ? getMemberRole(activeConv, username) : null;
@@ -166,6 +242,7 @@ export default function ChatPage() {
       attachments = await Promise.all(pendingFiles.map(fileToAttachment));
     }
     const msg = sendMessage(active, username, input.trim(), attachments, replyTo ?? undefined);
+    shouldScrollToLatestRef.current = true;
     setInput("");
     setPendingFiles([]);
     setReplyTo(null);
@@ -471,6 +548,7 @@ export default function ChatPage() {
                     );
                     })
                   )}
+                  <div ref={endOfMessagesRef} />
                 </div>
               </ScrollArea>
 
