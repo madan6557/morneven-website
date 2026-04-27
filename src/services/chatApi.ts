@@ -15,6 +15,7 @@
 
 import type { PersonnelTrack, PersonnelLevel } from "@/lib/pl";
 import type { PersonnelUser } from "@/types";
+import conversationSamplesData from "@/data/conversationSamples.json";
 
 export type ConversationKind = "dm" | "group" | "team" | "division" | "institute";
 export type MemberRole = "owner" | "admin" | "member";
@@ -70,6 +71,16 @@ export interface Conversation {
   systemManaged?: boolean;
   createdBy: string;
   createdAt: string;
+}
+
+export interface ConversationSample {
+  id: string;
+  name: string;
+  kind: ConversationKind;
+  memberCount: number;
+  unreadCount: number;
+  lastReadAt: string;
+  lastMessageAt: string;
 }
 
 const KEY_CONV = "morneven_chat_conversations_v2";
@@ -197,6 +208,12 @@ export function getMemberRole(conv: Conversation, username: string): MemberRole 
 export function canManage(conv: Conversation, username: string): boolean {
   const role = getMemberRole(conv, username);
   return role === "owner" || role === "admin";
+}
+
+// Endpoint handler (demo): static JSON sample for chat conversation data.
+// Mirrors a future GET /v1/chat/conversation-samples endpoint contract.
+export async function getConversationSamples(): Promise<ConversationSample[]> {
+  return [...(conversationSamplesData as ConversationSample[])];
 }
 
 // -------- Messaging ------------------------------------------------------

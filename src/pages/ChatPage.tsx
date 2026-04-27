@@ -22,7 +22,9 @@ import {
   getMemberRole,
   subscribeChat,
   buildReplyPreview,
+  getConversationSamples,
   type Conversation,
+  type ConversationSample,
   type ChatMessage,
   type ChatAttachment,
   type MemberRole,
@@ -130,6 +132,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [personnel, setPersonnel] = useState<PersonnelUser[]>([]);
+  const [conversationSamples, setConversationSamples] = useState<ConversationSample[]>([]);
 
   // Dialogs
   const [dialog, setDialog] = useState<"dm" | "group" | "settings" | "invites" | null>(null);
@@ -154,6 +157,7 @@ export default function ChatPage() {
       setPersonnel(roster);
       reconcileAutoMemberships(roster);
     });
+    getConversationSamples().then(setConversationSamples);
   }, []);
 
   const refresh = () => {
@@ -354,18 +358,12 @@ export default function ChatPage() {
       return next;
     });
   };
-  const markActiveConversationRead = () => {
-    if (!active || messages.length === 0) return;
-    markConversationRead(active, messages);
-  };
   const getUnreadCount = (conversationId: string) => {
     const lastReadAt = readMap[conversationId];
     return listMessages(conversationId).filter(
       (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
     ).length;
   };
-  const sampleUnreadConv = convs.find((c) => getUnreadCount(c.id) > 0) ?? null;
-  const sampleReadConv = convs.find((c) => getUnreadCount(c.id) === 0) ?? null;
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto">
@@ -376,20 +374,13 @@ export default function ChatPage() {
           <p className="text-xs font-body text-muted-foreground mt-2">
             Direct messages, manual groups, auto-synced team / division channels, and the institute-wide channel.
           </p>
-          <div className="mt-3 space-y-1 text-[10px] font-mono text-muted-foreground">
-            <p className="font-display tracking-wider text-[10px] uppercase text-foreground">Conversation Data Sample</p>
-            <p>
-              unread:{" "}
-              {sampleUnreadConv
-                ? `${sampleUnreadConv.name} (count=${getUnreadCount(sampleUnreadConv.id)})`
-                : "none"}
+          <div className="mt-3">
+            <p className="font-display tracking-wider text-[10px] uppercase text-foreground mb-1">
+              Conversation Data Sample (JSON)
             </p>
-            <p>
-              read:{" "}
-              {sampleReadConv
-                ? `${sampleReadConv.name} (lastRead=${readMap[sampleReadConv.id] ?? "not-marked"})`
-                : "none"}
-            </p>
+            <pre className="text-[10px] font-mono text-muted-foreground bg-background/50 border border-border rounded-sm p-2 overflow-x-auto max-w-[520px]">
+{JSON.stringify(conversationSamples, null, 2)}
+            </pre>
           </div>
         </div>
         <Button
