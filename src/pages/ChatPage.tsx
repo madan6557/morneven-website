@@ -65,6 +65,30 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB demo cap
+const READ_KEY = "morneven_chat_last_read_v1";
+
+type ReadMap = Record<string, string>;
+
+function readReadMap(): ReadMap {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(READ_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? (parsed as ReadMap) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeReadMap(next: ReadMap) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(READ_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+}
 
 function fileToAttachment(file: File): Promise<ChatAttachment> {
   return new Promise((resolve, reject) => {
@@ -116,10 +140,13 @@ export default function ChatPage() {
   const [renameValue, setRenameValue] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const shouldScrollToLatestRef = useRef(false);
+  const pendingOpenScrollRef = useRef(false);
   const [replyTo, setReplyTo] = useState<ReplyPreview | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [readMap, setReadMap] = useState<ReadMap>(() => readReadMap());
 
   // Boot: reconcile PL7 + institute auto memberships once personnel loads.
   useEffect(() => {
@@ -143,15 +170,58 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, active, isAuthenticated]);
 
-  // Auto-scroll to bottom on new messages.
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages.length, active]);
-
   // Clear pending reply when switching conversations.
   useEffect(() => {
     setReplyTo(null);
+    pendingOpenScrollRef.current = !!active;
   }, [active]);
+
+  // Scroll behavior:
+  // 1) after sending -> scroll to latest
+  // 2) when opening conversation -> scroll to oldest unread (if any)
+  useEffect(() => {
+    if (!active || messages.length === 0) return;
+
+    const markConversationRead = () => {
+      const latestSeen = messages[messages.length - 1]?.createdAt;
+      if (!latestSeen) return;
+      setReadMap((prev) => {
+        if (prev[active] === latestSeen) return prev;
+        const next = { ...prev, [active]: latestSeen };
+        writeReadMap(next);
+        return next;
+      });
+    };
+
+    if (shouldScrollToLatestRef.current) {
+      endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      shouldScrollToLatestRef.current = false;
+      markConversationRead();
+      return;
+    }
+
+    if (pendingOpenScrollRef.current) {
+      const lastReadAt = readMap[active];
+      const oldestUnread = messages.find(
+        (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
+      );
+
+      if (oldestUnread) {
+        const el = messageRefs.current[oldestUnread.id];
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          setHighlightId(oldestUnread.id);
+          window.setTimeout(
+            () => setHighlightId((cur) => (cur === oldestUnread.id ? null : cur)),
+            1600,
+          );
+        }
+      }
+
+      pendingOpenScrollRef.current = false;
+      markConversationRead();
+    }
+  }, [active, messages, readMap, username]);
 
   const activeConv = useMemo(() => convs.find((c) => c.id === active) ?? null, [convs, active]);
   const myRole: MemberRole | null = activeConv ? getMemberRole(activeConv, username) : null;
@@ -172,6 +242,7 @@ export default function ChatPage() {
       attachments = await Promise.all(pendingFiles.map(fileToAttachment));
     }
     const msg = sendMessage(active, username, input.trim(), attachments, replyTo ?? undefined);
+    shouldScrollToLatestRef.current = true;
     setInput("");
     setPendingFiles([]);
     setReplyTo(null);
@@ -287,7 +358,7 @@ export default function ChatPage() {
     .filter((p) => !activeConv?.members.some((m) => m.username === p.username && m.status !== "removed"));
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="font-display text-2xl tracking-[0.1em] text-primary">CHAT</h1>
@@ -309,9 +380,9 @@ export default function ChatPage() {
         </Button>
       </div>
 
-      <div className="grid md:grid-cols-[260px_1fr] gap-4 min-h-[60vh]">
+      <div className="grid grid-rows-[180px_minmax(0,1fr)] md:grid-rows-1 md:grid-cols-[300px_minmax(0,1fr)] gap-4 h-[calc(100dvh-6.5rem)] min-h-0 md:h-[72vh] md:min-h-[620px] max-h-[900px]">
         {/* Sidebar */}
-        <div className="hud-border bg-card p-3 space-y-2 overflow-y-auto">
+        <div className="hud-border bg-card p-3 space-y-3 h-full flex flex-col">
           <div className="flex gap-1">
             <button
               onClick={() => setDialog("dm")}
@@ -327,38 +398,40 @@ export default function ChatPage() {
             </button>
           </div>
 
-          <div className="space-y-1 pt-2">
-            {convs.length === 0 && (
-              <p className="text-[11px] text-muted-foreground font-body italic px-2">No conversations.</p>
-            )}
-            {convs.map((c) => {
-              const Icon = KIND_ICON[c.kind];
-              const activeCount = c.members.filter((m) => m.status === "active").length;
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => setActive(c.id)}
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-sm transition-colors ${
-                    active === c.id ? "bg-primary/10 text-primary" : "hover:bg-muted text-foreground"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="text-xs font-heading truncate flex-1">{c.name}</span>
-                  <span className="text-[9px] font-display uppercase text-muted-foreground">{activeCount}</span>
-                </button>
-              );
-            })}
-          </div>
+          <ScrollArea className="flex-1 min-h-0 pt-2">
+            <div className="space-y-1 pr-2">
+              {convs.length === 0 && (
+                <p className="text-[11px] text-muted-foreground font-body italic px-2">No conversations.</p>
+              )}
+              {convs.map((c) => {
+                const Icon = KIND_ICON[c.kind];
+                const activeCount = c.members.filter((m) => m.status === "active").length;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setActive(c.id)}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-sm transition-colors ${
+                      active === c.id ? "bg-primary/10 text-primary" : "hover:bg-muted text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="text-sm font-heading truncate flex-1">{c.name}</span>
+                    <span className="text-[9px] font-display uppercase text-muted-foreground">{activeCount}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </ScrollArea>
         </div>
 
         {/* Conversation */}
-        <div className="hud-border bg-card flex flex-col min-h-[60vh]">
+        <div className="hud-border bg-card flex flex-col h-full overflow-hidden">
           {activeConv ? (
             <>
               <div className="px-4 py-2 border-b border-border flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-heading text-sm text-foreground truncate">{activeConv.name}</p>
+                    <p className="font-heading text-base text-foreground truncate">{activeConv.name}</p>
                     {activeConv.systemManaged && (
                       <Badge variant="outline" className="text-[9px] font-display tracking-wider">AUTO</Badge>
                     )}
@@ -369,7 +442,7 @@ export default function ChatPage() {
                       </Badge>
                     )}
                   </div>
-                  <p className="text-[10px] text-muted-foreground font-body truncate">
+                  <p className="text-xs text-muted-foreground font-body truncate">
                     {activeConv.members
                       .filter((m) => m.status === "active")
                       .map((m) => m.username)
@@ -381,11 +454,12 @@ export default function ChatPage() {
                 </Button>
               </div>
 
-              <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2">
-                {messages.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic text-center">No messages yet.</p>
-                ) : (
-                  messages.map((m) => {
+              <ScrollArea className="flex-1 min-h-0">
+                <div className="p-4 space-y-3">
+                  {messages.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic text-center">No messages yet.</p>
+                  ) : (
+                    messages.map((m) => {
                     if (m.system) {
                       return (
                         <div key={m.id} className="flex justify-center">
@@ -405,10 +479,10 @@ export default function ChatPage() {
                         className={`flex ${mine ? "justify-end" : "justify-start"} group`}
                       >
                         <div
-                          className={`max-w-[70%] rounded-md px-3 py-1.5 text-xs transition-shadow ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
+                          className={`max-w-[80%] rounded-md px-3 py-2 text-sm transition-shadow ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
                         >
                           <div className="flex items-center justify-between gap-2 mb-0.5">
-                            <p className="font-heading text-[10px] tracking-wider text-muted-foreground">
+                            <p className="font-heading text-xs tracking-wider text-muted-foreground">
                               {m.author} · {new Date(m.createdAt).toLocaleTimeString()}
                             </p>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -438,10 +512,10 @@ export default function ChatPage() {
                               onClick={() => jumpToMessage(m.replyTo!.messageId)}
                               className="w-full text-left mb-1 border-l-2 border-primary/70 bg-background/40 hover:bg-background/60 transition-colors rounded-sm px-2 py-1"
                             >
-                              <p className="text-[10px] font-display tracking-wider text-primary truncate">
+                              <p className="text-xs font-display tracking-wider text-primary truncate">
                                 ↳ {m.replyTo.author}
                               </p>
-                              <p className="text-[11px] font-body text-muted-foreground line-clamp-2">
+                              <p className="text-xs font-body text-muted-foreground line-clamp-2">
                                 {m.replyTo.text || (m.replyTo.hasAttachments ? "[attachment]" : "")}
                               </p>
                             </button>
@@ -457,7 +531,7 @@ export default function ChatPage() {
                                       <img src={a.dataUrl} alt={a.name} className="max-h-48 rounded-sm" />
                                     ) : null}
                                     <div className="flex items-center justify-between gap-2 mt-1">
-                                      <span className="text-[10px] font-body truncate">
+                                      <span className="text-xs font-body truncate">
                                         {a.name} <span className="text-muted-foreground">({formatBytes(a.size)})</span>
                                       </span>
                                       <a href={a.dataUrl} download={a.name} className="text-primary hover:text-primary/80">
@@ -472,9 +546,11 @@ export default function ChatPage() {
                         </div>
                       </div>
                     );
-                  })
-                )}
-              </div>
+                    })
+                  )}
+                  <div ref={endOfMessagesRef} />
+                </div>
+              </ScrollArea>
 
               {/* Pending attachments preview */}
               {pendingFiles.length > 0 && (
@@ -500,10 +576,10 @@ export default function ChatPage() {
                 <div className="px-3 py-2 border-t border-border flex items-start gap-2 bg-muted/40">
                   <CornerDownRight className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0 border-l-2 border-primary pl-2">
-                    <p className="text-[10px] font-display tracking-wider text-primary">
+                    <p className="text-xs font-display tracking-wider text-primary">
                       Replying to {replyTo.author}
                     </p>
-                    <p className="text-[11px] font-body text-muted-foreground line-clamp-2">
+                    <p className="text-xs font-body text-muted-foreground line-clamp-2">
                       {replyTo.text || (replyTo.hasAttachments ? "[attachment]" : "")}
                     </p>
                   </div>
@@ -544,7 +620,7 @@ export default function ChatPage() {
                     }
                   }}
                   placeholder="Type a message..."
-                  className="flex-1 text-xs px-3 py-2 bg-background border border-border rounded-sm"
+                  className="flex-1 text-sm px-3 py-2 bg-background border border-border rounded-sm"
                 />
                 <button
                   onClick={handleSend}
