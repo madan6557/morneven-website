@@ -22,9 +22,7 @@ import {
   getMemberRole,
   subscribeChat,
   buildReplyPreview,
-  getConversationSamples,
   type Conversation,
-  type ConversationSample,
   type ChatMessage,
   type ChatAttachment,
   type MemberRole,
@@ -132,7 +130,6 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [personnel, setPersonnel] = useState<PersonnelUser[]>([]);
-  const [conversationSamples, setConversationSamples] = useState<ConversationSample[]>([]);
 
   // Dialogs
   const [dialog, setDialog] = useState<"dm" | "group" | "settings" | "invites" | null>(null);
@@ -143,7 +140,7 @@ export default function ChatPage() {
   const [renameValue, setRenameValue] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const endOfMessagesRef = useRef<HTMLDivElement>(null);
+  const conversationScrollRootRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const shouldScrollToLatestRef = useRef(false);
   const pendingOpenScrollRef = useRef(false);
@@ -151,13 +148,38 @@ export default function ChatPage() {
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [readMap, setReadMap] = useState<ReadMap>(() => readReadMap());
 
+  const getConversationViewport = () =>
+    conversationScrollRootRef.current?.querySelector<HTMLElement>("[data-radix-scroll-area-viewport]") ?? null;
+
+  const scrollConversationToBottom = (behavior: ScrollBehavior = "smooth") => {
+    const viewport = getConversationViewport();
+    if (!viewport) return;
+    viewport.scrollTo({ top: viewport.scrollHeight, behavior });
+  };
+
+  const scrollMessageIntoView = (id: string, block: "center" | "start" = "center") => {
+    const viewport = getConversationViewport();
+    const el = messageRefs.current[id];
+    if (!viewport || !el) return false;
+    const viewportRect = viewport.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const offsetWithinViewport = elRect.top - viewportRect.top;
+    const centeredTop =
+      viewport.scrollTop + offsetWithinViewport - viewport.clientHeight / 2 + el.clientHeight / 2;
+    const startTop = viewport.scrollTop + offsetWithinViewport;
+    viewport.scrollTo({
+      top: block === "center" ? centeredTop : startTop,
+      behavior: "smooth",
+    });
+    return true;
+  };
+
   // Boot: reconcile PL7 + institute auto memberships once personnel loads.
   useEffect(() => {
     listPersonnel().then((roster) => {
       setPersonnel(roster);
       reconcileAutoMemberships(roster);
     });
-    getConversationSamples().then(setConversationSamples);
   }, []);
 
   const refresh = () => {
@@ -198,7 +220,7 @@ export default function ChatPage() {
     if (!active || messages.length === 0) return;
 
     if (shouldScrollToLatestRef.current) {
-      endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      scrollConversationToBottom("smooth");
       shouldScrollToLatestRef.current = false;
       markConversationRead(active, messages);
       return;
@@ -211,9 +233,8 @@ export default function ChatPage() {
       );
 
       if (oldestUnread) {
-        const el = messageRefs.current[oldestUnread.id];
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        const didScroll = scrollMessageIntoView(oldestUnread.id, "center");
+        if (didScroll) {
           setHighlightId(oldestUnread.id);
           window.setTimeout(
             () => setHighlightId((cur) => (cur === oldestUnread.id ? null : cur)),
@@ -229,6 +250,21 @@ export default function ChatPage() {
   const activeConv = useMemo(() => convs.find((c) => c.id === active) ?? null, [convs, active]);
   const myRole: MemberRole | null = activeConv ? getMemberRole(activeConv, username) : null;
   const iCanManage = activeConv ? canManage(activeConv, username) : false;
+
+  // Demo helper: for institute channel, pre-mark roughly half history as read
+  // on first open so unread auto-scroll behavior is easy to verify.
+  useEffect(() => {
+    if (!activeConv || activeConv.kind !== "institute") return;
+    if (readMap[activeConv.id]) return;
+    const peerMessages = messages.filter((m) => !m.system && m.author !== username);
+    if (peerMessages.length < 2) return;
+    const midpoint = Math.floor(peerMessages.length / 2) - 1;
+    const pivot = peerMessages[Math.max(0, midpoint)];
+    if (!pivot) return;
+    const next = { ...readMap, [activeConv.id]: pivot.createdAt };
+    writeReadMap(next);
+    setReadMap(next);
+  }, [activeConv, messages, readMap, username]);
 
   if (!isAuthenticated) {
     return <div className="p-8 text-muted-foreground">Login to use chat.</div>;
@@ -347,9 +383,8 @@ export default function ChatPage() {
 
   // Scroll to a quoted message and briefly highlight it.
   function jumpToMessage(id: string) {
-    const el = messageRefs.current[id];
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const didScroll = scrollMessageIntoView(id, "center");
+    if (!didScroll) return;
     setHighlightId(id);
     window.setTimeout(() => setHighlightId((cur) => (cur === id ? null : cur)), 1600);
   }
@@ -385,14 +420,6 @@ export default function ChatPage() {
           <p className="text-xs font-body text-muted-foreground mt-2">
             Direct messages, manual groups, auto-synced team / division channels, and the institute-wide channel.
           </p>
-          <div className="mt-3">
-            <p className="font-display tracking-wider text-[10px] uppercase text-foreground mb-1">
-              Conversation Data Sample (JSON)
-            </p>
-            <pre className="text-[10px] font-mono text-muted-foreground bg-background/50 border border-border rounded-sm p-2 overflow-x-auto max-w-[520px]">
-{JSON.stringify(conversationSamples, null, 2)}
-            </pre>
-          </div>
         </div>
         <Button
           variant="outline"
@@ -489,12 +516,9 @@ export default function ChatPage() {
                 <Button variant="ghost" size="sm" onClick={() => setDialog("settings")} className="h-8">
                   <Settings className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={markActiveConversationRead} className="h-8 text-[10px]">
-                  Mark as read
-                </Button>
               </div>
 
-              <ScrollArea className="flex-1 min-h-0">
+              <ScrollArea ref={conversationScrollRootRef} className="flex-1 min-h-0">
                 <div className="p-4 space-y-3">
                   {messages.length === 0 ? (
                     <p className="text-xs text-muted-foreground italic text-center">No messages yet.</p>
@@ -521,10 +545,10 @@ export default function ChatPage() {
                       <div
                         key={m.id}
                         ref={(el) => { messageRefs.current[m.id] = el; }}
-                        className={`flex group ${mine ? "justify-start md:justify-end" : "justify-start"}`}
+                        className={`flex group ${mine ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`w-full max-w-full md:max-w-[80%] rounded-md px-3 py-2 text-sm transition-shadow ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
+                          className={`w-fit max-w-[85%] md:max-w-[80%] rounded-md px-3 py-2 text-sm transition-shadow ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
                         >
                           <div className="flex items-center justify-between gap-2 mb-0.5">
                             <p className="font-heading text-xs tracking-wider text-muted-foreground">
@@ -602,7 +626,6 @@ export default function ChatPage() {
                     );
                     })
                   )}
-                  <div ref={endOfMessagesRef} />
                 </div>
               </ScrollArea>
 

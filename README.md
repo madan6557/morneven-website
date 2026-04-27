@@ -5,6 +5,7 @@ Website ini adalah portal utama Morneven Institute, dibangun menggunakan React, 
 ## Fitur Utama
 - Landing page
 - Autentikasi pengguna
+- Chat internal (DM, grup manual, dan kanal system-managed: team/division/institute)
 - Dashboard author (akses terbatas)
 - Halaman galeri dan detail
 - Halaman proyek dan detail
@@ -12,6 +13,11 @@ Website ini adalah portal utama Morneven Institute, dibangun menggunakan React, 
 - Pengaturan akun
 - Notifikasi dan toast
 - Integrasi Vercel Analytics dan Speed Insights
+
+### Catatan versi chat saat ini (2026-04-27)
+- Bubble chat: pesan user aktif tampil di kanan, user lain di kiri.
+- Auto-scroll chat terfokus ke panel percakapan (tidak lagi mendorong scroll seluruh halaman pada mobile).
+- Kanal `Institute · All Personnel` otomatis memiliki sample history untuk kebutuhan QA/demo unread + auto-scroll.
 
 ## Teknologi
 - React + Vite
@@ -52,4 +58,3 @@ Pull request dan issue sangat diterima.
 
 ## Lisensi
 MIT
-

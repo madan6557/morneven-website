@@ -30,13 +30,18 @@ Namun, fondasi UI/UX dan domain model sudah cukup rapi untuk ditingkatkan ke ars
 
 Sudah ada:
 - DM, manual group, auto group team/division.
+- Institute-wide channel (`Institute · All Personnel`) dengan auto-membership.
 - Push notifikasi in-app saat kirim pesan.
 - Subscription event browser (`storage` + custom event).
+- Group roles (`owner/admin/member`) dan moderation delete.
+- Invite flow + accept/reject + kick/leave + promote/demote.
+- Reply preview snapshot + attachment preview/download (demo data URL).
+- Mobile-safe conversation auto-scroll (kirim/open/jump) dan bubble alignment kanan/kiri sesuai pengirim.
+- Seed sample history institute + bootstrap read/unread campuran untuk QA unread auto-scroll.
 
 Belum ada (kritikal production):
-- File attachment upload.
-- Group roles (owner/admin/member).
-- Admin action (kick, invite approval, mute, ban).
+- File attachment upload production-grade (presigned + malware scan + retention policy).
+- Advanced moderation controls (mute/ban/global policy).
 - Server-side authorization.
 - Message edit/delete policy, read receipts, pagination skala besar.
 
@@ -50,7 +55,7 @@ Permintaan tambahan:
 5. **PL7 otomatis masuk semua grup divisi**,
 6. **grup institute berisi semua personel**.
 
-Saat ini baru ada auto-sync untuk team/division; belum ada konsep institute-wide channel dan belum ada aturan eksplisit PL7 auto-join all division.
+Saat ini auto-sync team/division + institute sudah ada di FE demo layer, termasuk aturan PL7 auto-join all division. Gap tersisa adalah menjadikan aturan tersebut authoritative di backend production.
 
 ---
 
