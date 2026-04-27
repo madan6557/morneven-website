@@ -103,6 +103,15 @@
   }
 }
 
+/* Legibility pass: the smallest pixel-clamped utilities used across the HUD
+   were too tight for some users. Bump them slightly without disturbing the
+   overall typographic rhythm. */
+@layer utilities {
+  .text-\[9px\]  { font-size: 11px; line-height: 1.35; letter-spacing: 0.02em; }
+  .text-\[10px\] { font-size: 12px; line-height: 1.4;  letter-spacing: 0.015em; }
+  .text-\[11px\] { font-size: 12.5px; line-height: 1.4; }
+}
+
 @layer utilities {
   .font-display {
     font-family: 'Orbitron', sans-serif;

@@ -29,6 +29,13 @@ export interface ChatAttachment {
   dataUrl: string;
 }
 
+export interface ReplyPreview {
+  messageId: string;
+  author: string;
+  text: string;
+  hasAttachments?: boolean;
+}
+
 export interface ChatMessage {
   id: string;
   conversationId: string;
@@ -38,6 +45,9 @@ export interface ChatMessage {
   attachments?: ChatAttachment[];
   // System messages render with a neutral style (e.g. "X invited Y").
   system?: boolean;
+  // WhatsApp-style quoted reply. Snapshotted so deleting the original
+  // message does not break the reply chain.
+  replyTo?: ReplyPreview;
 }
 
 export interface ConversationMember {
@@ -191,7 +201,13 @@ export function canManage(conv: Conversation, username: string): boolean {
 
 // -------- Messaging ------------------------------------------------------
 
-export function sendMessage(conversationId: string, author: string, text: string, attachments?: ChatAttachment[]): ChatMessage {
+export function sendMessage(
+  conversationId: string,
+  author: string,
+  text: string,
+  attachments?: ChatAttachment[],
+  replyTo?: ReplyPreview,
+): ChatMessage {
   const next: ChatMessage = {
     id: uid("msg"),
     conversationId,
@@ -199,10 +215,21 @@ export function sendMessage(conversationId: string, author: string, text: string
     text,
     createdAt: todayISO(),
     attachments,
+    replyTo,
   };
   messages = [...messages, next];
   persist();
   return next;
+}
+
+// Helper: build a ReplyPreview snapshot from an existing message.
+export function buildReplyPreview(msg: ChatMessage): ReplyPreview {
+  return {
+    messageId: msg.id,
+    author: msg.author,
+    text: msg.text || (msg.attachments?.length ? `[${msg.attachments.length} attachment${msg.attachments.length > 1 ? "s" : ""}]` : ""),
+    hasAttachments: !!msg.attachments?.length,
+  };
 }
 
 export function deleteMessage(messageId: string, actor: string): boolean {

@@ -21,10 +21,12 @@ import {
   canManage,
   getMemberRole,
   subscribeChat,
+  buildReplyPreview,
   type Conversation,
   type ChatMessage,
   type ChatAttachment,
   type MemberRole,
+  type ReplyPreview,
 } from "@/services/chatApi";
 import type { PersonnelUser } from "@/types";
 import {
@@ -46,6 +48,8 @@ import {
   Trash2,
   Download,
   Check,
+  Reply,
+  CornerDownRight,
 } from "lucide-react";
 import {
   Dialog,
@@ -113,6 +117,9 @@ export default function ChatPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [replyTo, setReplyTo] = useState<ReplyPreview | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   // Boot: reconcile PL7 + institute auto memberships once personnel loads.
   useEffect(() => {
@@ -141,6 +148,11 @@ export default function ChatPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages.length, active]);
 
+  // Clear pending reply when switching conversations.
+  useEffect(() => {
+    setReplyTo(null);
+  }, [active]);
+
   const activeConv = useMemo(() => convs.find((c) => c.id === active) ?? null, [convs, active]);
   const myRole: MemberRole | null = activeConv ? getMemberRole(activeConv, username) : null;
   const iCanManage = activeConv ? canManage(activeConv, username) : false;
@@ -159,9 +171,10 @@ export default function ChatPage() {
     if (pendingFiles.length) {
       attachments = await Promise.all(pendingFiles.map(fileToAttachment));
     }
-    const msg = sendMessage(active, username, input.trim(), attachments);
+    const msg = sendMessage(active, username, input.trim(), attachments, replyTo ?? undefined);
     setInput("");
     setPendingFiles([]);
+    setReplyTo(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
 
     const conv = listConversationsFor(username).find((c) => c.id === active);
@@ -256,6 +269,15 @@ export default function ChatPage() {
   function handleRejectInvite(id: string) {
     rejectInvite(id, username);
     refresh();
+  }
+
+  // Scroll to a quoted message and briefly highlight it.
+  function jumpToMessage(id: string) {
+    const el = messageRefs.current[id];
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightId(id);
+    window.setTimeout(() => setHighlightId((cur) => (cur === id ? null : cur)), 1600);
   }
 
   // -------- Render ------------------------------------------------------
@@ -375,23 +397,55 @@ export default function ChatPage() {
                     }
                     const mine = m.author === username;
                     const canDelete = mine || iCanManage;
+                    const isHighlighted = highlightId === m.id;
                     return (
-                      <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} group`}>
-                        <div className={`max-w-[70%] rounded-md px-3 py-1.5 text-xs ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"}`}>
+                      <div
+                        key={m.id}
+                        ref={(el) => { messageRefs.current[m.id] = el; }}
+                        className={`flex ${mine ? "justify-end" : "justify-start"} group`}
+                      >
+                        <div
+                          className={`max-w-[70%] rounded-md px-3 py-1.5 text-xs transition-shadow ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
+                        >
                           <div className="flex items-center justify-between gap-2 mb-0.5">
                             <p className="font-heading text-[10px] tracking-wider text-muted-foreground">
                               {m.author} · {new Date(m.createdAt).toLocaleTimeString()}
                             </p>
-                            {canDelete && (
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                               <button
-                                onClick={() => deleteMessage(m.id, username)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                                aria-label="Delete message"
+                                onClick={() => setReplyTo(buildReplyPreview(m))}
+                                className="text-muted-foreground hover:text-primary"
+                                aria-label="Reply to message"
+                                title="Reply"
                               >
-                                <Trash2 className="h-3 w-3" />
+                                <Reply className="h-3 w-3" />
                               </button>
-                            )}
+                              {canDelete && (
+                                <button
+                                  onClick={() => deleteMessage(m.id, username)}
+                                  className="text-muted-foreground hover:text-destructive"
+                                  aria-label="Delete message"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
                           </div>
+                          {m.replyTo && (
+                            <button
+                              type="button"
+                              onClick={() => jumpToMessage(m.replyTo!.messageId)}
+                              className="w-full text-left mb-1 border-l-2 border-primary/70 bg-background/40 hover:bg-background/60 transition-colors rounded-sm px-2 py-1"
+                            >
+                              <p className="text-[10px] font-display tracking-wider text-primary truncate">
+                                ↳ {m.replyTo.author}
+                              </p>
+                              <p className="text-[11px] font-body text-muted-foreground line-clamp-2">
+                                {m.replyTo.text || (m.replyTo.hasAttachments ? "[attachment]" : "")}
+                              </p>
+                            </button>
+                          )}
                           {m.text && <p className="font-body whitespace-pre-wrap break-words">{m.text}</p>}
                           {m.attachments && m.attachments.length > 0 && (
                             <div className="mt-2 space-y-1.5">
@@ -438,6 +492,28 @@ export default function ChatPage() {
                       </button>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Pending reply banner (WhatsApp-style) */}
+              {replyTo && (
+                <div className="px-3 py-2 border-t border-border flex items-start gap-2 bg-muted/40">
+                  <CornerDownRight className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0 border-l-2 border-primary pl-2">
+                    <p className="text-[10px] font-display tracking-wider text-primary">
+                      Replying to {replyTo.author}
+                    </p>
+                    <p className="text-[11px] font-body text-muted-foreground line-clamp-2">
+                      {replyTo.text || (replyTo.hasAttachments ? "[attachment]" : "")}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setReplyTo(null)}
+                    className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                    aria-label="Cancel reply"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               )}
 
