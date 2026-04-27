@@ -553,7 +553,7 @@ export default function ChatPage() {
                         className={`flex group ${mine ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`w-full max-w-full md:max-w-[80%] rounded-md px-3 py-2 text-sm transition-shadow ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
+                          className={`w-fit max-w-[85%] md:max-w-[80%] rounded-md px-3 py-2 text-sm transition-shadow ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
                         >
                           <div className="flex items-center justify-between gap-2 mb-0.5">
                             <p className="font-heading text-xs tracking-wider text-muted-foreground">
