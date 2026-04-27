@@ -116,7 +116,6 @@ export default function ChatPage() {
   const [renameValue, setRenameValue] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [replyTo, setReplyTo] = useState<ReplyPreview | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -142,11 +141,6 @@ export default function ChatPage() {
     return subscribeChat(refresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, active, isAuthenticated]);
-
-  // Auto-scroll to bottom on new messages.
-  useEffect(() => {
-    endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length, active]);
 
   // Clear pending reply when switching conversations.
   useEffect(() => {
@@ -309,7 +303,7 @@ export default function ChatPage() {
         </Button>
       </div>
 
-      <div className="grid grid-rows-[220px_minmax(0,1fr)] md:grid-rows-1 md:grid-cols-[300px_minmax(0,1fr)] gap-4 h-[calc(100dvh-9.5rem)] min-h-0 md:h-[72vh] md:min-h-[620px] max-h-[900px]">
+      <div className="grid grid-rows-[180px_minmax(0,1fr)] md:grid-rows-1 md:grid-cols-[300px_minmax(0,1fr)] gap-4 h-[calc(100dvh-6.5rem)] min-h-0 md:h-[72vh] md:min-h-[620px] max-h-[900px]">
         {/* Sidebar */}
         <div className="hud-border bg-card p-3 space-y-3 h-full flex flex-col">
           <div className="flex gap-1">
@@ -477,7 +471,6 @@ export default function ChatPage() {
                     );
                     })
                   )}
-                  <div ref={endOfMessagesRef} />
                 </div>
               </ScrollArea>
 
