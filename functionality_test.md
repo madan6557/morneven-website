@@ -197,3 +197,22 @@ Recommended action **"Fix lint environment issue first"** has been executed.
 **Functional Verdict after remediation: PASS (with non-blocking warnings).**
 
 Release readiness can proceed with standard caution for remaining warnings and future optimization tasks.
+
+---
+
+## 12) Chat UX Update Verification (2026-04-27)
+
+Perubahan UI/UX chat terbaru yang sudah tercermin di kode:
+
+1. **Alignment bubble benar per pihak**
+   - Message dari user aktif berada di sisi kanan.
+   - Message dari user lain tetap di sisi kiri.
+
+2. **Scroll behavior mobile lebih stabil**
+   - Auto-scroll kirim/open/jump now dipaksa pada viewport conversation (`ScrollArea`) sehingga tidak lagi men-scroll seluruh halaman pada layar ponsel.
+
+3. **Institute sample history untuk uji unread**
+   - Seed percakapan institute diisi pesan personel (non-author) saat history belum ada.
+   - Initial read marker institute di-bootstrap agar status read/unread bercampur untuk validasi auto-scroll unread.
+
+Status ringkas: **PASS (build/test tetap hijau, perilaku chat mengikuti baseline UX terbaru).**

@@ -69,6 +69,11 @@ Backend must preserve these FE-visible behaviors:
    - Reply stores snapshot (author/text/hasAttachments), not live pointer only
 6. System-managed constraints:
    - `team/division/institute` cannot be renamed by user-level actions
+7. Message lane alignment contract (UI parity):
+   - current authenticated user messages are rendered right-aligned
+   - other users rendered left-aligned
+8. Scroll-scope contract:
+   - send/open/jump-to-reply must scroll inside conversation viewport only (not whole page), especially on mobile layout
 
 ---
 
@@ -82,6 +87,9 @@ Backend must preserve these FE-visible behaviors:
 - Concurrent real-time connections: minimum **5,000**
 - Data consistency: membership/role updates are strongly consistent
 - Recovery: daily backup + PITR restore capability
+
+> FE saat ini juga memiliki **demo-only institute sample history seeding** untuk kebutuhan QA unread/auto-scroll.
+> Saat backend authoritative siap, behavior ini sebaiknya dipindahkan ke fixture/test seed server-side (bukan localStorage FE).
 
 ---
 
