@@ -495,6 +495,28 @@ export default function ChatPage() {
                 </div>
               )}
 
+              {/* Pending reply banner (WhatsApp-style) */}
+              {replyTo && (
+                <div className="px-3 py-2 border-t border-border flex items-start gap-2 bg-muted/40">
+                  <CornerDownRight className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0 border-l-2 border-primary pl-2">
+                    <p className="text-[10px] font-display tracking-wider text-primary">
+                      Replying to {replyTo.author}
+                    </p>
+                    <p className="text-[11px] font-body text-muted-foreground line-clamp-2">
+                      {replyTo.text || (replyTo.hasAttachments ? "[attachment]" : "")}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setReplyTo(null)}
+                    className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                    aria-label="Cancel reply"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+
               <div className="p-2 border-t border-border flex gap-2 items-center">
                 <input
                   ref={fileInputRef}
