@@ -16,6 +16,8 @@ The chat module has strong feature coverage for a prototype/beta (DMs, manual gr
    - Role-aware membership controls (`owner`, `admin`, `member`) including kick/leave/role changes.
    - Message send/delete and reply preview support.
    - Attachment support (client-side data URL) with size cap handling in UI.
+   - Message layout parity: current user bubbles on right, other members on left.
+   - Conversation-scoped auto-scroll (mobile-safe) for send/open/jump-to-reply flows.
 
 2. **Org-policy automation is implemented**
    - Institute-wide conversation exists and is reconciled.
@@ -52,6 +54,8 @@ The chat module has strong feature coverage for a prototype/beta (DMs, manual gr
 
 - Chat implementation uses a local-storage-backed service with browser events and role/member operations.
 - UI includes invites, settings, reply, attachment previews, delete, and conversation management controls.
+- Institute conversation now has seeded sample history (non-system messages from personnel accounts) to support unread/auto-scroll QA scenarios.
+- Demo read bootstrap marks part of institute history as read on first open so unread indicators and oldest-unread auto-scroll are reproducible.
 - Auth and personnel foundations are also local-storage backed.
 
 ## Readiness scorecard
