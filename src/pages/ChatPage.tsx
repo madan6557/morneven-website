@@ -287,7 +287,7 @@ export default function ChatPage() {
     .filter((p) => !activeConv?.members.some((m) => m.username === p.username && m.status !== "removed"));
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="font-display text-2xl tracking-[0.1em] text-primary">CHAT</h1>
@@ -309,9 +309,9 @@ export default function ChatPage() {
         </Button>
       </div>
 
-      <div className="grid md:grid-cols-[260px_1fr] gap-4 min-h-[60vh]">
+      <div className="grid md:grid-cols-[300px_1fr] gap-4 h-[70vh] min-h-[520px] md:h-[72vh] md:min-h-[620px] max-h-[820px]">
         {/* Sidebar */}
-        <div className="hud-border bg-card p-3 space-y-2 overflow-y-auto">
+        <div className="hud-border bg-card p-3 space-y-3 overflow-y-auto h-full">
           <div className="flex gap-1">
             <button
               onClick={() => setDialog("dm")}
@@ -343,7 +343,7 @@ export default function ChatPage() {
                   }`}
                 >
                   <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="text-xs font-heading truncate flex-1">{c.name}</span>
+                  <span className="text-sm font-heading truncate flex-1">{c.name}</span>
                   <span className="text-[9px] font-display uppercase text-muted-foreground">{activeCount}</span>
                 </button>
               );
@@ -352,13 +352,13 @@ export default function ChatPage() {
         </div>
 
         {/* Conversation */}
-        <div className="hud-border bg-card flex flex-col min-h-[60vh]">
+        <div className="hud-border bg-card flex flex-col h-full overflow-hidden">
           {activeConv ? (
             <>
               <div className="px-4 py-2 border-b border-border flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-heading text-sm text-foreground truncate">{activeConv.name}</p>
+                    <p className="font-heading text-base text-foreground truncate">{activeConv.name}</p>
                     {activeConv.systemManaged && (
                       <Badge variant="outline" className="text-[9px] font-display tracking-wider">AUTO</Badge>
                     )}
@@ -369,7 +369,7 @@ export default function ChatPage() {
                       </Badge>
                     )}
                   </div>
-                  <p className="text-[10px] text-muted-foreground font-body truncate">
+                  <p className="text-xs text-muted-foreground font-body truncate">
                     {activeConv.members
                       .filter((m) => m.status === "active")
                       .map((m) => m.username)
@@ -381,7 +381,7 @@ export default function ChatPage() {
                 </Button>
               </div>
 
-              <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2">
+              <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
                 {messages.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic text-center">No messages yet.</p>
                 ) : (
@@ -405,10 +405,10 @@ export default function ChatPage() {
                         className={`flex ${mine ? "justify-end" : "justify-start"} group`}
                       >
                         <div
-                          className={`max-w-[70%] rounded-md px-3 py-1.5 text-xs transition-shadow ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
+                          className={`max-w-[80%] rounded-md px-3 py-2 text-sm transition-shadow ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
                         >
                           <div className="flex items-center justify-between gap-2 mb-0.5">
-                            <p className="font-heading text-[10px] tracking-wider text-muted-foreground">
+                            <p className="font-heading text-xs tracking-wider text-muted-foreground">
                               {m.author} · {new Date(m.createdAt).toLocaleTimeString()}
                             </p>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -438,10 +438,10 @@ export default function ChatPage() {
                               onClick={() => jumpToMessage(m.replyTo!.messageId)}
                               className="w-full text-left mb-1 border-l-2 border-primary/70 bg-background/40 hover:bg-background/60 transition-colors rounded-sm px-2 py-1"
                             >
-                              <p className="text-[10px] font-display tracking-wider text-primary truncate">
+                              <p className="text-xs font-display tracking-wider text-primary truncate">
                                 ↳ {m.replyTo.author}
                               </p>
-                              <p className="text-[11px] font-body text-muted-foreground line-clamp-2">
+                              <p className="text-xs font-body text-muted-foreground line-clamp-2">
                                 {m.replyTo.text || (m.replyTo.hasAttachments ? "[attachment]" : "")}
                               </p>
                             </button>
@@ -457,7 +457,7 @@ export default function ChatPage() {
                                       <img src={a.dataUrl} alt={a.name} className="max-h-48 rounded-sm" />
                                     ) : null}
                                     <div className="flex items-center justify-between gap-2 mt-1">
-                                      <span className="text-[10px] font-body truncate">
+                                      <span className="text-xs font-body truncate">
                                         {a.name} <span className="text-muted-foreground">({formatBytes(a.size)})</span>
                                       </span>
                                       <a href={a.dataUrl} download={a.name} className="text-primary hover:text-primary/80">
@@ -500,10 +500,10 @@ export default function ChatPage() {
                 <div className="px-3 py-2 border-t border-border flex items-start gap-2 bg-muted/40">
                   <CornerDownRight className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0 border-l-2 border-primary pl-2">
-                    <p className="text-[10px] font-display tracking-wider text-primary">
+                    <p className="text-xs font-display tracking-wider text-primary">
                       Replying to {replyTo.author}
                     </p>
-                    <p className="text-[11px] font-body text-muted-foreground line-clamp-2">
+                    <p className="text-xs font-body text-muted-foreground line-clamp-2">
                       {replyTo.text || (replyTo.hasAttachments ? "[attachment]" : "")}
                     </p>
                   </div>
@@ -544,7 +544,7 @@ export default function ChatPage() {
                     }
                   }}
                   placeholder="Type a message..."
-                  className="flex-1 text-xs px-3 py-2 bg-background border border-border rounded-sm"
+                  className="flex-1 text-sm px-3 py-2 bg-background border border-border rounded-sm"
                 />
                 <button
                   onClick={handleSend}
