@@ -8,6 +8,7 @@ import {
   getGallery,
 } from "@/services/api";
 import type { CommandCenterSection, CommandCenterSettings } from "@/services/commandCenterSettings";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const labelClass = "font-heading text-xs tracking-wider text-muted-foreground uppercase";
 
@@ -127,29 +128,31 @@ export default function CommandCenterSelectionPanel({ settings, onChange }: Comm
                 )}
               </div>
 
-              <div className="max-h-40 overflow-y-auto border border-border rounded-sm divide-y divide-border bg-background">
-                {options[s.key].length === 0 ? (
-                  <p className="text-[11px] font-body text-muted-foreground italic p-2">No items.</p>
-                ) : (
-                  options[s.key].map((opt) => {
-                    const checked = manual.includes(opt.id);
-                    return (
-                      <label
-                        key={opt.id}
-                        className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-muted/50 transition-colors"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleManual(s.key, opt.id)}
-                          className="h-3.5 w-3.5 accent-primary flex-shrink-0"
-                        />
-                        <span className="text-[11px] font-body text-foreground truncate">{opt.label}</span>
-                      </label>
-                    );
-                  })
-                )}
-              </div>
+              <ScrollArea className="h-40 border border-border rounded-sm bg-background">
+                <div className="divide-y divide-border">
+                  {options[s.key].length === 0 ? (
+                    <p className="text-[11px] font-body text-muted-foreground italic p-2">No items.</p>
+                  ) : (
+                    options[s.key].map((opt) => {
+                      const checked = manual.includes(opt.id);
+                      return (
+                        <label
+                          key={opt.id}
+                          className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-muted/50 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleManual(s.key, opt.id)}
+                            className="h-3.5 w-3.5 accent-primary flex-shrink-0"
+                          />
+                          <span className="text-[11px] font-body text-foreground truncate">{opt.label}</span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+              </ScrollArea>
             </div>
           );
         })}
