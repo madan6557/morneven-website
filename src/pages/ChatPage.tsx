@@ -117,6 +117,9 @@ export default function ChatPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [replyTo, setReplyTo] = useState<ReplyPreview | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   // Boot: reconcile PL7 + institute auto memberships once personnel loads.
   useEffect(() => {
