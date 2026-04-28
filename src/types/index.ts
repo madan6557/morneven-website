@@ -12,6 +12,41 @@ export interface DocItem {
   caption: string;
 }
 
+// Production-credit metadata attached to any lore entry. Optional and purely
+// descriptive — does not affect access control or quotas. Surfaces on the
+// per-entry "Metadata" tab so readers can see who built and approved it.
+export interface LoreMetaPatch {
+  version: string;
+  date: string;
+  notes: string;
+}
+
+export interface LoreMeta {
+  // Original creator (in-universe or out-of-universe author).
+  creator?: string;
+  // Long-term maintainer / canonical owner of the page.
+  owner?: string;
+  // Visual / concept designer (if distinct from creator).
+  designer?: string;
+  // Other named collaborators.
+  collaborators?: string[];
+  // Team that produced or maintains the entry.
+  team?: string;
+  // Originating project (e.g. "Pantry Continuity Initiative").
+  projectName?: string;
+  // ISO-ish dates (free-form to allow in-universe labels too).
+  startedAt?: string;
+  completedAt?: string;
+  approvedAt?: string;
+  // Reviewer who signed off canon entry.
+  approvedBy?: string;
+  // Versioned change log for the lore entry itself.
+  patchNotes?: LoreMetaPatch[];
+  // Free-form license / source notes.
+  license?: string;
+  sourceUrl?: string;
+}
+
 export interface Project {
   id: string;
   title: string;
@@ -62,6 +97,8 @@ export interface Character {
   discussions?: DiscussionComment[];
   // Original author / contributor for attribution.
   contributor?: string;
+  // Production credits (creator, designer, team, dates, patch notes, etc.)
+  meta?: LoreMeta;
 }
 
 // Creature classification — Gemora Entropy Classification (GEC) Mark II
@@ -82,6 +119,8 @@ export interface Creature {
   fullDesc: string;
   docs: DocItem[];
   discussions?: DiscussionComment[];
+  contributor?: string;
+  meta?: LoreMeta;
 }
 
 export interface OtherLore {
@@ -93,6 +132,8 @@ export interface OtherLore {
   fullDesc: string;
   docs: DocItem[];
   discussions?: DiscussionComment[];
+  contributor?: string;
+  meta?: LoreMeta;
 }
 
 // Recorded event in the Gemora Universe — historical milestones, yearly
@@ -132,6 +173,7 @@ export interface LoreEvent {
   discussions?: DiscussionComment[];
   // Original author / contributor for attribution.
   contributor?: string;
+  meta?: LoreMeta;
 }
 
 export interface DiscussionMention {
@@ -166,6 +208,8 @@ export interface Place {
   fullDesc: string;
   docs: DocItem[];
   discussions?: DiscussionComment[];
+  contributor?: string;
+  meta?: LoreMeta;
 }
 
 export interface Technology {
@@ -177,6 +221,8 @@ export interface Technology {
   fullDesc: string;
   docs: DocItem[];
   discussions?: DiscussionComment[];
+  contributor?: string;
+  meta?: LoreMeta;
 }
 
 export interface CommentReply {

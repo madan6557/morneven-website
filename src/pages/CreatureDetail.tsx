@@ -10,9 +10,10 @@ import {
   deleteCreatureDiscussionReply,
 } from "@/services/api";
 import type { Creature, DiscussionComment, DiscussionMention } from "@/types";
-import { ArrowLeft, ShieldAlert, FileText, MapPin, NotebookPen, ExternalLink } from "lucide-react";
+import { ArrowLeft, ShieldAlert, FileText, MapPin, NotebookPen, ExternalLink, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
+import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -214,7 +215,7 @@ export default function CreatureDetail() {
 
         {/* Tabbed sections: Overview / Habitat / Notes */}
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 sm:w-auto sm:inline-flex">
+          <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-flex sm:grid-cols-4">
             <TabsTrigger value="overview" className="text-[11px] font-heading tracking-wider uppercase">
               <FileText className="h-3 w-3 mr-1.5" /> Overview
             </TabsTrigger>
@@ -223,6 +224,9 @@ export default function CreatureDetail() {
             </TabsTrigger>
             <TabsTrigger value="notes" className="text-[11px] font-heading tracking-wider uppercase">
               <NotebookPen className="h-3 w-3 mr-1.5" /> Notes
+            </TabsTrigger>
+            <TabsTrigger value="metadata" className="text-[11px] font-heading tracking-wider uppercase">
+              <Info className="h-3 w-3 mr-1.5" /> Metadata
             </TabsTrigger>
           </TabsList>
 
@@ -285,6 +289,10 @@ export default function CreatureDetail() {
                 <p className="text-sm font-body text-muted-foreground">No standing doctrine notes on file.</p>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="metadata" className="mt-6">
+            <LoreMetaPanel meta={creature.meta} fallbackCreator={creature.contributor} accentColor={accent} />
           </TabsContent>
         </Tabs>
 

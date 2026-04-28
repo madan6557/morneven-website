@@ -10,9 +10,11 @@ import {
   deleteTechDiscussionReply,
 } from "@/services/api";
 import type { Technology, DiscussionComment, DiscussionMention } from "@/types";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
+import LoreMetaPanel from "@/components/LoreMetaPanel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function TechDetail() {
   const { id } = useParams<{ id: string }>();
@@ -108,10 +110,25 @@ export default function TechDetail() {
 
       <div className="p-6 md:p-8 space-y-8">
         <div className="mecha-line" />
-        <div className="max-w-3xl space-y-4">
-          <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Technical Specifications</h2>
-          <RedactedBlock fullDesc={tech.fullDesc} paragraphClass="text-sm font-body text-foreground/80 leading-relaxed" />
-        </div>
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList>
+            <TabsTrigger value="overview" className="text-[11px] font-heading tracking-wider uppercase">
+              <FileText className="h-3 w-3 mr-1.5" /> Specifications
+            </TabsTrigger>
+            <TabsTrigger value="metadata" className="text-[11px] font-heading tracking-wider uppercase">
+              <Info className="h-3 w-3 mr-1.5" /> Metadata
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="overview" className="mt-6">
+            <div className="max-w-3xl space-y-4">
+              <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Technical Specifications</h2>
+              <RedactedBlock fullDesc={tech.fullDesc} paragraphClass="text-sm font-body text-foreground/80 leading-relaxed" />
+            </div>
+          </TabsContent>
+          <TabsContent value="metadata" className="mt-6">
+            <LoreMetaPanel meta={tech.meta} fallbackCreator={tech.contributor} />
+          </TabsContent>
+        </Tabs>
 
         {tech.docs.length > 0 && (
           <div className="space-y-4">

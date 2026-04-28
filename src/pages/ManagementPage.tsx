@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { PERSONNEL_TRACKS, type PersonnelTrack, type PersonnelLevel } from "@/lib/pl";
 import type { PersonnelUser } from "@/types";
+import RequestPayloadPreview from "@/components/RequestPayloadPreview";
 
 const KIND_LABEL: Record<RequestKind, string> = {
   transfer: "Track Transfer",
@@ -627,7 +628,7 @@ function RequestList({
             </div>
             <p className="text-xs">{r.reason}</p>
             {Object.keys(r.payload).length > 0 && (
-              <pre className="text-[10px] bg-muted p-2 rounded overflow-x-auto">{JSON.stringify(r.payload, null, 2)}</pre>
+              <RequestPayloadPreview req={r} />
             )}
             {r.reviewer && (
               <p className="text-[10px] text-muted-foreground">

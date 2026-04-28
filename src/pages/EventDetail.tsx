@@ -10,9 +10,11 @@ import {
   deleteEventDiscussionReply,
 } from "@/services/api";
 import type { LoreEvent, DiscussionComment, DiscussionMention } from "@/types";
-import { ArrowLeft, Calendar, Globe2, Activity, Tag, ArrowUpRight } from "lucide-react";
+import { ArrowLeft, Calendar, Globe2, Activity, Tag, ArrowUpRight, FileText, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
+import LoreMetaPanel from "@/components/LoreMetaPanel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
@@ -101,9 +103,24 @@ export default function EventDetail() {
           )}
         </div>
 
-        <div className="max-w-3xl space-y-4">
-          <RedactedBlock fullDesc={item.fullDesc} />
-        </div>
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList>
+            <TabsTrigger value="overview" className="text-[11px] font-heading tracking-wider uppercase">
+              <FileText className="h-3 w-3 mr-1.5" /> Overview
+            </TabsTrigger>
+            <TabsTrigger value="metadata" className="text-[11px] font-heading tracking-wider uppercase">
+              <Info className="h-3 w-3 mr-1.5" /> Metadata
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="overview" className="mt-6">
+            <div className="max-w-3xl space-y-4">
+              <RedactedBlock fullDesc={item.fullDesc} />
+            </div>
+          </TabsContent>
+          <TabsContent value="metadata" className="mt-6">
+            <LoreMetaPanel meta={item.meta} fallbackCreator={item.contributor} />
+          </TabsContent>
+        </Tabs>
 
         {item.consequences && item.consequences.length > 0 && (
           <div className="space-y-3">
