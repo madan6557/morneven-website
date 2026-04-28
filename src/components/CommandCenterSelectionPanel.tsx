@@ -101,17 +101,17 @@ export default function CommandCenterSelectionPanel({ settings, onChange }: Comm
           const manual = settings.manualSelections[s.key] ?? [];
           const limit = settings.itemLimits[s.key] ?? 0;
           return (
-            <div key={s.key} className="hud-border-sm bg-background/50 p-3 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <h4 className="font-heading text-xs tracking-wider text-foreground uppercase">{s.label}</h4>
-                <div className="flex items-center gap-1">
+            <div key={s.key} className="hud-border-sm bg-background/50 p-3 space-y-3 overflow-hidden">
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h4 className="font-heading text-xs tracking-wider text-foreground uppercase break-words">{s.label}</h4>
+                <div className="flex w-full items-center justify-end gap-1 sm:w-auto">
                   <label className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Limit</label>
                   <input
                     type="number"
                     min={0}
                     value={limit}
                     onChange={(e) => updateLimit(s.key, Number(e.target.value))}
-                    className="w-16 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground text-right"
+                    className="w-16 max-w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground text-right"
                   />
                 </div>
               </div>
