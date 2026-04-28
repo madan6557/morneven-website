@@ -108,6 +108,7 @@ export default function LorePage() {
                 ${active === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}
             >
               {t === "Personnel" && <ShieldCheck className="h-3 w-3" />}
+              {t === "Events" && <CalendarClock className="h-3 w-3" />}
               {t}
             </button>
           ))}
