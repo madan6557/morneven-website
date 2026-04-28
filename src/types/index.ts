@@ -97,6 +97,8 @@ export interface Character {
   discussions?: DiscussionComment[];
   // Original author / contributor for attribution.
   contributor?: string;
+  // Production credits (creator, designer, team, dates, patch notes, etc.)
+  meta?: LoreMeta;
 }
 
 // Creature classification — Gemora Entropy Classification (GEC) Mark II
@@ -117,6 +119,8 @@ export interface Creature {
   fullDesc: string;
   docs: DocItem[];
   discussions?: DiscussionComment[];
+  contributor?: string;
+  meta?: LoreMeta;
 }
 
 export interface OtherLore {
@@ -128,6 +132,8 @@ export interface OtherLore {
   fullDesc: string;
   docs: DocItem[];
   discussions?: DiscussionComment[];
+  contributor?: string;
+  meta?: LoreMeta;
 }
 
 // Recorded event in the Gemora Universe — historical milestones, yearly
@@ -167,6 +173,7 @@ export interface LoreEvent {
   discussions?: DiscussionComment[];
   // Original author / contributor for attribution.
   contributor?: string;
+  meta?: LoreMeta;
 }
 
 export interface DiscussionMention {
