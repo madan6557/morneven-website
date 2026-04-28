@@ -27,6 +27,7 @@ const PlaceDetail = lazy(() => import("./pages/PlaceDetail"));
 const TechDetail = lazy(() => import("./pages/TechDetail"));
 const CreatureDetail = lazy(() => import("./pages/CreatureDetail"));
 const OtherDetail = lazy(() => import("./pages/OtherDetail"));
+const EventDetail = lazy(() => import("./pages/EventDetail"));
 const MapPage = lazy(() => import("./pages/MapPage"));
 const PersonnelLevelPage = lazy(() => import("./pages/PersonnelLevelPage"));
 const AuthorDashboard = lazy(() => import("./pages/AuthorDashboard"));
@@ -83,6 +84,7 @@ function App() {
                   <Route path="/lore/tech/:id" element={<TechDetail />} />
                   <Route path="/lore/creatures/:id" element={<CreatureDetail />} />
                   <Route path="/lore/other/:id" element={<OtherDetail />} />
+                  <Route path="/lore/events/:id" element={<EventDetail />} />
                   <Route path="/lore/personnel" element={<PersonnelLevelPage />} />
                   <Route path="/maps" element={<MapPage />} />
                   <Route path="/author" element={<AuthorRoute><AuthorDashboard /></AuthorRoute>} />
