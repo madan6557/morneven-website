@@ -3,6 +3,7 @@ import type {
   Creature,
   DiscussionComment,
   DiscussionMention,
+  LoreEvent,
   OtherLore,
   Place,
   Technology,
@@ -160,6 +161,7 @@ const techDiscussion = createDiscussionCrud<Technology>(db.technology, STORAGE_K
 const otherDiscussion = createDiscussionCrud<OtherLore>(db.others, STORAGE_KEYS.other);
 const characterDiscussion = createDiscussionCrud<Character>(db.characters, STORAGE_KEYS.characters);
 const creatureDiscussion = createDiscussionCrud<Creature>(db.creatures, STORAGE_KEYS.creatures);
+const eventDiscussion = createDiscussionCrud<LoreEvent>(db.events, STORAGE_KEYS.events);
 
 export const addPlaceDiscussionComment = placeDiscussion.addComment;
 export const addPlaceDiscussionReply = placeDiscussion.addReply;
@@ -195,3 +197,10 @@ export const editCreatureDiscussionComment = creatureDiscussion.editComment;
 export const deleteCreatureDiscussionComment = creatureDiscussion.deleteComment;
 export const editCreatureDiscussionReply = creatureDiscussion.editReply;
 export const deleteCreatureDiscussionReply = creatureDiscussion.deleteReply;
+
+export const addEventDiscussionComment = eventDiscussion.addComment;
+export const addEventDiscussionReply = eventDiscussion.addReply;
+export const editEventDiscussionComment = eventDiscussion.editComment;
+export const deleteEventDiscussionComment = eventDiscussion.deleteComment;
+export const editEventDiscussionReply = eventDiscussion.editReply;
+export const deleteEventDiscussionReply = eventDiscussion.deleteReply;
