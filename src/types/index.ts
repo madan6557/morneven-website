@@ -95,6 +95,45 @@ export interface OtherLore {
   discussions?: DiscussionComment[];
 }
 
+// Recorded event in the Gemora Universe — historical milestones, yearly
+// observances, institute incidents, etc. Discoverable from /lore/events.
+export type EventCategory =
+  | "Cataclysm"
+  | "Institute Milestone"
+  | "Yearly Observance"
+  | "Incident"
+  | "Operation"
+  | "Anomaly Surge"
+  | "Other";
+
+export interface EventRelatedLink {
+  label: string;
+  url: string;
+}
+
+export interface LoreEvent {
+  id: string;
+  title: string;
+  category: EventCategory | string;
+  // Free-form era label (e.g. "Pre-Founding", "Modern", "Year of Lanterns").
+  era?: string;
+  // Free-form date or date-range label (calendar varies in-universe).
+  dateLabel?: string;
+  // Geographic / institutional scope (e.g. "Sector", "Continental").
+  scope?: string;
+  // Subjective impact tier; not gameplay-bound.
+  impactLevel?: string;
+  thumbnail: string;
+  shortDesc: string;
+  fullDesc: string;
+  consequences?: string[];
+  relatedLinks?: EventRelatedLink[];
+  docs: DocItem[];
+  discussions?: DiscussionComment[];
+  // Original author / contributor for attribution.
+  contributor?: string;
+}
+
 export interface DiscussionMention {
   username: string;
   start: number;
