@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { getCharacters, getPlaces, getTechnology, getCreatures, getOthers } from "@/services/api";
-import type { Character, Place, Technology, Creature, OtherLore } from "@/types";
+import { getCharacters, getPlaces, getTechnology, getCreatures, getOthers, getEvents } from "@/services/api";
+import type { Character, Place, Technology, Creature, OtherLore, LoreEvent } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Search, ArrowUpDown, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Plus, Search, ArrowUpDown, ShieldAlert, ShieldCheck, CalendarClock } from "lucide-react";
 import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 
-const tabs = ["Characters", "Places", "Technology", "Creatures", "Other", "Personnel"] as const;
+const tabs = ["Characters", "Places", "Technology", "Creatures", "Events", "Other", "Personnel"] as const;
 type SortOption = "name" | "name-desc";
 
 const dangerColor: Record<number, string> = {
@@ -26,6 +26,7 @@ export default function LorePage() {
   const [tech, setTech] = useState<Technology[]>([]);
   const [creatures, setCreatures] = useState<Creature[]>([]);
   const [others, setOthers] = useState<OtherLore[]>([]);
+  const [events, setEvents] = useState<LoreEvent[]>([]);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("name");
   const { role } = useAuth();
@@ -36,6 +37,7 @@ export default function LorePage() {
     getTechnology().then(setTech);
     getCreatures().then(setCreatures);
     getOthers().then(setOthers);
+    getEvents().then(setEvents);
   }, []);
 
   useEffect(() => {
@@ -61,6 +63,7 @@ export default function LorePage() {
   const filteredTech = sortItems(tech.filter((t) => matchSearch(t.name, t.shortDesc)));
   const filteredCreatures = sortItems(creatures.filter((c) => matchSearch(c.name, c.shortDesc)));
   const filteredOthers = sortItems(others.filter((o) => matchSearch(o.title, o.shortDesc)));
+  const filteredEvents = sortItems(events.filter((e) => matchSearch(e.title, e.shortDesc)));
 
   return (
     <div className="p-4 sm:p-6 md:p-8 space-y-6">
