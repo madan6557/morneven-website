@@ -246,6 +246,43 @@ export default function LorePage() {
         </div>
       )}
 
+      {/* Events */}
+      {active === "Events" && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredEvents.map((e) => (
+            <Link key={e.id} to={`/lore/events/${e.id}`} className="block group">
+              <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
+                {e.thumbnail ? (
+                  <div className="aspect-video bg-muted overflow-hidden">
+                    <img src={e.thumbnail} alt={e.title} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="aspect-video bg-muted flex items-center justify-center">
+                    <CalendarClock className="h-8 w-8 text-muted-foreground/60" />
+                  </div>
+                )}
+                <div className="p-4 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-heading text-foreground group-hover:text-primary transition-colors truncate">{e.title}</h3>
+                    {e.impactLevel && (
+                      <span className="text-[10px] font-display tracking-wider uppercase px-1.5 py-0.5 rounded-sm border border-accent-orange/40 text-accent-orange flex-shrink-0">
+                        {e.impactLevel.split(" ")[0]}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground font-display tracking-wider uppercase">{e.category}{e.era ? ` · ${e.era}` : ""}</p>
+                  {e.dateLabel && (
+                    <p className="text-[10px] text-muted-foreground font-body italic truncate">{e.dateLabel}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground font-body line-clamp-2 mt-1">{e.shortDesc}</p>
+                </div>
+              </div>
+            </Link>
+          ))}
+          {filteredEvents.length === 0 && <p className="col-span-full text-center text-sm text-muted-foreground font-body py-8">No events recorded.</p>}
+        </div>
+      )}
+
       {/* Other */}
       {active === "Other" && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
