@@ -290,6 +290,10 @@ export default function CreatureDetail() {
               )}
             </div>
           </TabsContent>
+
+          <TabsContent value="metadata" className="mt-6">
+            <LoreMetaPanel meta={creature.meta} fallbackCreator={creature.contributor} accentColor={accent} />
+          </TabsContent>
         </Tabs>
 
         {/* Documentation - always visible (outside tabs) */}
