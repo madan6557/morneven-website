@@ -11,9 +11,10 @@ import {
   deleteCharacterDiscussionReply,
 } from "@/services/api";
 import type { Character, DiscussionComment, DiscussionMention } from "@/types";
-import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen } from "lucide-react";
+import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
+import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function CharacterDetail() {
@@ -202,7 +203,7 @@ export default function CharacterDetail() {
           <div className="lg:col-span-2">
             <Tabs defaultValue="overview" className="w-full">
               <TabsList
-                className="grid w-full grid-cols-2 gap-1 h-auto sm:h-10 sm:grid-cols-4 sm:w-auto sm:inline-flex sm:gap-0 [&>[data-state=active]]:text-[color:var(--char-accent)] [&>[data-state=active]]:shadow-[inset_0_-2px_0_0_var(--char-accent)]"
+                className="grid w-full grid-cols-2 gap-1 h-auto sm:h-10 sm:grid-cols-5 sm:w-auto sm:inline-flex sm:gap-0 [&>[data-state=active]]:text-[color:var(--char-accent)] [&>[data-state=active]]:shadow-[inset_0_-2px_0_0_var(--char-accent)]"
                 style={{ borderColor: `${accentColor}30` }}
               >
                 <TabsTrigger value="overview" className="text-[11px] font-heading tracking-wider uppercase">
@@ -216,6 +217,9 @@ export default function CharacterDetail() {
                 </TabsTrigger>
                 <TabsTrigger value="notes" className="text-[11px] font-heading tracking-wider uppercase">
                   <NotebookPen className="h-3 w-3 mr-1.5" /> Notes
+                </TabsTrigger>
+                <TabsTrigger value="metadata" className="text-[11px] font-heading tracking-wider uppercase">
+                  <Info className="h-3 w-3 mr-1.5" /> Metadata
                 </TabsTrigger>
               </TabsList>
 
@@ -268,6 +272,11 @@ export default function CharacterDetail() {
                   <NotebookPen className="h-5 w-5 mx-auto mb-2" style={{ color: accentColor }} />
                   <p className="text-sm font-body text-muted-foreground italic">Field notes and observations can be recorded here.</p>
                 </div>
+              </TabsContent>
+
+              {/* Metadata */}
+              <TabsContent value="metadata" className="mt-6">
+                <LoreMetaPanel meta={char.meta} fallbackCreator={char.contributor} accentColor={accentColor} />
               </TabsContent>
             </Tabs>
 
