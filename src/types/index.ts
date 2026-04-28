@@ -208,6 +208,8 @@ export interface Place {
   fullDesc: string;
   docs: DocItem[];
   discussions?: DiscussionComment[];
+  contributor?: string;
+  meta?: LoreMeta;
 }
 
 export interface Technology {
@@ -219,6 +221,8 @@ export interface Technology {
   fullDesc: string;
   docs: DocItem[];
   discussions?: DiscussionComment[];
+  contributor?: string;
+  meta?: LoreMeta;
 }
 
 export interface CommentReply {
