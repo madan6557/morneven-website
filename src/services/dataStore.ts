@@ -2,6 +2,7 @@ import type {
   Character,
   Creature,
   GalleryItem,
+  LoreEvent,
   MapMarker,
   NewsItem,
   OtherLore,
@@ -18,6 +19,7 @@ import galleryData from "@/data/gallery.json";
 import newsData from "@/data/news.json";
 import creaturesData from "@/data/creatures.json";
 import otherData from "@/data/other.json";
+import eventsData from "@/data/events.json";
 import mapData from "@/data/map.json";
 
 export const STORAGE_KEYS = {
@@ -28,6 +30,7 @@ export const STORAGE_KEYS = {
   gallery: "morneven_gallery",
   creatures: "morneven_creatures",
   other: "morneven_other",
+  events: "morneven_events",
   news: "morneven_news",
   mapMarkers: "morneven_map_markers",
   mapImage: "morneven_map_image",
@@ -70,6 +73,7 @@ export const db = {
   gallery: readCollection<GalleryItem>(STORAGE_KEYS.gallery, galleryData as GalleryItem[]),
   creatures: readCollection<Creature>(STORAGE_KEYS.creatures, creaturesData as Creature[]),
   others: readCollection<OtherLore>(STORAGE_KEYS.other, otherData as OtherLore[]),
+  events: readCollection<LoreEvent>(STORAGE_KEYS.events, eventsData as LoreEvent[]),
   mapMarkers: readCollection<MapMarker>(
     STORAGE_KEYS.mapMarkers,
     (mapData as { markers: MapMarker[] }).markers,
