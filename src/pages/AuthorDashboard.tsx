@@ -294,6 +294,7 @@ export default function AuthorDashboard() {
         fullDesc: editing.fullDesc ?? "",
         patches: editing.patches ?? [],
         docs: editing.docs ?? [],
+        meta: editing.meta,
       };
 
       if (isCreating) await createProject(payload);
@@ -316,6 +317,7 @@ export default function AuthorDashboard() {
           stats: editing.stats ?? { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 },
           docs: editing.docs ?? [],
           contributions: editing.contributions ?? [],
+          meta: editing.meta,
         };
 
         if (isCreating) await createCharacter(payload);
