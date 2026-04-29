@@ -979,6 +979,14 @@ export default function AuthorDashboard() {
             </div>
           )}
 
+          {/* Metadata editor (production credits) — for projects + lore. */}
+          {!isGallery && (
+            <MetadataEditor
+              value={editing.meta}
+              onChange={(next) => setEditing({ ...editing, meta: next })}
+            />
+          )}
+
           <div className="flex justify-end gap-2">
             <button onClick={() => { setEditing(null); setIsCreating(false); }} className="px-4 py-2 text-xs font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors">CANCEL</button>
             <button onClick={handleSave} className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity">
