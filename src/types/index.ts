@@ -30,8 +30,9 @@ export interface LoreMeta {
   designer?: string;
   // Other named collaborators.
   collaborators?: string[];
-  // Team that produced or maintains the entry.
-  team?: string;
+  // Team that produced or maintains the entry. May be a single team name
+  // or an array of contributing teams.
+  team?: string | string[];
   // Originating project (e.g. "Pantry Continuity Initiative").
   projectName?: string;
   // ISO-ish dates (free-form to allow in-universe labels too).
