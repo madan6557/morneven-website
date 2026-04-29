@@ -331,6 +331,7 @@ export default function AuthorDashboard() {
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
+          meta: editing.meta,
         };
 
         if (isCreating) await createPlace(payload);
@@ -344,6 +345,7 @@ export default function AuthorDashboard() {
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
+          meta: editing.meta,
         };
 
         if (isCreating) await createTech(payload);
@@ -360,6 +362,7 @@ export default function AuthorDashboard() {
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
+          meta: editing.meta,
         };
 
         if (isCreating) await createCreature(payload);
@@ -373,6 +376,7 @@ export default function AuthorDashboard() {
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
+          meta: editing.meta,
         };
 
         if (isCreating) await createOther(payload);
