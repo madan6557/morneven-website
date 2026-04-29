@@ -3,8 +3,10 @@ import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { getProject } from "@/services/api";
 import type { Project } from "@/types";
-import { ArrowLeft, Calendar, Tag } from "lucide-react";
+import { ArrowLeft, Calendar, Tag, FileText, GitBranch, Image as ImageIcon, Info } from "lucide-react";
 import RedactedBlock from "@/components/RedactedBlock";
+import LoreMetaPanel from "@/components/LoreMetaPanel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -49,78 +51,105 @@ export default function ProjectDetail() {
       <div className="p-6 md:p-8 space-y-8">
         <div className="mecha-line" />
 
-        {/* Description */}
-        <div className="max-w-3xl space-y-4">
-          <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Description</h2>
-          <RedactedBlock fullDesc={project.fullDesc} />
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 gap-1 h-auto sm:h-10 sm:grid-cols-4 sm:w-auto sm:inline-flex sm:gap-0">
+            <TabsTrigger value="overview" className="text-[11px] font-heading tracking-wider uppercase">
+              <FileText className="h-3 w-3 mr-1.5" /> Overview
+            </TabsTrigger>
+            <TabsTrigger value="patches" className="text-[11px] font-heading tracking-wider uppercase">
+              <GitBranch className="h-3 w-3 mr-1.5" /> Patches
+            </TabsTrigger>
+            <TabsTrigger value="docs" className="text-[11px] font-heading tracking-wider uppercase">
+              <ImageIcon className="h-3 w-3 mr-1.5" /> Docs
+            </TabsTrigger>
+            <TabsTrigger value="metadata" className="text-[11px] font-heading tracking-wider uppercase">
+              <Info className="h-3 w-3 mr-1.5" /> Metadata
+            </TabsTrigger>
+          </TabsList>
 
-        </div>
+          <TabsContent value="overview" className="mt-6 space-y-4">
+            <div className="max-w-3xl space-y-4">
+              <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Description</h2>
+              <RedactedBlock fullDesc={project.fullDesc} />
+            </div>
+          </TabsContent>
 
-        {/* Patch Notes */}
-        {project.patches.length > 0 && (
-          <div className="space-y-4">
+          <TabsContent value="patches" className="mt-6 space-y-4">
             <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Patch Notes</h2>
-            <div className="space-y-3">
-              {project.patches.map((patch) => (
-                <motion.div
-                  key={patch.version}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="hud-border-sm bg-card p-4 flex flex-col sm:flex-row sm:items-start gap-3"
-                >
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Tag className="h-3 w-3 text-accent-orange" />
-                    <span className="font-display text-xs tracking-wider text-accent-orange">v{patch.version}</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-body text-foreground/80">{patch.notes}</p>
-                  </div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground font-heading flex-shrink-0">
-                    <Calendar className="h-3 w-3" />
-                    {patch.date}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        )}
+            {project.patches.length === 0 ? (
+              <div className="hud-border bg-card p-6 text-center">
+                <p className="text-sm font-body text-muted-foreground italic">No patch notes recorded.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {project.patches.map((patch) => (
+                  <motion.div
+                    key={patch.version}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="hud-border-sm bg-card p-4 flex flex-col sm:flex-row sm:items-start gap-3"
+                  >
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Tag className="h-3 w-3 text-accent-orange" />
+                      <span className="font-display text-xs tracking-wider text-accent-orange">v{patch.version}</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-body text-foreground/80">{patch.notes}</p>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground font-heading flex-shrink-0">
+                      <Calendar className="h-3 w-3" />
+                      {patch.date}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
 
-        {/* Documentation */}
-        {project.docs.length > 0 && (
-          <div className="space-y-4">
+          <TabsContent value="docs" className="mt-6 space-y-4">
             <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Documentation</h2>
-            <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-              {project.docs.map((doc, i) => (
-                <div key={i} className="hud-border-sm bg-card overflow-hidden">
-                  {doc.type === "video" && doc.url ? (
-                    <div className="aspect-video bg-muted">
-                      <iframe
-                        src={doc.url}
-                        className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        title={`${project.title} Documentation`}
-                      />
+            {project.docs.length === 0 ? (
+              <div className="hud-border bg-card p-6 text-center">
+                <p className="text-sm font-body text-muted-foreground italic">No documentation attached.</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
+                {project.docs.map((doc, i) => (
+                  <div key={i} className="hud-border-sm bg-card overflow-hidden">
+                    {doc.type === "video" && doc.url ? (
+                      <div className="aspect-video bg-muted">
+                        <iframe
+                          src={doc.url}
+                          className="w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          title={`${project.title} Documentation`}
+                        />
+                      </div>
+                    ) : doc.type === "image" && doc.url ? (
+                      <div className="aspect-video bg-muted overflow-hidden">
+                        <img src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="aspect-video bg-muted flex items-center justify-center">
+                        <span className="text-xs text-muted-foreground font-heading tracking-wider">
+                          {doc.type === "video" ? "▶ VIDEO" : "IMAGE"}
+                        </span>
+                      </div>
+                    )}
+                    <div className="p-3">
+                      <p className="text-xs font-body text-muted-foreground">{doc.caption}</p>
                     </div>
-                  ) : doc.type === "image" && doc.url ? (
-                    <div className="aspect-video bg-muted overflow-hidden">
-                      <img src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="aspect-video bg-muted flex items-center justify-center">
-                      <span className="text-xs text-muted-foreground font-heading tracking-wider">
-                        {doc.type === "video" ? "▶ VIDEO" : "IMAGE"}
-                      </span>
-                    </div>
-                  )}
-                  <div className="p-3">
-                    <p className="text-xs font-body text-muted-foreground">{doc.caption}</p>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="metadata" className="mt-6">
+            <LoreMetaPanel meta={project.meta} fallbackCreator={project.contributor} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

@@ -16,8 +16,14 @@
       "Conditions for first Jewerlian arrival"
     ],
     "relatedLinks": [
-      { "label": "The Gemosphere", "url": "/lore/other/other-003" },
-      { "label": "Founding History", "url": "/lore/other/other-006" }
+      {
+        "label": "The Gemosphere",
+        "url": "/lore/other/other-003"
+      },
+      {
+        "label": "Founding History",
+        "url": "/lore/other/other-006"
+      }
     ],
     "docs": [],
     "discussions": [
@@ -28,7 +34,31 @@
         "date": "2026-03-04",
         "replies": []
       }
-    ]
+    ],
+    "meta": {
+      "0": {
+        "version": "1.1",
+        "date": "2026-02-08",
+        "notes": "Cross-referenced with newly recovered ledgers."
+      },
+      "1": {
+        "version": "1.0",
+        "date": "2025-01-15",
+        "notes": "Canonical event entry approved."
+      },
+      "creator": "Archivist Solen",
+      "owner": "Archives Division",
+      "designer": "Writer Solen",
+      "team": [
+        "Historian Cell"
+      ],
+      "projectName": "Archives Division",
+      "startedAt": "Chronicles of Gemora",
+      "completedAt": "2024-11-01",
+      "approvedAt": "2025-01-15",
+      "approvedBy": "2025-01-22",
+      "patchNotes": "Director Morneven"
+    }
   },
   {
     "id": "evt-002",
@@ -47,10 +77,37 @@
       "Eventual founding of Morneven (see The Founding Charter)"
     ],
     "relatedLinks": [
-      { "label": "Founding History", "url": "/lore/other/other-006" }
+      {
+        "label": "Founding History",
+        "url": "/lore/other/other-006"
+      }
     ],
     "docs": [],
-    "discussions": []
+    "discussions": [],
+    "meta": {
+      "0": {
+        "version": "1.1",
+        "date": "2026-02-08",
+        "notes": "Cross-referenced with newly recovered ledgers."
+      },
+      "1": {
+        "version": "1.0",
+        "date": "2025-01-15",
+        "notes": "Canonical event entry approved."
+      },
+      "creator": "Archivist Solen",
+      "owner": "Archives Division",
+      "designer": "Writer Solen",
+      "team": [
+        "Historian Cell"
+      ],
+      "projectName": "Archives Division",
+      "startedAt": "Chronicles of Gemora",
+      "completedAt": "2024-11-01",
+      "approvedAt": "2025-01-15",
+      "approvedBy": "2025-01-22",
+      "patchNotes": "Director Morneven"
+    }
   },
   {
     "id": "evt-003",
@@ -69,11 +126,41 @@
       "Annual Day of Light observance"
     ],
     "relatedLinks": [
-      { "label": "Solar's Lens - Doctrine", "url": "/lore/other/other-008" },
-      { "label": "Sola - Stellar Pass", "url": "/lore/other/other-007" }
+      {
+        "label": "Solar's Lens - Doctrine",
+        "url": "/lore/other/other-008"
+      },
+      {
+        "label": "Sola - Stellar Pass",
+        "url": "/lore/other/other-007"
+      }
     ],
     "docs": [],
-    "discussions": []
+    "discussions": [],
+    "meta": {
+      "0": {
+        "version": "1.1",
+        "date": "2026-02-08",
+        "notes": "Cross-referenced with newly recovered ledgers."
+      },
+      "1": {
+        "version": "1.0",
+        "date": "2025-01-15",
+        "notes": "Canonical event entry approved."
+      },
+      "creator": "Archivist Solen",
+      "owner": "Archives Division",
+      "designer": "Writer Solen",
+      "team": [
+        "Historian Cell"
+      ],
+      "projectName": "Archives Division",
+      "startedAt": "Chronicles of Gemora",
+      "completedAt": "2024-11-01",
+      "approvedAt": "2025-01-15",
+      "approvedBy": "2025-01-22",
+      "patchNotes": "Director Morneven"
+    }
   },
   {
     "id": "evt-004",
@@ -92,11 +179,41 @@
       "Mandate for the Archive Corps"
     ],
     "relatedLinks": [
-      { "label": "PL Clearance Matrix", "url": "/lore/other/other-005" },
-      { "label": "Morneven Doctrine", "url": "/lore/other/other-004" }
+      {
+        "label": "PL Clearance Matrix",
+        "url": "/lore/other/other-005"
+      },
+      {
+        "label": "Morneven Doctrine",
+        "url": "/lore/other/other-004"
+      }
     ],
     "docs": [],
-    "discussions": []
+    "discussions": [],
+    "meta": {
+      "0": {
+        "version": "1.1",
+        "date": "2026-02-08",
+        "notes": "Cross-referenced with newly recovered ledgers."
+      },
+      "1": {
+        "version": "1.0",
+        "date": "2025-01-15",
+        "notes": "Canonical event entry approved."
+      },
+      "creator": "Archivist Solen",
+      "owner": "Archives Division",
+      "designer": "Writer Solen",
+      "team": [
+        "Historian Cell"
+      ],
+      "projectName": "Archives Division",
+      "startedAt": "Chronicles of Gemora",
+      "completedAt": "2024-11-01",
+      "approvedAt": "2025-01-15",
+      "approvedBy": "2025-01-22",
+      "patchNotes": "Director Morneven"
+    }
   },
   {
     "id": "evt-005",
@@ -115,9 +232,18 @@
       "Step-Forward Signal added to mandatory L1 induction reading"
     ],
     "relatedLinks": [
-      { "label": "Pantry Continuity Initiative", "url": "/projects" },
-      { "label": "Logistics Bay 4 - The Pantry", "url": "/lore/places" },
-      { "label": "Sola - Negotiation Protocol", "url": "/lore/other/other-007" }
+      {
+        "label": "Pantry Continuity Initiative",
+        "url": "/projects"
+      },
+      {
+        "label": "Logistics Bay 4 - The Pantry",
+        "url": "/lore/places"
+      },
+      {
+        "label": "Sola - Negotiation Protocol",
+        "url": "/lore/other/other-007"
+      }
     ],
     "docs": [],
     "discussions": [
@@ -135,7 +261,31 @@
           }
         ]
       }
-    ]
+    ],
+    "meta": {
+      "0": {
+        "version": "1.1",
+        "date": "2026-02-08",
+        "notes": "Cross-referenced with newly recovered ledgers."
+      },
+      "1": {
+        "version": "1.0",
+        "date": "2025-01-15",
+        "notes": "Canonical event entry approved."
+      },
+      "creator": "Archivist Solen",
+      "owner": "Archives Division",
+      "designer": "Writer Solen",
+      "team": [
+        "Historian Cell"
+      ],
+      "projectName": "Archives Division",
+      "startedAt": "Chronicles of Gemora",
+      "completedAt": "2024-11-01",
+      "approvedAt": "2025-01-15",
+      "approvedBy": "2025-01-22",
+      "patchNotes": "Director Morneven"
+    }
   },
   {
     "id": "evt-006",
@@ -154,10 +304,37 @@
       "Public observance day inside Veil-covered cities"
     ],
     "relatedLinks": [
-      { "label": "Projects", "url": "/projects" }
+      {
+        "label": "Projects",
+        "url": "/projects"
+      }
     ],
     "docs": [],
-    "discussions": []
+    "discussions": [],
+    "meta": {
+      "0": {
+        "version": "1.1",
+        "date": "2026-02-08",
+        "notes": "Cross-referenced with newly recovered ledgers."
+      },
+      "1": {
+        "version": "1.0",
+        "date": "2025-01-15",
+        "notes": "Canonical event entry approved."
+      },
+      "creator": "Archivist Solen",
+      "owner": "Archives Division",
+      "designer": "Writer Solen",
+      "team": [
+        "Historian Cell"
+      ],
+      "projectName": "Archives Division",
+      "startedAt": "Chronicles of Gemora",
+      "completedAt": "2024-11-01",
+      "approvedAt": "2025-01-15",
+      "approvedBy": "2025-01-22",
+      "patchNotes": "Director Morneven"
+    }
   },
   {
     "id": "evt-007",
@@ -176,10 +353,37 @@
       "L1 first-badge ceremony"
     ],
     "relatedLinks": [
-      { "label": "Founding History", "url": "/lore/other/other-006" }
+      {
+        "label": "Founding History",
+        "url": "/lore/other/other-006"
+      }
     ],
     "docs": [],
-    "discussions": []
+    "discussions": [],
+    "meta": {
+      "0": {
+        "version": "1.1",
+        "date": "2026-02-08",
+        "notes": "Cross-referenced with newly recovered ledgers."
+      },
+      "1": {
+        "version": "1.0",
+        "date": "2025-01-15",
+        "notes": "Canonical event entry approved."
+      },
+      "creator": "Archivist Solen",
+      "owner": "Archives Division",
+      "designer": "Writer Solen",
+      "team": [
+        "Historian Cell"
+      ],
+      "projectName": "Archives Division",
+      "startedAt": "Chronicles of Gemora",
+      "completedAt": "2024-11-01",
+      "approvedAt": "2025-01-15",
+      "approvedBy": "2025-01-22",
+      "patchNotes": "Director Morneven"
+    }
   },
   {
     "id": "evt-008",
@@ -198,10 +402,37 @@
       "Standing reason for the universal carry mandate of Secret boxes"
     ],
     "relatedLinks": [
-      { "label": "Sola - Step-Forward Signal", "url": "/lore/other/other-007" }
+      {
+        "label": "Sola - Step-Forward Signal",
+        "url": "/lore/other/other-007"
+      }
     ],
     "docs": [],
-    "discussions": []
+    "discussions": [],
+    "meta": {
+      "0": {
+        "version": "1.1",
+        "date": "2026-02-08",
+        "notes": "Cross-referenced with newly recovered ledgers."
+      },
+      "1": {
+        "version": "1.0",
+        "date": "2025-01-15",
+        "notes": "Canonical event entry approved."
+      },
+      "creator": "Archivist Solen",
+      "owner": "Archives Division",
+      "designer": "Writer Solen",
+      "team": [
+        "Historian Cell"
+      ],
+      "projectName": "Archives Division",
+      "startedAt": "Chronicles of Gemora",
+      "completedAt": "2024-11-01",
+      "approvedAt": "2025-01-15",
+      "approvedBy": "2025-01-22",
+      "patchNotes": "Director Morneven"
+    }
   },
   {
     "id": "evt-009",
@@ -220,10 +451,37 @@
       "Re-recitation of the War of Light section of the Founding History"
     ],
     "relatedLinks": [
-      { "label": "War of Light", "url": "/lore/events/evt-003" }
+      {
+        "label": "War of Light",
+        "url": "/lore/events/evt-003"
+      }
     ],
     "docs": [],
-    "discussions": []
+    "discussions": [],
+    "meta": {
+      "0": {
+        "version": "1.1",
+        "date": "2026-02-08",
+        "notes": "Cross-referenced with newly recovered ledgers."
+      },
+      "1": {
+        "version": "1.0",
+        "date": "2025-01-15",
+        "notes": "Canonical event entry approved."
+      },
+      "creator": "Archivist Solen",
+      "owner": "Archives Division",
+      "designer": "Writer Solen",
+      "team": [
+        "Historian Cell"
+      ],
+      "projectName": "Archives Division",
+      "startedAt": "Chronicles of Gemora",
+      "completedAt": "2024-11-01",
+      "approvedAt": "2025-01-15",
+      "approvedBy": "2025-01-22",
+      "patchNotes": "Director Morneven"
+    }
   },
   {
     "id": "evt-010",
@@ -242,10 +500,37 @@
       "Stand-up of the Lattice Suppression specialty within Field"
     ],
     "relatedLinks": [
-      { "label": "GEC Mark II", "url": "/lore/other/other-002" }
+      {
+        "label": "GEC Mark II",
+        "url": "/lore/other/other-002"
+      }
     ],
     "docs": [],
-    "discussions": []
+    "discussions": [],
+    "meta": {
+      "0": {
+        "version": "1.1",
+        "date": "2026-02-08",
+        "notes": "Cross-referenced with newly recovered ledgers."
+      },
+      "1": {
+        "version": "1.0",
+        "date": "2025-01-15",
+        "notes": "Canonical event entry approved."
+      },
+      "creator": "Archivist Solen",
+      "owner": "Archives Division",
+      "designer": "Writer Solen",
+      "team": [
+        "Historian Cell"
+      ],
+      "projectName": "Archives Division",
+      "startedAt": "Chronicles of Gemora",
+      "completedAt": "2024-11-01",
+      "approvedAt": "2025-01-15",
+      "approvedBy": "2025-01-22",
+      "patchNotes": "Director Morneven"
+    }
   },
   {
     "id": "evt-011",
@@ -264,11 +549,41 @@
       "Cross-track presence at every facility quarterly"
     ],
     "relatedLinks": [
-      { "label": "PL Clearance Matrix", "url": "/lore/other/other-005" },
-      { "label": "Founding History", "url": "/lore/other/other-006" }
+      {
+        "label": "PL Clearance Matrix",
+        "url": "/lore/other/other-005"
+      },
+      {
+        "label": "Founding History",
+        "url": "/lore/other/other-006"
+      }
     ],
     "docs": [],
-    "discussions": []
+    "discussions": [],
+    "meta": {
+      "0": {
+        "version": "1.1",
+        "date": "2026-02-08",
+        "notes": "Cross-referenced with newly recovered ledgers."
+      },
+      "1": {
+        "version": "1.0",
+        "date": "2025-01-15",
+        "notes": "Canonical event entry approved."
+      },
+      "creator": "Archivist Solen",
+      "owner": "Archives Division",
+      "designer": "Writer Solen",
+      "team": [
+        "Historian Cell"
+      ],
+      "projectName": "Archives Division",
+      "startedAt": "Chronicles of Gemora",
+      "completedAt": "2024-11-01",
+      "approvedAt": "2025-01-15",
+      "approvedBy": "2025-01-22",
+      "patchNotes": "Director Morneven"
+    }
   },
   {
     "id": "evt-012",
@@ -287,9 +602,36 @@
       "Standing exclusion of the Pact of Sharing from audit"
     ],
     "relatedLinks": [
-      { "label": "Founding History", "url": "/lore/other/other-006" }
+      {
+        "label": "Founding History",
+        "url": "/lore/other/other-006"
+      }
     ],
     "docs": [],
-    "discussions": []
+    "discussions": [],
+    "meta": {
+      "0": {
+        "version": "1.1",
+        "date": "2026-02-08",
+        "notes": "Cross-referenced with newly recovered ledgers."
+      },
+      "1": {
+        "version": "1.0",
+        "date": "2025-01-15",
+        "notes": "Canonical event entry approved."
+      },
+      "creator": "Archivist Solen",
+      "owner": "Archives Division",
+      "designer": "Writer Solen",
+      "team": [
+        "Historian Cell"
+      ],
+      "projectName": "Archives Division",
+      "startedAt": "Chronicles of Gemora",
+      "completedAt": "2024-11-01",
+      "approvedAt": "2025-01-15",
+      "approvedBy": "2025-01-22",
+      "patchNotes": "Director Morneven"
+    }
   }
 ]

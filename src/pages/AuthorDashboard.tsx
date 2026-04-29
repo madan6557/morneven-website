@@ -3,11 +3,12 @@ import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getProjects, createProject, updateProject, deleteProject, getCharacters, createCharacter, updateCharacter, deleteCharacter, getPlaces, createPlace, updatePlace, deletePlace, getTechnology, createTech, updateTech, deleteTech, getGallery, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreatures, createCreature, updateCreature, deleteCreature, getOthers, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImage, setMapImage } from "@/services/api";
 import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, type CommandCenterSettings } from "@/services/commandCenterSettings";
-import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel } from "@/types";
+import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel, LoreMeta } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon } from "lucide-react";
 import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
 import NewsManagementSection from "@/components/NewsManagementSection";
 import CommandCenterSelectionPanel from "@/components/CommandCenterSelectionPanel";
+import MetadataEditor from "@/components/MetadataEditor";
 import { canAccessAuthorPanel, canEnterAuthorPanel } from "@/lib/pl";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -90,6 +91,8 @@ type EditableState = {
   contributions?: CharacterContribution[];
   // Gallery - preserved across edits so ownership doesn't transfer.
   uploadedBy?: string;
+  // Production-credit metadata (all lore + projects).
+  meta?: LoreMeta;
 };
 
 const isDashboardTab = (value: string | null): value is DashboardTab => {
@@ -291,6 +294,7 @@ export default function AuthorDashboard() {
         fullDesc: editing.fullDesc ?? "",
         patches: editing.patches ?? [],
         docs: editing.docs ?? [],
+        meta: editing.meta,
       };
 
       if (isCreating) await createProject(payload);
@@ -313,6 +317,7 @@ export default function AuthorDashboard() {
           stats: editing.stats ?? { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 },
           docs: editing.docs ?? [],
           contributions: editing.contributions ?? [],
+          meta: editing.meta,
         };
 
         if (isCreating) await createCharacter(payload);
@@ -326,6 +331,7 @@ export default function AuthorDashboard() {
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
+          meta: editing.meta,
         };
 
         if (isCreating) await createPlace(payload);
@@ -339,6 +345,7 @@ export default function AuthorDashboard() {
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
+          meta: editing.meta,
         };
 
         if (isCreating) await createTech(payload);
@@ -355,6 +362,7 @@ export default function AuthorDashboard() {
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
+          meta: editing.meta,
         };
 
         if (isCreating) await createCreature(payload);
@@ -368,6 +376,7 @@ export default function AuthorDashboard() {
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
+          meta: editing.meta,
         };
 
         if (isCreating) await createOther(payload);
@@ -968,6 +977,14 @@ export default function AuthorDashboard() {
                 </div>
               ))}
             </div>
+          )}
+
+          {/* Metadata editor (production credits) — for projects + lore. */}
+          {!isGallery && (
+            <MetadataEditor
+              value={editing.meta}
+              onChange={(next) => setEditing({ ...editing, meta: next })}
+            />
           )}
 
           <div className="flex justify-end gap-2">

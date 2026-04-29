@@ -61,6 +61,8 @@ export interface Project {
   archived?: boolean;
   // Original author / contributor of the project.
   contributor?: string;
+  // Production credits (creator, designer, team, dates, patch notes, etc.)
+  meta?: LoreMeta;
 }
 
 export interface CharacterStats {
