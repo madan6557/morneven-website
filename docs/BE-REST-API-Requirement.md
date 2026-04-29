@@ -5,7 +5,7 @@
 **Last updated:** 2026-04-29  
 **Status:** Implementation contract for backend developer  
 **Companion docs:**
-- `BERequierment.md` — Chat module deep-dive
+- `production-readiness-chat-plan.md` — Chat module deep-dive and phased production roadmap
 - `docs/backend-requirements-full-platform-2026-04-27.md` — earlier draft, superseded for non-chat modules
 
 ---
