@@ -215,7 +215,9 @@ export default function AuthorDashboard() {
   const [pendingFocusKey, setPendingFocusKey] = useState<string | null>(null);
   const newItemRef = (key: string) => (el: HTMLDivElement | null) => {
     if (!el || pendingFocusKey !== key) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Don't scroll — new items are prepended right under the ADD button so
+    // they're already in view. Just focus the first input without moving
+    // the viewport (preventScroll keeps the page exactly where it is).
     const firstInput = el.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
       "input:not([type=hidden]), textarea, select",
     );
