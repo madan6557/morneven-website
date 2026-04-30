@@ -209,32 +209,34 @@ export default function AuthorDashboard() {
   const fullDescRef = useRef<HTMLTextAreaElement>(null);
   const editFormRef = useRef<HTMLDivElement>(null);
   // Key of the most-recently-added inline list item (doc/contribution/patch).
-  // The matching wrapper uses `newItemRef` to scroll itself into view and
-  // focus its first input — preventing the page from "jumping up" when a
-  // new entry is prepended to a list.
+  // On phone layouts we intentionally do not focus the new field because the
+  // mobile keyboard/visual viewport can force-scroll the page.
   const [pendingFocusKey, setPendingFocusKey] = useState<string | null>(null);
   const newItemRef = (key: string) => (el: HTMLDivElement | null) => {
     if (!el || pendingFocusKey !== key) return;
-    // Don't scroll — new items are prepended right under the ADD button so
-    // they're already in view. Just focus the first input without moving
-    // the viewport (preventScroll keeps the page exactly where it is).
-    const firstInput = el.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-      "input:not([type=hidden]), textarea, select",
-    );
-    firstInput?.focus({ preventScroll: true });
+    if (window.matchMedia("(min-width: 768px)").matches) {
+      const firstInput = el.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+        "input:not([type=hidden]), textarea, select",
+      );
+      firstInput?.focus({ preventScroll: true });
+    }
     setPendingFocusKey(null);
   };
 
-  // Whenever a new edit/create form opens, scroll it into view so users
-  // editing items at the bottom of long lists don't have to scroll up.
+  const editSessionKey = editing
+    ? `${activeTab}:${loreSub}:${isCreating ? "create" : editing.id ?? "draft"}`
+    : null;
+
+  // Scroll only when a new edit/create session opens. Do not react to every
+  // field/list update, otherwise adding inline rows jumps back to the form top.
   useEffect(() => {
-    if (!editing) return;
+    if (!editSessionKey) return;
     // Defer to next frame so the form has rendered.
     const id = window.requestAnimationFrame(() => {
       editFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     return () => window.cancelAnimationFrame(id);
-  }, [editing]);
+  }, [editSessionKey]);
 
   useEffect(() => { loadAll(); }, []);
 
