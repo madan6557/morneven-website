@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { LoreMeta, LoreMetaPatch } from "@/types";
 import { Plus, X, Calendar } from "lucide-react";
 
