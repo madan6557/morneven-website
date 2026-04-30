@@ -980,12 +980,14 @@ export default function AuthorDashboard() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className={labelClass}>Patch Notes</label>
-                <button onClick={addPatch} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors">
+                <button type="button" onClick={addPatch} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors">
                   <Plus className="h-3 w-3" /> ADD PATCH
                 </button>
               </div>
-              {(editing.patches || []).map((patch: ProjectPatch, idx: number) => (
-                <div key={idx} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
+              {(editing.patches || []).map((patch: ProjectPatch & { _key?: string }, idx: number) => {
+                const key = patch._key ?? `patch-${idx}-${patch.version}`;
+                return (
+                <div key={key} ref={newItemRef(key)} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
                   <div className="flex-1 space-y-2">
                     <div className="flex flex-wrap gap-2 items-center">
                       <input type="text" value={patch.version} onChange={(e) => updatePatch(idx, "version", e.target.value)} placeholder="0.1" className="w-24 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
@@ -996,9 +998,10 @@ export default function AuthorDashboard() {
                     </div>
                     <input type="text" value={patch.notes} onChange={(e) => updatePatch(idx, "notes", e.target.value)} placeholder="Patch notes..." className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                   </div>
-                  <button onClick={() => removePatch(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => removePatch(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
