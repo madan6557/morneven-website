@@ -466,8 +466,10 @@ export default function AuthorDashboard() {
 
   // Doc management helpers
   const addDoc = () => {
-    const docs = [...(editing.docs || []), { type: "image" as const, url: "", caption: "" }];
+    const key = `doc-${Date.now()}`;
+    const docs = [...(editing.docs || []), { type: "image" as const, url: "", caption: "", _key: key } as DocItem & { _key?: string }];
     setEditing({ ...editing, docs });
+    setPendingFocusKey(key);
   };
   const updateDoc = (idx: number, field: keyof DocItem, value: string) => {
     const docs = [...(editing.docs || [])];
@@ -483,11 +485,13 @@ export default function AuthorDashboard() {
   // Character contribution helpers
   const addContribution = () => {
     if (!editing) return;
+    const id = `ctr-${Date.now()}`;
     const contributions: CharacterContribution[] = [
-      { id: `ctr-${Date.now()}`, title: "", description: "", date: todayStr() },
+      { id, title: "", description: "", date: todayStr() },
       ...(editing.contributions || []),
     ];
     setEditing({ ...editing, contributions });
+    setPendingFocusKey(id);
   };
   const updateContribution = (idx: number, field: keyof CharacterContribution, value: string) => {
     if (!editing) return;
@@ -508,8 +512,10 @@ export default function AuthorDashboard() {
     const existing = editing?.patches || [];
     const highest = highestVersion(existing.map((p) => p.version).filter(Boolean));
     const version = nextPatchVersion(highest);
-    const patches = [{ version, date: todayStr(), notes: "" }, ...existing];
+    const key = `patch-${Date.now()}`;
+    const patches = [{ version, date: todayStr(), notes: "", _key: key } as ProjectPatch & { _key?: string }, ...existing];
     setEditing({ ...editing, patches });
+    setPendingFocusKey(key);
   };
   const updatePatch = (idx: number, field: string, value: string) => {
     const patches = [...(editing.patches || [])];
