@@ -920,12 +920,14 @@ export default function AuthorDashboard() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className={labelClass}>Documentation (Images/Videos)</label>
-                <button onClick={addDoc} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors">
+                <button type="button" onClick={addDoc} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors">
                   <Plus className="h-3 w-3" /> ADD DOC
                 </button>
               </div>
-              {(editing.docs || []).map((doc: DocItem, idx: number) => (
-                <div key={idx} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
+              {(editing.docs || []).map((doc: DocItem & { _key?: string }, idx: number) => {
+                const key = doc._key ?? `doc-${idx}`;
+                return (
+                <div key={key} ref={newItemRef(key)} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
                   <div className="flex-1 space-y-2">
                     <div className="flex gap-2 items-center">
                       <select value={doc.type} onChange={(e) => updateDoc(idx, "type", e.target.value)} className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground">
@@ -936,9 +938,10 @@ export default function AuthorDashboard() {
                     <FileUploadField label="" value={doc.url} onChange={(url) => updateDoc(idx, "url", url)} accept={doc.type === "video" ? "video/*" : "image/*"} />
                     <input type="text" value={doc.caption} onChange={(e) => updateDoc(idx, "caption", e.target.value)} placeholder="Caption" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                   </div>
-                  <button onClick={() => removeDoc(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => removeDoc(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
