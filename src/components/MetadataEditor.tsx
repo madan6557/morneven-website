@@ -28,16 +28,15 @@ export default function MetadataEditor({ value, onChange }: MetadataEditorProps)
 
   const patches = meta.patchNotes ?? [];
   const setPatches = (next: LoreMetaPatch[]) => set("patchNotes", next);
-  // Track newest patch so the rendered row can scroll itself into view +
-  // focus its first input — avoids the page jumping back to the top of the
-  // form when ADD ENTRY is clicked while scrolled down.
+  // Track newest patch for desktop focus only. On phones, focusing a newly
+  // mounted input can force the mobile viewport to scroll when the keyboard
+  // opens, so mobile keeps the viewport still.
   const [pendingFocusIdx, setPendingFocusIdx] = useState<number | null>(null);
   const newPatchRef = (idx: number) => (el: HTMLDivElement | null) => {
     if (!el || pendingFocusIdx !== idx) return;
-    // No scrollIntoView — new patches are prepended directly under the
-    // ADD ENTRY button, so they're already visible. Focus without moving
-    // the viewport.
-    el.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+    if (window.matchMedia("(min-width: 768px)").matches) {
+      el.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+    }
     setPendingFocusIdx(null);
   };
   const addPatch = () => {
