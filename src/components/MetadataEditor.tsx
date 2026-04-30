@@ -34,7 +34,9 @@ export default function MetadataEditor({ value, onChange }: MetadataEditorProps)
   const [pendingFocusIdx, setPendingFocusIdx] = useState<number | null>(null);
   const newPatchRef = (idx: number) => (el: HTMLDivElement | null) => {
     if (!el || pendingFocusIdx !== idx) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    // No scrollIntoView — new patches are prepended directly under the
+    // ADD ENTRY button, so they're already visible. Focus without moving
+    // the viewport.
     el.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
     setPendingFocusIdx(null);
   };
