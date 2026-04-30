@@ -950,7 +950,7 @@ export default function AuthorDashboard() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className={labelClass}>Contributions</label>
-                <button onClick={addContribution} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors">
+                <button type="button" onClick={addContribution} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors">
                   <Plus className="h-3 w-3" /> ADD CONTRIBUTION
                 </button>
               </div>
@@ -958,7 +958,7 @@ export default function AuthorDashboard() {
                 <p className="text-[11px] font-body text-muted-foreground italic">No contributions yet. Use ADD CONTRIBUTION to log notable achievements, missions, or works.</p>
               )}
               {(editing.contributions || []).map((ctr, idx) => (
-                <div key={ctr.id} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
+                <div key={ctr.id} ref={newItemRef(ctr.id)} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
                   <div className="flex-1 space-y-2">
                     <div className="flex flex-wrap gap-2 items-center">
                       <input type="text" value={ctr.title} onChange={(e) => updateContribution(idx, "title", e.target.value)} placeholder="Title (e.g. Operation Blacklight)" className="flex-1 min-w-[180px] px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
@@ -969,7 +969,7 @@ export default function AuthorDashboard() {
                     </div>
                     <textarea value={ctr.description} onChange={(e) => updateContribution(idx, "description", e.target.value)} placeholder="Describe the contribution..." rows={2} className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground resize-y min-h-[60px]" />
                   </div>
-                  <button onClick={() => removeContribution(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => removeContribution(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
                 </div>
               ))}
             </div>
