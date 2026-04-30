@@ -469,7 +469,9 @@ export default function AuthorDashboard() {
   // Doc management helpers
   const addDoc = () => {
     const key = `doc-${Date.now()}`;
-    const docs = [...(editing.docs || []), { type: "image" as const, url: "", caption: "", _key: key } as DocItem & { _key?: string }];
+    // Prepend so newest doc appears at the top of the list, right under
+    // the ADD DOC button — keeps the editing context next to the action.
+    const docs = [{ type: "image" as const, url: "", caption: "", _key: key } as DocItem & { _key?: string }, ...(editing.docs || [])];
     setEditing({ ...editing, docs });
     setPendingFocusKey(key);
   };
