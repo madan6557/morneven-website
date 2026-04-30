@@ -215,7 +215,9 @@ export default function AuthorDashboard() {
   const [pendingFocusKey, setPendingFocusKey] = useState<string | null>(null);
   const newItemRef = (key: string) => (el: HTMLDivElement | null) => {
     if (!el || pendingFocusKey !== key) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Don't scroll — new items are prepended right under the ADD button so
+    // they're already in view. Just focus the first input without moving
+    // the viewport (preventScroll keeps the page exactly where it is).
     const firstInput = el.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
       "input:not([type=hidden]), textarea, select",
     );
@@ -467,7 +469,9 @@ export default function AuthorDashboard() {
   // Doc management helpers
   const addDoc = () => {
     const key = `doc-${Date.now()}`;
-    const docs = [...(editing.docs || []), { type: "image" as const, url: "", caption: "", _key: key } as DocItem & { _key?: string }];
+    // Prepend so newest doc appears at the top of the list, right under
+    // the ADD DOC button — keeps the editing context next to the action.
+    const docs = [{ type: "image" as const, url: "", caption: "", _key: key } as DocItem & { _key?: string }, ...(editing.docs || [])];
     setEditing({ ...editing, docs });
     setPendingFocusKey(key);
   };
