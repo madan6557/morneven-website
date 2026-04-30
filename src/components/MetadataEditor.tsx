@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { LoreMeta, LoreMetaPatch } from "@/types";
 import { Plus, X, Calendar } from "lucide-react";
 
@@ -27,9 +28,20 @@ export default function MetadataEditor({ value, onChange }: MetadataEditorProps)
 
   const patches = meta.patchNotes ?? [];
   const setPatches = (next: LoreMetaPatch[]) => set("patchNotes", next);
+  // Track newest patch so the rendered row can scroll itself into view +
+  // focus its first input — avoids the page jumping back to the top of the
+  // form when ADD ENTRY is clicked while scrolled down.
+  const [pendingFocusIdx, setPendingFocusIdx] = useState<number | null>(null);
+  const newPatchRef = (idx: number) => (el: HTMLDivElement | null) => {
+    if (!el || pendingFocusIdx !== idx) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+    setPendingFocusIdx(null);
+  };
   const addPatch = () => {
     const v = patches.length === 0 ? "0.1" : nextVersion(patches[0].version);
     setPatches([{ version: v, date: todayStr(), notes: "" }, ...patches]);
+    setPendingFocusIdx(0);
   };
   const updatePatch = (i: number, field: keyof LoreMetaPatch, val: string) => {
     const next = [...patches];
@@ -198,6 +210,7 @@ export default function MetadataEditor({ value, onChange }: MetadataEditorProps)
         {patches.map((p, i) => (
           <div
             key={i}
+            ref={newPatchRef(i)}
             className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border"
           >
             <div className="flex-1 space-y-2">

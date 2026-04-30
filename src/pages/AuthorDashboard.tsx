@@ -208,6 +208,20 @@ export default function AuthorDashboard() {
   const [ccSettings, setCcSettings] = useState<CommandCenterSettings>(() => getCommandCenterSettings());
   const fullDescRef = useRef<HTMLTextAreaElement>(null);
   const editFormRef = useRef<HTMLDivElement>(null);
+  // Key of the most-recently-added inline list item (doc/contribution/patch).
+  // The matching wrapper uses `newItemRef` to scroll itself into view and
+  // focus its first input — preventing the page from "jumping up" when a
+  // new entry is prepended to a list.
+  const [pendingFocusKey, setPendingFocusKey] = useState<string | null>(null);
+  const newItemRef = (key: string) => (el: HTMLDivElement | null) => {
+    if (!el || pendingFocusKey !== key) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const firstInput = el.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+      "input:not([type=hidden]), textarea, select",
+    );
+    firstInput?.focus({ preventScroll: true });
+    setPendingFocusKey(null);
+  };
 
   // Whenever a new edit/create form opens, scroll it into view so users
   // editing items at the bottom of long lists don't have to scroll up.
@@ -452,8 +466,10 @@ export default function AuthorDashboard() {
 
   // Doc management helpers
   const addDoc = () => {
-    const docs = [...(editing.docs || []), { type: "image" as const, url: "", caption: "" }];
+    const key = `doc-${Date.now()}`;
+    const docs = [...(editing.docs || []), { type: "image" as const, url: "", caption: "", _key: key } as DocItem & { _key?: string }];
     setEditing({ ...editing, docs });
+    setPendingFocusKey(key);
   };
   const updateDoc = (idx: number, field: keyof DocItem, value: string) => {
     const docs = [...(editing.docs || [])];
@@ -469,11 +485,13 @@ export default function AuthorDashboard() {
   // Character contribution helpers
   const addContribution = () => {
     if (!editing) return;
+    const id = `ctr-${Date.now()}`;
     const contributions: CharacterContribution[] = [
-      { id: `ctr-${Date.now()}`, title: "", description: "", date: todayStr() },
+      { id, title: "", description: "", date: todayStr() },
       ...(editing.contributions || []),
     ];
     setEditing({ ...editing, contributions });
+    setPendingFocusKey(id);
   };
   const updateContribution = (idx: number, field: keyof CharacterContribution, value: string) => {
     if (!editing) return;
@@ -494,8 +512,10 @@ export default function AuthorDashboard() {
     const existing = editing?.patches || [];
     const highest = highestVersion(existing.map((p) => p.version).filter(Boolean));
     const version = nextPatchVersion(highest);
-    const patches = [{ version, date: todayStr(), notes: "" }, ...existing];
+    const key = `patch-${Date.now()}`;
+    const patches = [{ version, date: todayStr(), notes: "", _key: key } as ProjectPatch & { _key?: string }, ...existing];
     setEditing({ ...editing, patches });
+    setPendingFocusKey(key);
   };
   const updatePatch = (idx: number, field: string, value: string) => {
     const patches = [...(editing.patches || [])];
@@ -900,12 +920,14 @@ export default function AuthorDashboard() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className={labelClass}>Documentation (Images/Videos)</label>
-                <button onClick={addDoc} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors">
+                <button type="button" onClick={addDoc} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors">
                   <Plus className="h-3 w-3" /> ADD DOC
                 </button>
               </div>
-              {(editing.docs || []).map((doc: DocItem, idx: number) => (
-                <div key={idx} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
+              {(editing.docs || []).map((doc: DocItem & { _key?: string }, idx: number) => {
+                const key = doc._key ?? `doc-${idx}`;
+                return (
+                <div key={key} ref={newItemRef(key)} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
                   <div className="flex-1 space-y-2">
                     <div className="flex gap-2 items-center">
                       <select value={doc.type} onChange={(e) => updateDoc(idx, "type", e.target.value)} className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground">
@@ -916,9 +938,10 @@ export default function AuthorDashboard() {
                     <FileUploadField label="" value={doc.url} onChange={(url) => updateDoc(idx, "url", url)} accept={doc.type === "video" ? "video/*" : "image/*"} />
                     <input type="text" value={doc.caption} onChange={(e) => updateDoc(idx, "caption", e.target.value)} placeholder="Caption" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                   </div>
-                  <button onClick={() => removeDoc(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => removeDoc(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -927,7 +950,7 @@ export default function AuthorDashboard() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className={labelClass}>Contributions</label>
-                <button onClick={addContribution} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors">
+                <button type="button" onClick={addContribution} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors">
                   <Plus className="h-3 w-3" /> ADD CONTRIBUTION
                 </button>
               </div>
@@ -935,7 +958,7 @@ export default function AuthorDashboard() {
                 <p className="text-[11px] font-body text-muted-foreground italic">No contributions yet. Use ADD CONTRIBUTION to log notable achievements, missions, or works.</p>
               )}
               {(editing.contributions || []).map((ctr, idx) => (
-                <div key={ctr.id} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
+                <div key={ctr.id} ref={newItemRef(ctr.id)} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
                   <div className="flex-1 space-y-2">
                     <div className="flex flex-wrap gap-2 items-center">
                       <input type="text" value={ctr.title} onChange={(e) => updateContribution(idx, "title", e.target.value)} placeholder="Title (e.g. Operation Blacklight)" className="flex-1 min-w-[180px] px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
@@ -946,7 +969,7 @@ export default function AuthorDashboard() {
                     </div>
                     <textarea value={ctr.description} onChange={(e) => updateContribution(idx, "description", e.target.value)} placeholder="Describe the contribution..." rows={2} className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground resize-y min-h-[60px]" />
                   </div>
-                  <button onClick={() => removeContribution(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => removeContribution(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
                 </div>
               ))}
             </div>
@@ -957,12 +980,14 @@ export default function AuthorDashboard() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className={labelClass}>Patch Notes</label>
-                <button onClick={addPatch} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors">
+                <button type="button" onClick={addPatch} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors">
                   <Plus className="h-3 w-3" /> ADD PATCH
                 </button>
               </div>
-              {(editing.patches || []).map((patch: ProjectPatch, idx: number) => (
-                <div key={idx} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
+              {(editing.patches || []).map((patch: ProjectPatch & { _key?: string }, idx: number) => {
+                const key = patch._key ?? `patch-${idx}-${patch.version}`;
+                return (
+                <div key={key} ref={newItemRef(key)} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
                   <div className="flex-1 space-y-2">
                     <div className="flex flex-wrap gap-2 items-center">
                       <input type="text" value={patch.version} onChange={(e) => updatePatch(idx, "version", e.target.value)} placeholder="0.1" className="w-24 px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
@@ -973,9 +998,10 @@ export default function AuthorDashboard() {
                     </div>
                     <input type="text" value={patch.notes} onChange={(e) => updatePatch(idx, "notes", e.target.value)} placeholder="Patch notes..." className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                   </div>
-                  <button onClick={() => removePatch(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => removePatch(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
