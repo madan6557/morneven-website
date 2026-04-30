@@ -208,6 +208,20 @@ export default function AuthorDashboard() {
   const [ccSettings, setCcSettings] = useState<CommandCenterSettings>(() => getCommandCenterSettings());
   const fullDescRef = useRef<HTMLTextAreaElement>(null);
   const editFormRef = useRef<HTMLDivElement>(null);
+  // Key of the most-recently-added inline list item (doc/contribution/patch).
+  // The matching wrapper uses `newItemRef` to scroll itself into view and
+  // focus its first input — preventing the page from "jumping up" when a
+  // new entry is prepended to a list.
+  const [pendingFocusKey, setPendingFocusKey] = useState<string | null>(null);
+  const newItemRef = (key: string) => (el: HTMLDivElement | null) => {
+    if (!el || pendingFocusKey !== key) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const firstInput = el.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+      "input:not([type=hidden]), textarea, select",
+    );
+    firstInput?.focus({ preventScroll: true });
+    setPendingFocusKey(null);
+  };
 
   // Whenever a new edit/create form opens, scroll it into view so users
   // editing items at the bottom of long lists don't have to scroll up.
