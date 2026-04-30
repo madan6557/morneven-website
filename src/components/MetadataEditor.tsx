@@ -210,6 +210,7 @@ export default function MetadataEditor({ value, onChange }: MetadataEditorProps)
         {patches.map((p, i) => (
           <div
             key={i}
+            ref={newPatchRef(i)}
             className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border"
           >
             <div className="flex-1 space-y-2">
