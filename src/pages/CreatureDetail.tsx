@@ -9,7 +9,7 @@ import {
   editCreatureDiscussionReply,
   deleteCreatureDiscussionReply,
 } from "@/services/api";
-import type { Creature, DiscussionComment, DiscussionMention } from "@/types";
+import type { Creature, DiscussionComment, DiscussionMention, LoreFieldNote } from "@/types";
 import { ArrowLeft, ShieldAlert, FileText, MapPin, NotebookPen, ExternalLink, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
@@ -214,8 +214,8 @@ export default function CreatureDetail() {
         </div>
 
         {/* Tabbed sections: Overview / Habitat / Notes */}
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-flex sm:grid-cols-4">
+          <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:w-auto sm:inline-flex sm:grid-cols-4 sm:gap-0 sm:h-10">
             <TabsTrigger value="overview" className="text-[11px] font-heading tracking-wider uppercase">
               <FileText className="h-3 w-3 mr-1.5" /> Overview
             </TabsTrigger>
@@ -268,26 +268,26 @@ export default function CreatureDetail() {
 
           <TabsContent value="notes" className="mt-6 space-y-6">
             <div className="max-w-3xl space-y-4">
-              <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Doctrine Notes</h2>
-              {doctrine ? (
-                <div className="hud-border bg-card p-5 space-y-3" style={{ borderColor: `${accent}30` }}>
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center text-[10px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border ${gecChipClass(creature.classification)}`}>
-                      {creature.classification}
-                    </span>
-                    <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Protocol · {doctrine.protocol}</span>
+                <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Field Notes & Observations</h2>
+                <FieldNoteList title="Field Notes" items={creature.fieldNotes ?? []} accent={accent} />
+                <FieldNoteList title="Observations" items={creature.observations ?? []} accent={accent} />
+                {doctrine ? (
+                  <div className="hud-border bg-card p-5 space-y-3" style={{ borderColor: `${accent}30` }}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`inline-flex items-center text-[10px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border ${gecChipClass(creature.classification)}`}>
+                        {creature.classification}
+                      </span>
+                      <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Protocol · {doctrine.protocol}</span>
+                    </div>
+                    <p className="text-sm font-body text-foreground/80 leading-relaxed">{doctrine.summary}</p>
+                    <Link
+                      to={`/lore/other/${GEC_LORE_ID}`}
+                      className="inline-flex items-center gap-1.5 text-xs font-heading tracking-wider uppercase text-muted-foreground hover:text-foreground transition-colors pt-1"
+                    >
+                      Read full GEC Mark II entry <ExternalLink className="h-3 w-3" />
+                    </Link>
                   </div>
-                  <p className="text-sm font-body text-foreground/80 leading-relaxed">{doctrine.summary}</p>
-                  <Link
-                    to={`/lore/other/${GEC_LORE_ID}`}
-                    className="inline-flex items-center gap-1.5 text-xs font-heading tracking-wider uppercase text-muted-foreground hover:text-foreground transition-colors pt-1"
-                  >
-                    Read full GEC Mark II entry <ExternalLink className="h-3 w-3" />
-                  </Link>
-                </div>
-              ) : (
-                <p className="text-sm font-body text-muted-foreground">No standing doctrine notes on file.</p>
-              )}
+                ) : null}
             </div>
           </TabsContent>
 
