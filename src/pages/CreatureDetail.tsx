@@ -341,3 +341,29 @@ export default function CreatureDetail() {
     </div>
   );
 }
+
+function FieldNoteList({ title, items, accent }: { title: string; items: LoreFieldNote[]; accent: string }) {
+  if (items.length === 0) {
+    return (
+      <div className="hud-border bg-card p-4" style={{ borderColor: `${accent}20` }}>
+        <p className="text-xs font-heading tracking-wider text-muted-foreground uppercase">{title}</p>
+        <p className="mt-2 text-sm font-body text-muted-foreground italic">No entries recorded.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-heading tracking-wider text-muted-foreground uppercase">{title}</p>
+      {items.map((item) => (
+        <div key={item.id} className="hud-border bg-card p-4 space-y-2" style={{ borderColor: `${accent}25` }}>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+            <h3 className="font-heading text-sm tracking-wider text-foreground uppercase">{item.title}</h3>
+            {item.date && <span className="text-[10px] font-display tracking-wider text-muted-foreground">{item.date}</span>}
+          </div>
+          <p className="text-sm font-body text-foreground/80 leading-relaxed whitespace-pre-line">{item.body}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
