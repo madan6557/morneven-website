@@ -657,6 +657,26 @@ Push WS event `notification.created` to recipient(s) on insert.
 
 Already specified in detail in `BERequierment.md`. This document references it for completeness.
 
+### 13.1 Attachment support status (implemented in FE, mandatory in BE)
+Yes — chat attachments are part of the current website behavior and MUST be supported in backend rollout.
+
+Minimum contract to keep FE compatible (`src/services/chatApi.ts`):
+- Message object may include `attachments?: ChatAttachment[]`.
+- `ChatAttachment` shape:
+  - `id: string`
+  - `name: string`
+  - `mimeType: string`
+  - `size: number`
+  - `dataUrl` (demo/localStorage) → backend equivalent should return storage-backed file URL metadata.
+- Send message endpoint must accept text-only, attachment-only, or mixed payload:
+  - `POST /chat/messages`
+  - body: `{ conversationId, text, attachments?, replyTo? }`
+- Reply preview contract should expose `hasAttachments` when the referenced message includes attachments.
+
+Backend implementation note:
+- Use shared upload flow in §14 (`/uploads/sign` + `/uploads/confirm`) with private access policy for chat files.
+- Enforce server-side validation for size/mime-type allowlist and malware scanning before message publish.
+
 Key cross-module hooks BE must wire:
 - `personnel.track` change → call `syncDivisionMembership(username, newTrack)` equivalent.
 - `mgmt_teams` insert/update → call `syncTeamGroup(teamId, name, members)` equivalent.
