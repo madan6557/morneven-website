@@ -102,11 +102,14 @@ const isDashboardTab = (value: string | null): value is DashboardTab => {
   return dashTabs.includes(value as DashboardTab);
 };
 
-type AttachmentMode = "url" | "image" | "video";
+type AttachmentMode = "url" | "image" | "video" | "file";
 
 function FileUploadField({ label, value, onChange, accept = "image/*,video/*" }: { label: string; value: string; onChange: (url: string) => void; accept?: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<AttachmentMode>(value ? "url" : "image");
+  const isUrlMode = mode === "url";
+  const isUploadedValue = value && !isUrlMode;
+  const selectedType = mode === "file" ? "file" : mode;
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -127,23 +130,31 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*" }:
           className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "video" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
           <Video className="h-3 w-3" /> Video
         </button>
+        <button type="button" onClick={() => setMode("file")}
+          className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "file" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
+          <FileIcon className="h-3 w-3" /> File
+        </button>
         <button type="button" onClick={() => setMode("url")}
           className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "url" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
           <LinkIcon className="h-3 w-3" /> URL
         </button>
       </div>
-      {mode === "url" ? (
+      {isUrlMode ? (
         <input type="text" value={value || ""} onChange={(e) => onChange(e.target.value)} className={inputClass} placeholder="https://..." />
       ) : (
         <div className="flex gap-2 items-center">
-          <input ref={fileRef} type="file" accept={mode === "image" ? "image/*" : "video/*"} onChange={handleFile} className="hidden" />
+          <input ref={fileRef} type="file" accept={mode === "image" ? "image/*" : mode === "video" ? "video/*" : accept} onChange={handleFile} className="hidden" />
           <button type="button" onClick={() => fileRef.current?.click()}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-display tracking-wider border border-dashed border-primary/40 rounded-sm text-primary hover:bg-primary/10 transition-colors">
-            <Upload className="h-3.5 w-3.5" /> Choose {mode === "image" ? "Image" : "Video"}
+            <Upload className="h-3.5 w-3.5" /> Choose {selectedType}
           </button>
-          {value && (
-            <span className="text-xs text-muted-foreground font-body truncate max-w-[200px]">
-              {value.startsWith("blob:") ? "File selected ✓" : value}
+          {isUploadedValue && (
+            <span className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-muted px-2 py-1 text-[10px] font-display uppercase tracking-wider text-foreground">
+              {selectedType === "image" ? <Image className="h-3 w-3" /> : selectedType === "video" ? <Video className="h-3 w-3" /> : <FileIcon className="h-3 w-3" />}
+              {selectedType}
+              <button type="button" onClick={() => onChange("")} className="text-muted-foreground hover:text-destructive" aria-label={`Remove ${selectedType} attachment`}>
+                <X className="h-3 w-3" />
+              </button>
             </span>
           )}
         </div>
