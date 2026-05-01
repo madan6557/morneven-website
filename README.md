@@ -8,8 +8,8 @@ Website ini adalah portal utama Morneven Institute, dibangun menggunakan React, 
 - Chat internal (DM, grup manual, dan kanal system-managed: team/division/institute)
 - Dashboard author (akses terbatas)
 - Halaman galeri dan detail
-- Halaman proyek dan detail
-- Halaman lore (karakter, tempat, teknologi)
+- Halaman proyek dan detail dengan metadata, patch notes, dan dokumentasi image/video/file
+- Halaman lore (karakter, tempat, teknologi, creature, event, other) dengan metadata, field notes, observations, diskusi, dan dokumentasi image/video/file
 - Pengaturan akun
 - Notifikasi dan toast
 - Integrasi Vercel Analytics dan Speed Insights
@@ -56,10 +56,8 @@ Deploy otomatis ke Vercel. Analytics dan Speed Insights aktif jika di-deploy di 
 ## Dokumen Kesiapan
 - `docs/chat-readiness-assessment-2026-04-27.md` - penilaian khusus modul chat.
 - `docs/full-platform-readiness-assessment-2026-04-27.md` - penilaian kesiapan demo seluruh fitur utama.
-<<<<<<< codex/validate-feature-for-demo-readiness
-- `docs/backend-requirements-full-platform-2026-04-27.md` - requirement BE detail lintas semua fitur untuk meminimalkan revisi implementasi.
-=======
->>>>>>> main
+- `docs/BE-REST-API-Requirement.md` - requirement BE detail lintas semua fitur untuk meminimalkan revisi implementasi, termasuk metadata lore/project, field notes, observations, dan attachment image/video/file.
+- `docs/backend-requirements-full-platform-2026-04-27.md` - baseline draft lama untuk konteks historis.
 
 
 ## Kontribusi
