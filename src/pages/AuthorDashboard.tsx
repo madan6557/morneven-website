@@ -529,6 +529,24 @@ export default function AuthorDashboard() {
     setEditing({ ...editing, contributions });
   };
 
+  const addFieldEntry = (field: "fieldNotes" | "observations") => {
+    if (!editing) return;
+    const id = `${field}-${Date.now()}`;
+    const next: LoreFieldNote[] = [{ id, title: "", body: "", date: todayStr() }, ...(editing[field] || [])];
+    setEditing({ ...editing, [field]: next });
+    setPendingFocusKey(id);
+  };
+  const updateFieldEntry = (field: "fieldNotes" | "observations", idx: number, key: keyof LoreFieldNote, value: string) => {
+    if (!editing) return;
+    const next = [...(editing[field] || [])];
+    next[idx] = { ...next[idx], [key]: value };
+    setEditing({ ...editing, [field]: next });
+  };
+  const removeFieldEntry = (field: "fieldNotes" | "observations", idx: number) => {
+    if (!editing) return;
+    setEditing({ ...editing, [field]: (editing[field] || []).filter((_, i) => i !== idx) });
+  };
+
   // Patch management for projects:
   // - new patches are inserted at the TOP of the list
   // - version auto-increments from the HIGHEST existing version
