@@ -10,7 +10,7 @@ import {
   editCharacterDiscussionReply,
   deleteCharacterDiscussionReply,
 } from "@/services/api";
-import type { Character, DiscussionComment, DiscussionMention } from "@/types";
+import type { Character, DiscussionComment, DiscussionMention, LoreFieldNote } from "@/types";
 import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
@@ -268,10 +268,8 @@ export default function CharacterDetail() {
 
               {/* Notes */}
               <TabsContent value="notes" className="mt-6 space-y-4">
-                <div className="hud-border bg-card p-6 text-center" style={{ borderColor: `${accentColor}30` }}>
-                  <NotebookPen className="h-5 w-5 mx-auto mb-2" style={{ color: accentColor }} />
-                  <p className="text-sm font-body text-muted-foreground italic">Field notes and observations can be recorded here.</p>
-                </div>
+                <FieldNoteList title="Field Notes" items={char.fieldNotes ?? []} accent={accentColor} />
+                <FieldNoteList title="Observations" items={char.observations ?? []} accent={accentColor} />
               </TabsContent>
 
               {/* Metadata */}
@@ -331,6 +329,33 @@ export default function CharacterDetail() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function FieldNoteList({ title, items, accent }: { title: string; items: LoreFieldNote[]; accent: string }) {
+  if (items.length === 0) {
+    return (
+      <div className="hud-border bg-card p-6 text-center" style={{ borderColor: `${accent}30` }}>
+        <NotebookPen className="h-5 w-5 mx-auto mb-2" style={{ color: accent }} />
+        <p className="text-xs font-heading tracking-wider text-muted-foreground uppercase">{title}</p>
+        <p className="mt-2 text-sm font-body text-muted-foreground italic">No entries recorded.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-heading tracking-wider text-muted-foreground uppercase">{title}</p>
+      {items.map((item) => (
+        <div key={item.id} className="hud-border bg-card p-4 space-y-2" style={{ borderColor: `${accent}25` }}>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+            <h3 className="font-heading text-sm tracking-wider text-foreground uppercase">{item.title}</h3>
+            {item.date && <span className="text-[10px] font-display tracking-wider text-muted-foreground">{item.date}</span>}
+          </div>
+          <p className="text-sm font-body text-foreground/80 leading-relaxed whitespace-pre-line">{item.body}</p>
+        </div>
+      ))}
     </div>
   );
 }
