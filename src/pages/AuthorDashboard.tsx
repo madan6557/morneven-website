@@ -104,12 +104,16 @@ const isDashboardTab = (value: string | null): value is DashboardTab => {
 
 type AttachmentMode = "url" | "image" | "video" | "file";
 
-function FileUploadField({ label, value, onChange, accept = "image/*,video/*" }: { label: string; value: string; onChange: (url: string) => void; accept?: string }) {
+function FileUploadField({ label, value, onChange, accept = "image/*,video/*", attachmentType = "image" }: { label: string; value: string; onChange: (url: string) => void; accept?: string; attachmentType?: Exclude<AttachmentMode, "url"> }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [mode, setMode] = useState<AttachmentMode>(value ? "url" : "image");
+  const [mode, setMode] = useState<AttachmentMode>(value ? "url" : attachmentType);
   const isUrlMode = mode === "url";
   const isUploadedValue = value && !isUrlMode;
   const selectedType = mode === "file" ? "file" : mode;
+
+  useEffect(() => {
+    if (mode !== "url") setMode(attachmentType);
+  }, [attachmentType]);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
