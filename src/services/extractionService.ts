@@ -66,12 +66,25 @@ function buildFiles(mode: ExtractionMode) {
     files.push({ name: "db/technology.json", content: JSON.stringify(db.technology, null, 2) });
     files.push({ name: "db/events.json", content: JSON.stringify(db.events, null, 2) });
     files.push({ name: "db/others.json", content: JSON.stringify(db.others, null, 2) });
+    files.push({ name: "db/gallery.json", content: JSON.stringify(db.gallery, null, 2) });
   }
   if (mode === "images" || mode === "all") {
     const map = [{ title: "map", src: localStorage.getItem("morneven_map_image") ?? "" }];
     const gallery = db.gallery.filter((i) => i.type === "image").map((i) => ({ title: i.title, src: i.thumbnail, tags: i.tags }));
-    files.push({ name: "images/map/images.json", content: JSON.stringify(map, null, 2) });
-    files.push({ name: "images/gallery/images.json", content: JSON.stringify(gallery, null, 2) });
+    const byCategory = {
+      character: gallery.filter((g) => g.tags?.includes("character")),
+      creature: gallery.filter((g) => g.tags?.includes("creature")),
+      map,
+      technology: gallery.filter((g) => g.tags?.includes("technology")),
+      environment: gallery.filter((g) => g.tags?.includes("environment")),
+      other: gallery.filter((g) => !["character", "creature", "technology", "environment"].some((t) => g.tags?.includes(t))),
+    };
+    files.push({ name: "images/map/images.json", content: JSON.stringify(byCategory.map, null, 2) });
+    files.push({ name: "images/character/images.json", content: JSON.stringify(byCategory.character, null, 2) });
+    files.push({ name: "images/creature/images.json", content: JSON.stringify(byCategory.creature, null, 2) });
+    files.push({ name: "images/technology/images.json", content: JSON.stringify(byCategory.technology, null, 2) });
+    files.push({ name: "images/environment/images.json", content: JSON.stringify(byCategory.environment, null, 2) });
+    files.push({ name: "images/other/images.json", content: JSON.stringify(byCategory.other, null, 2) });
   }
   return files;
 }
