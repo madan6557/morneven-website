@@ -1014,7 +1014,7 @@ export default function AuthorDashboard() {
           {hasDocs && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className={labelClass}>Documentation (Images/Videos)</label>
+                <label className={labelClass}>Documentation (Images/Videos/Files)</label>
                 <button type="button" onClick={addDoc} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors">
                   <Plus className="h-3 w-3" /> ADD DOC
                 </button>
@@ -1028,15 +1028,37 @@ export default function AuthorDashboard() {
                       <select value={doc.type} onChange={(e) => updateDoc(idx, "type", e.target.value)} className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground">
                         <option value="image">Image</option>
                         <option value="video">Video</option>
+                        <option value="file">File</option>
                       </select>
                     </div>
-                    <FileUploadField label="" value={doc.url} onChange={(url) => updateDoc(idx, "url", url)} accept={doc.type === "video" ? "video/*" : "image/*"} />
+                    <FileUploadField label="" value={doc.url} onChange={(url) => updateDoc(idx, "url", url)} accept={doc.type === "video" ? "video/*" : doc.type === "image" ? "image/*" : "*/*"} attachmentType={doc.type} />
                     <input type="text" value={doc.caption} onChange={(e) => updateDoc(idx, "caption", e.target.value)} placeholder="Caption" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                   </div>
                   <button type="button" onClick={() => removeDoc(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
                 </div>
                 );
               })}
+            </div>
+          )}
+
+          {activeTab === "lore" && (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <FieldEntryEditor
+                label="Field Notes"
+                items={editing.fieldNotes || []}
+                onAdd={() => addFieldEntry("fieldNotes")}
+                onUpdate={(idx, key, value) => updateFieldEntry("fieldNotes", idx, key, value)}
+                onRemove={(idx) => removeFieldEntry("fieldNotes", idx)}
+                itemRef={newItemRef}
+              />
+              <FieldEntryEditor
+                label="Observations"
+                items={editing.observations || []}
+                onAdd={() => addFieldEntry("observations")}
+                onUpdate={(idx, key, value) => updateFieldEntry("observations", idx, key, value)}
+                onRemove={(idx) => removeFieldEntry("observations", idx)}
+                itemRef={newItemRef}
+              />
             </div>
           )}
 
