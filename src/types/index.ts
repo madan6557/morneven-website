@@ -145,6 +145,8 @@ export interface OtherLore {
   shortDesc: string;
   fullDesc: string;
   docs: DocItem[];
+  fieldNotes?: LoreFieldNote[];
+  observations?: LoreFieldNote[];
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
@@ -184,6 +186,8 @@ export interface LoreEvent {
   consequences?: string[];
   relatedLinks?: EventRelatedLink[];
   docs: DocItem[];
+  fieldNotes?: LoreFieldNote[];
+  observations?: LoreFieldNote[];
   discussions?: DiscussionComment[];
   // Original author / contributor for attribution.
   contributor?: string;
@@ -221,6 +225,8 @@ export interface Place {
   shortDesc: string;
   fullDesc: string;
   docs: DocItem[];
+  fieldNotes?: LoreFieldNote[];
+  observations?: LoreFieldNote[];
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
@@ -234,6 +240,8 @@ export interface Technology {
   shortDesc: string;
   fullDesc: string;
   docs: DocItem[];
+  fieldNotes?: LoreFieldNote[];
+  observations?: LoreFieldNote[];
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
