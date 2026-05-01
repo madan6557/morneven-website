@@ -106,7 +106,8 @@ type AttachmentMode = "url" | "image" | "video" | "file";
 
 function FileUploadField({ label, value, onChange, accept = "image/*,video/*", attachmentType = "image" }: { label: string; value: string; onChange: (url: string) => void; accept?: string; attachmentType?: Exclude<AttachmentMode, "url"> }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [mode, setMode] = useState<AttachmentMode>(value ? "url" : attachmentType);
+  const looksLikeManualUrl = /^https?:\/\//i.test(value) && !/storage|blob:|object|assets/i.test(value);
+  const [mode, setMode] = useState<AttachmentMode>(looksLikeManualUrl ? "url" : attachmentType);
   const isUrlMode = mode === "url";
   const isUploadedValue = value && !isUrlMode;
   const selectedType = mode === "file" ? "file" : mode;
