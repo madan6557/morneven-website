@@ -168,6 +168,49 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*", a
   );
 }
 
+function FieldEntryEditor({
+  label,
+  items,
+  onAdd,
+  onUpdate,
+  onRemove,
+  itemRef,
+}: {
+  label: string;
+  items: LoreFieldNote[];
+  onAdd: () => void;
+  onUpdate: (idx: number, key: keyof LoreFieldNote, value: string) => void;
+  onRemove: (idx: number) => void;
+  itemRef: (key: string) => (el: HTMLDivElement | null) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <label className={labelClass}>{label}</label>
+        <button type="button" onClick={onAdd} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors">
+          <Plus className="h-3 w-3" /> ADD ENTRY
+        </button>
+      </div>
+      {items.length === 0 && <p className="text-[11px] font-body text-muted-foreground italic">No {label.toLowerCase()} recorded.</p>}
+      {items.map((item, idx) => (
+        <div key={item.id} ref={itemRef(item.id)} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
+          <div className="flex-1 space-y-2">
+            <div className="flex flex-wrap gap-2 items-center">
+              <input type="text" value={item.title} onChange={(e) => onUpdate(idx, "title", e.target.value)} placeholder="Title" className="flex-1 min-w-[180px] px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+              <input type="date" value={item.date || ""} onChange={(e) => onUpdate(idx, "date", e.target.value)} className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
+              <button type="button" onClick={() => onUpdate(idx, "date", todayStr())} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors" title="Set to today">
+                <Calendar className="h-3 w-3" /> TODAY
+              </button>
+            </div>
+            <textarea value={item.body} onChange={(e) => onUpdate(idx, "body", e.target.value)} placeholder="Write entry..." rows={3} className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground resize-y min-h-[70px]" />
+          </div>
+          <button type="button" onClick={() => onRemove(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AuthorDashboard() {
   const { role, username, personnelLevel, track } = useAuth();
   const [params, setParams] = useSearchParams();
