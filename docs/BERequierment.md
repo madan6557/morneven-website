@@ -444,3 +444,11 @@ BE implementation is handover-complete when all are true:
 5. Error contract from Section 7 is consistently used.
 6. Ops checklist from Section 11 is completed.
 7. FE smoke test passes with backend enabled (chat send/invite/kick/role/attachment/reply).
+
+
+## PL7 Extraction Feature (Settings)
+- Add backend support for asynchronous extraction jobs returning ZIP artifacts.
+- Modes: DB-only, Images-only, and combined export.
+- Access control: PL7 only, require password verification and CONFIRM phrase gate.
+- Keep extraction history for 30 days with selective delete and clear-all endpoints.
+- Provide downloadable artifact URL when job status is completed.
