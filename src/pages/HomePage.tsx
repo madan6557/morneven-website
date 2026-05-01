@@ -1,11 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { getProjects, getCharacters, getNews, getGallery, getPlaces, getTechnology } from "@/services/api";
+import {
+  getCharactersPage,
+  getContentStats,
+  getGalleryPage,
+  getNewsPage,
+  getPlacesPage,
+  getProjectsPage,
+  getTechnologyPage,
+  type ContentStats,
+} from "@/services/api";
 import {
   getCommandCenterSettings,
-  resolveSectionItems,
+  type CommandCenterSection,
   type CommandCenterSettings,
 } from "@/services/commandCenterSettings";
 import type { Project, Character, NewsItem, GalleryItem, Place, Technology } from "@/types";
@@ -31,6 +40,14 @@ const fadeUp = (delay: number) => ({
   transition: { delay, duration: 0.4 },
 });
 
+const COMMAND_CENTER_SAFE_PAGE_SIZE = 24;
+const emptyStats: ContentStats = {
+  totalProjects: 0,
+  activeProjects: 0,
+  totalLore: 0,
+  totalGallery: 0,
+};
+
 function StatCard({ icon: Icon, label, value, color, delay }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number; color: string; delay: number }) {
   return (
     <motion.div {...fadeUp(delay)} className="hud-border bg-card p-4 flex items-center gap-4">
@@ -53,16 +70,49 @@ export default function HomePage() {
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
   const [tech, setTech] = useState<Technology[]>([]);
+  const [stats, setStats] = useState<ContentStats>(emptyStats);
   const [settings, setSettings] = useState<CommandCenterSettings>(() => getCommandCenterSettings());
 
   useEffect(() => {
-    getProjects().then(setProjects);
-    getCharacters().then(setCharacters);
-    getNews().then(setNews);
-    getGallery().then(setGallery);
-    getPlaces().then(setPlaces);
-    getTechnology().then(setTech);
-  }, []);
+    let isActive = true;
+
+    const pageSizeFor = (section: CommandCenterSection) => {
+      const manual = settings.manualSelections[section] ?? [];
+      if (manual.length > 0) return manual.length;
+
+      const limit = settings.itemLimits[section] ?? 0;
+      return limit > 0 ? limit : COMMAND_CENTER_SAFE_PAGE_SIZE;
+    };
+
+    const idsFor = (section: CommandCenterSection) => {
+      const manual = settings.manualSelections[section] ?? [];
+      return manual.length > 0 ? manual : undefined;
+    };
+
+    void Promise.all([
+      getContentStats(),
+      settings.showProjects ? getProjectsPage({ page: 1, pageSize: pageSizeFor("projects"), ids: idsFor("projects") }) : Promise.resolve(null),
+      settings.showNews ? getNewsPage({ page: 1, pageSize: pageSizeFor("news"), ids: idsFor("news") }) : Promise.resolve(null),
+      settings.showCharacters ? getCharactersPage({ page: 1, pageSize: pageSizeFor("characters"), ids: idsFor("characters"), sort: idsFor("characters") ? undefined : "name" }) : Promise.resolve(null),
+      settings.showPlaces ? getPlacesPage({ page: 1, pageSize: pageSizeFor("places"), ids: idsFor("places"), sort: idsFor("places") ? undefined : "name" }) : Promise.resolve(null),
+      settings.showTechnology ? getTechnologyPage({ page: 1, pageSize: pageSizeFor("technology"), ids: idsFor("technology"), sort: idsFor("technology") ? undefined : "name" }) : Promise.resolve(null),
+      settings.showGallery ? getGalleryPage({ page: 1, pageSize: pageSizeFor("gallery"), ids: idsFor("gallery") }) : Promise.resolve(null),
+    ]).then(([nextStats, nextProjects, nextNews, nextCharacters, nextPlaces, nextTech, nextGallery]) => {
+      if (!isActive) return;
+
+      setStats(nextStats);
+      setProjects(nextProjects?.items ?? []);
+      setNews(nextNews?.items ?? []);
+      setCharacters(nextCharacters?.items ?? []);
+      setPlaces(nextPlaces?.items ?? []);
+      setTech(nextTech?.items ?? []);
+      setGallery(nextGallery?.items ?? []);
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [settings]);
 
   // Refresh settings when author saves them, or when tab regains focus
   useEffect(() => {
@@ -76,16 +126,6 @@ export default function HomePage() {
       window.removeEventListener("storage", refresh);
     };
   }, []);
-
-  const activeProjects = projects.filter((p) => p.status === "On Progress").length;
-  const totalLore = characters.length + places.length + tech.length;
-
-  const visibleProjects = useMemo(() => resolveSectionItems("projects", projects, settings), [projects, settings]);
-  const visibleNews = useMemo(() => resolveSectionItems("news", news, settings), [news, settings]);
-  const visibleCharacters = useMemo(() => resolveSectionItems("characters", characters, settings), [characters, settings]);
-  const visiblePlaces = useMemo(() => resolveSectionItems("places", places, settings), [places, settings]);
-  const visibleTech = useMemo(() => resolveSectionItems("technology", tech, settings), [tech, settings]);
-  const visibleGallery = useMemo(() => resolveSectionItems("gallery", gallery, settings), [gallery, settings]);
 
   const statusColor: Record<string, string> = {
     "On Progress": "text-accent-yellow",
@@ -114,10 +154,10 @@ export default function HomePage() {
       {/* Stat Cards */}
       {settings.showStats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <StatCard icon={FolderKanban} label="Total Projects" value={projects.length} color="bg-primary/20 text-primary" delay={0.05} />
-          <StatCard icon={Activity} label="In Progress" value={activeProjects} color="bg-green-500/20 text-green-400" delay={0.1} />
-          <StatCard icon={BookOpen} label="Lore Entries" value={totalLore} color="bg-secondary/20 text-secondary" delay={0.15} />
-          <StatCard icon={Image} label="Gallery Items" value={gallery.length} color="bg-accent/20 text-accent-foreground" delay={0.2} />
+          <StatCard icon={FolderKanban} label="Total Projects" value={stats.totalProjects} color="bg-primary/20 text-primary" delay={0.05} />
+          <StatCard icon={Activity} label="In Progress" value={stats.activeProjects} color="bg-green-500/20 text-green-400" delay={0.1} />
+          <StatCard icon={BookOpen} label="Lore Entries" value={stats.totalLore} color="bg-secondary/20 text-secondary" delay={0.15} />
+          <StatCard icon={Image} label="Gallery Items" value={stats.totalGallery} color="bg-accent/20 text-accent-foreground" delay={0.2} />
         </div>
       )}
 
@@ -136,7 +176,7 @@ export default function HomePage() {
               </div>
               <div className="mecha-line" />
               <div className="space-y-3">
-                {visibleProjects.map((p) => (
+                {projects.map((p) => (
                   <Link
                     key={p.id}
                     to={`/projects/${p.id}`}
@@ -164,7 +204,7 @@ export default function HomePage() {
               </h3>
               <div className="mecha-line" />
               <ul className="space-y-3">
-                {visibleNews.map((n) => {
+                {news.map((n) => {
                   const inner = (
                     <>
                       <Clock className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
@@ -217,7 +257,7 @@ export default function HomePage() {
               </div>
               <div className="mecha-line" />
               <div className="space-y-3">
-                {visibleCharacters.map((c) => (
+                {characters.map((c) => (
                   <Link
                     key={c.id}
                     to={`/lore/characters/${c.id}`}
@@ -257,7 +297,7 @@ export default function HomePage() {
               </div>
               <div className="mecha-line" />
               <div className="space-y-3">
-                {visiblePlaces.map((p) => (
+                {places.map((p) => (
                   <Link
                     key={p.id}
                     to={`/lore/places/${p.id}`}
@@ -283,7 +323,7 @@ export default function HomePage() {
               </div>
               <div className="mecha-line" />
               <div className="space-y-3">
-                {visibleTech.map((t) => (
+                {tech.map((t) => (
                   <Link
                     key={t.id}
                     to={`/lore/tech/${t.id}`}
@@ -312,7 +352,7 @@ export default function HomePage() {
           </div>
           <div className="mecha-line" />
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {visibleGallery.map((g) => (
+            {gallery.map((g) => (
               <Link
                 key={g.id}
                 to={`/gallery/${g.id}`}
@@ -320,7 +360,7 @@ export default function HomePage() {
               >
                 <div className="aspect-video bg-muted flex items-center justify-center">
                   {g.thumbnail ? (
-                    <img src={g.thumbnail} alt={g.title} className="w-full h-full object-cover" />
+                    <img src={g.thumbnail} alt={g.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   ) : (
                     <Image className="h-8 w-8 text-muted-foreground/30" />
                   )}

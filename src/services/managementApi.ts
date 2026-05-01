@@ -65,6 +65,7 @@ export interface QuotaRecord {
 const KEY_REQ = "morneven_mgmt_requests";
 const KEY_TEAMS = "morneven_mgmt_teams";
 const KEY_QUOTA = "morneven_mgmt_quotas";
+const EVT = "morneven:management-changed";
 
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -79,6 +80,7 @@ function write<T>(key: string, value: T) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
+    window.dispatchEvent(new CustomEvent(EVT));
   } catch {
     /* ignore */
   }
@@ -448,4 +450,19 @@ export function canDecideRequest(
     default:
       return false;
   }
+}
+
+export function getReviewableRequestCount(viewer: { level: PersonnelLevel; track: PersonnelTrack; username: string }): number {
+  return requests.filter((request) => canDecideRequest(request, viewer)).length;
+}
+
+export function subscribeManagement(cb: () => void): () => void {
+  if (typeof window === "undefined") return () => undefined;
+  const handler = () => cb();
+  window.addEventListener(EVT, handler);
+  window.addEventListener("storage", handler);
+  return () => {
+    window.removeEventListener(EVT, handler);
+    window.removeEventListener("storage", handler);
+  };
 }

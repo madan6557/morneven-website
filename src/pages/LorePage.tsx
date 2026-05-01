@@ -1,13 +1,65 @@
-import { useEffect, useState } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
-import { getCharacters, getPlaces, getTechnology, getCreatures, getOthers, getEvents } from "@/services/api";
-import type { Character, Place, Technology, Creature, OtherLore, LoreEvent } from "@/types";
+import { useDeferredValue, useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  getCharactersPage,
+  getCreaturesPage,
+  getEventsPage,
+  getOthersPage,
+  getPlacesPage,
+  getTechnologyPage,
+  type PageInfo,
+  type PaginatedResponse,
+} from "@/services/api";
+import type { Character, Creature, OtherLore, Place, Technology, LoreEvent } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Search, ArrowUpDown, ShieldAlert, ShieldCheck, CalendarClock } from "lucide-react";
+import { ArrowUpDown, CalendarClock, Plus, Search, ShieldAlert, ShieldCheck } from "lucide-react";
 import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 
 const tabs = ["Characters", "Places", "Technology", "Creatures", "Events", "Other", "Personnel"] as const;
+type LoreTab = Exclude<typeof tabs[number], "Personnel">;
 type SortOption = "name" | "name-desc";
+
+type LoreListState<T> = {
+  items: T[];
+  pageInfo: PageInfo | null;
+  loading: boolean;
+  queryKey: string;
+};
+
+type LoreLists = {
+  Characters: LoreListState<Character>;
+  Places: LoreListState<Place>;
+  Technology: LoreListState<Technology>;
+  Creatures: LoreListState<Creature>;
+  Events: LoreListState<LoreEvent>;
+  Other: LoreListState<OtherLore>;
+};
+
+type LorePageParams = {
+  page: number;
+  pageSize: number;
+  search: string;
+  sort: SortOption;
+};
+type LoreItem = Character | Place | Technology | Creature | LoreEvent | OtherLore;
+
+const loreRoutes: Record<LoreTab, string> = {
+  Characters: "characters",
+  Places: "places",
+  Technology: "tech",
+  Creatures: "creatures",
+  Events: "events",
+  Other: "other",
+};
+
+const emptyMessages: Record<LoreTab, string> = {
+  Characters: "No characters found.",
+  Places: "No places found.",
+  Technology: "No technology found.",
+  Creatures: "No creatures catalogued.",
+  Events: "No events recorded.",
+  Other: "No entries found.",
+};
 
 const dangerColor: Record<number, string> = {
   1: "text-emerald-500",
@@ -17,53 +69,149 @@ const dangerColor: Record<number, string> = {
   5: "text-destructive",
 };
 
+function emptyList<T>(): LoreListState<T> {
+  return {
+    items: [],
+    pageInfo: null,
+    loading: false,
+    queryKey: "",
+  };
+}
+
+function getResponsivePageSize() {
+  if (typeof window === "undefined") return 24;
+  if (window.matchMedia("(max-width: 640px)").matches) return 12;
+  if (window.matchMedia("(max-width: 1024px)").matches) return 18;
+  return 24;
+}
+
+function routeToTab(category?: string): LoreTab {
+  switch (category?.toLowerCase()) {
+    case "places":
+      return "Places";
+    case "tech":
+    case "technology":
+      return "Technology";
+    case "creatures":
+      return "Creatures";
+    case "events":
+      return "Events";
+    case "other":
+      return "Other";
+    case "characters":
+    default:
+      return "Characters";
+  }
+}
+
+function buildQueryKey(search: string, sort: SortOption, pageSize: number) {
+  return `${search.trim().toLowerCase()}|${sort}|${pageSize}`;
+}
+
+function loadLoreTab(tab: LoreTab, params: LorePageParams): Promise<PaginatedResponse<LoreItem>> {
+  if (tab === "Characters") return getCharactersPage(params);
+  if (tab === "Places") return getPlacesPage(params);
+  if (tab === "Technology") return getTechnologyPage(params);
+  if (tab === "Creatures") return getCreaturesPage(params);
+  if (tab === "Events") return getEventsPage(params);
+  return getOthersPage(params);
+}
+
 export default function LorePage() {
   const { category } = useParams<{ category?: string }>();
   const navigate = useNavigate();
-  const [active, setActive] = useState<string>(category ? category.charAt(0).toUpperCase() + category.slice(1) : "Characters");
-  const [characters, setCharacters] = useState<Character[]>([]);
-  const [places, setPlaces] = useState<Place[]>([]);
-  const [tech, setTech] = useState<Technology[]>([]);
-  const [creatures, setCreatures] = useState<Creature[]>([]);
-  const [others, setOthers] = useState<OtherLore[]>([]);
-  const [events, setEvents] = useState<LoreEvent[]>([]);
+  const [active, setActive] = useState<LoreTab>(() => routeToTab(category));
+  const [lists, setLists] = useState<LoreLists>({
+    Characters: emptyList(),
+    Places: emptyList(),
+    Technology: emptyList(),
+    Creatures: emptyList(),
+    Events: emptyList(),
+    Other: emptyList(),
+  });
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("name");
+  const [pageSize, setPageSize] = useState(getResponsivePageSize);
+  const deferredSearch = useDeferredValue(search);
   const { role } = useAuth();
 
   useEffect(() => {
-    getCharacters().then(setCharacters);
-    getPlaces().then(setPlaces);
-    getTechnology().then(setTech);
-    getCreatures().then(setCreatures);
-    getOthers().then(setOthers);
-    getEvents().then(setEvents);
-  }, []);
-
-  useEffect(() => {
-    if (category) setActive(category.charAt(0).toUpperCase() + category.slice(1));
+    setActive(routeToTab(category));
   }, [category]);
 
-  const matchSearch = (name: string, desc: string) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return name.toLowerCase().includes(q) || desc.toLowerCase().includes(q);
-  };
+  useEffect(() => {
+    const updatePageSize = () => setPageSize(getResponsivePageSize());
+    window.addEventListener("resize", updatePageSize);
+    return () => window.removeEventListener("resize", updatePageSize);
+  }, []);
 
-  const sortItems = <T extends { name?: string; title?: string }>(items: T[]): T[] => {
-    return [...items].sort((a, b) => {
-      const nameA = (a.name || a.title || "").toLowerCase();
-      const nameB = (b.name || b.title || "").toLowerCase();
-      return sort === "name" ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
-    });
-  };
+  async function requestLorePage(tab: LoreTab, page: number, mode: "replace" | "append") {
+    const queryKey = buildQueryKey(deferredSearch, sort, pageSize);
 
-  const filteredChars = sortItems(characters.filter((c) => matchSearch(c.name, c.shortDesc)));
-  const filteredPlaces = sortItems(places.filter((p) => matchSearch(p.name, p.shortDesc)));
-  const filteredTech = sortItems(tech.filter((t) => matchSearch(t.name, t.shortDesc)));
-  const filteredCreatures = sortItems(creatures.filter((c) => matchSearch(c.name, c.shortDesc)));
-  const filteredOthers = sortItems(others.filter((o) => matchSearch(o.title, o.shortDesc)));
-  const filteredEvents = sortItems(events.filter((e) => matchSearch(e.title, e.shortDesc)));
+    setLists((current) => ({
+      ...current,
+      [tab]: {
+        ...current[tab],
+        ...(mode === "replace" ? { items: [], pageInfo: null } : {}),
+        loading: true,
+        queryKey,
+      },
+    }));
+
+    try {
+      const response = await loadLoreTab(tab, {
+        page,
+        pageSize,
+        search: deferredSearch,
+        sort,
+      });
+
+      setLists((current) => {
+        if (current[tab].queryKey !== queryKey) return current;
+        return {
+          ...current,
+          [tab]: {
+            ...current[tab],
+            items: mode === "append" ? [...current[tab].items, ...response.items] : response.items,
+            pageInfo: response.pageInfo,
+            loading: false,
+          },
+        };
+      });
+    } finally {
+      setLists((current) => {
+        if (current[tab].queryKey !== queryKey) return current;
+        return {
+          ...current,
+          [tab]: {
+            ...current[tab],
+            loading: false,
+          },
+        };
+      });
+    }
+  }
+
+  useEffect(() => {
+    const queryKey = buildQueryKey(deferredSearch, sort, pageSize);
+    const state = lists[active];
+    if (state.queryKey === queryKey && state.pageInfo) return;
+
+    void requestLorePage(active, 1, "replace");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, deferredSearch, pageSize, sort]);
+
+  const activeState = lists[active];
+  const characters = lists.Characters.items;
+  const places = lists.Places.items;
+  const tech = lists.Technology.items;
+  const creatures = lists.Creatures.items;
+  const events = lists.Events.items;
+  const others = lists.Other.items;
+
+  function showEmpty(tab: LoreTab) {
+    return !lists[tab].loading && lists[tab].items.length === 0;
+  }
 
   return (
     <div className="p-4 sm:p-6 md:p-8 space-y-6">
@@ -91,7 +239,7 @@ export default function LorePage() {
         />
       </div>
 
-      {/* Category buttons + Sort - stack on mobile */}
+      {/* Category buttons and sort */}
       <div className="flex flex-col sm:flex-row gap-2 sm:items-end sm:justify-between">
         <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto">
           {tabs.map((t) => (
@@ -102,7 +250,9 @@ export default function LorePage() {
                   navigate("/lore/personnel");
                   return;
                 }
+
                 setActive(t);
+                navigate(`/lore/${loreRoutes[t]}`);
               }}
               className={`w-full sm:w-auto px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-display tracking-[0.08em] sm:tracking-[0.1em] uppercase border rounded-sm transition-colors truncate inline-flex items-center justify-center gap-1
                 ${active === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}
@@ -125,12 +275,12 @@ export default function LorePage() {
       {/* Characters */}
       {active === "Characters" && (
         <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {filteredChars.map((c) => (
+          {characters.map((c) => (
             <Link key={c.id} to={`/lore/characters/${c.id}`} className="block group">
               <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow" style={{ borderColor: `${c.accentColor}30` }}>
                 {c.thumbnail ? (
                   <div className="aspect-[3/4] bg-muted overflow-hidden relative">
-                    <img src={c.thumbnail} alt={c.name} className="w-full h-full object-cover" />
+                    <img src={c.thumbnail} alt={c.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: c.accentColor }} />
                   </div>
                 ) : (
@@ -147,19 +297,19 @@ export default function LorePage() {
               </div>
             </Link>
           ))}
-          {filteredChars.length === 0 && <p className="col-span-full text-center text-sm text-muted-foreground font-body py-8">No characters found.</p>}
+          {showEmpty("Characters") && <p className="col-span-full text-center text-sm text-muted-foreground font-body py-8">{emptyMessages.Characters}</p>}
         </div>
       )}
 
       {/* Places */}
       {active === "Places" && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredPlaces.map((p) => (
+          {places.map((p) => (
             <Link key={p.id} to={`/lore/places/${p.id}`} className="block group">
               <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
                 {p.thumbnail ? (
                   <div className="aspect-video bg-muted overflow-hidden">
-                    <img src={p.thumbnail} alt={p.name} className="w-full h-full object-cover" />
+                    <img src={p.thumbnail} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="aspect-video bg-muted flex items-center justify-center">
@@ -174,19 +324,19 @@ export default function LorePage() {
               </div>
             </Link>
           ))}
-          {filteredPlaces.length === 0 && <p className="col-span-full text-center text-sm text-muted-foreground font-body py-8">No places found.</p>}
+          {showEmpty("Places") && <p className="col-span-full text-center text-sm text-muted-foreground font-body py-8">{emptyMessages.Places}</p>}
         </div>
       )}
 
       {/* Technology */}
       {active === "Technology" && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredTech.map((t) => (
+          {tech.map((t) => (
             <Link key={t.id} to={`/lore/tech/${t.id}`} className="block group">
               <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
                 {t.thumbnail ? (
                   <div className="aspect-video bg-muted overflow-hidden">
-                    <img src={t.thumbnail} alt={t.name} className="w-full h-full object-cover" />
+                    <img src={t.thumbnail} alt={t.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="aspect-video bg-muted flex items-center justify-center">
@@ -201,19 +351,19 @@ export default function LorePage() {
               </div>
             </Link>
           ))}
-          {filteredTech.length === 0 && <p className="col-span-full text-center text-sm text-muted-foreground font-body py-8">No technology found.</p>}
+          {showEmpty("Technology") && <p className="col-span-full text-center text-sm text-muted-foreground font-body py-8">{emptyMessages.Technology}</p>}
         </div>
       )}
 
       {/* Creatures */}
       {active === "Creatures" && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredCreatures.map((c) => (
+          {creatures.map((c) => (
             <Link key={c.id} to={`/lore/creatures/${c.id}`} className="block group">
               <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow" style={{ borderColor: `${c.accentColor}30` }}>
                 {c.thumbnail ? (
                   <div className="aspect-video bg-muted overflow-hidden relative">
-                    <img src={c.thumbnail} alt={c.name} className="w-full h-full object-cover" />
+                    <img src={c.thumbnail} alt={c.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: c.accentColor }} />
                   </div>
                 ) : (
@@ -242,19 +392,19 @@ export default function LorePage() {
               </div>
             </Link>
           ))}
-          {filteredCreatures.length === 0 && <p className="col-span-full text-center text-sm text-muted-foreground font-body py-8">No creatures catalogued.</p>}
+          {showEmpty("Creatures") && <p className="col-span-full text-center text-sm text-muted-foreground font-body py-8">{emptyMessages.Creatures}</p>}
         </div>
       )}
 
       {/* Events */}
       {active === "Events" && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredEvents.map((e) => (
+          {events.map((e) => (
             <Link key={e.id} to={`/lore/events/${e.id}`} className="block group">
               <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
                 {e.thumbnail ? (
                   <div className="aspect-video bg-muted overflow-hidden">
-                    <img src={e.thumbnail} alt={e.title} className="w-full h-full object-cover" />
+                    <img src={e.thumbnail} alt={e.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="aspect-video bg-muted flex items-center justify-center">
@@ -270,7 +420,7 @@ export default function LorePage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-[10px] text-muted-foreground font-display tracking-wider uppercase">{e.category}{e.era ? ` · ${e.era}` : ""}</p>
+                  <p className="text-[10px] text-muted-foreground font-display tracking-wider uppercase">{e.category}{e.era ? ` / ${e.era}` : ""}</p>
                   {e.dateLabel && (
                     <p className="text-[10px] text-muted-foreground font-body italic truncate">{e.dateLabel}</p>
                   )}
@@ -279,19 +429,19 @@ export default function LorePage() {
               </div>
             </Link>
           ))}
-          {filteredEvents.length === 0 && <p className="col-span-full text-center text-sm text-muted-foreground font-body py-8">No events recorded.</p>}
+          {showEmpty("Events") && <p className="col-span-full text-center text-sm text-muted-foreground font-body py-8">{emptyMessages.Events}</p>}
         </div>
       )}
 
       {/* Other */}
       {active === "Other" && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredOthers.map((o) => (
+          {others.map((o) => (
             <Link key={o.id} to={`/lore/other/${o.id}`} className="block group">
               <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
                 {o.thumbnail ? (
                   <div className="aspect-video bg-muted overflow-hidden">
-                    <img src={o.thumbnail} alt={o.title} className="w-full h-full object-cover" />
+                    <img src={o.thumbnail} alt={o.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="aspect-video bg-muted flex items-center justify-center">
@@ -306,9 +456,29 @@ export default function LorePage() {
               </div>
             </Link>
           ))}
-          {filteredOthers.length === 0 && <p className="col-span-full text-center text-sm text-muted-foreground font-body py-8">No entries found.</p>}
+          {showEmpty("Other") && <p className="col-span-full text-center text-sm text-muted-foreground font-body py-8">{emptyMessages.Other}</p>}
         </div>
       )}
+
+      <div className="flex flex-col items-center gap-3 pt-2">
+        {activeState.pageInfo && (
+          <p className="text-[11px] font-display tracking-wider text-muted-foreground uppercase">
+            Showing {activeState.items.length} of {activeState.pageInfo.total}
+          </p>
+        )}
+        {activeState.pageInfo?.hasNextPage && (
+          <button
+            onClick={() => requestLorePage(active, activeState.pageInfo!.page + 1, "append")}
+            disabled={activeState.loading}
+            className="px-4 py-2 text-xs font-display tracking-wider border border-primary text-primary rounded-sm hover:bg-primary hover:text-primary-foreground disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-primary transition-colors"
+          >
+            {activeState.loading ? "LOADING..." : "LOAD MORE"}
+          </button>
+        )}
+        {activeState.loading && !activeState.pageInfo?.hasNextPage && (
+          <p className="text-xs text-muted-foreground font-body">Loading lore...</p>
+        )}
+      </div>
     </div>
   );
 }

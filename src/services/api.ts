@@ -5,3 +5,5 @@ export * from "@/services/galleryApi";
 export * from "@/services/discussionApi";
 export * from "@/services/newsApi";
 export * from "@/services/mapApi";
+export * from "@/services/pagination";
+export * from "@/services/contentStatsApi";

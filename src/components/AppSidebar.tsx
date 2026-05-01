@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -33,12 +33,15 @@ import {
   type PersonnelLevel,
   type PersonnelTrack,
 } from "@/lib/pl";
+import { getChatUnreadCount, subscribeChat } from "@/services/chatApi";
+import { getReviewableRequestCount, subscribeManagement } from "@/services/managementApi";
 import logoColor from "@/assets/logo-color.png";
 
 interface NavItem {
   title: string;
   url: string;
   icon: typeof Home;
+  badge?: "chat" | "management";
   // Visibility predicate; receives current PL + track + role.
   // Default: visible to everyone.
   visible?: (ctx: { role: string; level: PersonnelLevel; track: PersonnelTrack }) => boolean;
@@ -54,12 +57,14 @@ const navItems: NavItem[] = [
     title: "Management",
     url: "/management",
     icon: ClipboardList,
+    badge: "management",
     visible: ({ role }) => role !== "guest",
   },
   {
     title: "Chat",
     url: "/chat",
     icon: MessageCircle,
+    badge: "chat",
     visible: ({ role }) => role !== "guest",
   },
   {
@@ -90,6 +95,8 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
   const navigate = useNavigate();
   const mobileSidebarRef = useRef<HTMLElement | null>(null);
   const { role, username, logout, personnelLevel, track, setPersonnelLevel, setTrack } = useAuth();
+  const [chatBadgeCount, setChatBadgeCount] = useState(0);
+  const [managementBadgeCount, setManagementBadgeCount] = useState(0);
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   const filteredNav = navItems.filter((item) =>
@@ -104,6 +111,33 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
   const handleLogout = () => {
     logout();
     navigate("/");
+  };
+
+  useEffect(() => {
+    const refreshBadges = () => {
+      if (role === "guest") {
+        setChatBadgeCount(0);
+        setManagementBadgeCount(0);
+        return;
+      }
+
+      setChatBadgeCount(getChatUnreadCount(username));
+      setManagementBadgeCount(getReviewableRequestCount({ level: personnelLevel, track, username }));
+    };
+
+    refreshBadges();
+    const unsubscribeChat = subscribeChat(refreshBadges);
+    const unsubscribeManagement = subscribeManagement(refreshBadges);
+    return () => {
+      unsubscribeChat();
+      unsubscribeManagement();
+    };
+  }, [personnelLevel, role, track, username]);
+
+  const badgeCountFor = (item: NavItem) => {
+    if (item.badge === "chat") return chatBadgeCount;
+    if (item.badge === "management") return managementBadgeCount;
+    return 0;
   };
 
   useEffect(() => {
@@ -227,6 +261,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
         <nav className="py-3 space-y-1 px-2">
           {filteredNav.map((item) => {
             const active = isActive(item.url);
+            const badgeCount = badgeCountFor(item);
             const link = (
               <Link
                 to={item.url}
@@ -244,6 +279,15 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
                   <span className="font-heading text-sm tracking-wide truncate">
                     {item.title}
                   </span>
+                )}
+                {badgeCount > 0 && (
+                  isExpanded ? (
+                    <span className="ml-auto h-5 min-w-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-display flex items-center justify-center">
+                      {badgeCount > 9 ? "9+" : badgeCount}
+                    </span>
+                  ) : (
+                    <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive ring-2 ring-sidebar" />
+                  )
                 )}
               </Link>
             );
