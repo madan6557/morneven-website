@@ -2,7 +2,7 @@
 
 **Product:** Morneven Institute Website  
 **Module Scope:** Full platform (Lore/Wiki, Projects, Gallery, News, Map, Personnel, Management, Notifications, Auth, Chat)  
-**Last updated:** 2026-04-29  
+**Last updated:** 2026-05-01  
 **Status:** Implementation contract for backend developer  
 **Companion docs:**
 - `production-readiness-chat-plan.md` — Chat module deep-dive and phased production roadmap
@@ -102,6 +102,26 @@ Event envelope:
 ```json
 { "type": "notification.created", "payload": { ... } }
 ```
+
+### 1.10 Frontend data-variable contract (must stay 1:1)
+Backend responses MUST preserve the variable names used by current frontend types (`src/types/index.ts`) so the UI can switch from local storage services to REST without mapper code.
+
+- Use **camelCase** in JSON payloads (`shortDesc`, `fullDesc`, `updatedAt`), even if DB columns are snake_case.
+- `id` is always string.
+- All arrays default to `[]` (never `null`) for: `docs`, `discussions`, `comments`, `replies`, `tags`, `patches`, `traits`, `likes`, `dislikes`, `members`.
+- Optional nested objects may be omitted, but if sent they must match exact shape:
+  - `meta: LoreMeta`
+  - `stats: CharacterStats`
+  - `mentions: DiscussionMention[]`
+  - `attachments: NewsAttachment[] | ChatAttachment[]`
+- Date fields used by FE:
+  - datetime: `createdAt`, `updatedAt` (ISO-8601 UTC)
+  - date only: `date`, `createdAt`/`decidedAt` in management requests, `updatedAt` in personnel (`YYYY-MM-DD`)
+
+Validation minimums (422):
+- Reject unknown enum values (`status`, `kind`, `classification`, `dangerLevel`, notification `kind`).
+- Reject malformed mention spans (`start < 0`, `end <= start`).
+- Reject `x/y` map marker coordinates outside `0..1`.
 
 ---
 
@@ -244,7 +264,7 @@ updated_at    timestamptz not null default now()
   owner?: string;
   designer?: string;
   collaborators?: string[];
-  team?: string;
+  team?: string | string[];
   projectName?: string;
   startedAt?: string;     // YYYY-MM-DD
   completedAt?: string;
@@ -271,6 +291,22 @@ LoreFieldNote = {
   date?: string;   // YYYY-MM-DD
 }
 ```
+
+### 5.2b Observation notes (explicit)
+Observation notes are already part of each lore/entity row via `observations` (jsonb array) and use the same item structure as `fieldNotes`.
+
+```ts
+observations?: LoreFieldNote[]
+```
+
+Semantics:
+- `fieldNotes` = operational/author research notes entered during data gathering.
+- `observations` = findings/observed behavior snapshots tied to the entity (timeline-style notes in the same schema).
+
+Backend requirements:
+- Never return `null`; default to `[]`.
+- Preserve chronological order as stored (or document server-side sort policy if enforced).
+- Accept create/update payloads for both `fieldNotes` and `observations` with identical validation rules.
 
 ### 5.3 Per-entity columns
 
@@ -402,8 +438,8 @@ create index on gallery_items using gin (tags);
 | GET | `/gallery` | public | `?tag=&type=&q=&page=` |
 | GET | `/gallery/:id` | public | |
 | POST | `/gallery` | PL≥4 OR via Personal Submission flow | |
-| PUT | `/gallery/:id` | uploader (PL6) OR PL≥7 | PL6 may only edit own uploads |
-| DELETE | `/gallery/:id` | uploader (PL6) OR PL≥7 | Same scope rule |
+| PUT | `/gallery/:id` | uploader OR PL≥7 | Uploader may edit own uploads (any level). |
+| DELETE | `/gallery/:id` | uploader OR PL≥7 | Same scope rule. |
 | POST | `/gallery/:id/comments` | PL≥1 | `{ author, text, mentions[] }` |
 | POST | `/gallery/:id/comments/:cid/replies` | PL≥1 | `{ author, text, mentions[] }` |
 
@@ -636,6 +672,26 @@ Push WS event `notification.created` to recipient(s) on insert.
 ## 13. Chat Module
 
 Already specified in detail in `BERequierment.md`. This document references it for completeness.
+
+### 13.1 Attachment support status (implemented in FE, mandatory in BE)
+Yes — chat attachments are part of the current website behavior and MUST be supported in backend rollout.
+
+Minimum contract to keep FE compatible (`src/services/chatApi.ts`):
+- Message object may include `attachments?: ChatAttachment[]`.
+- `ChatAttachment` shape:
+  - `id: string`
+  - `name: string`
+  - `mimeType: string`
+  - `size: number`
+  - `dataUrl` (demo/localStorage) → backend equivalent should return storage-backed file URL metadata.
+- Send message endpoint must accept text-only, attachment-only, or mixed payload:
+  - `POST /chat/messages`
+  - body: `{ conversationId, text, attachments?, replyTo? }`
+- Reply preview contract should expose `hasAttachments` when the referenced message includes attachments.
+
+Backend implementation note:
+- Use shared upload flow in §14 (`/uploads/sign` + `/uploads/confirm`) with private access policy for chat files.
+- Enforce server-side validation for size/mime-type allowlist and malware scanning before message publish.
 
 Key cross-module hooks BE must wire:
 - `personnel.track` change → call `syncDivisionMembership(username, newTrack)` equivalent.
