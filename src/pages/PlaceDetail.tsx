@@ -166,13 +166,18 @@ export default function PlaceDetail() {
                         title={`${place.name} Documentation`}
                       />
                     </div>
+                  ) : doc.type === "file" && doc.url ? (
+                    <a href={doc.url} target="_blank" rel="noreferrer" className="aspect-video bg-muted flex flex-col items-center justify-center gap-2 hover:bg-muted/80 transition-colors">
+                      <FileText className="h-6 w-6 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground font-heading tracking-wider">FILE</span>
+                    </a>
                   ) : doc.type === "image" && doc.url ? (
                     <div className="aspect-video bg-muted overflow-hidden">
                       <img src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
                     </div>
                   ) : (
                     <div className="aspect-video bg-muted flex items-center justify-center">
-                      <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : "IMAGE"}</span>
+                      <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : doc.type === "file" ? "FILE" : "IMAGE"}</span>
                     </div>
                   )}
                   <div className="p-3">
