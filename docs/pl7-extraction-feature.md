@@ -5,7 +5,7 @@ Fitur baru di menu **Settings** untuk personel **PL7** agar bisa mengekstrak dat
 
 ## Scope
 1. **DB Data Extraction**
-   - Data diexport ke JSON per kategori: `character`, `creature`, `places`, `projects`, `technology`, `events`, `others`.
+   - Data diexport ke JSON per kategori: `character`, `creature`, `places`, `projects`, `technology`, `events`, `others`, `gallery`.
 2. **Images Extraction**
    - Export daftar aset gambar per kategori (map + gallery image manifest).
 3. **All Data Extraction**
@@ -34,4 +34,4 @@ Fitur baru di menu **Settings** untuk personel **PL7** agar bisa mengekstrak dat
 ## Output Structure (ZIP)
 - `db/*.json` untuk export data database per kategori.
 - `images/map/images.json` untuk data map image.
-- `images/gallery/images.json` untuk data gallery image.
+- `images/character/images.json`, `images/creature/images.json`, `images/technology/images.json`, `images/environment/images.json`, dan `images/other/images.json` untuk kategori gallery image.
