@@ -7,9 +7,16 @@ export interface ProjectPatch {
 }
 
 export interface DocItem {
-  type: "image" | "video";
+  type: "image" | "video" | "file";
   url: string;
   caption: string;
+}
+
+export interface LoreFieldNote {
+  id: string;
+  title: string;
+  body: string;
+  date?: string;
 }
 
 // Production-credit metadata attached to any lore entry. Optional and purely
@@ -96,6 +103,8 @@ export interface Character {
   fullDesc: string;
   stats: CharacterStats;
   docs: DocItem[];
+  fieldNotes?: LoreFieldNote[];
+  observations?: LoreFieldNote[];
   contributions?: CharacterContribution[];
   discussions?: DiscussionComment[];
   // Original author / contributor for attribution.
@@ -121,6 +130,8 @@ export interface Creature {
   shortDesc: string;
   fullDesc: string;
   docs: DocItem[];
+  fieldNotes?: LoreFieldNote[];
+  observations?: LoreFieldNote[];
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
