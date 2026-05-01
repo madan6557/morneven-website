@@ -20,11 +20,15 @@ import {
   reconcileAutoMemberships,
   canManage,
   getMemberRole,
+  getConversationUnreadCount,
+  readChatReadMap,
   subscribeChat,
   buildReplyPreview,
+  writeChatReadMap,
   type Conversation,
   type ChatMessage,
   type ChatAttachment,
+  type ChatReadMap,
   type MemberRole,
   type ReplyPreview,
 } from "@/services/chatApi";
@@ -65,31 +69,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB demo cap
-const READ_KEY = "morneven_chat_last_read_v1";
-
-type ReadMap = Record<string, string>;
-
-function readReadMap(): ReadMap {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(READ_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? (parsed as ReadMap) : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeReadMap(next: ReadMap) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(READ_KEY, JSON.stringify(next));
-  } catch {
-    /* ignore */
-  }
-}
-
 function fileToAttachment(file: File): Promise<ChatAttachment> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -146,7 +125,7 @@ export default function ChatPage() {
   const pendingOpenScrollRef = useRef(false);
   const [replyTo, setReplyTo] = useState<ReplyPreview | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
-  const [readMap, setReadMap] = useState<ReadMap>(() => readReadMap());
+  const [readMap, setReadMap] = useState<ChatReadMap>(() => readChatReadMap());
 
   const getConversationViewport = () =>
     conversationScrollRootRef.current?.querySelector<HTMLElement>("[data-radix-scroll-area-viewport]") ?? null;
@@ -262,7 +241,7 @@ export default function ChatPage() {
     const pivot = peerMessages[Math.max(0, midpoint)];
     if (!pivot) return;
     const next = { ...readMap, [activeConv.id]: pivot.createdAt };
-    writeReadMap(next);
+    writeChatReadMap(next);
     setReadMap(next);
   }, [activeConv, messages, readMap, username]);
 
@@ -400,15 +379,12 @@ export default function ChatPage() {
     setReadMap((prev) => {
       if (prev[conversationId] === latestSeen) return prev;
       const next = { ...prev, [conversationId]: latestSeen };
-      writeReadMap(next);
+      writeChatReadMap(next);
       return next;
     });
   };
   const getUnreadCount = (conversationId: string) => {
-    const lastReadAt = readMap[conversationId];
-    return listMessages(conversationId).filter(
-      (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
-    ).length;
+    return getConversationUnreadCount(username, conversationId);
   };
   const markActiveConversationRead = () => {
     if (!active) return;
@@ -735,7 +711,7 @@ export default function ChatPage() {
             <option value="">Select a user…</option>
             {personnel.filter((p) => p.username !== username).map((p) => (
               <option key={p.id} value={p.username}>
-                {p.username} — {p.role} (PL{p.level} {p.track})
+                {p.username} - {p.role} (PL{p.level} {p.track})
               </option>
             ))}
           </select>
@@ -778,7 +754,7 @@ export default function ChatPage() {
                         }`}
                       >
                         <span>
-                          {p.username} <span className="text-muted-foreground">— PL{p.level} {p.track}</span>
+                          {p.username} <span className="text-muted-foreground">- PL{p.level} {p.track}</span>
                         </span>
                         {checked && <Check className="h-3.5 w-3.5" />}
                       </button>
@@ -934,7 +910,7 @@ export default function ChatPage() {
                             }
                             className={`w-full flex items-center justify-between px-2 py-1 rounded-sm text-xs ${checked ? "bg-primary/15 text-primary" : "hover:bg-muted"}`}
                           >
-                            <span>{p.username} <span className="text-muted-foreground">— PL{p.level} {p.track}</span></span>
+                            <span>{p.username} <span className="text-muted-foreground">- PL{p.level} {p.track}</span></span>
                             {checked && <Check className="h-3.5 w-3.5" />}
                           </button>
                         );

@@ -1,25 +1,29 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { getProjects } from "@/services/api";
+import { getProjectsPage, type PageInfo } from "@/services/api";
 import type { Project } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Archive } from "lucide-react";
+import { Archive, Plus } from "lucide-react";
 
 const tabs = ["All", "Planning", "On Progress", "On Hold", "Completed", "Canceled", "Archived"] as const;
 type Tab = typeof tabs[number];
+const PROJECT_PAGE_SIZE = 24;
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
+  const [loading, setLoading] = useState(false);
   const [params, setParams] = useSearchParams();
   const initial = (params.get("tab") as Tab) || "All";
   const [active, setActive] = useState<Tab>(tabs.includes(initial) ? initial : "All");
   const { role } = useAuth();
 
   useEffect(() => {
-    getProjects().then(setProjects);
-  }, []);
+    void loadProjects(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
 
-  // Keep URL tab in sync (so a refresh keeps the active tab).
+  // Keep URL tab in sync so a refresh keeps the active tab.
   useEffect(() => {
     const next = new URLSearchParams(params);
     if (active === "All") next.delete("tab");
@@ -28,12 +32,25 @@ export default function ProjectsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
-  const filtered = (() => {
-    if (active === "Archived") return projects.filter((p) => p.archived);
-    const live = projects.filter((p) => !p.archived);
-    if (active === "All") return live;
-    return live.filter((p) => p.status === active);
-  })();
+  async function loadProjects(reset = false) {
+    const page = reset ? 1 : (pageInfo?.page ?? 1) + 1;
+    const isArchived = active === "Archived";
+    const status = active !== "All" && active !== "Archived" ? active : undefined;
+
+    setLoading(true);
+    try {
+      const response = await getProjectsPage({
+        page,
+        pageSize: PROJECT_PAGE_SIZE,
+        status,
+        archived: isArchived ? true : false,
+      });
+      setProjects((current) => reset ? response.items : [...current, ...response.items]);
+      setPageInfo(response.pageInfo);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="p-6 md:p-8 space-y-6">
@@ -64,17 +81,17 @@ export default function ProjectsPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filtered.length === 0 && (
+        {projects.length === 0 && !loading && (
           <p className="col-span-full text-sm text-muted-foreground font-body italic">
             {active === "Archived" ? "No archived projects." : "No projects in this view."}
           </p>
         )}
-        {filtered.map((p) => (
+        {projects.map((p) => (
           <Link key={p.id} to={`/projects/${p.id}`} className="block">
             <div className={`hud-border bg-card overflow-hidden hover:glow-primary transition-shadow ${p.archived ? "opacity-70" : ""}`}>
               {p.thumbnail ? (
                 <div className="aspect-video bg-muted rounded-sm overflow-hidden">
-                  <img src={p.thumbnail} alt={p.title} className="w-full h-full object-cover" />
+                  <img src={p.thumbnail} alt={p.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <div className="aspect-video bg-muted rounded-sm flex items-center justify-center">
@@ -108,6 +125,27 @@ export default function ProjectsPage() {
             </div>
           </Link>
         ))}
+      </div>
+
+      <div className="flex flex-col items-center gap-3 pt-2">
+        {pageInfo && (
+          <p className="text-[11px] font-display tracking-wider text-muted-foreground uppercase">
+            Showing {projects.length} of {pageInfo.total}
+          </p>
+        )}
+        {pageInfo?.hasNextPage && (
+          <button
+            type="button"
+            onClick={() => loadProjects(false)}
+            disabled={loading}
+            className="px-4 py-2 text-xs font-display tracking-wider border border-primary text-primary rounded-sm hover:bg-primary hover:text-primary-foreground disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-primary transition-colors"
+          >
+            {loading ? "LOADING..." : "LOAD MORE"}
+          </button>
+        )}
+        {loading && !pageInfo?.hasNextPage && (
+          <p className="text-xs text-muted-foreground font-body">Loading projects...</p>
+        )}
       </div>
     </div>
   );

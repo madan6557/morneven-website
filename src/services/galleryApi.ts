@@ -1,9 +1,46 @@
 import type { DiscussionMention, GalleryItem } from "@/types";
 import { db, delay, STORAGE_KEYS, todayISO, writeCollection } from "@/services/dataStore";
+import {
+  matchesSearch,
+  paginateCollection,
+  pickByIds,
+  type PaginatedResponse,
+  type PaginationParams,
+} from "@/services/pagination";
+
+export type GallerySort = "newest" | "oldest" | "title";
+
+export interface GalleryPageParams extends PaginationParams {
+  type?: "image" | "video" | "All";
+  sort?: GallerySort;
+  uploadedBy?: string;
+}
 
 export async function getGallery(): Promise<GalleryItem[]> {
   await delay();
   return [...db.gallery];
+}
+
+export async function getGalleryPage(params: GalleryPageParams = {}): Promise<PaginatedResponse<GalleryItem>> {
+  await delay();
+  const { ids, page, pageSize, search, sort: requestedSort, type, uploadedBy } = params;
+  const sort = requestedSort ?? (ids?.length ? undefined : "newest");
+  const typeFilter = type && type !== "All" ? type : undefined;
+  let items = pickByIds([...db.gallery], ids);
+
+  if (typeFilter) items = items.filter((item) => item.type === typeFilter);
+  if (uploadedBy) items = items.filter((item) => item.uploadedBy === uploadedBy);
+  items = items.filter((item) => matchesSearch(search, [item.title, item.caption, ...item.tags]));
+
+  if (sort) {
+    items = [...items].sort((a, b) => {
+      if (sort === "oldest") return a.date.localeCompare(b.date);
+      if (sort === "title") return a.title.localeCompare(b.title);
+      return b.date.localeCompare(a.date);
+    });
+  }
+
+  return paginateCollection(items, { page, pageSize });
 }
 
 export async function getGalleryItem(id: string): Promise<GalleryItem | undefined> {

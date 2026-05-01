@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { getProjects, createProject, updateProject, deleteProject, getCharacters, createCharacter, updateCharacter, deleteCharacter, getPlaces, createPlace, updatePlace, deletePlace, getTechnology, createTech, updateTech, deleteTech, getGallery, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreatures, createCreature, updateCreature, deleteCreature, getOthers, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImage, setMapImage } from "@/services/api";
+import { getProjectsPage, createProject, updateProject, deleteProject, getCharactersPage, createCharacter, updateCharacter, deleteCharacter, getPlacesPage, createPlace, updatePlace, deletePlace, getTechnologyPage, createTech, updateTech, deleteTech, getGalleryPage, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreaturesPage, createCreature, updateCreature, deleteCreature, getOthersPage, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImage, setMapImage, type PageInfo } from "@/services/api";
 import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, type CommandCenterSettings } from "@/services/commandCenterSettings";
 import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel, LoreMeta, LoreFieldNote } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, File as FileIcon, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon } from "lucide-react";
@@ -16,6 +16,7 @@ const dashTabs = ["projects", "lore", "gallery", "news", "homepage", "map"] as c
 const loreSubs = ["characters", "places", "technology", "creatures", "other"] as const;
 const inputClass = "w-full mt-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 const labelClass = "font-heading text-xs tracking-wider text-muted-foreground uppercase";
+const DASHBOARD_LIST_PAGE_SIZE = 25;
 
 const todayStr = () => new Date().toISOString().split("T")[0];
 
@@ -263,6 +264,8 @@ export default function AuthorDashboard() {
   const [others, setOthers] = useState<OtherLore[]>([]);
   const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
   const [mapImageUrl, setMapImageUrl] = useState<string>("");
+  const [dashboardPageInfo, setDashboardPageInfo] = useState<PageInfo | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
 
   const [editing, setEditing] = useState<EditableState | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -299,7 +302,23 @@ export default function AuthorDashboard() {
     return () => window.cancelAnimationFrame(id);
   }, [editSessionKey]);
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+    if (activeTab === "homepage" || activeTab === "map" || activeTab === "news") {
+      setDashboardPageInfo(null);
+      return;
+    }
+
+    if (!canAccess(activeTab, loreSub)) return;
+    void loadDashboardItems(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, loreSub, personnelLevel, role, track, username]);
+
+  useEffect(() => {
+    if (activeTab !== "map" || !canAccess("map")) return;
+    void getMapMarkers().then(setMapMarkers);
+    setMapImageUrl(getMapImage());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, personnelLevel, role, track]);
 
   useEffect(() => {
     const tab = params.get("tab");
@@ -310,16 +329,56 @@ export default function AuthorDashboard() {
     setActiveTabRaw("projects");
   }, [params]);
 
-  const loadAll = async () => {
-    setProjects(await getProjects());
-    setCharacters(await getCharacters());
-    setPlaces(await getPlaces());
-    setTech(await getTechnology());
-    setGallery(await getGallery());
-    setCreatures(await getCreatures());
-    setOthers(await getOthers());
-    setMapMarkers(await getMapMarkers());
-    setMapImageUrl(getMapImage());
+  const loadDashboardItems = async (reset = false) => {
+    if (activeTab === "homepage" || activeTab === "map" || activeTab === "news") return;
+    if (!canAccess(activeTab, loreSub)) return;
+
+    const page = reset ? 1 : (dashboardPageInfo?.page ?? 1) + 1;
+    setDashboardLoading(true);
+
+    try {
+      if (activeTab === "projects") {
+        const response = await getProjectsPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
+        setProjects((current) => reset ? response.items : [...current, ...response.items]);
+        setDashboardPageInfo(response.pageInfo);
+        return;
+      }
+
+      if (activeTab === "gallery") {
+        const response = await getGalleryPage({
+          page,
+          pageSize: DASHBOARD_LIST_PAGE_SIZE,
+          uploadedBy: role === "author" || personnelLevel >= 7 ? undefined : username,
+        });
+        setGallery((current) => reset ? response.items : [...current, ...response.items]);
+        setDashboardPageInfo(response.pageInfo);
+        return;
+      }
+
+      if (loreSub === "characters") {
+        const response = await getCharactersPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
+        setCharacters((current) => reset ? response.items : [...current, ...response.items]);
+        setDashboardPageInfo(response.pageInfo);
+      } else if (loreSub === "places") {
+        const response = await getPlacesPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
+        setPlaces((current) => reset ? response.items : [...current, ...response.items]);
+        setDashboardPageInfo(response.pageInfo);
+      } else if (loreSub === "technology") {
+        const response = await getTechnologyPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
+        setTech((current) => reset ? response.items : [...current, ...response.items]);
+        setDashboardPageInfo(response.pageInfo);
+      } else if (loreSub === "creatures") {
+        const response = await getCreaturesPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
+        setCreatures((current) => reset ? response.items : [...current, ...response.items]);
+        setDashboardPageInfo(response.pageInfo);
+      } else {
+        const response = await getOthersPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
+        setOthers((current) => reset ? response.items : [...current, ...response.items]);
+        setDashboardPageInfo(response.pageInfo);
+      }
+    } finally {
+      setDashboardLoading(false);
+    }
   };
 
   // Access gate: author role bypasses everything; otherwise PL+track must
@@ -378,7 +437,7 @@ export default function AuthorDashboard() {
 
       if (isCreating) await createProject(payload);
       else if (editing.id) await updateProject(editing.id, payload);
-      setProjects(await getProjects());
+      await loadDashboardItems(true);
     } else if (activeTab === "lore") {
       if (loreSub === "characters") {
         const payload: Omit<Character, "id"> = {
@@ -403,7 +462,7 @@ export default function AuthorDashboard() {
 
         if (isCreating) await createCharacter(payload);
         else if (editing.id) await updateCharacter(editing.id, payload);
-        setCharacters(await getCharacters());
+        await loadDashboardItems(true);
       } else if (loreSub === "places") {
         const payload: Omit<Place, "id"> = {
           name: editing.name ?? "",
@@ -419,7 +478,7 @@ export default function AuthorDashboard() {
 
         if (isCreating) await createPlace(payload);
         else if (editing.id) await updatePlace(editing.id, payload);
-        setPlaces(await getPlaces());
+        await loadDashboardItems(true);
       } else if (loreSub === "technology") {
         const payload: Omit<Technology, "id"> = {
           name: editing.name ?? "",
@@ -435,7 +494,7 @@ export default function AuthorDashboard() {
 
         if (isCreating) await createTech(payload);
         else if (editing.id) await updateTech(editing.id, payload);
-        setTech(await getTechnology());
+        await loadDashboardItems(true);
       } else if (loreSub === "creatures") {
         const payload: Omit<Creature, "id"> = {
           name: editing.name ?? "",
@@ -454,7 +513,7 @@ export default function AuthorDashboard() {
 
         if (isCreating) await createCreature(payload);
         else if (editing.id) await updateCreature(editing.id, payload);
-        setCreatures(await getCreatures());
+        await loadDashboardItems(true);
       } else {
         const payload: Omit<OtherLore, "id"> = {
           title: editing.title ?? "",
@@ -470,7 +529,7 @@ export default function AuthorDashboard() {
 
         if (isCreating) await createOther(payload);
         else if (editing.id) await updateOther(editing.id, payload);
-        setOthers(await getOthers());
+        await loadDashboardItems(true);
       }
     } else {
       const payload: Omit<GalleryItem, "id"> = {
@@ -491,7 +550,7 @@ export default function AuthorDashboard() {
 
       if (isCreating) await createGalleryItem(payload);
       else if (editing.id) await updateGalleryItem(editing.id, payload);
-      setGallery(await getGallery());
+      await loadDashboardItems(true);
     }
     setEditing(null);
     setIsCreating(false);
@@ -501,14 +560,15 @@ export default function AuthorDashboard() {
     const confirmed = window.confirm(`Delete ${title}? This action cannot be undone.`);
     if (!confirmed) return;
 
-    if (activeTab === "projects") { await deleteProject(id); setProjects(await getProjects()); }
+    if (activeTab === "projects") { await deleteProject(id); await loadDashboardItems(true); }
     else if (activeTab === "lore") {
-      if (loreSub === "characters") { await deleteCharacter(id); setCharacters(await getCharacters()); }
-      else if (loreSub === "places") { await deletePlace(id); setPlaces(await getPlaces()); }
-      else if (loreSub === "technology") { await deleteTech(id); setTech(await getTechnology()); }
-      else if (loreSub === "creatures") { await deleteCreature(id); setCreatures(await getCreatures()); }
-      else { await deleteOther(id); setOthers(await getOthers()); }
-    } else if (activeTab === "gallery") { await deleteGalleryItem(id); setGallery(await getGallery()); }
+      if (loreSub === "characters") await deleteCharacter(id);
+      else if (loreSub === "places") await deletePlace(id);
+      else if (loreSub === "technology") await deleteTech(id);
+      else if (loreSub === "creatures") await deleteCreature(id);
+      else await deleteOther(id);
+      await loadDashboardItems(true);
+    } else if (activeTab === "gallery") { await deleteGalleryItem(id); await loadDashboardItems(true); }
   };
 
   const getItems = (): DashboardItem[] => {
@@ -543,7 +603,7 @@ export default function AuthorDashboard() {
   const addDoc = () => {
     const key = `doc-${Date.now()}`;
     // Prepend so newest doc appears at the top of the list, right under
-    // the ADD DOC button — keeps the editing context next to the action.
+    // the ADD DOC button - keeps the editing context next to the action.
     const docs = [{ type: "image" as const, url: "", caption: "", _key: key } as DocItem & { _key?: string }, ...(editing.docs || [])];
     setEditing({ ...editing, docs });
     setPendingFocusKey(key);
@@ -1122,7 +1182,7 @@ export default function AuthorDashboard() {
             </div>
           )}
 
-          {/* Metadata editor (production credits) — for projects + lore. */}
+          {/* Metadata editor (production credits) - for projects + lore. */}
           {!isGallery && (
             <MetadataEditor
               value={editing.meta}
@@ -1211,6 +1271,9 @@ export default function AuthorDashboard() {
       {/* Items List */}
       {activeTab !== "homepage" && activeTab !== "map" && activeTab !== "news" && canAccess(activeTab, loreSub) && (
         <div className="space-y-2">
+          {getItems().length === 0 && !dashboardLoading && (
+            <p className="text-sm text-muted-foreground font-body italic">No items found.</p>
+          )}
           {getItems().map((item) => {
             // For Gallery, gate edit/delete by per-item ownership.
             const canModify =
@@ -1255,6 +1318,24 @@ export default function AuthorDashboard() {
             </div>
             );
           })}
+          {dashboardLoading && (
+            <p className="text-sm text-muted-foreground font-body italic py-2">Loading items...</p>
+          )}
+          {dashboardPageInfo?.hasNextPage && (
+            <div className="flex flex-col items-center gap-2 pt-2">
+              <p className="text-[11px] font-display tracking-wider text-muted-foreground uppercase">
+                Showing {getItems().length} of {dashboardPageInfo.total}
+              </p>
+              <button
+                type="button"
+                onClick={() => loadDashboardItems(false)}
+                disabled={dashboardLoading}
+                className="px-4 py-2 text-xs font-display tracking-wider border border-primary text-primary rounded-sm hover:bg-primary hover:text-primary-foreground disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-primary transition-colors"
+              >
+                LOAD MORE
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

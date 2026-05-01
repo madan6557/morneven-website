@@ -1,5 +1,13 @@
 import type { LoreEvent } from "@/types";
 import { db, delay, STORAGE_KEYS, writeCollection } from "@/services/dataStore";
+import {
+  matchesSearch,
+  paginateCollection,
+  pickByIds,
+  type PaginatedResponse,
+  type PaginationParams,
+} from "@/services/pagination";
+import type { LoreSort } from "@/services/loreApi";
 
 // CRUD for Lore Events. Mirrors the shape of loreApi entries so a future
 // backend can swap the in-memory db for a REST/SQL layer without UI changes.
@@ -7,6 +15,24 @@ import { db, delay, STORAGE_KEYS, writeCollection } from "@/services/dataStore";
 export async function getEvents(): Promise<LoreEvent[]> {
   await delay();
   return [...db.events];
+}
+
+export async function getEventsPage(params: PaginationParams & { sort?: LoreSort } = {}): Promise<PaginatedResponse<LoreEvent>> {
+  await delay();
+  const { ids, page, pageSize, search, sort } = params;
+  let items = pickByIds([...db.events], ids).filter((item) =>
+    matchesSearch(search, [item.title, item.category, item.era, item.dateLabel, item.scope, item.shortDesc]),
+  );
+
+  if (sort) {
+    items = [...items].sort((a, b) => {
+      const aName = a.title.toLowerCase();
+      const bName = b.title.toLowerCase();
+      return sort === "name" ? aName.localeCompare(bName) : bName.localeCompare(aName);
+    });
+  }
+
+  return paginateCollection(items, { page, pageSize });
 }
 
 export async function getEvent(id: string): Promise<LoreEvent | undefined> {

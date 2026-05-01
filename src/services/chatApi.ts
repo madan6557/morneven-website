@@ -1,4 +1,4 @@
-// Chat service (demo / localStorage-backed) — wired so a future backend can
+// Chat service (demo / localStorage-backed) - wired so a future backend can
 // swap each function with a REST/WebSocket call without touching the UI.
 //
 // Demo capabilities:
@@ -84,7 +84,10 @@ export interface ConversationSample {
 
 const KEY_CONV = "morneven_chat_conversations_v2";
 const KEY_MSG = "morneven_chat_messages_v2";
+export const CHAT_READ_KEY = "morneven_chat_last_read_v1";
 const EVT = "morneven:chat-changed";
+
+export type ChatReadMap = Record<string, string>;
 
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -151,6 +154,28 @@ const uid = (p = "id") => `${p}-${Date.now()}-${Math.random().toString(36).slice
 function persist() {
   write(KEY_CONV, conversations);
   write(KEY_MSG, messages);
+}
+
+export function readChatReadMap(): ChatReadMap {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(CHAT_READ_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? (parsed as ChatReadMap) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function writeChatReadMap(next: ChatReadMap) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CHAT_READ_KEY, JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent(EVT));
+  } catch {
+    /* ignore */
+  }
 }
 
 function ensureMember(conv: Conversation, username: string, role: MemberRole = "member", invitedBy?: string, status: MemberStatus = "active") {
@@ -263,6 +288,20 @@ export function getConversation(id: string): Conversation | undefined {
 
 export function listMessages(conversationId: string): ChatMessage[] {
   return messages.filter((m) => m.conversationId === conversationId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+export function getConversationUnreadCount(username: string, conversationId: string): number {
+  const lastReadAt = readChatReadMap()[conversationId];
+  return listMessages(conversationId).filter(
+    (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
+  ).length;
+}
+
+export function getChatUnreadCount(username: string): number {
+  return listConversationsFor(username).reduce(
+    (total, conversation) => total + getConversationUnreadCount(username, conversation.id),
+    0,
+  );
 }
 
 export function getMemberRole(conv: Conversation, username: string): MemberRole | null {
@@ -595,7 +634,7 @@ function ensureDivisionGroup(track: PersonnelTrack): Conversation {
   return group;
 }
 
-// Big idempotent reconciler — call on app boot. Mirrors a future cron worker.
+// Big idempotent reconciler - call on app boot. Mirrors a future cron worker.
 export function reconcileAutoMemberships(personnel: PersonnelUser[]) {
   const inst = ensureInstituteGroup();
   const tracks: PersonnelTrack[] = ["executive", "field", "mechanic", "logistics"];

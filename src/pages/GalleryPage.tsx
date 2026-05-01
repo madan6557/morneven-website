@@ -1,36 +1,82 @@
-import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { Search, SlidersHorizontal, ArrowUpDown } from "lucide-react";
-import { getGallery } from "@/services/api";
+import { useDeferredValue, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowUpDown, Plus, Search } from "lucide-react";
+import { getGalleryPage, type PageInfo } from "@/services/api";
 import type { GalleryItem } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus } from "lucide-react";
 
 const typeTabs = ["All", "Image", "Video"] as const;
+type GalleryTypeTab = typeof typeTabs[number];
 type SortOption = "newest" | "oldest" | "title";
+
+function getResponsivePageSize() {
+  if (typeof window === "undefined") return 24;
+  if (window.matchMedia("(max-width: 640px)").matches) return 12;
+  if (window.matchMedia("(max-width: 1024px)").matches) return 18;
+  return 24;
+}
 
 export default function GalleryPage() {
   const [items, setItems] = useState<GalleryItem[]>([]);
+  const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("All");
+  const [typeFilter, setTypeFilter] = useState<GalleryTypeTab>("All");
   const [sort, setSort] = useState<SortOption>("newest");
+  const [pageSize, setPageSize] = useState(getResponsivePageSize);
+  const deferredSearch = useDeferredValue(search);
   const { role } = useAuth();
 
   useEffect(() => {
-    getGallery().then(setItems);
+    const updatePageSize = () => setPageSize(getResponsivePageSize());
+    window.addEventListener("resize", updatePageSize);
+    return () => window.removeEventListener("resize", updatePageSize);
   }, []);
 
-  let filtered = items.filter((item) => {
-    if (typeFilter !== "All" && item.type !== typeFilter.toLowerCase()) return false;
-    if (search && !item.title.toLowerCase().includes(search.toLowerCase()) && !item.tags.some(t => t.includes(search.toLowerCase()))) return false;
-    return true;
-  });
+  useEffect(() => {
+    let isActive = true;
 
-  filtered = [...filtered].sort((a, b) => {
-    if (sort === "newest") return b.date.localeCompare(a.date);
-    if (sort === "oldest") return a.date.localeCompare(b.date);
-    return a.title.localeCompare(b.title);
-  });
+    setIsLoading(true);
+    setItems([]);
+    setPageInfo(null);
+
+    void getGalleryPage({
+      page: 1,
+      pageSize,
+      search: deferredSearch,
+      sort,
+      type: typeFilter === "All" ? "All" : typeFilter.toLowerCase() as "image" | "video",
+    }).then((response) => {
+      if (!isActive) return;
+      setItems(response.items);
+      setPageInfo(response.pageInfo);
+    }).finally(() => {
+      if (isActive) setIsLoading(false);
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [deferredSearch, pageSize, sort, typeFilter]);
+
+  async function loadMore() {
+    if (!pageInfo?.hasNextPage || isLoading) return;
+
+    setIsLoading(true);
+    try {
+      const response = await getGalleryPage({
+        page: pageInfo.page + 1,
+        pageSize,
+        search: deferredSearch,
+        sort,
+        type: typeFilter === "All" ? "All" : typeFilter.toLowerCase() as "image" | "video",
+      });
+      setItems((current) => [...current, ...response.items]);
+      setPageInfo(response.pageInfo);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   return (
     <div className="p-6 md:p-8 space-y-6">
@@ -46,7 +92,7 @@ export default function GalleryPage() {
         )}
       </div>
 
-      {/* Search & Filters */}
+      {/* Search and filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -81,7 +127,7 @@ export default function GalleryPage() {
 
       {/* Grid */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {filtered.map((item) => (
+        {items.map((item) => (
           <Link key={item.id} to={`/gallery/${item.id}`} className="block group">
             <div className="hud-border-sm bg-card overflow-hidden hover:glow-primary transition-shadow">
               {item.type === "video" && item.videoUrl ? (
@@ -94,12 +140,18 @@ export default function GalleryPage() {
                 </div>
               ) : item.type === "image" && item.thumbnail ? (
                 <div className="aspect-video bg-muted overflow-hidden">
-                  <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
+                  <img
+                    src={item.thumbnail}
+                    alt={item.title}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               ) : (
                 <div className="aspect-video bg-muted flex items-center justify-center relative">
                   <span className="text-xs text-muted-foreground font-heading tracking-wider">
-                    {item.type === "video" ? "▶ VIDEO" : "IMAGE"}
+                    {item.type === "video" ? "VIDEO" : "IMAGE"}
                   </span>
                   {item.type === "video" && (
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -119,8 +171,30 @@ export default function GalleryPage() {
         ))}
       </div>
 
-      {filtered.length === 0 && (
+      {!isLoading && items.length === 0 && (
         <div className="text-center py-12 text-muted-foreground font-body text-sm">No items found.</div>
+      )}
+
+      {(pageInfo || isLoading) && (
+        <div className="flex flex-col items-center gap-3 pt-2">
+          {pageInfo && (
+            <p className="text-[11px] font-display tracking-wider text-muted-foreground uppercase">
+              Showing {items.length} of {pageInfo.total}
+            </p>
+          )}
+          {pageInfo?.hasNextPage && (
+            <button
+              onClick={loadMore}
+              disabled={isLoading}
+              className="px-4 py-2 text-xs font-display tracking-wider border border-primary text-primary rounded-sm hover:bg-primary hover:text-primary-foreground disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-primary transition-colors"
+            >
+              {isLoading ? "LOADING..." : "LOAD MORE"}
+            </button>
+          )}
+          {isLoading && !pageInfo?.hasNextPage && (
+            <p className="text-xs text-muted-foreground font-body">Loading gallery...</p>
+          )}
+        </div>
       )}
     </div>
   );

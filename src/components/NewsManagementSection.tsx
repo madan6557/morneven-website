@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  getNews,
+  getNewsPage,
   createNews,
   updateNews,
   deleteNews,
 } from "@/services/newsApi";
+import type { PageInfo } from "@/services/pagination";
 import type { NewsItem, NewsAttachment } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Calendar, Image, Video, Link as LinkIcon, FileText } from "lucide-react";
 
@@ -13,6 +14,7 @@ const inputClass =
 const labelClass = "font-heading text-xs tracking-wider text-muted-foreground uppercase";
 
 const todayStr = () => new Date().toISOString().split("T")[0];
+const NEWS_PAGE_SIZE = 25;
 
 type EditState = {
   id?: string;
@@ -35,12 +37,15 @@ const blank = (): EditState => ({
 
 export default function NewsManagementSection() {
   const [items, setItems] = useState<NewsItem[]>([]);
+  const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
+  const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<EditState | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const editFormRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    void load();
+    void load(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -51,8 +56,16 @@ export default function NewsManagementSection() {
     return () => window.cancelAnimationFrame(id);
   }, [editing]);
 
-  async function load() {
-    setItems(await getNews());
+  async function load(reset = false) {
+    const page = reset ? 1 : (pageInfo?.page ?? 1) + 1;
+    setLoading(true);
+    try {
+      const response = await getNewsPage({ page, pageSize: NEWS_PAGE_SIZE });
+      setItems((current) => reset ? response.items : [...current, ...response.items]);
+      setPageInfo(response.pageInfo);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function startCreate() {
@@ -87,13 +100,13 @@ export default function NewsManagementSection() {
     else if (editing.id) await updateNews(editing.id, payload);
     setEditing(null);
     setIsCreating(false);
-    await load();
+    await load(true);
   }
 
   async function remove(id: string, title: string) {
     if (!window.confirm(`Delete news "${title}"? This cannot be undone.`)) return;
     await deleteNews(id);
-    await load();
+    await load(true);
   }
 
   function addAttachment(type: NewsAttachment["type"]) {
@@ -322,6 +335,24 @@ export default function NewsManagementSection() {
             </button>
           </div>
         ))}
+        {loading && (
+          <p className="text-sm text-muted-foreground font-body italic py-2">Loading news...</p>
+        )}
+        {pageInfo?.hasNextPage && (
+          <div className="flex flex-col items-center gap-2 pt-2">
+            <p className="text-[11px] font-display tracking-wider text-muted-foreground uppercase">
+              Showing {items.length} of {pageInfo.total}
+            </p>
+            <button
+              type="button"
+              onClick={() => load(false)}
+              disabled={loading}
+              className="px-4 py-2 text-xs font-display tracking-wider border border-primary text-primary rounded-sm hover:bg-primary hover:text-primary-foreground disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-primary transition-colors"
+            >
+              LOAD MORE
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,10 +1,43 @@
 import type { Character, Creature, OtherLore, Place, Technology } from "@/types";
 import { db, delay, STORAGE_KEYS, writeCollection } from "@/services/dataStore";
+import {
+  matchesSearch,
+  paginateCollection,
+  pickByIds,
+  type PaginatedResponse,
+  type PaginationParams,
+} from "@/services/pagination";
+
+export type LoreSort = "name" | "name-desc";
+
+interface LorePageParams extends PaginationParams {
+  sort?: LoreSort;
+}
+
+function sortNamedItems<T extends { name?: string; title?: string }>(items: T[], sort?: LoreSort): T[] {
+  if (!sort) return items;
+
+  return [...items].sort((a, b) => {
+    const aName = (a.name || a.title || "").toLowerCase();
+    const bName = (b.name || b.title || "").toLowerCase();
+    return sort === "name" ? aName.localeCompare(bName) : bName.localeCompare(aName);
+  });
+}
 
 // Characters
 export async function getCharacters(): Promise<Character[]> {
   await delay();
   return [...db.characters];
+}
+
+export async function getCharactersPage(params: LorePageParams = {}): Promise<PaginatedResponse<Character>> {
+  await delay();
+  const { ids, page, pageSize, search, sort } = params;
+  const items = sortNamedItems(
+    pickByIds([...db.characters], ids).filter((item) => matchesSearch(search, [item.name, item.race, item.occupation, item.shortDesc])),
+    sort,
+  );
+  return paginateCollection(items, { page, pageSize });
 }
 
 export async function getCharacter(id: string): Promise<Character | undefined> {
@@ -43,6 +76,16 @@ export async function getPlaces(): Promise<Place[]> {
   return [...db.places];
 }
 
+export async function getPlacesPage(params: LorePageParams = {}): Promise<PaginatedResponse<Place>> {
+  await delay();
+  const { ids, page, pageSize, search, sort } = params;
+  const items = sortNamedItems(
+    pickByIds([...db.places], ids).filter((item) => matchesSearch(search, [item.name, item.type, item.shortDesc])),
+    sort,
+  );
+  return paginateCollection(items, { page, pageSize });
+}
+
 export async function getPlace(id: string): Promise<Place | undefined> {
   await delay();
   return db.places.find((p) => p.id === id);
@@ -77,6 +120,16 @@ export async function deletePlace(id: string): Promise<boolean> {
 export async function getTechnology(): Promise<Technology[]> {
   await delay();
   return [...db.technology];
+}
+
+export async function getTechnologyPage(params: LorePageParams = {}): Promise<PaginatedResponse<Technology>> {
+  await delay();
+  const { ids, page, pageSize, search, sort } = params;
+  const items = sortNamedItems(
+    pickByIds([...db.technology], ids).filter((item) => matchesSearch(search, [item.name, item.category, item.shortDesc])),
+    sort,
+  );
+  return paginateCollection(items, { page, pageSize });
 }
 
 export async function getTech(id: string): Promise<Technology | undefined> {
@@ -115,6 +168,16 @@ export async function getCreatures(): Promise<Creature[]> {
   return [...db.creatures];
 }
 
+export async function getCreaturesPage(params: LorePageParams = {}): Promise<PaginatedResponse<Creature>> {
+  await delay();
+  const { ids, page, pageSize, search, sort } = params;
+  const items = sortNamedItems(
+    pickByIds([...db.creatures], ids).filter((item) => matchesSearch(search, [item.name, item.classification, item.habitat, item.shortDesc])),
+    sort,
+  );
+  return paginateCollection(items, { page, pageSize });
+}
+
 export async function getCreature(id: string): Promise<Creature | undefined> {
   await delay();
   return db.creatures.find((c) => c.id === id);
@@ -149,6 +212,16 @@ export async function deleteCreature(id: string): Promise<boolean> {
 export async function getOthers(): Promise<OtherLore[]> {
   await delay();
   return [...db.others];
+}
+
+export async function getOthersPage(params: LorePageParams = {}): Promise<PaginatedResponse<OtherLore>> {
+  await delay();
+  const { ids, page, pageSize, search, sort } = params;
+  const items = sortNamedItems(
+    pickByIds([...db.others], ids).filter((item) => matchesSearch(search, [item.title, item.category, item.shortDesc])),
+    sort,
+  );
+  return paginateCollection(items, { page, pageSize });
 }
 
 export async function getOther(id: string): Promise<OtherLore | undefined> {

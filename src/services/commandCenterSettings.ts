@@ -17,7 +17,8 @@ export interface CommandCenterSettings {
   showGallery: boolean;
   showQuickActions: boolean;
   welcomeMessage: string;
-  // How many items to show per section. 0 = no cap (show all).
+  // How many items to show per section. Lazy-loaded views use a safe page
+  // default when this is 0.
   itemLimits: Record<CommandCenterSection, number>;
   // Optional manual selection of items to show per section. When the
   // array is non-empty, the HomePage uses these IDs in order and ignores
