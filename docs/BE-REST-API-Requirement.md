@@ -292,6 +292,22 @@ LoreFieldNote = {
 }
 ```
 
+### 5.2b Observation notes (explicit)
+Observation notes are already part of each lore/entity row via `observations` (jsonb array) and use the same item structure as `fieldNotes`.
+
+```ts
+observations?: LoreFieldNote[]
+```
+
+Semantics:
+- `fieldNotes` = operational/author research notes entered during data gathering.
+- `observations` = findings/observed behavior snapshots tied to the entity (timeline-style notes in the same schema).
+
+Backend requirements:
+- Never return `null`; default to `[]`.
+- Preserve chronological order as stored (or document server-side sort policy if enforced).
+- Accept create/update payloads for both `fieldNotes` and `observations` with identical validation rules.
+
 ### 5.3 Per-entity columns
 
 | Entity | Table | Extra columns |
