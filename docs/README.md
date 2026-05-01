@@ -1,6 +1,6 @@
 # Documentation Index & Finalization Notes
 
-**Last validated:** 2026-04-29 (UTC)
+**Last validated:** 2026-05-01 (UTC)
 **Scope:** `docs/` handover, readiness reports, and backend contracts.
 
 ## Canonical documents
@@ -31,6 +31,7 @@
 - Aligned canonical reference flow so there is one primary backend contract plus supporting assessments.
 - Fixed invalid companion-doc reference in backend contract (see update in `BE-REST-API-Requirement.md`).
 - Added current Author Panel coverage for lore field notes, observations, and uploaded attachment badge/delete behavior.
+- Added strict frontend variable-contract notes for REST payload parity (camelCase response fields, array defaults, and enum/date validation).
 
 ## Maintenance rule
 
