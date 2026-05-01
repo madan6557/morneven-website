@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import type { DiscussionComment, DiscussionMention } from "@/types";
 import { MessageSquare, Reply, Send, Pencil, Trash2, Check, X } from "lucide-react";
@@ -13,6 +13,8 @@ interface Props {
   onEditReply?: (commentId: string, replyId: string, text: string, mentions?: DiscussionMention[]) => void | Promise<void>;
   onDeleteReply?: (commentId: string, replyId: string) => void;
   accentColor?: string;
+  commentLimit?: number;
+  replyLimit?: number;
 }
 
 export default function DiscussionSection({
@@ -24,6 +26,8 @@ export default function DiscussionSection({
   onEditReply,
   onDeleteReply,
   accentColor,
+  commentLimit = 10,
+  replyLimit = 5,
 }: Props) {
   const { role, username } = useAuth();
   const [newComment, setNewComment] = useState("");
@@ -32,6 +36,8 @@ export default function DiscussionSection({
   const [editingComment, setEditingComment] = useState<string | null>(null);
   const [editingReply, setEditingReply] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [commentCursor, setCommentCursor] = useState(commentLimit);
+  const [replyCursorByComment, setReplyCursorByComment] = useState<Record<string, number>>({});
 
   const authorName = username || (role === "guest" ? "Guest" : "User");
   const canComment = role !== "guest";
@@ -89,6 +95,16 @@ export default function DiscussionSection({
   };
 
   const accent = accentColor || "hsl(var(--primary))";
+  const sortedComments = useMemo(
+    () => [...comments].sort((a, b) => (b.date || "").localeCompare(a.date || "")),
+    [comments],
+  );
+  const visibleComments = sortedComments.slice(0, commentCursor);
+  const hasMoreComments = sortedComments.length > visibleComments.length;
+
+  useEffect(() => {
+    setCommentCursor((current) => Math.max(commentLimit, Math.min(current, sortedComments.length)));
+  }, [commentLimit, sortedComments.length]);
 
   return (
     <div className="space-y-4">
@@ -128,9 +144,13 @@ export default function DiscussionSection({
         {comments.length === 0 && (
           <p className="text-xs text-muted-foreground font-body text-center py-4">No discussion yet. Be the first to comment.</p>
         )}
-        {[...comments]
-          .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
-          .map((c) => (
+        {visibleComments.map((c) => {
+          const sortedReplies = [...c.replies].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+          const replyCursor = replyCursorByComment[c.id] ?? replyLimit;
+          const visibleReplies = sortedReplies.slice(0, replyCursor);
+          const hasMoreReplies = sortedReplies.length > visibleReplies.length;
+
+          return (
           <div key={c.id} className="hud-border-sm bg-card p-4 space-y-2" style={{ borderColor: `${accent}20` }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -181,9 +201,7 @@ export default function DiscussionSection({
             {/* Replies */}
             {c.replies.length > 0 && (
               <div className="ml-4 border-l-2 pl-3 space-y-2 mt-2" style={{ borderColor: `${accent}30` }}>
-                {[...c.replies]
-                  .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
-                  .map((r) => (
+                {visibleReplies.map((r) => (
                   <div key={r.id} className="space-y-1">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -232,6 +250,20 @@ export default function DiscussionSection({
                     )}
                   </div>
                 ))}
+
+                {hasMoreReplies && (
+                  <button
+                    onClick={() =>
+                      setReplyCursorByComment((prev) => ({
+                        ...prev,
+                        [c.id]: (prev[c.id] ?? replyLimit) + replyLimit,
+                      }))
+                    }
+                    className="text-[10px] font-heading tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    LOAD MORE REPLIES ({sortedReplies.length - visibleReplies.length} left)
+                  </button>
+                )}
               </div>
             )}
 
@@ -266,7 +298,16 @@ export default function DiscussionSection({
               </>
             )}
           </div>
-        ))}
+        )})}
+
+        {hasMoreComments && (
+          <button
+            onClick={() => setCommentCursor((current) => current + commentLimit)}
+            className="w-full py-2 text-xs font-heading tracking-wider text-muted-foreground hover:text-foreground transition-colors border border-border/60 rounded-sm"
+          >
+            LOAD MORE DISCUSSIONS ({sortedComments.length - visibleComments.length} left)
+          </button>
+        )}
       </div>
     </div>
   );
