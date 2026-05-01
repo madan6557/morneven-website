@@ -25,3 +25,4 @@ dist-ssr
 
 # Local backend requirement draft
 
+.env
