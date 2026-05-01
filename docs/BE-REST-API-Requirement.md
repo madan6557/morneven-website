@@ -225,14 +225,16 @@ All five entities share CRUD shape + per-entity discussion threads. Difference i
 ```sql
 id           uuid primary key
 thumbnail    text
-short_desc   text not null
-full_desc    text not null
-docs         jsonb not null default '[]'   -- DocItem[]
-discussions  jsonb not null default '[]'   -- DiscussionComment[]  (see §7)
-contributor  citext                          -- username
-meta         jsonb                          -- LoreMeta (see §5.2)
-created_at   timestamptz not null default now()
-updated_at   timestamptz not null default now()
+short_desc    text not null
+full_desc     text not null
+docs          jsonb not null default '[]'   -- DocItem[] (image/video/file)
+field_notes   jsonb not null default '[]'   -- LoreFieldNote[]
+observations  jsonb not null default '[]'   -- LoreFieldNote[]
+discussions   jsonb not null default '[]'   -- DiscussionComment[]  (see §7)
+contributor   citext                          -- username
+meta          jsonb                          -- LoreMeta (see §5.2)
+created_at    timestamptz not null default now()
+updated_at    timestamptz not null default now()
 ```
 
 ### 5.2 LoreMeta shape (jsonb)
@@ -251,6 +253,22 @@ updated_at   timestamptz not null default now()
   patchNotes?: { version: string; date: string; notes: string }[];
   license?: string;
   sourceUrl?: string;
+}
+```
+
+### 5.2a Attachment and field-note shapes
+```ts
+DocItem = {
+  type: "image" | "video" | "file";
+  url: string;      // storage/presigned/manual URL, hidden behind a type badge in author UI when uploaded
+  caption: string;
+}
+
+LoreFieldNote = {
+  id: string;
+  title: string;
+  body: string;
+  date?: string;   // YYYY-MM-DD
 }
 ```
 
