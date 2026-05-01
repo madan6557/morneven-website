@@ -303,13 +303,13 @@ export default function AuthorDashboard() {
       setEditing({ title: "", status: "Planning", thumbnail: "", shortDesc: "", fullDesc: "", patches: [], docs: [] });
     } else if (activeTab === "lore") {
       if (loreSub === "characters") {
-        setEditing({ name: "", race: "", occupation: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 }, docs: [], contributions: [] });
+        setEditing({ name: "", race: "", occupation: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 }, docs: [], fieldNotes: [], observations: [], contributions: [] });
       } else if (loreSub === "places") {
         setEditing({ name: "", type: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
       } else if (loreSub === "technology") {
         setEditing({ name: "", category: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
       } else if (loreSub === "creatures") {
-        setEditing({ name: "", classification: "Amorphous", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
+        setEditing({ name: "", classification: "Amorphous", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [] });
       } else {
         setEditing({ title: "", category: "World Systems", thumbnail: "", shortDesc: "", fullDesc: "", docs: [] });
       }
@@ -352,6 +352,8 @@ export default function AuthorDashboard() {
           fullDesc: editing.fullDesc ?? "",
           stats: editing.stats ?? { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 },
           docs: editing.docs ?? [],
+          fieldNotes: editing.fieldNotes ?? [],
+          observations: editing.observations ?? [],
           contributions: editing.contributions ?? [],
           meta: editing.meta,
         };
@@ -367,6 +369,8 @@ export default function AuthorDashboard() {
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
+          fieldNotes: editing.fieldNotes ?? [],
+          observations: editing.observations ?? [],
           meta: editing.meta,
         };
 
