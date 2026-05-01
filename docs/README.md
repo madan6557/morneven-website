@@ -6,7 +6,7 @@
 ## Canonical documents
 
 1. **`BE-REST-API-Requirement.md`**  
-   Backend implementation contract (full platform) and the main source of truth for API behavior.
+   Backend implementation contract (full platform) and the main source of truth for API behavior, including lore metadata, field notes, observations, and image/video/file documentation attachments.
 
 2. **`production-readiness-chat-plan.md`**  
    Detailed production-gap analysis and phased chat hardening roadmap.
@@ -30,6 +30,7 @@
 - Verified all files in `docs/` are readable and structurally complete (no TODO placeholders).
 - Aligned canonical reference flow so there is one primary backend contract plus supporting assessments.
 - Fixed invalid companion-doc reference in backend contract (see update in `BE-REST-API-Requirement.md`).
+- Added current Author Panel coverage for lore field notes, observations, and uploaded attachment badge/delete behavior.
 
 ## Maintenance rule
 
