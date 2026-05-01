@@ -313,7 +313,7 @@ create table projects (
   short_desc   text not null,
   full_desc    text not null,
   patches      jsonb not null default '[]',   -- ProjectPatch[]
-  docs         jsonb not null default '[]',   -- DocItem[]
+  docs         jsonb not null default '[]',   -- DocItem[] (image/video/file)
   archived     boolean not null default false,
   contributor  citext,
   meta         jsonb,
