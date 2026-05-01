@@ -818,3 +818,11 @@ Return `429` with `Retry-After` header.
 ---
 
 **End of document.** Cross-reference `BERequierment.md` for chat-specific details (real-time fan-out, attachment lifecycle, system-managed conversations, audit hooks).
+
+
+## PL7 Extraction Feature (Settings)
+- Add backend support for asynchronous extraction jobs returning ZIP artifacts.
+- Modes: DB-only, Images-only, and combined export (DB includes gallery dataset; images split by category).
+- Access control: PL7 only, require password verification and CONFIRM phrase gate.
+- Keep extraction history for 30 days with selective delete and clear-all endpoints.
+- Provide downloadable artifact URL when job status is completed.

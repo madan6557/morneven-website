@@ -14,9 +14,11 @@ interface AuthState {
   role: UserRole;
   personnelLevel: PersonnelLevel;
   track: PersonnelTrack;
+  passwordSnapshot?: string;
   setPersonnelLevel: (level: PersonnelLevel) => void;
   setTrack: (track: PersonnelTrack) => void;
   login: (email: string, password: string) => Promise<void>;
+  verifyPassword: (password: string) => boolean;
   register: (email: string, password: string, username: string) => void;
   guestLogin: () => void;
   logout: () => void;
@@ -33,6 +35,7 @@ interface SavedAuth {
   role: UserRole;
   personnelLevel?: PersonnelLevel;
   track?: PersonnelTrack;
+  passwordSnapshot?: string;
 }
 
 function readSaved(): SavedAuth | null {
@@ -52,6 +55,7 @@ function writeSavedAuth(next: {
   role: UserRole;
   personnelLevel: PersonnelLevel;
   track: PersonnelTrack;
+  passwordSnapshot?: string;
 }) {
   if (typeof window === "undefined") return;
 
@@ -85,10 +89,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saved?.track ?? DEFAULT_TRACK_BY_ROLE[saved?.role ?? "guest"]
   );
 
+  const [passwordSnapshot, setPasswordSnapshot] = useState(saved?.passwordSnapshot ?? "");
+
   // Save to localStorage whenever auth state changes
   useEffect(() => {
-    writeSavedAuth({ isAuthenticated, username, role, personnelLevel, track });
-  }, [isAuthenticated, username, role, personnelLevel, track]);
+    writeSavedAuth({ isAuthenticated, username, role, personnelLevel, track, passwordSnapshot });
+  }, [isAuthenticated, username, role, personnelLevel, track, passwordSnapshot]);
 
   const login = async (email: string, _password: string) => {
     const emailNorm = email.trim().toLowerCase();
@@ -102,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(found.role as UserRole);
       setPersonnelLevel(found.level as PersonnelLevel);
       setTrack(found.track as PersonnelTrack);
+      setPasswordSnapshot(_password);
       return;
     }
     // fallback lama
@@ -111,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole(nextRole);
     setPersonnelLevel(DEFAULT_PL_BY_ROLE[nextRole]);
     setTrack(DEFAULT_TRACK_BY_ROLE[nextRole]);
+    setPasswordSnapshot(_password);
   };
 
   const register = (email: string, _password: string, name: string) => {
@@ -120,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole("personel");
     setPersonnelLevel(1);
     setTrack("executive"); // GOV
+    setPasswordSnapshot(_password);
   };
 
   const guestLogin = () => {
@@ -128,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole("guest");
     setPersonnelLevel(DEFAULT_PL_BY_ROLE.guest);
     setTrack(DEFAULT_TRACK_BY_ROLE.guest);
+    setPasswordSnapshot("");
   };
 
   const logout = () => {
@@ -136,8 +146,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole("guest");
     setPersonnelLevel(DEFAULT_PL_BY_ROLE.guest);
     setTrack(DEFAULT_TRACK_BY_ROLE.guest);
+    setPasswordSnapshot("");
     clearSavedAuth();
   };
+
+  const verifyPassword = (password: string) => Boolean(passwordSnapshot) && passwordSnapshot === password;
 
   return (
     <AuthContext.Provider
@@ -153,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         guestLogin,
         logout,
+        verifyPassword,
       }}
     >
       {children}
