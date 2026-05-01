@@ -82,6 +82,22 @@ export interface ConversationSample {
   lastMessageAt: string;
 }
 
+export interface ChatTeamRoster {
+  id: string;
+  name: string;
+  leader: string;
+  members: string[];
+}
+
+export interface ChatReconciliationReport {
+  instituteGroups: number;
+  divisionGroups: number;
+  teamGroups: number;
+  activeMemberships: number;
+  removedMemberships: number;
+  ranAt: string;
+}
+
 const KEY_CONV = "morneven_chat_conversations_v2";
 const KEY_MSG = "morneven_chat_messages_v2";
 export const CHAT_READ_KEY = "morneven_chat_last_read_v1";
@@ -181,7 +197,9 @@ export function writeChatReadMap(next: ChatReadMap) {
 function ensureMember(conv: Conversation, username: string, role: MemberRole = "member", invitedBy?: string, status: MemberStatus = "active") {
   const existing = conv.members.find((m) => m.username === username);
   if (existing) {
-    if (existing.status === "removed") existing.status = status;
+    existing.role = role;
+    existing.status = status;
+    existing.invitedBy = invitedBy;
     return existing;
   }
   const m: ConversationMember = { username, role, status, invitedBy, joinedAt: todayISO() };
@@ -516,8 +534,12 @@ export function renameConversation(conversationId: string, actor: string, name: 
 
 export function syncTeamGroup(teamId: string, teamName: string, members: string[]): Conversation {
   const existing = conversations.find((c) => c.kind === "team" && c.source?.teamId === teamId);
+  const activeRoster = new Set(members.filter(Boolean));
   if (existing) {
-    members.forEach((u) => ensureMember(existing, u, "member"));
+    activeRoster.forEach((u) => ensureMember(existing, u, "member"));
+    existing.members.forEach((m) => {
+      if (!activeRoster.has(m.username)) m.status = "removed";
+    });
     existing.name = `Team · ${teamName}`;
     persist();
     return existing;
@@ -526,7 +548,7 @@ export function syncTeamGroup(teamId: string, teamName: string, members: string[
     id: `conv-team-${teamId}`,
     kind: "team",
     name: `Team · ${teamName}`,
-    members: members.map<ConversationMember>((u) => ({ username: u, role: "member", status: "active", joinedAt: todayISO() })),
+    members: [...activeRoster].map<ConversationMember>((u) => ({ username: u, role: "member", status: "active", joinedAt: todayISO() })),
     source: { teamId },
     systemManaged: true,
     createdBy: "system",
@@ -563,6 +585,18 @@ export function syncDivisionMembership(username: string, track: PersonnelTrack) 
   }
   persist();
   return group;
+}
+
+export function getSystemChatSnapshot(): ChatReconciliationReport {
+  const systemConversations = conversations.filter((c) => c.systemManaged);
+  return {
+    instituteGroups: systemConversations.filter((c) => c.kind === "institute").length,
+    divisionGroups: systemConversations.filter((c) => c.kind === "division").length,
+    teamGroups: systemConversations.filter((c) => c.kind === "team").length,
+    activeMemberships: systemConversations.reduce((sum, c) => sum + c.members.filter((m) => m.status === "active").length, 0),
+    removedMemberships: systemConversations.reduce((sum, c) => sum + c.members.filter((m) => m.status === "removed").length, 0),
+    ranAt: todayISO(),
+  };
 }
 
 // Ensures the singleton institute conversation exists.
@@ -634,8 +668,8 @@ function ensureDivisionGroup(track: PersonnelTrack): Conversation {
   return group;
 }
 
-// Big idempotent reconciler - call on app boot. Mirrors a future cron worker.
-export function reconcileAutoMemberships(personnel: PersonnelUser[]) {
+// Big idempotent reconciler. Mirrors a future backend worker or admin action.
+export function reconcileAutoMemberships(personnel: PersonnelUser[], teams: ChatTeamRoster[] = []): ChatReconciliationReport {
   const inst = ensureInstituteGroup();
   const tracks: PersonnelTrack[] = ["executive", "field", "mechanic", "logistics"];
   tracks.forEach(ensureDivisionGroup);
@@ -659,14 +693,24 @@ export function reconcileAutoMemberships(personnel: PersonnelUser[]) {
       const shouldBeMember = isPL7 || p.track === t;
       if (shouldBeMember) {
         if (!m) g.members.push({ username: p.username, role: isPL7 ? "admin" : "member", status: "active", joinedAt: todayISO() });
-        else m.status = "active";
+        else {
+          m.role = isPL7 ? "admin" : "member";
+          m.status = "active";
+        }
       } else if (m && m.status === "active") {
         m.status = "removed";
       }
     }
   }
 
+  // 3. Team channels follow the current management team roster.
+  teams.forEach((team) => {
+    const teamMembers = [team.leader, ...team.members].filter((username) => activeUsernames.has(username));
+    syncTeamGroup(team.id, team.name, teamMembers);
+  });
+
   persist();
+  return getSystemChatSnapshot();
 }
 
 // -------- Subscription --------------------------------------------------
