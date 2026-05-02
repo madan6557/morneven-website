@@ -19,18 +19,46 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default function OtherDetail() {
   const { id } = useParams<{ id: string }>();
   const [item, setItem] = useState<OtherLore | null>(null);
+  const [loading, setLoading] = useState(true);
   const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
 
   useEffect(() => {
-    if (id) {
-      getOther(id).then((o) => {
-        setItem(o ?? null);
-        setDiscussion(o?.discussions ?? []);
-      });
+    let active = true;
+    setLoading(true);
+
+    if (!id) {
+      setItem(null);
+      setDiscussion([]);
+      setLoading(false);
+      return () => {
+        active = false;
+      };
     }
+
+    getOther(id).then((o) => {
+      if (!active) return;
+      setItem(o ?? null);
+      setDiscussion(o?.discussions ?? []);
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
   }, [id]);
 
-  if (!item) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+  if (loading) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+
+  if (!item) {
+    return (
+      <div className="p-8 space-y-3">
+        <Link to="/lore/other" className="inline-flex items-center gap-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-3 w-3" /> BACK TO OTHER
+        </Link>
+        <p className="text-sm text-muted-foreground font-body">Lore entry not found.</p>
+      </div>
+    );
+  }
 
   const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
     if (!item) return;

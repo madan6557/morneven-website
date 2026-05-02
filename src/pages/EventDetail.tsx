@@ -19,17 +19,46 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
   const [item, setItem] = useState<LoreEvent | null>(null);
+  const [loading, setLoading] = useState(true);
   const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
 
   useEffect(() => {
-    if (!id) return;
+    let active = true;
+    setLoading(true);
+
+    if (!id) {
+      setItem(null);
+      setDiscussion([]);
+      setLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
     getEvent(id).then((e) => {
+      if (!active) return;
       setItem(e ?? null);
       setDiscussion(e?.discussions ?? []);
+      setLoading(false);
     });
+
+    return () => {
+      active = false;
+    };
   }, [id]);
 
-  if (!item) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+  if (loading) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+
+  if (!item) {
+    return (
+      <div className="p-8 space-y-3">
+        <Link to="/lore/events" className="inline-flex items-center gap-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-3 w-3" /> BACK TO EVENTS
+        </Link>
+        <p className="text-sm text-muted-foreground font-body">Event not found.</p>
+      </div>
+    );
+  }
 
   const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
     const updated = await addEventDiscussionComment(item.id, author, text, mentions);

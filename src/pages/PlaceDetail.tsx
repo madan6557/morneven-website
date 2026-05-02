@@ -19,19 +19,47 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default function PlaceDetail() {
   const { id } = useParams<{ id: string }>();
   const [place, setPlace] = useState<Place | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showMap, setShowMap] = useState(false);
   const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
 
   useEffect(() => {
-    if (id) {
-      getPlace(id).then((p) => {
-        setPlace(p ?? null);
-        setDiscussion(p?.discussions ?? []);
-      });
+    let active = true;
+    setLoading(true);
+
+    if (!id) {
+      setPlace(null);
+      setDiscussion([]);
+      setLoading(false);
+      return () => {
+        active = false;
+      };
     }
+
+    getPlace(id).then((p) => {
+      if (!active) return;
+      setPlace(p ?? null);
+      setDiscussion(p?.discussions ?? []);
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
   }, [id]);
 
-  if (!place) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+  if (loading) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+
+  if (!place) {
+    return (
+      <div className="p-8 space-y-3">
+        <Link to="/lore/places" className="inline-flex items-center gap-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-3 w-3" /> BACK TO PLACES
+        </Link>
+        <p className="text-sm text-muted-foreground font-body">Place not found.</p>
+      </div>
+    );
+  }
 
   const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
     if (!place) return;

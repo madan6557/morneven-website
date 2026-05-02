@@ -20,18 +20,46 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default function CharacterDetail() {
   const { id } = useParams<{ id: string }>();
   const [char, setChar] = useState<Character | null>(null);
+  const [loading, setLoading] = useState(true);
   const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
 
   useEffect(() => {
-    if (id) {
-      getCharacter(id).then((c) => {
-        setChar(c ?? null);
-        setDiscussion(c?.discussions ?? []);
-      });
+    let active = true;
+    setLoading(true);
+
+    if (!id) {
+      setChar(null);
+      setDiscussion([]);
+      setLoading(false);
+      return () => {
+        active = false;
+      };
     }
+
+    getCharacter(id).then((c) => {
+      if (!active) return;
+      setChar(c ?? null);
+      setDiscussion(c?.discussions ?? []);
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
   }, [id]);
 
-  if (!char) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+  if (loading) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+
+  if (!char) {
+    return (
+      <div className="p-8 space-y-3">
+        <Link to="/lore/characters" className="inline-flex items-center gap-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-3 w-3" /> BACK TO CHARACTERS
+        </Link>
+        <p className="text-sm text-muted-foreground font-body">Character not found.</p>
+      </div>
+    );
+  }
 
   const accentColor = char.accentColor;
   const contributions = char.contributions ?? [];
