@@ -34,7 +34,11 @@ function makeZip(files: Array<{ name: string; content: string }>): Blob {
   }
   const cdir = concat(central);
   const end = concat([le(0x06054b50,4), le(0,2), le(0,2), le(files.length,2), le(files.length,2), le(cdir.length,4), le(offset,4), le(0,2)]);
-  const blobParts = [...chunks, cdir, end].map((part) => part.buffer.slice(part.byteOffset, part.byteOffset + part.byteLength));
+  const blobParts = [...chunks, cdir, end].map((part) => {
+    const buffer = new ArrayBuffer(part.byteLength);
+    new Uint8Array(buffer).set(part);
+    return buffer;
+  });
   return new Blob(blobParts, { type: "application/zip" });
 }
 function concat(parts: Uint8Array[]) { const len = parts.reduce((a,p)=>a+p.length,0); const out = new Uint8Array(len); let o=0; for(const p of parts){out.set(p,o);o+=p.length;} return out; }
