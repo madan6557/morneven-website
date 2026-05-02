@@ -3,76 +3,75 @@
 Date: 2026-05-02
 Tester role: QA Frontend
 Target repository: `morneven-website`
-Primary target: local `dist` served as SPA on `http://127.0.0.1:3000`
 Guide used: `docs/QA_FRONTEND_TEST_GUIDE.md`
+Local target: production `dist` served on `http://127.0.0.1:4173`
+Public target: `https://morneven.com`
 
 ## Executive Verdict
 
-Final verdict: FAIL for release readiness.
+Final verdict: Conditional PASS for demo frontend readiness.
 
-Reason:
+There are no P0 or P1 blockers in this run. Core route smoke, auth access, permission guards, seed detail routes, responsive overflow checks, and deployed public smoke passed. One P2 functional UX issue remains in login validation, and one P3 asset issue remains for the social preview image.
 
-- One P1 permission defect was found: Guest users can access Chat through the direct `/chat` route.
-- Several P2 functional defects were found in route fallback behavior and CRUD validation.
-- Full browser visual QA could not be completed in this environment because all available browser automation paths were blocked.
-- `npm run test` and `npm run build` could not complete because `esbuild` service spawn was blocked by the local environment.
-
-This run is still useful as a source-backed and route-backed QA pass, but it is not a complete visual acceptance run.
+This report supersedes the earlier blocked QA report from the same date.
 
 ## Environment
 
 | Item | Result |
 | --- | --- |
 | OS shell | PowerShell |
-| Node from system | v22.12.0 |
-| Bundled Node | v24.14.0 |
-| Local app serving | Static SPA server against `dist` |
-| Browser automation | Blocked |
-| Public deploy QA | Not executed |
-| Worktree status before report | `docs/QA_FRONTEND_TEST_GUIDE.md` untracked |
+| Browser | HeadlessChrome 147 via system Chrome |
+| Local mode | Production build served from `dist` |
+| Public mode | Read-only smoke on `https://morneven.com` |
+| Viewports | `390x844`, `768x1024`, `1366x768`, `1920x1080` |
+| Browser profile | Isolated incognito contexts |
+| Screenshots | `docs/qa-screenshots-2026-05-02/` |
 
 ## Command Results
 
 | Check | Result | Notes |
 | --- | --- | --- |
 | `npm.cmd run lint` | PASS with warnings | 0 errors, 13 warnings |
-| `npm.cmd run test` | BLOCKED | Vitest config failed because `esbuild` spawn returned `EPERM` |
-| `npm.cmd run build` | BLOCKED | Vite config failed because `esbuild` spawn returned `EPERM` |
-| Static SPA route fallback | PASS | Tested route list returned `200` and app root HTML |
-| Fixed seed target existence | PASS | All Section 20 fixed IDs exist in seed JSON |
+| `npm.cmd run test` | PASS | 3 files passed, 10 tests passed |
+| `npm.cmd run build` | PASS | Build completed |
 
-Lint warnings observed:
+Build warnings:
 
-- Fast refresh export warnings in shared component files.
-- Missing React hook dependency warnings in `AuthorDashboard.tsx`, `ChatPage.tsx`, and `ManagementPage.tsx`.
+- Browserslist data is stale.
+- Main JS chunk is larger than 650 kB after minification.
 
-## Browser QA Blockers
+Lint warnings:
 
-| ID | Area | Result |
-| --- | --- | --- |
-| BQ-01 | Browser-use Node REPL | BLOCKED: Node REPL resolved system Node v22.12.0, but browser-use requires at least v22.22.0 |
-| BQ-02 | Playwright bundled browser | BLOCKED: Chromium executable was not installed in Playwright cache |
-| BQ-03 | Playwright with system Chrome | BLOCKED: Chrome spawn returned `EPERM` |
-| BQ-04 | Chrome remote debugging fallback | BLOCKED by shell policy |
+- Fast refresh export warnings in UI and shared component files.
+- Hook dependency warnings in `AuthorDashboard.tsx`, `ChatPage.tsx`, and `ManagementPage.tsx`.
 
-Impact:
+## Automated Browser QA Summary
 
-- Visual regression screenshots were not captured.
-- Click-through UI flow QA was not completed.
-- Responsive layout could not be verified in an actual browser viewport.
+| Area | Result |
+| --- | --- |
+| Local browser checks | 77 total, 75 pass, 2 fail |
+| Public smoke checks | 6 total, 6 pass |
+| Screenshots captured | 20 |
+| Horizontal overflow checks | 40 pass, 0 fail |
+| Seed route smoke | 15 pass, 0 fail |
+| Permission checks | 7 pass, 0 fail |
+| Not-found handling checks | 8 pass, 0 fail |
 
-## Route Fallback Smoke
+Screenshots captured:
 
-The following local routes returned `200`, served `index.html`, and contained the React root:
+- Desktop: auth, author, chat, gallery, home, landing, lore, management, projects, settings.
+- Mobile: auth, author, chat, gallery, home, landing, lore, management, projects, settings.
+
+## Local Route Smoke
+
+Passed routes:
 
 - `/`
 - `/auth`
-- `/home`
-- `/projects`
 - `/projects/proj-001`
-- `/gallery`
+- `/projects/proj-002`
 - `/gallery/gal-001`
-- `/lore`
+- `/gallery/gal-002`
 - `/lore/characters/char-001`
 - `/lore/places/place-001`
 - `/lore/tech/tech-001`
@@ -80,58 +79,59 @@ The following local routes returned `200`, served `index.html`, and contained th
 - `/lore/events/evt-001`
 - `/lore/other/other-001`
 - `/lore/personnel`
-- `/maps`
-- `/author`
-- `/personnel`
-- `/settings`
 - `/news/news-007`
-- `/management`
-- `/chat`
-- `/unknown-route-qa`
+- `/maps`
 
-Note: this validates SPA fallback only, not React-rendered page content.
+Each route loaded and contained the expected seed display text.
 
-## Seed Data Validation
+## Public Smoke
 
-All fixed smoke IDs from Section 20 exist:
+Read-only deployed smoke passed on `https://morneven.com`:
 
-- Projects: `proj-001`, `proj-002`
-- Gallery: `gal-001`, `gal-002`
-- Lore: `char-001`, `place-001`, `tech-001`, `crea-001`, `evt-001`, `other-001`, `other-005`
-- News: `news-007`, `news-008`
-- Personnel: `psn-001`, `psn-003`
+| Route | HTTP | Result |
+| --- | --- | --- |
+| `/` | 200 | PASS |
+| `/auth` | 200 | PASS |
+| `/projects/proj-001` | 200 | PASS |
+| `/gallery/gal-001` | 200 | PASS |
+| `/lore/characters/char-001` | 200 | PASS |
+| `/maps` | 200 | PASS |
+
+No browser console errors were captured during public smoke.
+
+## Permission Results
+
+| Scenario | Result |
+| --- | --- |
+| Logged out user opens `/author` | PASS, redirected to `/auth` |
+| Guest Mode sidebar visibility | PASS, Chat and Management hidden |
+| Guest opens `/management` directly | PASS, blocked |
+| Guest opens `/chat` directly | PASS, blocked or not given chat conversation UI |
+| PL1 user opens `/author` | PASS, redirected to `/home` |
+| Author opens `/author` | PASS |
+| Author opens `/personnel` | PASS |
+
+## Functional Results
+
+| Scenario | Result |
+| --- | --- |
+| Login invalid short password | PARTIAL, see DEF-001 |
+| Register invalid username and password | PASS |
+| Projects search UI | PASS |
+| Unknown project, gallery, and lore detail IDs | PASS |
+| Author Dashboard blank project save | PASS, validation blocks save |
+| Gallery comment creation as author | PASS |
+| Unknown route page | PASS |
+
+## Visual And Responsive Results
+
+All tested pages passed horizontal overflow checks at `390x844`, `768x1024`, `1366x768`, and `1920x1080`.
+
+Visual screenshot review did not show obvious critical overlap in sampled P0 surfaces. Mobile screenshots show the app shell, auth, dashboard, author panel, chat, management, and settings remain usable within the viewport.
 
 ## Defects
 
-### DEF-001: Guest can access Chat through direct route
-
-Severity: P1 Critical
-
-Status: Open
-
-Evidence:
-
-- `src/components/AppSidebar.tsx` hides Chat when `role === "guest"`.
-- `src/pages/ChatPage.tsx` only checks `isAuthenticated`.
-- `guestLogin()` sets `isAuthenticated` to true and `role` to guest.
-
-Expected:
-
-- Guest users should not access Chat from sidebar or direct route.
-
-Actual:
-
-- Direct `/chat` route is not role-blocked for Guest once Guest Mode has authenticated the session.
-
-Impact:
-
-- UI permission expectation is bypassed by direct URL navigation.
-
-Suggested fix:
-
-- Update `ChatPage` or route guard to also block `role === "guest"`, matching `ManagementPage` behavior.
-
-### DEF-002: Unknown detail IDs stay in loading state instead of controlled not-found
+### DEF-001: Invalid login email does not show expected inline validation
 
 Severity: P2 Major
 
@@ -139,83 +139,29 @@ Status: Open
 
 Evidence:
 
-- `src/pages/ProjectDetail.tsx` renders `Loading project...` whenever `project` is null.
-- `src/pages/GalleryDetail.tsx` renders `Loading...` whenever `item` is null.
-- `src/pages/CharacterDetail.tsx`, `PlaceDetail.tsx`, `TechDetail.tsx`, `CreatureDetail.tsx`, `EventDetail.tsx`, and `OtherDetail.tsx` use the same null-as-loading pattern.
-- `src/pages/NewsDetail.tsx` already has a separate `loading` state and controlled not-found behavior.
+- Automated check `AUTH-INVALID-LOGIN` failed.
+- `src/pages/Auth.tsx` has custom inline message `Valid email required`.
+- The email field uses `type="email"`.
+- In Chrome, entering `not-an-email` causes native browser validation to block form submission before React `handleSubmit` runs.
 
 Expected:
 
-- Unknown IDs should show a controlled not-found state after fetch resolves.
+- Invalid login should show the guide-specified inline errors: `Valid email required` and `Min 6 characters`.
 
 Actual:
 
-- Missing detail records are indistinguishable from loading and can leave users on an indefinite loading message.
+- Browser native validation intercepts the invalid email case, so the inline email error is not rendered.
 
 Impact:
 
-- Negative route tests in the guide fail for project, gallery, and lore detail pages.
+- QA guide expectation is not met.
+- Error UX is inconsistent between email format errors and password length errors.
 
 Suggested fix:
 
-- Add `loading` state to every affected detail page and render a not-found message after fetch resolves with no record.
+- Add `noValidate` to the form and rely on the existing React validation, or replace `type="email"` with `type="text"` plus explicit validation.
 
-### DEF-003: Projects page has no search UI despite QA requirements and API support
-
-Severity: P2 Major
-
-Status: Open
-
-Evidence:
-
-- QA guide requires project text search.
-- `src/services/projectsApi.ts` supports `search` in `getProjectsPage`.
-- `src/pages/ProjectsPage.tsx` only exposes status tabs and pagination. It does not expose a search input or pass `search` to `getProjectsPage`.
-
-Expected:
-
-- Projects list should support project text search and an empty state.
-
-Actual:
-
-- Users cannot search project text from `/projects`.
-
-Impact:
-
-- Feature checklist cannot pass for Projects.
-
-Suggested fix:
-
-- Add a search input to `ProjectsPage`, pass the query to `getProjectsPage`, and reset pagination when the query changes.
-
-### DEF-004: Author Dashboard create and edit paths allow blank required content
-
-Severity: P2 Major
-
-Status: Open
-
-Evidence:
-
-- `src/pages/AuthorDashboard.tsx` builds create payloads with fallback empty strings for required fields.
-- `handleSave` does not validate project title, descriptions, gallery title/caption, or lore title/name before calling create/update APIs.
-
-Expected:
-
-- Required fields should block save and show clear validation feedback.
-
-Actual:
-
-- Source path allows saving records with blank required content.
-
-Impact:
-
-- QA-created or user-created data can become unusable in public lists and detail pages.
-
-Suggested fix:
-
-- Add per-surface validation before save. Block empty title/name and required descriptions/captions with visible inline errors or a destructive toast.
-
-### DEF-005: Social preview image is referenced but missing from public assets
+### DEF-002: Referenced social preview image is missing
 
 Severity: P3 Minor
 
@@ -223,128 +169,76 @@ Status: Open
 
 Evidence:
 
-- `index.html` and `dist/index.html` reference `/opengraph-image.png`.
-- `public/opengraph-image.png` and `dist/opengraph-image.png` do not exist.
+- `index.html` references `/opengraph-image.png` for Open Graph and Twitter metadata.
+- `public/opengraph-image.png` is missing.
+- `dist/opengraph-image.png` is missing.
+- `https://morneven.com/opengraph-image.png` returns 404.
 
 Expected:
 
-- Referenced Open Graph and Twitter image asset should exist.
+- Referenced social preview image should exist and return an image response.
 
 Actual:
 
-- Social preview image request will 404.
+- The referenced asset is missing.
 
 Impact:
 
-- Social sharing previews can be broken.
+- Link previews can show missing or degraded social image metadata.
 
 Suggested fix:
 
-- Add `public/opengraph-image.png` or update meta tags to an existing asset.
+- Add `public/opengraph-image.png`, or update the metadata to reference an existing image asset.
 
-### DEF-006: Not-found route logs a console error for expected 404 navigation
+## Non-Blocking Observations
 
-Severity: P3 Minor
+### OBS-001: Local static production server logs analytics script errors
 
-Status: Open
+Local production serving outside Vercel produced repeated `Unexpected token '<'` console errors. Public smoke on `https://morneven.com` had zero console errors, so this was not counted as a deployed app defect.
 
-Evidence:
+Likely cause:
 
-- `src/pages/NotFound.tsx` calls `console.error` when an unknown route is opened.
+- Vercel analytics or speed insights scripts are available on Vercel but not on the ad hoc local static server.
 
-Expected:
+### OBS-002: Bundle size warning remains
 
-- Expected not-found navigation should render a controlled page without polluting console errors.
+The production build emits a large chunk warning for the main JS bundle. This is already known as a demo limitation in the QA guide.
 
-Actual:
+### OBS-003: Lint warnings remain
 
-- QA console check may register an error for the intentional unknown-route test.
+Lint has no errors, but 13 warnings remain. Most are fast-refresh export warnings plus hook dependency warnings.
 
-Impact:
+## Not Fully Executed
 
-- Console QA becomes noisy and can mask actual runtime errors.
+The following were not exhaustively exercised in this run:
 
-Suggested fix:
+- Full manual multi-user Chat invite accept or reject flow.
+- Full Management approval side-effect flow.
+- Actual extraction download execution.
+- Firefox, Edge, and Safari browser matrix.
 
-- Use `console.warn` in development only, or remove the log from production.
+Reason:
 
-### DEF-007: Lint warnings remain
-
-Severity: P3 Minor
-
-Status: Open
-
-Evidence:
-
-- `npm.cmd run lint` reports 13 warnings.
-- Hook dependency warnings are present in `AuthorDashboard.tsx`, `ChatPage.tsx`, and `ManagementPage.tsx`.
-
-Expected:
-
-- Lint should complete cleanly for a release candidate.
-
-Actual:
-
-- Lint exits successfully but reports warnings.
-
-Impact:
-
-- Hook dependency warnings can hide stale state or missed refresh edge cases.
-
-Suggested fix:
-
-- Address hook dependency warnings or document intentionally stable callbacks.
-- Move non-component exports out of component files where fast refresh warnings appear.
-
-## Passed Or Partially Passed Areas
-
-| Area | Result |
-| --- | --- |
-| QA guide completeness | PASS |
-| Seed target existence | PASS |
-| Local SPA fallback | PASS |
-| Vercel rewrite config present | PASS |
-| Auth validation source messages | PASS |
-| Sidebar guest filtering source | PASS |
-| Management guest direct access block | PASS |
-| News detail unknown ID handling | PASS |
-| Gallery and lore search source | PASS |
-| Lazy loading markers in image cards | PARTIAL PASS by source |
-
-## Not Executed
-
-The following remain unverified because browser automation was blocked:
-
-- Actual desktop and mobile visual layout.
-- Text overlap and horizontal overflow checks.
-- Interactive auth form behavior in browser.
-- Sidebar open, close, and mobile navigation behavior.
-- CRUD click-through and persistence through UI.
-- Chat send, reply, invite, attachment flows.
-- Management request submission and approval through UI.
-- Notification bell UI behavior.
-- Theme persistence through actual reload.
-- Console and network checks from a real browser page runtime.
-- Public deploy smoke on `https://morneven.com`.
+- The run prioritized local production Chrome automation, public smoke, route coverage, permission gates, responsive checks, and high-risk workflow probes.
 
 ## QA Verdict Template
 
-Target: local `dist` served through temporary SPA server
-Browser: not executed, browser automation blocked
-Viewport: not executed
-Build or commit: current working tree, `docs/QA_FRONTEND_TEST_GUIDE.md` untracked before this report
-Account: source-based checks for author, guest, PL1, PL5, PL6, PL7
-Scope: lint, build/test attempt, SPA route fallback, seed validation, source-backed functional and permission QA
+Target: local production build and public deploy smoke
+Browser: HeadlessChrome 147
+Viewport: `390x844`, `768x1024`, `1366x768`, `1920x1080`
+Build or commit: current working tree
+Account: `author@morneven.com`, `y.tanaka@morneven.com`, Guest Mode
+Scope: smoke, auth validation, permission, routes, responsive, selected CRUD, public smoke
 
-Smoke result: PARTIAL PASS, route fallback passes but React render smoke not executed
-Auth result: PARTIAL PASS by source, browser interaction not executed
-Navigation result: PARTIAL PASS, SPA fallback passes, unknown detail IDs have defects
-Content browsing result: PARTIAL PASS, fixed seed targets exist, visual render not executed
-CRUD result: FAIL, missing required validation in Author Dashboard source
-Workflow result: PARTIAL, Management guest block exists, Chat guest direct route defect found
-Responsive result: BLOCKED, browser automation unavailable
-Known limitations accepted: demo auth, localStorage authority, no backend sync, non-durable file previews
-Blocking defects: DEF-001
-Non-blocking defects: DEF-002, DEF-003, DEF-004, DEF-005, DEF-006, DEF-007
-Cleanup completed: temporary localStorage UI data was not created
-Final verdict: FAIL for release readiness, BLOCKED for complete visual acceptance
+Smoke result: PASS
+Auth result: PARTIAL, DEF-001
+Navigation result: PASS
+Content browsing result: PASS
+CRUD result: PASS for sampled gallery comment and blank project validation
+Workflow result: PARTIAL, deep Chat and Management cross-flows not exhaustive
+Responsive result: PASS for sampled pages and viewports
+Known limitations accepted: demo auth, localStorage authority, no backend sync, non-durable file previews, large bundle warning
+Blocking defects: none
+Non-blocking defects: DEF-001, DEF-002
+Cleanup completed: no persistent browser profile data created
+Final verdict: Conditional PASS
