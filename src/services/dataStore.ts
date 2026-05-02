@@ -47,10 +47,36 @@ export function readCollection<T>(key: string, fallback: T[]): T[] {
     const raw = window.localStorage.getItem(key);
     if (!raw) return [...fallback];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as T[]) : [...fallback];
+    return Array.isArray(parsed) ? mergeSeededNoteFields(parsed as T[], fallback) : [...fallback];
   } catch {
     return [...fallback];
   }
+}
+
+function mergeSeededNoteFields<T>(stored: T[], fallback: T[]): T[] {
+  const seededById = new Map(
+    fallback
+      .filter((item): item is T & { id: string; fieldNotes?: unknown[]; observations?: unknown[] } => {
+        return typeof item === "object" && item !== null && "id" in item && typeof item.id === "string";
+      })
+      .map((item) => [item.id, item]),
+  );
+
+  return stored.map((item) => {
+    if (typeof item !== "object" || item === null || !("id" in item) || typeof item.id !== "string") {
+      return item;
+    }
+
+    const seeded = seededById.get(item.id);
+    if (!seeded) return item;
+
+    const current = item as T & { fieldNotes?: unknown[]; observations?: unknown[] };
+    return {
+      ...current,
+      fieldNotes: current.fieldNotes?.length ? current.fieldNotes : seeded.fieldNotes ?? current.fieldNotes,
+      observations: current.observations?.length ? current.observations : seeded.observations ?? current.observations,
+    };
+  });
 }
 
 export function writeCollection<T>(key: string, value: T[]) {
