@@ -38,7 +38,7 @@ export default function SettingsPage() {
   const title = trackInfo?.titles[personnelLevel] ?? "Unknown";
   const canRun = personnelLevel >= 7 && confirmText === "CONFIRM" && verifyPassword(password);
   const processing = useMemo(() => history.some((h) => h.status === "processing"), [history]);
-  const canReconcileChat = personnelLevel >= 7 || (personnelLevel >= 6 && track === "executive");
+  const canReconcileChat = personnelLevel >= 7;
 
   const runChatReconciliation = async () => {
     if (!canReconcileChat || isReconciling) return;
@@ -100,6 +100,7 @@ export default function SettingsPage() {
           </section>
         )}
 
+        {canReconcileChat && (
         <section className="hud-border bg-card p-5 space-y-5 border-primary/35">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-2">
@@ -114,7 +115,7 @@ export default function SettingsPage() {
             <Button
               type="button"
               size="sm"
-              disabled={!canReconcileChat || isReconciling}
+              disabled={isReconciling}
               onClick={runChatReconciliation}
               className="gap-2 sm:min-w-36"
             >
@@ -135,11 +136,8 @@ export default function SettingsPage() {
             <span>Removed memberships: {chatReport.removedMemberships}</span>
             <span>Last sync: {new Date(chatReport.ranAt).toLocaleString()}</span>
           </div>
-
-          {!canReconcileChat && (
-            <p className="text-xs text-muted-foreground">Requires PL7 authority or L6 executive clearance.</p>
-          )}
         </section>
+        )}
 
         {personnelLevel >= 7 && (
           <section className="hud-border bg-card p-5 space-y-4 border-amber-500/40">
