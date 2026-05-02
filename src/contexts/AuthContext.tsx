@@ -6,7 +6,13 @@ import {
   type PersonnelLevel,
   type PersonnelTrack,
 } from "@/lib/pl";
-import { listPersonnel } from "@/services/personnelApi";
+import {
+  apiRequest,
+  clearAuthTokens,
+  getAccessToken,
+  getRefreshToken,
+  setAuthTokens,
+} from "@/services/restClient";
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -19,15 +25,29 @@ interface AuthState {
   setTrack: (track: PersonnelTrack) => void;
   login: (email: string, password: string) => Promise<void>;
   verifyPassword: (password: string) => boolean;
-  register: (email: string, password: string, username: string) => void;
-  guestLogin: () => void;
+  register: (email: string, password: string, username: string) => Promise<void>;
+  guestLogin: () => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 
 const AUTH_KEY = "auth_state"; // localStorage key
-const AUTHOR_ACCOUNTS = new Set(["author@morneven.com", "admin@morneven.com"]);
+
+interface BackendUser {
+  id: string;
+  email: string;
+  username: string;
+  role: UserRole;
+  level: PersonnelLevel;
+  track: PersonnelTrack;
+}
+
+interface AuthResponse {
+  token?: string;
+  refreshToken?: string;
+  user: BackendUser;
+}
 
 interface SavedAuth {
   isAuthenticated: boolean;
@@ -36,6 +56,8 @@ interface SavedAuth {
   personnelLevel?: PersonnelLevel;
   track?: PersonnelTrack;
   passwordSnapshot?: string;
+  token?: string;
+  refreshToken?: string;
 }
 
 function readSaved(): SavedAuth | null {
@@ -66,6 +88,19 @@ function writeSavedAuth(next: {
   }
 }
 
+function normalizeUser(user: BackendUser) {
+  return {
+    username: user.username,
+    role: user.role,
+    personnelLevel: user.level,
+    track: user.track,
+  };
+}
+
+function canUseAuthDemoFallback() {
+  return import.meta.env.MODE === "test" || import.meta.env.VITE_DEMO_FALLBACK === "true";
+}
+
 function clearSavedAuth() {
   if (typeof window === "undefined") return;
 
@@ -91,56 +126,114 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const [passwordSnapshot, setPasswordSnapshot] = useState(saved?.passwordSnapshot ?? "");
 
+  useEffect(() => {
+    if (!saved?.token && !getAccessToken()) return;
+
+    let cancelled = false;
+    apiRequest<BackendUser>("/auth/me")
+      .then((user) => {
+        if (cancelled) return;
+        const next = normalizeUser(user);
+        setIsAuthenticated(true);
+        setUsername(next.username);
+        setRole(next.role);
+        setPersonnelLevel(next.personnelLevel);
+        setTrack(next.track);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setIsAuthenticated(false);
+        setUsername("Guest");
+        setRole("guest");
+        setPersonnelLevel(DEFAULT_PL_BY_ROLE.guest);
+        setTrack(DEFAULT_TRACK_BY_ROLE.guest);
+        setPasswordSnapshot("");
+        clearSavedAuth();
+        clearAuthTokens();
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [saved?.token]);
+
   // Save to localStorage whenever auth state changes
   useEffect(() => {
     writeSavedAuth({ isAuthenticated, username, role, personnelLevel, track, passwordSnapshot });
   }, [isAuthenticated, username, role, personnelLevel, track, passwordSnapshot]);
 
-  const login = async (email: string, _password: string) => {
-    const emailNorm = email.trim().toLowerCase();
-    const isAuthor = AUTHOR_ACCOUNTS.has(emailNorm);
-    // Cari di personnel.json
-    const personnel = await listPersonnel();
-    const found = personnel.find((p) => p.email.trim().toLowerCase() === emailNorm);
-    if (found) {
-      setIsAuthenticated(true);
-      setUsername(found.username);
-      setRole(found.role as UserRole);
-      setPersonnelLevel(found.level as PersonnelLevel);
-      setTrack(found.track as PersonnelTrack);
-      setPasswordSnapshot(_password);
-      return;
+  useEffect(() => {
+    if (saved?.token || saved?.refreshToken) {
+      setAuthTokens(saved.token ?? getAccessToken(), saved.refreshToken ?? getRefreshToken());
     }
-    // fallback lama
-    const nextRole: UserRole = isAuthor ? "author" : "personel";
+  }, [saved?.refreshToken, saved?.token]);
+
+  const applyAuthResponse = (data: AuthResponse, password: string) => {
+    if (!data.token) throw new Error("Authentication token missing");
+    setAuthTokens(data.token, data.refreshToken);
+    const next = normalizeUser(data.user);
     setIsAuthenticated(true);
-    setUsername(email.split("@")[0]);
-    setRole(nextRole);
-    setPersonnelLevel(DEFAULT_PL_BY_ROLE[nextRole]);
-    setTrack(DEFAULT_TRACK_BY_ROLE[nextRole]);
-    setPasswordSnapshot(_password);
+    setUsername(next.username);
+    setRole(next.role);
+    setPersonnelLevel(next.personnelLevel);
+    setTrack(next.track);
+    setPasswordSnapshot(password);
   };
 
-  const register = (email: string, _password: string, name: string) => {
-    // Per Personnel Management spec: new accounts start as PL1-GOV (Intern).
-    setIsAuthenticated(true);
-    setUsername(name.trim() || email.split("@")[0]);
-    setRole("personel");
-    setPersonnelLevel(1);
-    setTrack("executive"); // GOV
-    setPasswordSnapshot(_password);
+  const login = async (email: string, password: string) => {
+    try {
+      const data = await apiRequest<AuthResponse>("/auth/login", {
+        method: "POST",
+        body: { email: email.trim().toLowerCase(), password },
+        auth: false,
+      });
+      applyAuthResponse(data, password);
+    } catch (error) {
+      if (!canUseAuthDemoFallback()) throw error;
+      const nextRole: UserRole = email.includes("author") || email.includes("admin") ? "author" : "personel";
+      setIsAuthenticated(true);
+      setUsername(email.split("@")[0]);
+      setRole(nextRole);
+      setPersonnelLevel(DEFAULT_PL_BY_ROLE[nextRole]);
+      setTrack(DEFAULT_TRACK_BY_ROLE[nextRole]);
+      setPasswordSnapshot(password);
+    }
   };
 
-  const guestLogin = () => {
-    setIsAuthenticated(true);
-    setUsername("Guest");
-    setRole("guest");
-    setPersonnelLevel(DEFAULT_PL_BY_ROLE.guest);
-    setTrack(DEFAULT_TRACK_BY_ROLE.guest);
-    setPasswordSnapshot("");
+  const register = async (email: string, password: string, name: string) => {
+    try {
+      const data = await apiRequest<AuthResponse>("/auth/register", {
+        method: "POST",
+        body: {
+          email: email.trim().toLowerCase(),
+          password,
+          username: name.trim() || email.split("@")[0],
+        },
+        auth: false,
+      });
+      if (data.token) {
+        applyAuthResponse(data, password);
+      } else {
+        await login(email, password);
+      }
+    } catch (error) {
+      if (!canUseAuthDemoFallback()) throw error;
+      setIsAuthenticated(true);
+      setUsername(name.trim() || email.split("@")[0]);
+      setRole("personel");
+      setPersonnelLevel(1);
+      setTrack("executive");
+      setPasswordSnapshot(password);
+    }
+  };
+
+  const guestLogin = async () => {
+    const data = await apiRequest<AuthResponse>("/auth/guest", { method: "POST", auth: false });
+    applyAuthResponse(data, "");
   };
 
   const logout = () => {
+    apiRequest("/auth/logout", { method: "POST" }).catch(() => undefined);
     setIsAuthenticated(false);
     setUsername("Guest");
     setRole("guest");
@@ -148,6 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTrack(DEFAULT_TRACK_BY_ROLE.guest);
     setPasswordSnapshot("");
     clearSavedAuth();
+    clearAuthTokens();
   };
 
   const verifyPassword = (password: string) => Boolean(passwordSnapshot) && passwordSnapshot === password;

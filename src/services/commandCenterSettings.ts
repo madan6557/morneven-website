@@ -1,4 +1,6 @@
 // Settings for what to display on the Command Center / HomePage
+import { apiRequest, withDemoFallback } from "@/services/restClient";
+
 export type CommandCenterSection =
   | "projects"
   | "news"
@@ -81,6 +83,13 @@ export function getCommandCenterSettings(): CommandCenterSettings {
   }
 }
 
+export async function getCommandCenterSettingsRemote(): Promise<CommandCenterSettings> {
+  return withDemoFallback(
+    async () => mergeSettings(await apiRequest<Partial<CommandCenterSettings>>("/settings/command-center")),
+    () => getCommandCenterSettings(),
+  );
+}
+
 export function saveCommandCenterSettings(settings: CommandCenterSettings) {
   if (typeof window === "undefined") return;
   try {
@@ -89,6 +98,15 @@ export function saveCommandCenterSettings(settings: CommandCenterSettings) {
   } catch {
     // ignore
   }
+}
+
+export async function saveCommandCenterSettingsRemote(settings: CommandCenterSettings): Promise<CommandCenterSettings> {
+  const saved = mergeSettings(await apiRequest<Partial<CommandCenterSettings>>("/settings/command-center", {
+    method: "PUT",
+    body: settings,
+  }));
+  saveCommandCenterSettings(saved);
+  return saved;
 }
 
 // Resolve the items to display for a given section based on the

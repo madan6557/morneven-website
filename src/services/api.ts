@@ -1,3 +1,5 @@
+export * from "@/services/restClient";
+export * from "@/services/integrationCleanup";
 export * from "@/services/projectsApi";
 export * from "@/services/loreApi";
 export * from "@/services/eventsApi";

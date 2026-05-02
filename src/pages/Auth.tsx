@@ -9,6 +9,8 @@ export default function Auth() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; username?: string; password?: string }>({});
+  const [formError, setFormError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const { login, register, guestLogin } = useAuth();
 
@@ -16,22 +18,40 @@ export default function Auth() {
     const e: typeof errors = {};
     if (!email || !/\S+@\S+\.\S+/.test(email)) e.email = "Valid email required";
     if (!isLogin && (!username || username.length < 3)) e.username = "Min 3 characters";
-    if (!password || password.length < 6) e.password = "Min 6 characters";
+    if (!password || password.length < (isLogin ? 1 : 12)) {
+      e.password = isLogin ? "Password required" : "Min 12 characters";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (ev: React.FormEvent) => {
+  const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    setFormError("");
     if (!validate()) return;
-    if (isLogin) login(email, password);
-    else register(email, password, username);
-    navigate("/home");
+    setSubmitting(true);
+    try {
+      if (isLogin) await login(email, password);
+      else await register(email, password, username);
+      navigate("/home");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Authentication failed");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleGuest = () => {
-    guestLogin();
-    navigate("/home");
+  const handleGuest = async () => {
+    setFormError("");
+    setSubmitting(true);
+    try {
+      await guestLogin();
+      navigate("/home");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Guest access failed");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -86,16 +106,19 @@ export default function Auth() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full mt-1 px-3 py-2 bg-card border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="Min 6 characters"
+              placeholder={isLogin ? "Password" : "Min 12 characters"}
             />
             {errors.password && <p className="text-xs text-destructive mt-1 font-body">{errors.password}</p>}
           </div>
 
+          {formError && <p className="text-xs text-destructive font-body">{formError}</p>}
+
           <button
             type="submit"
+            disabled={submitting}
             className="w-full hud-border-sm py-2.5 bg-primary text-primary-foreground font-display text-xs tracking-[0.2em] uppercase hover:opacity-90 transition-opacity"
           >
-            {isLogin ? "Access" : "Register"}
+            {submitting ? "Processing" : isLogin ? "Access" : "Register"}
           </button>
         </form>
 
@@ -107,6 +130,7 @@ export default function Auth() {
 
         <button
           onClick={handleGuest}
+          disabled={submitting}
           className="w-full py-2.5 border border-border rounded-sm text-xs font-display tracking-[0.15em] text-muted-foreground hover:bg-muted transition-colors uppercase"
         >
           Guest Mode
@@ -114,7 +138,7 @@ export default function Auth() {
 
         <p className="text-center text-xs text-muted-foreground font-body">
           {isLogin ? "No account?" : "Already registered?"}{" "}
-          <button onClick={() => { setIsLogin(!isLogin); setErrors({}); }} className="text-primary hover:underline">
+          <button onClick={() => { setIsLogin(!isLogin); setErrors({}); setFormError(""); }} className="text-primary hover:underline">
             {isLogin ? "Register" : "Login"}
           </button>
         </p>

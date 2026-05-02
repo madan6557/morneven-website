@@ -4,7 +4,9 @@ import { Bell, Check, Trash2, AlertTriangle, Info, Settings as SettingsIcon, AtS
 import { useAuth } from "@/contexts/AuthContext";
 import {
   listNotifications,
+  listNotificationsRemote,
   unreadCount,
+  unreadCountRemote,
   markRead,
   markAllRead,
   clearAll,
@@ -43,6 +45,8 @@ export default function NotificationBell() {
     const refresh = () => {
       setItems(listNotifications(username));
       setCount(unreadCount(username));
+      listNotificationsRemote(username).then(setItems).catch(() => undefined);
+      unreadCountRemote(username).then(setCount).catch(() => undefined);
     };
     refresh();
     return subscribeNotifications(refresh);

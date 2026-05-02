@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { PERSONNEL_TRACKS } from "@/lib/pl";
-import { getSystemChatSnapshot, reconcileAutoMemberships, type ChatReconciliationReport } from "@/services/chatApi";
+import { getSystemChatSnapshot, reconcileAutoMemberships, reconcileSystemChatGroupsRemote, type ChatReconciliationReport } from "@/services/chatApi";
 import { getQuota, listTeams, monthKey, pl2Status, pl3Status, pl4Status, yearKey } from "@/services/managementApi";
 import { listPersonnel } from "@/services/personnelApi";
-import { clearExtractionHistory, listExtractionHistory, startExtraction, type ExtractionMode } from "@/services/extractionService";
+import { canUseLocalExtractionFallback, clearExtractionHistory, getExtractionDownloadUrl, listExtractionHistory, listExtractionHistoryRemote, startExtraction, startExtractionRemote, type ExtractionMode } from "@/services/extractionService";
+import { clearDemoIntegrationState, listDemoStateKeys } from "@/services/integrationCleanup";
 
 export default function SettingsPage() {
   const { role, username, personnelLevel, track, verifyPassword } = useAuth();
@@ -24,7 +25,11 @@ export default function SettingsPage() {
   const [isReconciling, setIsReconciling] = useState(false);
 
   useEffect(() => {
-    const t = setInterval(() => setHistory(listExtractionHistory()), 1000);
+    listExtractionHistoryRemote().then(setHistory).catch(() => undefined);
+    const t = setInterval(() => {
+      setHistory(listExtractionHistory());
+      listExtractionHistoryRemote().then(setHistory).catch(() => undefined);
+    }, 3000);
     return () => clearInterval(t);
   }, []);
 
@@ -39,21 +44,24 @@ export default function SettingsPage() {
   const canRun = personnelLevel >= 7 && confirmText === "CONFIRM" && verifyPassword(password);
   const processing = useMemo(() => history.some((h) => h.status === "processing"), [history]);
   const canReconcileChat = personnelLevel >= 7;
+  const demoStateKeyCount = listDemoStateKeys().length;
 
   const runChatReconciliation = async () => {
     if (!canReconcileChat || isReconciling) return;
     setIsReconciling(true);
     try {
-      const [personnel, teams] = await Promise.all([listPersonnel(), listTeams()]);
-      const report = reconcileAutoMemberships(
-        personnel,
-        teams.map((team) => ({
-          id: team.id,
-          name: team.name,
-          leader: team.leader,
-          members: team.members,
-        })),
-      );
+      const report = await reconcileSystemChatGroupsRemote().catch(async () => {
+        const [personnel, teams] = await Promise.all([listPersonnel(), listTeams()]);
+        return reconcileAutoMemberships(
+          personnel,
+          teams.map((team) => ({
+            id: team.id,
+            name: team.name,
+            leader: team.leader,
+            members: team.members,
+          })),
+        );
+      });
       setChatReport(report);
       toast({ title: "System chat groups synced", description: `${report.teamGroups} team groups, ${report.divisionGroups} division groups.` });
     } finally {
@@ -140,6 +148,33 @@ export default function SettingsPage() {
         )}
 
         {personnelLevel >= 7 && (
+          <section className="hud-border bg-card p-5 space-y-4 border-primary/25">
+            <div className="space-y-2">
+              <h3 className="font-heading text-sm tracking-[0.15em] text-primary uppercase">Integration State Cleanup</h3>
+              <p className="text-xs leading-5 text-muted-foreground">
+                Removes local demo data keys before FE QA runs against backend REST. API tokens and theme preference are kept.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const result = clearDemoIntegrationState();
+                toast({
+                  title: "Demo state cleared",
+                  description: `${result.removedKeys.length} of ${demoStateKeyCount} demo keys removed.`,
+                });
+                setHistory([]);
+                setChatReport(getSystemChatSnapshot());
+              }}
+            >
+              Clear Demo State
+            </Button>
+          </section>
+        )}
+
+        {personnelLevel >= 7 && (
           <section className="hud-border bg-card p-5 space-y-4 border-amber-500/40">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
@@ -156,7 +191,23 @@ export default function SettingsPage() {
             </label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Account password" className="w-full bg-background border rounded px-2 py-2 text-sm" />
             <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder='Type "CONFIRM"' className="w-full bg-background border rounded px-2 py-2 text-sm" />
-            <Button type="button" disabled={!canRun} onClick={() => { startExtraction(mode, autoDownload); setHistory(listExtractionHistory()); }}>
+            <Button type="button" disabled={!canRun} onClick={async () => {
+              try {
+                const job = await startExtractionRemote(mode, autoDownload, { confirmText, password });
+                setHistory([job, ...history]);
+              } catch (error) {
+                if (!canUseLocalExtractionFallback()) {
+                  toast({
+                    title: "Extraction failed",
+                    description: error instanceof Error ? error.message : "Backend rejected the extraction request.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                startExtraction(mode, autoDownload);
+                setHistory(listExtractionHistory());
+              }
+            }}>
               Start Extraction
             </Button>
             {processing && <p className="text-xs text-muted-foreground">Extraction in progress...</p>}
@@ -169,7 +220,13 @@ export default function SettingsPage() {
                     </label>
                     {h.mode.toUpperCase()} / {h.status} / expires {new Date(h.expiresAt).toLocaleDateString()}
                   </div>
-                  <div>{h.status === "completed" && h.blobUrl && <a className="underline text-primary" href={h.blobUrl} download={h.downloadName}>Download ZIP</a>}</div>
+                  <div>
+                    {h.status === "completed" && (
+                      <a className="underline text-primary" href={h.blobUrl ?? getExtractionDownloadUrl(h.id)} download={h.downloadName}>
+                        Download ZIP
+                      </a>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

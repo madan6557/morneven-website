@@ -15,6 +15,7 @@
 
 import type { PersonnelTrack, PersonnelLevel } from "@/lib/pl";
 import type { PersonnelUser } from "@/types";
+import { apiRequest, unwrapPageItems, withDemoFallback, type BackendPage } from "@/services/restClient";
 
 export type ConversationKind = "dm" | "group" | "team" | "division" | "institute";
 export type MemberRole = "owner" | "admin" | "member";
@@ -189,6 +190,9 @@ export function writeChatReadMap(next: ChatReadMap) {
   try {
     window.localStorage.setItem(CHAT_READ_KEY, JSON.stringify(next));
     window.dispatchEvent(new CustomEvent(EVT));
+    Object.entries(next).forEach(([conversationId, readAt]) => {
+      apiRequest("/chat/read", { method: "POST", body: { conversationId, readAt } }).catch(() => undefined);
+    });
   } catch {
     /* ignore */
   }
@@ -296,8 +300,22 @@ export function listConversationsFor(username: string): Conversation[] {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+export function listConversationsForRemote(username: string): Promise<Conversation[]> {
+  return withDemoFallback(
+    async () => unwrapPageItems(await apiRequest<Conversation[] | BackendPage<Conversation>>("/chat/conversations")),
+    () => listConversationsFor(username),
+  );
+}
+
 export function listInvitesFor(username: string): Conversation[] {
   return conversations.filter((c) => c.members.some((m) => m.username === username && m.status === "invited"));
+}
+
+export function listInvitesForRemote(username: string): Promise<Conversation[]> {
+  return withDemoFallback(
+    async () => unwrapPageItems(await apiRequest<Conversation[] | BackendPage<Conversation>>("/chat/invites")),
+    () => listInvitesFor(username),
+  );
 }
 
 export function getConversation(id: string): Conversation | undefined {
@@ -306,6 +324,18 @@ export function getConversation(id: string): Conversation | undefined {
 
 export function listMessages(conversationId: string): ChatMessage[] {
   return messages.filter((m) => m.conversationId === conversationId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+export function listMessagesRemote(conversationId: string): Promise<ChatMessage[]> {
+  return withDemoFallback(
+    async () =>
+      unwrapPageItems(
+        await apiRequest<ChatMessage[] | BackendPage<ChatMessage>>(
+          `/chat/conversations/${conversationId}/messages?page=1&pageSize=50`,
+        ),
+      ).sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    () => listMessages(conversationId),
+  );
 }
 
 export function getConversationUnreadCount(username: string, conversationId: string): number {
@@ -355,8 +385,34 @@ export function sendMessage(
     replyTo,
   };
   messages = [...messages, next];
+  apiRequest<ChatMessage>("/chat/messages", {
+    method: "POST",
+    body: {
+      conversationId,
+      text,
+      attachments: attachments ?? [],
+      ...(replyTo ? { replyTo } : {}),
+    },
+  }).catch(() => undefined);
   persist();
   return next;
+}
+
+export function sendMessageRemote(
+  conversationId: string,
+  text: string,
+  attachments?: ChatAttachment[],
+  replyTo?: ReplyPreview,
+): Promise<ChatMessage> {
+  return apiRequest<ChatMessage>("/chat/messages", {
+    method: "POST",
+    body: {
+      conversationId,
+      text,
+      attachments: attachments ?? [],
+      ...(replyTo ? { replyTo } : {}),
+    },
+  });
 }
 
 // Helper: build a ReplyPreview snapshot from an existing message.
@@ -377,8 +433,14 @@ export function deleteMessage(messageId: string, actor: string): boolean {
   if (!conv) return false;
   // Sender can delete own; admin/owner can moderate.
   if (msg.author !== actor && !canManage(conv, actor)) return false;
+  apiRequest(`/chat/messages/${messageId}`, { method: "DELETE" }).catch(() => undefined);
   messages.splice(idx, 1);
   persist();
+  return true;
+}
+
+export async function deleteMessageRemote(messageId: string): Promise<boolean> {
+  await apiRequest(`/chat/messages/${messageId}`, { method: "DELETE" });
   return true;
 }
 
@@ -389,6 +451,7 @@ export function createDM(a: string, b: string): Conversation {
     (c) => c.kind === "dm" && c.members.length === 2 && c.members.every((m) => m.username === a || m.username === b),
   );
   if (existing) return existing;
+  apiRequest<Conversation>("/chat/dm", { method: "POST", body: { username: b } }).catch(() => undefined);
   const next: Conversation = {
     id: uid("conv"),
     kind: "dm",
@@ -405,7 +468,12 @@ export function createDM(a: string, b: string): Conversation {
   return next;
 }
 
+export function createDMRemote(username: string): Promise<Conversation> {
+  return apiRequest<Conversation>("/chat/dm", { method: "POST", body: { username } });
+}
+
 export function createManualGroup(name: string, creator: string, invitees: string[]): Conversation {
+  apiRequest<Conversation>("/chat/groups", { method: "POST", body: { name, invitees } }).catch(() => undefined);
   const next: Conversation = {
     id: uid("conv"),
     kind: "group",
@@ -423,6 +491,10 @@ export function createManualGroup(name: string, creator: string, invitees: strin
   pushSystemMessage(next.id, `${creator} created group "${name}"`);
   persist();
   return next;
+}
+
+export function createManualGroupRemote(name: string, invitees: string[]): Promise<Conversation> {
+  return apiRequest<Conversation>("/chat/groups", { method: "POST", body: { name, invitees } });
 }
 
 // -------- Member management (manual groups) -----------------------------
@@ -444,7 +516,13 @@ export function inviteMembers(conversationId: string, actor: string, usernames: 
     }
     pushSystemMessage(conv.id, `${actor} invited ${u}`);
   }
+  apiRequest(`/chat/conversations/${conversationId}/invites`, { method: "POST", body: { usernames } }).catch(() => undefined);
   persist();
+  return true;
+}
+
+export async function inviteMembersRemote(conversationId: string, usernames: string[]): Promise<boolean> {
+  await apiRequest(`/chat/conversations/${conversationId}/invites`, { method: "POST", body: { usernames } });
   return true;
 }
 
@@ -454,8 +532,14 @@ export function acceptInvite(conversationId: string, username: string): boolean 
   const m = conv.members.find((mm) => mm.username === username && mm.status === "invited");
   if (!m) return false;
   m.status = "active";
+  apiRequest(`/chat/conversations/${conversationId}/invites/accept`, { method: "POST" }).catch(() => undefined);
   pushSystemMessage(conv.id, `${username} joined the group`);
   persist();
+  return true;
+}
+
+export async function acceptInviteRemote(conversationId: string): Promise<boolean> {
+  await apiRequest(`/chat/conversations/${conversationId}/invites/accept`, { method: "POST" });
   return true;
 }
 
@@ -464,8 +548,14 @@ export function rejectInvite(conversationId: string, username: string): boolean 
   if (!conv) return false;
   const idx = conv.members.findIndex((mm) => mm.username === username && mm.status === "invited");
   if (idx === -1) return false;
+  apiRequest(`/chat/conversations/${conversationId}/invites/reject`, { method: "POST" }).catch(() => undefined);
   conv.members.splice(idx, 1);
   persist();
+  return true;
+}
+
+export async function rejectInviteRemote(conversationId: string): Promise<boolean> {
+  await apiRequest(`/chat/conversations/${conversationId}/invites/reject`, { method: "POST" });
   return true;
 }
 
@@ -480,8 +570,14 @@ export function kickMember(conversationId: string, actor: string, target: string
   const actorMember = conv.members.find((m) => m.username === actor);
   if (actorMember?.role === "admin" && targetMember.role === "admin") return false; // admin can't kick admin
   targetMember.status = "removed";
+  apiRequest(`/chat/conversations/${conversationId}/kick`, { method: "POST", body: { username: target } }).catch(() => undefined);
   pushSystemMessage(conv.id, `${actor} removed ${target}`);
   persist();
+  return true;
+}
+
+export async function kickMemberRemote(conversationId: string, target: string): Promise<boolean> {
+  await apiRequest(`/chat/conversations/${conversationId}/kick`, { method: "POST", body: { username: target } });
   return true;
 }
 
@@ -492,6 +588,7 @@ export function leaveConversation(conversationId: string, username: string): boo
   const m = conv.members.find((mm) => mm.username === username);
   if (!m) return false;
   m.status = "removed";
+  apiRequest(`/chat/conversations/${conversationId}/leave`, { method: "POST" }).catch(() => undefined);
   // Owner leaving: promote earliest active admin or member.
   if (m.role === "owner") {
     const successor = activeMembers(conv).find((mm) => mm.role === "admin") ?? activeMembers(conv)[0];
@@ -499,6 +596,11 @@ export function leaveConversation(conversationId: string, username: string): boo
   }
   pushSystemMessage(conv.id, `${username} left the group`);
   persist();
+  return true;
+}
+
+export async function leaveConversationRemote(conversationId: string): Promise<boolean> {
+  await apiRequest(`/chat/conversations/${conversationId}/leave`, { method: "POST" });
   return true;
 }
 
@@ -516,8 +618,14 @@ export function setMemberRole(conversationId: string, actor: string, target: str
     if (actorMember) actorMember.role = "admin";
   }
   m.role = role;
+  apiRequest(`/chat/conversations/${conversationId}/member-role`, { method: "PUT", body: { username: target, role } }).catch(() => undefined);
   pushSystemMessage(conv.id, `${actor} set ${target} as ${role}`);
   persist();
+  return true;
+}
+
+export async function setMemberRoleRemote(conversationId: string, target: string, role: MemberRole): Promise<boolean> {
+  await apiRequest(`/chat/conversations/${conversationId}/member-role`, { method: "PUT", body: { username: target, role } });
   return true;
 }
 
@@ -526,7 +634,13 @@ export function renameConversation(conversationId: string, actor: string, name: 
   if (!conv || conv.systemManaged) return false;
   if (!canManage(conv, actor)) return false;
   conv.name = name;
+  apiRequest(`/chat/conversations/${conversationId}/name`, { method: "PUT", body: { name } }).catch(() => undefined);
   persist();
+  return true;
+}
+
+export async function renameConversationRemote(conversationId: string, name: string): Promise<boolean> {
+  await apiRequest(`/chat/conversations/${conversationId}/name`, { method: "PUT", body: { name } });
   return true;
 }
 
@@ -597,6 +711,13 @@ export function getSystemChatSnapshot(): ChatReconciliationReport {
     removedMemberships: systemConversations.reduce((sum, c) => sum + c.members.filter((m) => m.status === "removed").length, 0),
     ranAt: todayISO(),
   };
+}
+
+export function reconcileSystemChatGroupsRemote(): Promise<ChatReconciliationReport> {
+  return withDemoFallback(
+    () => apiRequest<ChatReconciliationReport>("/chat/reconcile", { method: "POST" }),
+    () => getSystemChatSnapshot(),
+  );
 }
 
 // Ensures the singleton institute conversation exists.

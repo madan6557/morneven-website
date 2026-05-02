@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AuthorRoute } from "@/components/AuthorRoute";
@@ -10,7 +10,7 @@ function RegisterProbe() {
 
   return (
     <div>
-      <button onClick={() => register("personel@test.com", "secret123", "ChosenName")}>register</button>
+      <button onClick={() => register("personel@test.com", "secret123456", "ChosenName")}>register</button>
       <span data-testid="username">{username}</span>
     </div>
   );
@@ -30,7 +30,7 @@ describe("author panel auth flow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "register" }));
 
-    expect(screen.getByTestId("username")).toHaveTextContent("ChosenName");
+    await waitFor(() => expect(screen.getByTestId("username")).toHaveTextContent("ChosenName"));
   });
 
   it("redirects non-author away from author route", () => {

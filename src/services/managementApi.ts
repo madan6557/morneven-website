@@ -11,6 +11,7 @@ import { createProject } from "@/services/projectsApi";
 import { syncTeamGroup, syncDivisionMembership } from "@/services/chatApi";
 import { pushNotification } from "@/services/notificationsApi";
 import type { GalleryItem, Project } from "@/types";
+import { apiRequest, buildQuery, unwrapPageItems, withDemoFallback, type BackendPage } from "@/services/restClient";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 export type RequestKind =
@@ -183,27 +184,23 @@ export async function listRequests(filter?: {
   status?: RequestStatus;
   requester?: string;
 }): Promise<MgmtRequest[]> {
-  await delay();
-  return requests
-    .filter((r) => (filter?.kind ? r.kind === filter.kind : true))
-    .filter((r) => (filter?.status ? r.status === filter.status : true))
-    .filter((r) => (filter?.requester ? r.requester === filter.requester : true))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return withDemoFallback(
+    async () => unwrapPageItems(await apiRequest<MgmtRequest[] | BackendPage<MgmtRequest>>(`/management/requests${buildQuery(filter)}`)),
+    async () => {
+      await delay();
+      return requests
+        .filter((r) => (filter?.kind ? r.kind === filter.kind : true))
+        .filter((r) => (filter?.status ? r.status === filter.status : true))
+        .filter((r) => (filter?.requester ? r.requester === filter.requester : true))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+  );
 }
 
 export async function createRequest(
   data: Omit<MgmtRequest, "id" | "status" | "createdAt">,
 ): Promise<MgmtRequest> {
-  await delay();
-  const next: MgmtRequest = {
-    ...data,
-    id: `req-${Date.now()}`,
-    status: "pending",
-    createdAt: todayISO(),
-  };
-  requests = [next, ...requests];
-  write(KEY_REQ, requests);
-  return next;
+  return apiRequest<MgmtRequest>("/management/requests", { method: "POST", body: data });
 }
 
 export async function decideRequest(
@@ -212,18 +209,10 @@ export async function decideRequest(
   reviewer: string,
   reviewNote?: string,
 ): Promise<MgmtRequest | undefined> {
-  await delay();
-  const idx = requests.findIndex((r) => r.id === id);
-  if (idx === -1) return undefined;
-  const req = { ...requests[idx], status: decision, reviewer, reviewNote, decidedAt: todayISO() };
-  requests[idx] = req;
-  write(KEY_REQ, requests);
-
-  // Side effects on approval
-  if (decision === "approved") {
-    await applySideEffects(req);
-  }
-  return req;
+  return apiRequest<MgmtRequest>(`/management/requests/${id}/decide`, {
+    method: "POST",
+    body: { decision, reviewer, reviewNote },
+  });
 }
 
 async function applySideEffects(req: MgmtRequest) {
@@ -317,29 +306,22 @@ async function applySideEffects(req: MgmtRequest) {
 
 // ─── Teams ──────────────────────────────────────────────────────────────────
 export async function listTeams(filter?: { leader?: string; member?: string }): Promise<Team[]> {
-  await delay();
-  return teams.filter((t) => {
-    if (filter?.leader && t.leader !== filter.leader) return false;
-    if (filter?.member && !t.members.includes(filter.member) && t.leader !== filter.member)
-      return false;
-    return true;
-  });
+  return withDemoFallback(
+    async () => unwrapPageItems(await apiRequest<Team[] | BackendPage<Team>>(`/management/teams${buildQuery(filter)}`)),
+    async () => {
+      await delay();
+      return teams.filter((t) => {
+        if (filter?.leader && t.leader !== filter.leader) return false;
+        if (filter?.member && !t.members.includes(filter.member) && t.leader !== filter.member)
+          return false;
+        return true;
+      });
+    },
+  );
 }
 
 export async function createTeam(data: Omit<Team, "id" | "createdAt" | "completed" | "cycleYear">) {
-  await delay();
-  const next: Team = {
-    ...data,
-    id: `team-${Date.now()}`,
-    createdAt: todayISO(),
-    completed: 0,
-    cycleYear: new Date().getFullYear(),
-  };
-  teams = [next, ...teams];
-  write(KEY_TEAMS, teams);
-  // Auto-create team chat group with leader + members.
-  syncTeamGroup(next.id, next.name, [next.leader, ...next.members]);
-  return next;
+  return apiRequest<Team>("/management/teams", { method: "POST", body: data });
 }
 
 // ─── Quotas ─────────────────────────────────────────────────────────────────
@@ -359,8 +341,13 @@ function bumpQuota(username: string, kind: "monthly" | "yearly" | "supervised", 
 }
 
 export async function getQuota(username: string): Promise<QuotaRecord> {
-  await delay();
-  return ensureQuota(username);
+  return withDemoFallback(
+    () => apiRequest<QuotaRecord>(`/management/quotas/${username}`),
+    async () => {
+      await delay();
+      return ensureQuota(username);
+    },
+  );
 }
 
 // PL2 obligation status for the current month

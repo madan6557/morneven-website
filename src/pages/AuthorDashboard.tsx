@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { getProjectsPage, createProject, updateProject, deleteProject, getCharactersPage, createCharacter, updateCharacter, deleteCharacter, getPlacesPage, createPlace, updatePlace, deletePlace, getTechnologyPage, createTech, updateTech, deleteTech, getGalleryPage, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreaturesPage, createCreature, updateCreature, deleteCreature, getOthersPage, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImage, setMapImage, type PageInfo } from "@/services/api";
+import { apiUpload, getProjectsPage, createProject, updateProject, deleteProject, getCharactersPage, createCharacter, updateCharacter, deleteCharacter, getPlacesPage, createPlace, updatePlace, deletePlace, getTechnologyPage, createTech, updateTech, deleteTech, getGalleryPage, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreaturesPage, createCreature, updateCreature, deleteCreature, getOthersPage, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImageRemote, setMapImageRemote, type PageInfo } from "@/services/api";
 import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, type CommandCenterSettings } from "@/services/commandCenterSettings";
 import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel, LoreMeta, LoreFieldNote } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, File as FileIcon, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon } from "lucide-react";
@@ -106,10 +106,12 @@ const isDashboardTab = (value: string | null): value is DashboardTab => {
 
 type AttachmentMode = "url" | "image" | "video" | "file";
 
-function FileUploadField({ label, value, onChange, accept = "image/*,video/*", attachmentType = "image" }: { label: string; value: string; onChange: (url: string) => void; accept?: string; attachmentType?: Exclude<AttachmentMode, "url"> }) {
+function FileUploadField({ label, value, onChange, accept = "image/*,video/*", attachmentType = "image", folder = "uploads" }: { label: string; value: string; onChange: (url: string) => void; accept?: string; attachmentType?: Exclude<AttachmentMode, "url">; folder?: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const looksLikeManualUrl = /^https?:\/\//i.test(value) && !/storage|blob:|object|assets/i.test(value);
   const [mode, setMode] = useState<AttachmentMode>(looksLikeManualUrl ? "url" : attachmentType);
+  const [uploadError, setUploadError] = useState("");
+  const [uploading, setUploading] = useState(false);
   const isUrlMode = mode === "url";
   const isUploadedValue = value && !isUrlMode;
   const selectedType = mode === "file" ? "file" : mode;
@@ -118,11 +120,21 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*", a
     if (mode !== "url") setMode(attachmentType);
   }, [attachmentType]);
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const objectUrl = URL.createObjectURL(file);
-    onChange(objectUrl);
+    setUploadError("");
+    setUploading(true);
+    try {
+      const uploaded = await apiUpload<{ url?: string }>(`/files/upload?folder=${folder}`, file);
+      if (!uploaded.url) throw new Error("Upload response did not include a file URL");
+      onChange(uploaded.url);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
   };
 
   return (
@@ -152,8 +164,9 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*", a
         <div className="flex gap-2 items-center">
           <input ref={fileRef} type="file" accept={mode === "image" ? "image/*" : mode === "video" ? "video/*" : accept} onChange={handleFile} className="hidden" />
           <button type="button" onClick={() => fileRef.current?.click()}
+            disabled={uploading}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-display tracking-wider border border-dashed border-primary/40 rounded-sm text-primary hover:bg-primary/10 transition-colors">
-            <Upload className="h-3.5 w-3.5" /> Choose {selectedType}
+            <Upload className="h-3.5 w-3.5" /> {uploading ? "Uploading" : `Choose ${selectedType}`}
           </button>
           {isUploadedValue && (
             <span className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-muted px-2 py-1 text-[10px] font-display uppercase tracking-wider text-foreground">
@@ -164,6 +177,7 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*", a
               </button>
             </span>
           )}
+          {uploadError && <span className="text-[10px] text-destructive">{uploadError}</span>}
         </div>
       )}
     </div>
@@ -318,7 +332,7 @@ export default function AuthorDashboard() {
   useEffect(() => {
     if (activeTab !== "map" || !canAccess("map")) return;
     void getMapMarkers().then(setMapMarkers);
-    setMapImageUrl(getMapImage());
+    void getMapImageRemote().then(setMapImageUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, personnelLevel, role, track]);
 
@@ -923,7 +937,13 @@ export default function AuthorDashboard() {
               <input type="text" value={editing.title ?? editing.name ?? ""} onChange={(e) => setEditing({ ...editing, [editing.title !== undefined ? "title" : "name"]: e.target.value })} className={inputClass} />
             </div>
 
-            <FileUploadField label="Thumbnail" value={editing.thumbnail || ""} onChange={(url) => setEditing({ ...editing, thumbnail: url })} accept="image/*" />
+            <FileUploadField
+              label="Thumbnail"
+              value={editing.thumbnail || ""}
+              onChange={(url) => setEditing({ ...editing, thumbnail: url })}
+              accept="image/*"
+              folder={isProject ? "projects" : isGallery ? "gallery" : "lore"}
+            />
 
             {/* Project-specific: Status */}
             {isProject && (
@@ -1134,7 +1154,14 @@ export default function AuthorDashboard() {
                         <option value="file">File</option>
                       </select>
                     </div>
-                    <FileUploadField label="" value={doc.url} onChange={(url) => updateDoc(idx, "url", url)} accept={doc.type === "video" ? "video/*" : doc.type === "image" ? "image/*" : "*/*"} attachmentType={doc.type} />
+                    <FileUploadField
+                      label=""
+                      value={doc.url}
+                      onChange={(url) => updateDoc(idx, "url", url)}
+                      accept={doc.type === "video" ? "video/*" : doc.type === "image" ? "image/*" : "*/*"}
+                      attachmentType={doc.type}
+                      folder={isProject ? "projects" : isGallery ? "gallery" : "lore"}
+                    />
                     <input type="text" value={doc.caption} onChange={(e) => updateDoc(idx, "caption", e.target.value)} placeholder="Caption" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                   </div>
                   <button type="button" onClick={() => removeDoc(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
@@ -1254,8 +1281,14 @@ export default function AuthorDashboard() {
           <FileUploadField
             label="Map Background Image (optional)"
             value={mapImageUrl}
-            onChange={(url) => { setMapImageUrl(url); setMapImage(url); window.dispatchEvent(new CustomEvent("morneven:map-changed")); }}
+            onChange={(url) => {
+              setMapImageUrl(url);
+              void setMapImageRemote(url).finally(() => {
+                window.dispatchEvent(new CustomEvent("morneven:map-changed"));
+              });
+            }}
             accept="image/*"
+            folder="map"
           />
 
           <div className="flex items-center justify-between">

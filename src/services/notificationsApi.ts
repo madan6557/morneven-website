@@ -1,6 +1,7 @@
 // Lightweight notification + warning system. Persisted to localStorage so
 // each user (by username) has their own inbox. PL7 may issue warnings to any
 // personnel; system events (e.g. team approval) generate notifications too.
+import { apiRequest, unwrapPageItems, withDemoFallback, type BackendPage } from "@/services/restClient";
 
 export type NotificationKind = "info" | "warning" | "system" | "mention" | "request";
 
@@ -46,8 +47,25 @@ export function listNotifications(recipient: string): AppNotification[] {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+export async function listNotificationsRemote(recipient: string): Promise<AppNotification[]> {
+  return withDemoFallback(
+    async () => unwrapPageItems(await apiRequest<AppNotification[] | BackendPage<AppNotification>>("/notifications")),
+    () => listNotifications(recipient),
+  );
+}
+
 export function unreadCount(recipient: string): number {
   return listNotifications(recipient).filter((n) => !n.read).length;
+}
+
+export async function unreadCountRemote(recipient: string): Promise<number> {
+  return withDemoFallback(
+    async () => {
+      const data = await apiRequest<number | { unreadTotal?: number; count?: number }>("/notifications/unread-count");
+      return typeof data === "number" ? data : data.unreadTotal ?? data.count ?? 0;
+    },
+    () => unreadCount(recipient),
+  );
 }
 
 export function pushNotification(n: Omit<AppNotification, "id" | "createdAt" | "read">) {
@@ -62,9 +80,14 @@ export function pushNotification(n: Omit<AppNotification, "id" | "createdAt" | "
   return next;
 }
 
+export async function pushNotificationRemote(n: Omit<AppNotification, "id" | "createdAt" | "read">): Promise<AppNotification> {
+  return apiRequest<AppNotification>("/notifications", { method: "POST", body: n });
+}
+
 export function markRead(id: string) {
   store = store.map((n) => (n.id === id ? { ...n, read: true } : n));
   write(store);
+  apiRequest(`/notifications/${id}/read`, { method: "POST" }).catch(() => undefined);
 }
 
 export function markAllRead(recipient: string) {
@@ -72,11 +95,18 @@ export function markAllRead(recipient: string) {
     n.recipient === recipient || n.recipient === "*" ? { ...n, read: true } : n,
   );
   write(store);
+  apiRequest("/notifications/read-all", { method: "POST" }).catch(() => undefined);
 }
 
 export function clearAll(recipient: string) {
   store = store.filter((n) => n.recipient !== recipient && n.recipient !== "*");
   write(store);
+}
+
+export function deleteNotification(id: string) {
+  store = store.filter((n) => n.id !== id);
+  write(store);
+  apiRequest(`/notifications/${id}`, { method: "DELETE" }).catch(() => undefined);
 }
 
 // Subscribe to changes (returns unsubscribe).

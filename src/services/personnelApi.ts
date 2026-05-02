@@ -11,6 +11,7 @@
 //   DELETE /api/personnel/:id          → deletePersonnel
 import type { PersonnelUser } from "@/types";
 import seed from "@/data/personnel.json";
+import { apiRequest, unwrapPageItems, withDemoFallback, type BackendPage } from "@/services/restClient";
 
 const STORAGE_KEY = "morneven_personnel";
 
@@ -39,33 +40,34 @@ function write(value: PersonnelUser[]) {
   }
 }
 
-let personnel: PersonnelUser[] = read();
+const personnel: PersonnelUser[] = read();
 const delay = (ms = 80) => new Promise((r) => setTimeout(r, ms));
 
 export async function listPersonnel(): Promise<PersonnelUser[]> {
-  await delay();
-  return [...personnel];
+  return withDemoFallback(
+    async () => unwrapPageItems(await apiRequest<PersonnelUser[] | BackendPage<PersonnelUser>>("/personnel")),
+    async () => {
+      await delay();
+      return [...personnel];
+    },
+  );
 }
 
 export async function getPersonnel(id: string): Promise<PersonnelUser | undefined> {
-  await delay();
-  return personnel.find((p) => p.id === id);
+  return withDemoFallback(
+    () => apiRequest<PersonnelUser>(`/personnel/${id}`),
+    async () => {
+      await delay();
+      return personnel.find((p) => p.id === id);
+    },
+  );
 }
 
 export async function updatePersonnel(
   id: string,
   patch: Partial<Omit<PersonnelUser, "id">>,
 ): Promise<PersonnelUser | undefined> {
-  await delay();
-  const idx = personnel.findIndex((p) => p.id === id);
-  if (idx === -1) return undefined;
-  personnel[idx] = {
-    ...personnel[idx],
-    ...patch,
-    updatedAt: new Date().toISOString().split("T")[0],
-  };
-  write(personnel);
-  return personnel[idx];
+  return apiRequest<PersonnelUser>(`/personnel/${id}`, { method: "PUT", body: patch });
 }
 
 // Apply the same partial patch to many records in one round-trip. Mirrors a
@@ -76,36 +78,14 @@ export async function bulkUpdatePersonnel(
   ids: string[],
   patch: Partial<Omit<PersonnelUser, "id">>,
 ): Promise<PersonnelUser[]> {
-  await delay();
-  const idSet = new Set(ids);
-  const today = new Date().toISOString().split("T")[0];
-  const updated: PersonnelUser[] = [];
-  personnel = personnel.map((p) => {
-    if (!idSet.has(p.id)) return p;
-    const next = { ...p, ...patch, updatedAt: today };
-    updated.push(next);
-    return next;
-  });
-  write(personnel);
-  return updated;
+  return apiRequest<PersonnelUser[]>("/personnel/bulk", { method: "PATCH", body: { ids, patch } });
 }
 
 export async function createPersonnel(data: Omit<PersonnelUser, "id">): Promise<PersonnelUser> {
-  await delay();
-  const newUser: PersonnelUser = {
-    ...data,
-    id: `psn-${Date.now()}`,
-    updatedAt: new Date().toISOString().split("T")[0],
-  };
-  personnel = [newUser, ...personnel];
-  write(personnel);
-  return newUser;
+  return apiRequest<PersonnelUser>("/personnel", { method: "POST", body: data });
 }
 
 export async function deletePersonnel(id: string): Promise<boolean> {
-  await delay();
-  const len = personnel.length;
-  personnel = personnel.filter((p) => p.id !== id);
-  write(personnel);
-  return personnel.length < len;
+  await apiRequest(`/personnel/${id}`, { method: "DELETE" });
+  return true;
 }

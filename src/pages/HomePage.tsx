@@ -14,6 +14,7 @@ import {
 } from "@/services/api";
 import {
   getCommandCenterSettings,
+  getCommandCenterSettingsRemote,
   type CommandCenterSection,
   type CommandCenterSettings,
 } from "@/services/commandCenterSettings";
@@ -116,7 +117,11 @@ export default function HomePage() {
 
   // Refresh settings when author saves them, or when tab regains focus
   useEffect(() => {
-    const refresh = () => setSettings(getCommandCenterSettings());
+    const refresh = () => {
+      setSettings(getCommandCenterSettings());
+      getCommandCenterSettingsRemote().then(setSettings).catch(() => undefined);
+    };
+    refresh();
     window.addEventListener("morneven:cc-settings-changed", refresh);
     window.addEventListener("focus", refresh);
     window.addEventListener("storage", refresh);

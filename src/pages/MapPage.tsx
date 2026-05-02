@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { getMapMarkers, getMapImage } from "@/services/api";
+import { getMapMarkers, getMapImageRemote } from "@/services/api";
 import type { MapMarker, MapZoneStatus } from "@/types";
 import { Plus, Minus, RotateCcw, MapPin, ExternalLink } from "lucide-react";
 
@@ -23,10 +23,10 @@ export default function MapPage() {
 
   useEffect(() => {
     getMapMarkers().then(setMarkers);
-    setMapImage(getMapImage());
+    getMapImageRemote().then(setMapImage);
     const refresh = () => {
       getMapMarkers().then(setMarkers);
-      setMapImage(getMapImage());
+      getMapImageRemote().then(setMapImage);
     };
     window.addEventListener("morneven:map-changed", refresh);
     return () => window.removeEventListener("morneven:map-changed", refresh);

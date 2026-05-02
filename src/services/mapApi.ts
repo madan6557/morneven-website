@@ -1,16 +1,19 @@
 import type { MapMarker } from "@/types";
 import { db, delay, hasStorage, STORAGE_KEYS, writeCollection } from "@/services/dataStore";
+import { apiRequest, withDemoFallback } from "@/services/restClient";
 
 export async function getMapMarkers(): Promise<MapMarker[]> {
-  await delay();
-  return [...db.mapMarkers];
+  return withDemoFallback(
+    () => apiRequest<MapMarker[]>("/map/markers"),
+    async () => {
+      await delay();
+      return [...db.mapMarkers];
+    },
+  );
 }
 
 export async function saveMapMarkers(next: MapMarker[]): Promise<MapMarker[]> {
-  await delay();
-  db.mapMarkers = [...next];
-  writeCollection(STORAGE_KEYS.mapMarkers, db.mapMarkers);
-  return [...db.mapMarkers];
+  return apiRequest<MapMarker[]>("/map/markers", { method: "PUT", body: next });
 }
 
 export function getMapImage(): string {
@@ -22,6 +25,17 @@ export function getMapImage(): string {
   }
 }
 
+export async function getMapImageRemote(): Promise<string> {
+  return withDemoFallback(
+    async () => {
+      const data = await apiRequest<string | { url?: string; imageUrl?: string }>("/map/image");
+      if (typeof data === "string") return data;
+      return data.url ?? data.imageUrl ?? "";
+    },
+    () => getMapImage(),
+  );
+}
+
 export function setMapImage(url: string) {
   if (!hasStorage()) return;
   try {
@@ -29,4 +43,13 @@ export function setMapImage(url: string) {
   } catch {
     // ignore
   }
+}
+
+export async function setMapImageRemote(url: string): Promise<string> {
+  const data = await apiRequest<string | { url?: string; imageUrl?: string }>("/map/image", {
+    method: "PUT",
+    body: { url },
+  });
+  if (typeof data === "string") return data;
+  return data.url ?? data.imageUrl ?? url;
 }
