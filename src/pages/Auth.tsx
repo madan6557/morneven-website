@@ -52,7 +52,7 @@ export default function Auth() {
           <div className="mecha-line w-24 mx-auto" />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div>
             <label className="font-heading text-xs tracking-wider text-muted-foreground uppercase">Email</label>
             <input
