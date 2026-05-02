@@ -19,18 +19,46 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default function TechDetail() {
   const { id } = useParams<{ id: string }>();
   const [tech, setTech] = useState<Technology | null>(null);
+  const [loading, setLoading] = useState(true);
   const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
 
   useEffect(() => {
-    if (id) {
-      getTech(id).then((t) => {
-        setTech(t ?? null);
-        setDiscussion(t?.discussions ?? []);
-      });
+    let active = true;
+    setLoading(true);
+
+    if (!id) {
+      setTech(null);
+      setDiscussion([]);
+      setLoading(false);
+      return () => {
+        active = false;
+      };
     }
+
+    getTech(id).then((t) => {
+      if (!active) return;
+      setTech(t ?? null);
+      setDiscussion(t?.discussions ?? []);
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
   }, [id]);
 
-  if (!tech) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+  if (loading) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+
+  if (!tech) {
+    return (
+      <div className="p-8 space-y-3">
+        <Link to="/lore/tech" className="inline-flex items-center gap-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-3 w-3" /> BACK TO TECHNOLOGY
+        </Link>
+        <p className="text-sm text-muted-foreground font-body">Technology entry not found.</p>
+      </div>
+    );
+  }
 
   const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
     if (!tech) return;

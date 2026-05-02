@@ -100,7 +100,7 @@ const KIND_ICON: Record<Conversation["kind"], typeof MessageSquare> = {
 };
 
 export default function ChatPage() {
-  const { username, isAuthenticated } = useAuth();
+  const { username, isAuthenticated, role } = useAuth();
 
   const [convs, setConvs] = useState<Conversation[]>([]);
   const [invites, setInvites] = useState<Conversation[]>([]);
@@ -247,6 +247,15 @@ export default function ChatPage() {
 
   if (!isAuthenticated) {
     return <div className="p-8 text-muted-foreground">Login to use chat.</div>;
+  }
+
+  if (role === "guest") {
+    return (
+      <div className="p-8 space-y-3">
+        <h1 className="font-display text-xl tracking-[0.1em] text-primary">CHAT</h1>
+        <p className="text-sm text-muted-foreground">Guest accounts cannot access Chat.</p>
+      </div>
+    );
   }
 
   // -------- Handlers ----------------------------------------------------

@@ -60,18 +60,46 @@ function getDoctrine(classification: string) {
 export default function CreatureDetail() {
   const { id } = useParams<{ id: string }>();
   const [creature, setCreature] = useState<Creature | null>(null);
+  const [loading, setLoading] = useState(true);
   const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
 
   useEffect(() => {
-    if (id) {
-      getCreature(id).then((c) => {
-        setCreature(c ?? null);
-        setDiscussion(c?.discussions ?? []);
-      });
+    let active = true;
+    setLoading(true);
+
+    if (!id) {
+      setCreature(null);
+      setDiscussion([]);
+      setLoading(false);
+      return () => {
+        active = false;
+      };
     }
+
+    getCreature(id).then((c) => {
+      if (!active) return;
+      setCreature(c ?? null);
+      setDiscussion(c?.discussions ?? []);
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
   }, [id]);
 
-  if (!creature) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+  if (loading) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+
+  if (!creature) {
+    return (
+      <div className="p-8 space-y-3">
+        <Link to="/lore/creatures" className="inline-flex items-center gap-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-3 w-3" /> BACK TO CREATURES
+        </Link>
+        <p className="text-sm text-muted-foreground font-body">Creature not found.</p>
+      </div>
+    );
+  }
 
   const accent = creature.accentColor;
   const doctrine = getDoctrine(creature.classification);

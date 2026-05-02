@@ -9,16 +9,47 @@ import MentionInput, { extractMentions, renderWithMentions } from "@/components/
 export default function GalleryDetail() {
   const { id } = useParams<{ id: string }>();
   const [item, setItem] = useState<GalleryItem | null>(null);
+  const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState("");
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const { role, username } = useAuth();
 
   useEffect(() => {
-    if (id) getGalleryItem(id).then((g) => setItem(g ?? null));
+    let active = true;
+    setLoading(true);
+
+    if (!id) {
+      setItem(null);
+      setLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    getGalleryItem(id).then((g) => {
+      if (!active) return;
+      setItem(g ?? null);
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
   }, [id]);
 
-  if (!item) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+  if (loading) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
+
+  if (!item) {
+    return (
+      <div className="p-8 space-y-3">
+        <Link to="/gallery" className="inline-flex items-center gap-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-3 w-3" /> BACK TO GALLERY
+        </Link>
+        <p className="text-sm text-muted-foreground font-body">Gallery item not found.</p>
+      </div>
+    );
+  }
 
   const handleComment = async () => {
     if (!commentText.trim() || role === "guest") return;

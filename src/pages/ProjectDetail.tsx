@@ -11,14 +11,45 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (id) getProject(id).then((p) => setProject(p ?? null));
+    let active = true;
+    setLoading(true);
+
+    if (!id) {
+      setProject(null);
+      setLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    getProject(id).then((p) => {
+      if (!active) return;
+      setProject(p ?? null);
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
   }, [id]);
+
+  if (loading) {
+    return (
+      <div className="p-8 text-muted-foreground font-body">Loading project...</div>
+    );
+  }
 
   if (!project) {
     return (
-      <div className="p-8 text-muted-foreground font-body">Loading project...</div>
+      <div className="p-8 space-y-3">
+        <Link to="/projects" className="inline-flex items-center gap-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-3 w-3" /> BACK TO PROJECTS
+        </Link>
+        <p className="text-sm text-muted-foreground font-body">Project not found.</p>
+      </div>
     );
   }
 

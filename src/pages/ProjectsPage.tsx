@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getProjectsPage, type PageInfo } from "@/services/api";
 import type { Project } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { Archive, Plus } from "lucide-react";
+import { Archive, Plus, Search } from "lucide-react";
 
 const tabs = ["All", "Planning", "On Progress", "On Hold", "Completed", "Canceled", "Archived"] as const;
 type Tab = typeof tabs[number];
@@ -16,12 +16,14 @@ export default function ProjectsPage() {
   const [params, setParams] = useSearchParams();
   const initial = (params.get("tab") as Tab) || "All";
   const [active, setActive] = useState<Tab>(tabs.includes(initial) ? initial : "All");
+  const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const { role } = useAuth();
 
   useEffect(() => {
     void loadProjects(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+  }, [active, deferredSearch]);
 
   // Keep URL tab in sync so a refresh keeps the active tab.
   useEffect(() => {
@@ -44,6 +46,7 @@ export default function ProjectsPage() {
         pageSize: PROJECT_PAGE_SIZE,
         status,
         archived: isArchived ? true : false,
+        search: deferredSearch,
       });
       setProjects((current) => reset ? response.items : [...current, ...response.items]);
       setPageInfo(response.pageInfo);
@@ -80,10 +83,21 @@ export default function ProjectsPage() {
         ))}
       </div>
 
+      <div className="relative max-w-xl">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search projects..."
+          className="w-full rounded-sm border border-border bg-card py-2 pl-10 pr-3 text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {projects.length === 0 && !loading && (
           <p className="col-span-full text-sm text-muted-foreground font-body italic">
-            {active === "Archived" ? "No archived projects." : "No projects in this view."}
+            {search.trim() ? "No projects match your search." : active === "Archived" ? "No archived projects." : "No projects in this view."}
           </p>
         )}
         {projects.map((p) => (

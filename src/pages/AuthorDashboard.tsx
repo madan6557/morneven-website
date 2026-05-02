@@ -11,6 +11,7 @@ import CommandCenterSelectionPanel from "@/components/CommandCenterSelectionPane
 import MetadataEditor from "@/components/MetadataEditor";
 import { canAccessAuthorPanel, canEnterAuthorPanel } from "@/lib/pl";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 
 const dashTabs = ["projects", "lore", "gallery", "news", "homepage", "map"] as const;
 const loreSubs = ["characters", "places", "technology", "creatures", "other"] as const;
@@ -214,6 +215,7 @@ function FieldEntryEditor({
 
 export default function AuthorDashboard() {
   const { role, username, personnelLevel, track } = useAuth();
+  const { toast } = useToast();
   const [params, setParams] = useSearchParams();
   const [activeTab, setActiveTabRaw] = useState<DashboardTab>(() => {
     const tab = params.get("tab");
@@ -420,8 +422,49 @@ export default function AuthorDashboard() {
     }
   };
 
+  const requireText = (value: string | undefined, label: string) => {
+    if (value?.trim()) return true;
+    toast({
+      title: "Required field missing",
+      description: `${label} is required before saving.`,
+      variant: "destructive",
+    });
+    return false;
+  };
+
+  const validateEditing = () => {
+    if (!editing) return false;
+
+    if (activeTab === "projects") {
+      return (
+        requireText(editing.title, "Project title") &&
+        requireText(editing.shortDesc, "Project short description") &&
+        requireText(editing.fullDesc, "Project full description")
+      );
+    }
+
+    if (activeTab === "gallery") {
+      return (
+        requireText(editing.title, "Gallery title") &&
+        requireText(editing.caption, "Gallery caption")
+      );
+    }
+
+    if (activeTab === "lore") {
+      const label = loreSub === "other" ? "Lore title" : "Lore name";
+      return (
+        requireText(loreSub === "other" ? editing.title : editing.name, label) &&
+        requireText(editing.shortDesc, "Lore short description") &&
+        requireText(editing.fullDesc, "Lore full description")
+      );
+    }
+
+    return true;
+  };
+
   const handleSave = async () => {
     if (!editing) return;
+    if (!validateEditing()) return;
 
     if (activeTab === "projects") {
       const payload: Omit<Project, "id"> = {
