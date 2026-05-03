@@ -5,10 +5,18 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { PERSONNEL_TRACKS } from "@/lib/pl";
-import { getSystemChatSnapshot, reconcileAutoMemberships, type ChatReconciliationReport } from "@/services/chatApi";
-import { getQuota, listTeams, monthKey, pl2Status, pl3Status, pl4Status, yearKey } from "@/services/managementApi";
-import { listPersonnel } from "@/services/personnelApi";
-import { clearExtractionHistory, listExtractionHistory, startExtraction, type ExtractionMode } from "@/services/extractionService";
+import { getSystemChatSnapshotRemote, reconcileSystemChatGroupsRemote, type ChatReconciliationReport } from "@/services/chatApi";
+import { getQuota, monthKey, pl2Status, pl3Status, pl4Status, yearKey } from "@/services/managementApi";
+import { canUseLocalExtractionFallback, clearExtractionHistory, downloadExtractionJob, listExtractionHistory, listExtractionHistoryRemote, startExtraction, startExtractionRemote, type ExtractionMode } from "@/services/extractionService";
+
+const emptyChatReport: ChatReconciliationReport = {
+  instituteGroups: 0,
+  divisionGroups: 0,
+  teamGroups: 0,
+  activeMemberships: 0,
+  removedMemberships: 0,
+  ranAt: new Date().toISOString(),
+};
 
 export default function SettingsPage() {
   const { role, username, personnelLevel, track, verifyPassword } = useAuth();
@@ -18,16 +26,44 @@ export default function SettingsPage() {
   const [mode, setMode] = useState<ExtractionMode>("all");
   const [autoDownload, setAutoDownload] = useState(true);
   const [password, setPassword] = useState("");
+  const [showExtractionPassword, setShowExtractionPassword] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
-  const [showExtractionPassword, setShowExtractionPassword] = useState(false);
-  const [chatReport, setChatReport] = useState<ChatReconciliationReport>(() => getSystemChatSnapshot());
+  const [chatReport, setChatReport] = useState<ChatReconciliationReport>(emptyChatReport);
   const [isReconciling, setIsReconciling] = useState(false);
+  const [shouldPollExtraction, setShouldPollExtraction] = useState(false);
+  const processing = useMemo(() => history.some((h) => h.status === "processing"), [history]);
 
   useEffect(() => {
-    const t = setInterval(() => setHistory(listExtractionHistory()), 1000);
-    return () => clearInterval(t);
+    listExtractionHistoryRemote().then(setHistory).catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (personnelLevel < 7) return;
+    getSystemChatSnapshotRemote().then(setChatReport).catch(() => undefined);
+  }, [personnelLevel]);
+
+  useEffect(() => {
+    if (!shouldPollExtraction || !processing) {
+      if (shouldPollExtraction && !processing) setShouldPollExtraction(false);
+      return;
+    }
+    const t = window.setInterval(() => {
+      listExtractionHistoryRemote().then((nextHistory) => {
+        setHistory(nextHistory);
+        if (!nextHistory.some((job) => job.status === "processing")) {
+          setShouldPollExtraction(false);
+        }
+      }).catch(() => {
+        const nextHistory = listExtractionHistory();
+        setHistory(nextHistory);
+        if (!nextHistory.some((job) => job.status === "processing")) {
+          setShouldPollExtraction(false);
+        }
+      });
+    }, 3000);
+    return () => window.clearInterval(t);
+  }, [processing, shouldPollExtraction]);
 
   useEffect(() => {
     getQuota(username).then((q) =>
@@ -38,25 +74,39 @@ export default function SettingsPage() {
   const trackInfo = PERSONNEL_TRACKS.find((t) => t.key === track);
   const title = trackInfo?.titles[personnelLevel] ?? "Unknown";
   const canRun = personnelLevel >= 7 && confirmText === "CONFIRM" && verifyPassword(password);
-  const processing = useMemo(() => history.some((h) => h.status === "processing"), [history]);
   const canReconcileChat = personnelLevel >= 7;
 
   const runChatReconciliation = async () => {
     if (!canReconcileChat || isReconciling) return;
     setIsReconciling(true);
     try {
-      const [personnel, teams] = await Promise.all([listPersonnel(), listTeams()]);
-      const report = reconcileAutoMemberships(
-        personnel,
-        teams.map((team) => ({
-          id: team.id,
-          name: team.name,
-          leader: team.leader,
-          members: team.members,
-        })),
-      );
+      const previousReport = chatReport;
+      const report = await reconcileSystemChatGroupsRemote();
       setChatReport(report);
-      toast({ title: "System chat groups synced", description: `${report.teamGroups} team groups, ${report.divisionGroups} division groups.` });
+      const changed =
+        report.instituteGroups !== previousReport.instituteGroups ||
+        report.divisionGroups !== previousReport.divisionGroups ||
+        report.teamGroups !== previousReport.teamGroups ||
+        report.activeMemberships !== previousReport.activeMemberships ||
+        report.removedMemberships !== previousReport.removedMemberships;
+
+      if (!changed) {
+        toast({
+          title: "System chat already synced",
+          description: "No membership or group count changed.",
+        });
+      } else {
+        toast({
+          title: "System chat groups synced",
+          description: `Channels ${previousReport.instituteGroups + previousReport.divisionGroups + previousReport.teamGroups} to ${report.instituteGroups + report.divisionGroups + report.teamGroups}, active members ${previousReport.activeMemberships} to ${report.activeMemberships}.`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Sync failed",
+        description: error instanceof Error ? error.message : "Backend rejected chat reconciliation.",
+        variant: "destructive",
+      });
     } finally {
       setIsReconciling(false);
     }
@@ -155,14 +205,43 @@ export default function SettingsPage() {
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={autoDownload} onChange={(e) => setAutoDownload(e.target.checked)} /> Auto download when completed
             </label>
-            <div className="relative">
-              <input type={showExtractionPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Account password" className="w-full bg-background border rounded px-2 py-2 pr-10 text-sm" />
-              <button type="button" onClick={() => setShowExtractionPassword((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary" aria-label={showExtractionPassword ? "Hide password" : "Show password"}>
-                {showExtractionPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder='Type "CONFIRM"' className="w-full bg-background border rounded px-2 py-2 text-sm" />
-            <Button type="button" disabled={!canRun} onClick={() => { startExtraction(mode, autoDownload); setHistory(listExtractionHistory()); }}>
+              <div className="relative">
+                <input
+                  type={showExtractionPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Account password"
+                  className="w-full bg-background border rounded px-2 py-2 pr-10 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowExtractionPassword((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                  aria-label={showExtractionPassword ? "Hide password" : "Show password"}
+                >
+                  {showExtractionPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder='Type "CONFIRM"' className="w-full bg-background border rounded px-2 py-2 text-sm" />
+            <Button type="button" disabled={!canRun} onClick={async () => {
+              try {
+                const job = await startExtractionRemote(mode, autoDownload, { confirmText, password });
+                setHistory([job, ...history]);
+                setShouldPollExtraction(job.status === "processing");
+              } catch (error) {
+                if (!canUseLocalExtractionFallback()) {
+                  toast({
+                    title: "Extraction failed",
+                    description: error instanceof Error ? error.message : "Backend rejected the extraction request.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                startExtraction(mode, autoDownload);
+                setHistory(listExtractionHistory());
+                setShouldPollExtraction(true);
+              }
+            }}>
               Start Extraction
             </Button>
             {processing && <p className="text-xs text-muted-foreground">Extraction in progress...</p>}
@@ -175,7 +254,25 @@ export default function SettingsPage() {
                     </label>
                     {h.mode.toUpperCase()} / {h.status} / expires {new Date(h.expiresAt).toLocaleDateString()}
                   </div>
-                  <div>{h.status === "completed" && h.blobUrl && <a className="underline text-primary" href={h.blobUrl} download={h.downloadName}>Download ZIP</a>}</div>
+                  <div>
+                    {h.status === "completed" && (
+                      <button
+                        type="button"
+                        className="underline text-primary"
+                        onClick={() => {
+                          downloadExtractionJob(h).catch((error) => {
+                            toast({
+                              title: "Download failed",
+                              description: error instanceof Error ? error.message : "Could not download extraction archive.",
+                              variant: "destructive",
+                            });
+                          });
+                        }}
+                      >
+                        Download ZIP
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

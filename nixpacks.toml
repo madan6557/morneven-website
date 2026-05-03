@@ -1,0 +1,12 @@
+[variables]
+NODE_VERSION = "20"
+NPM_VERSION = "10"
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "node server.mjs"

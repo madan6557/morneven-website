@@ -1,4 +1,5 @@
 import { db, hasStorage } from "@/services/dataStore";
+import { apiRequest, getAccessToken, getApiBaseUrl, isDemoFallbackEnabled, unwrapPageItems, withDemoFallback, type BackendPage } from "@/services/restClient";
 
 export type ExtractionMode = "db" | "images" | "all";
 export type ExtractionStatus = "processing" | "completed" | "failed";
@@ -56,9 +57,21 @@ export function listExtractionHistory() {
   return items.sort((a,b)=> new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
+export async function listExtractionHistoryRemote(): Promise<ExtractionJob[]> {
+  return withDemoFallback(
+    async () => unwrapPageItems(await apiRequest<ExtractionJob[] | BackendPage<ExtractionJob>>("/settings/extractions")),
+    () => listExtractionHistory(),
+  );
+}
+
 export function clearExtractionHistory(ids?: string[]) {
-  if (!ids || ids.length === 0) return saveHistory([]);
+  if (!ids || ids.length === 0) {
+    saveHistory([]);
+    apiRequest("/settings/extractions", { method: "DELETE", body: { ids: [] } }).catch(() => undefined);
+    return;
+  }
   saveHistory(listExtractionHistory().filter((i) => !ids.includes(i.id)));
+  apiRequest("/settings/extractions", { method: "DELETE", body: { ids } }).catch(() => undefined);
 }
 
 function buildFiles(mode: ExtractionMode) {
@@ -113,4 +126,54 @@ export function startExtraction(mode: ExtractionMode, autoDownload: boolean): Ex
     }
   }, 1500);
   return job;
+}
+
+export async function startExtractionRemote(
+  mode: ExtractionMode,
+  autoDownload: boolean,
+  payload: { confirmText?: string; password?: string } = {},
+): Promise<ExtractionJob> {
+  return apiRequest<ExtractionJob>("/settings/extractions", {
+    method: "POST",
+    body: { mode, autoDownload, ...payload },
+  });
+}
+
+export function pollExtractionJob(id: string): Promise<ExtractionJob> {
+  return apiRequest<ExtractionJob>(`/settings/extractions/${id}`);
+}
+
+export function getExtractionDownloadUrl(id: string): string {
+  return `${getApiBaseUrl()}/settings/extractions/${id}/download`;
+}
+
+export async function downloadExtractionJob(job: ExtractionJob): Promise<void> {
+  if (job.blobUrl) {
+    const anchor = document.createElement("a");
+    anchor.href = job.blobUrl;
+    anchor.download = job.downloadName ?? `morneven-extract-${job.id}.zip`;
+    anchor.click();
+    return;
+  }
+
+  const headers = new Headers();
+  const token = getAccessToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const response = await fetch(getExtractionDownloadUrl(job.id), { headers });
+  if (!response.ok) {
+    throw new Error(`Download failed with status ${response.status}`);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = job.downloadName ?? `morneven-extract-${job.id}.zip`;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+
+export function canUseLocalExtractionFallback(): boolean {
+  return isDemoFallbackEnabled();
 }

@@ -1,8 +1,20 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { getProjectsPage, createProject, updateProject, deleteProject, getCharactersPage, createCharacter, updateCharacter, deleteCharacter, getPlacesPage, createPlace, updatePlace, deletePlace, getTechnologyPage, createTech, updateTech, deleteTech, getGalleryPage, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreaturesPage, createCreature, updateCreature, deleteCreature, getOthersPage, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImage, setMapImage, type PageInfo } from "@/services/api";
-import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, type CommandCenterSettings } from "@/services/commandCenterSettings";
+import { apiUpload, getProjectsPage, createProject, updateProject, deleteProject, getCharactersPage, createCharacter, updateCharacter, deleteCharacter, getPlacesPage, createPlace, updatePlace, deletePlace, getTechnologyPage, createTech, updateTech, deleteTech, getGalleryPage, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreaturesPage, createCreature, updateCreature, deleteCreature, getOthersPage, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImageRemote, setMapImageRemote, type PageInfo } from "@/services/api";
+import {
+  activateCommandCenterPreset,
+  deleteCommandCenterPreset,
+  getCommandCenterDefaults,
+  getCommandCenterPresets,
+  getCommandCenterSettings,
+  getCommandCenterSettingsRemote,
+  saveCommandCenterSettings,
+  saveCommandCenterSettingsRemote,
+  defaultSettings,
+  type CommandCenterPreset,
+  type CommandCenterSettings,
+} from "@/services/commandCenterSettings";
 import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel, LoreMeta, LoreFieldNote } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, File as FileIcon, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon } from "lucide-react";
 import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
@@ -106,10 +118,12 @@ const isDashboardTab = (value: string | null): value is DashboardTab => {
 
 type AttachmentMode = "url" | "image" | "video" | "file";
 
-function FileUploadField({ label, value, onChange, accept = "image/*,video/*", attachmentType = "image" }: { label: string; value: string; onChange: (url: string) => void; accept?: string; attachmentType?: Exclude<AttachmentMode, "url"> }) {
+function FileUploadField({ label, value, onChange, accept = "image/*,video/*", attachmentType = "image", folder = "uploads" }: { label: string; value: string; onChange: (url: string) => void; accept?: string; attachmentType?: Exclude<AttachmentMode, "url">; folder?: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const looksLikeManualUrl = /^https?:\/\//i.test(value) && !/storage|blob:|object|assets/i.test(value);
   const [mode, setMode] = useState<AttachmentMode>(looksLikeManualUrl ? "url" : attachmentType);
+  const [uploadError, setUploadError] = useState("");
+  const [uploading, setUploading] = useState(false);
   const isUrlMode = mode === "url";
   const isUploadedValue = value && !isUrlMode;
   const selectedType = mode === "file" ? "file" : mode;
@@ -118,11 +132,21 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*", a
     if (mode !== "url") setMode(attachmentType);
   }, [attachmentType]);
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const objectUrl = URL.createObjectURL(file);
-    onChange(objectUrl);
+    setUploadError("");
+    setUploading(true);
+    try {
+      const uploaded = await apiUpload<{ url?: string }>(`/files/upload?folder=${folder}`, file);
+      if (!uploaded.url) throw new Error("Upload response did not include a file URL");
+      onChange(uploaded.url);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
   };
 
   return (
@@ -152,8 +176,9 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*", a
         <div className="flex gap-2 items-center">
           <input ref={fileRef} type="file" accept={mode === "image" ? "image/*" : mode === "video" ? "video/*" : accept} onChange={handleFile} className="hidden" />
           <button type="button" onClick={() => fileRef.current?.click()}
+            disabled={uploading}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-display tracking-wider border border-dashed border-primary/40 rounded-sm text-primary hover:bg-primary/10 transition-colors">
-            <Upload className="h-3.5 w-3.5" /> Choose {selectedType}
+            <Upload className="h-3.5 w-3.5" /> {uploading ? "Uploading" : `Choose ${selectedType}`}
           </button>
           {isUploadedValue && (
             <span className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-muted px-2 py-1 text-[10px] font-display uppercase tracking-wider text-foreground">
@@ -164,6 +189,7 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*", a
               </button>
             </span>
           )}
+          {uploadError && <span className="text-[10px] text-destructive">{uploadError}</span>}
         </div>
       )}
     </div>
@@ -272,6 +298,9 @@ export default function AuthorDashboard() {
   const [editing, setEditing] = useState<EditableState | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [ccSettings, setCcSettings] = useState<CommandCenterSettings>(() => getCommandCenterSettings());
+  const [ccPresets, setCcPresets] = useState<CommandCenterPreset[]>([]);
+  const [ccSettingsLoading, setCcSettingsLoading] = useState(false);
+  const [ccSettingsSaving, setCcSettingsSaving] = useState(false);
   const fullDescRef = useRef<HTMLTextAreaElement>(null);
   const editFormRef = useRef<HTMLDivElement>(null);
   // Key of the most-recently-added inline list item (doc/contribution/patch).
@@ -318,9 +347,136 @@ export default function AuthorDashboard() {
   useEffect(() => {
     if (activeTab !== "map" || !canAccess("map")) return;
     void getMapMarkers().then(setMapMarkers);
-    setMapImageUrl(getMapImage());
+    void getMapImageRemote().then(setMapImageUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, personnelLevel, role, track]);
+
+  useEffect(() => {
+    if (activeTab !== "homepage" || !canAccess("homepage")) return;
+    let isActive = true;
+
+    setCcSettingsLoading(true);
+    void Promise.all([
+      getCommandCenterSettingsRemote(),
+      getCommandCenterPresets(),
+    ])
+      .then(([settings, presets]) => {
+        if (!isActive) return;
+        setCcSettings(settings);
+        setCcPresets(presets);
+      })
+      .catch(() => {
+        if (!isActive) return;
+        toast({
+          title: "Command Center unavailable",
+          description: "Could not load global presets from backend.",
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        if (isActive) setCcSettingsLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, personnelLevel, role, track]);
+
+  const refreshCommandCenterPresets = async () => {
+    setCcPresets(await getCommandCenterPresets());
+  };
+
+  const saveGlobalCommandCenterSettings = async () => {
+    setCcSettingsSaving(true);
+    try {
+      const saved = await saveCommandCenterSettingsRemote(ccSettings);
+      setCcSettings(saved);
+      await refreshCommandCenterPresets();
+      toast({
+        title: "Command Center saved",
+        description: "Active global preset has been updated.",
+      });
+    } catch {
+      toast({
+        title: "Save failed",
+        description: "Backend rejected the Command Center settings update.",
+        variant: "destructive",
+      });
+    } finally {
+      setCcSettingsSaving(false);
+    }
+  };
+
+  const resetGlobalCommandCenterSettings = async () => {
+    setCcSettingsSaving(true);
+    try {
+      const defaults = await getCommandCenterDefaults();
+      const saved = await saveCommandCenterSettingsRemote(defaults);
+      setCcSettings(saved);
+      await refreshCommandCenterPresets();
+      toast({
+        title: "Command Center reset",
+        description: "Active global preset now uses backend defaults.",
+      });
+    } catch {
+      const fallback = { ...defaultSettings };
+      setCcSettings(fallback);
+      saveCommandCenterSettings(fallback);
+      toast({
+        title: "Reset saved locally",
+        description: "Backend defaults were unavailable, so local demo settings were reset.",
+        variant: "destructive",
+      });
+    } finally {
+      setCcSettingsSaving(false);
+    }
+  };
+
+  const activatePreset = async (id: string) => {
+    setCcSettingsSaving(true);
+    try {
+      await activateCommandCenterPreset(id);
+      const [settings, presets] = await Promise.all([
+        getCommandCenterSettingsRemote(),
+        getCommandCenterPresets(),
+      ]);
+      setCcSettings(settings);
+      setCcPresets(presets);
+      toast({
+        title: "Preset activated",
+        description: "Command Center now uses the selected global preset.",
+      });
+    } catch {
+      toast({
+        title: "Activation failed",
+        description: "Backend could not activate this preset.",
+        variant: "destructive",
+      });
+    } finally {
+      setCcSettingsSaving(false);
+    }
+  };
+
+  const removePreset = async (id: string) => {
+    setCcSettingsSaving(true);
+    try {
+      await deleteCommandCenterPreset(id);
+      await refreshCommandCenterPresets();
+      toast({
+        title: "Preset deleted",
+        description: "The inactive preset was removed.",
+      });
+    } catch {
+      toast({
+        title: "Delete failed",
+        description: "Active presets cannot be deleted. Activate another preset first.",
+        variant: "destructive",
+      });
+    } finally {
+      setCcSettingsSaving(false);
+    }
+  };
 
   useEffect(() => {
     const tab = params.get("tab");
@@ -842,13 +998,66 @@ export default function AuthorDashboard() {
               <LayoutDashboard className="h-4 w-4" /> Command Center Settings
             </h3>
             <button
-              onClick={() => { setCcSettings({ ...defaultSettings }); saveCommandCenterSettings({ ...defaultSettings }); }}
+              onClick={resetGlobalCommandCenterSettings}
+              disabled={ccSettingsSaving}
               className="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-1.5 text-[10px] font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors"
             >
               <RotateCcw className="h-3 w-3" /> RESET DEFAULTS
             </button>
           </div>
           <div className="mecha-line" />
+
+          <div className="rounded-sm border border-border bg-background/50 p-3 space-y-3">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className={labelClass}>Global System Presets</p>
+                <p className="text-[11px] font-body text-muted-foreground italic">
+                  Active preset is shared across all personnel Home screens.
+                </p>
+              </div>
+              {ccSettingsLoading && (
+                <span className="text-[10px] font-display tracking-wider uppercase text-muted-foreground">Loading</span>
+              )}
+            </div>
+            {ccPresets.length === 0 ? (
+              <p className="text-xs font-body text-muted-foreground">No backend presets returned.</p>
+            ) : (
+              <div className="grid gap-2 md:grid-cols-2">
+                {ccPresets.map((preset) => (
+                  <div key={preset.id} className="flex items-center justify-between gap-3 rounded-sm border border-border bg-card p-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-heading uppercase tracking-wider text-foreground">{preset.presetName}</p>
+                      <p className="truncate text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+                        {preset.presetKey}{preset.isActive ? " | Active" : ""}
+                      </p>
+                    </div>
+                    <div className="flex flex-shrink-0 items-center gap-1">
+                      {!preset.isActive && (
+                        <button
+                          type="button"
+                          onClick={() => activatePreset(preset.id)}
+                          disabled={ccSettingsSaving}
+                          className="px-2 py-1 text-[10px] font-display tracking-wider text-primary hover:bg-primary/10 rounded-sm"
+                        >
+                          ACTIVATE
+                        </button>
+                      )}
+                      {!preset.isActive && (
+                        <button
+                          type="button"
+                          onClick={() => removePreset(preset.id)}
+                          disabled={ccSettingsSaving}
+                          className="px-2 py-1 text-[10px] font-display tracking-wider text-destructive hover:bg-destructive/10 rounded-sm"
+                        >
+                          DELETE
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div>
             <label className={labelClass}>Welcome Message</label>
@@ -895,10 +1104,11 @@ export default function AuthorDashboard() {
 
           <div className="flex justify-end">
             <button
-              onClick={() => { saveCommandCenterSettings(ccSettings); }}
+              onClick={saveGlobalCommandCenterSettings}
+              disabled={ccSettingsSaving}
               className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity"
             >
-              <Save className="h-3 w-3" /> SAVE SETTINGS
+              <Save className="h-3 w-3" /> {ccSettingsSaving ? "SAVING" : "SAVE SETTINGS"}
             </button>
           </div>
         </div>
@@ -923,7 +1133,13 @@ export default function AuthorDashboard() {
               <input type="text" value={editing.title ?? editing.name ?? ""} onChange={(e) => setEditing({ ...editing, [editing.title !== undefined ? "title" : "name"]: e.target.value })} className={inputClass} />
             </div>
 
-            <FileUploadField label="Thumbnail" value={editing.thumbnail || ""} onChange={(url) => setEditing({ ...editing, thumbnail: url })} accept="image/*" />
+            <FileUploadField
+              label="Thumbnail"
+              value={editing.thumbnail || ""}
+              onChange={(url) => setEditing({ ...editing, thumbnail: url })}
+              accept="image/*"
+              folder={isProject ? "projects" : isGallery ? "gallery" : "lore"}
+            />
 
             {/* Project-specific: Status */}
             {isProject && (
@@ -1134,7 +1350,14 @@ export default function AuthorDashboard() {
                         <option value="file">File</option>
                       </select>
                     </div>
-                    <FileUploadField label="" value={doc.url} onChange={(url) => updateDoc(idx, "url", url)} accept={doc.type === "video" ? "video/*" : doc.type === "image" ? "image/*" : "*/*"} attachmentType={doc.type} />
+                    <FileUploadField
+                      label=""
+                      value={doc.url}
+                      onChange={(url) => updateDoc(idx, "url", url)}
+                      accept={doc.type === "video" ? "video/*" : doc.type === "image" ? "image/*" : "*/*"}
+                      attachmentType={doc.type}
+                      folder={isProject ? "projects" : isGallery ? "gallery" : "lore"}
+                    />
                     <input type="text" value={doc.caption} onChange={(e) => updateDoc(idx, "caption", e.target.value)} placeholder="Caption" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                   </div>
                   <button type="button" onClick={() => removeDoc(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
@@ -1254,8 +1477,14 @@ export default function AuthorDashboard() {
           <FileUploadField
             label="Map Background Image (optional)"
             value={mapImageUrl}
-            onChange={(url) => { setMapImageUrl(url); setMapImage(url); window.dispatchEvent(new CustomEvent("morneven:map-changed")); }}
+            onChange={(url) => {
+              setMapImageUrl(url);
+              void setMapImageRemote(url).finally(() => {
+                window.dispatchEvent(new CustomEvent("morneven:map-changed"));
+              });
+            }}
             accept="image/*"
+            folder="map"
           />
 
           <div className="flex items-center justify-between">

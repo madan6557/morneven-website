@@ -1,4 +1,6 @@
 // Settings for what to display on the Command Center / HomePage
+import { apiRequest, withDemoFallback } from "@/services/restClient";
+
 export type CommandCenterSection =
   | "projects"
   | "news"
@@ -25,6 +27,16 @@ export interface CommandCenterSettings {
   // the itemLimits cap. An empty array means "auto" (use limit + default
   // ordering).
   manualSelections: Record<CommandCenterSection, string[]>;
+}
+
+export interface CommandCenterPreset {
+  id: string;
+  presetKey: string;
+  presetName: string;
+  isActive: boolean;
+  updatedBy?: string;
+  updatedAt?: string;
+  createdAt?: string;
 }
 
 const STORAGE_KEY = "morneven_cc_settings";
@@ -81,6 +93,31 @@ export function getCommandCenterSettings(): CommandCenterSettings {
   }
 }
 
+export function normalizeCommandCenterSettings(parsed: Partial<CommandCenterSettings>): CommandCenterSettings {
+  return mergeSettings(parsed);
+}
+
+export async function getCommandCenterSettingsRemote(): Promise<CommandCenterSettings> {
+  return withDemoFallback(
+    async () => mergeSettings(await apiRequest<Partial<CommandCenterSettings>>("/settings/command-center")),
+    () => getCommandCenterSettings(),
+  );
+}
+
+export async function getCommandCenterDefaults(): Promise<CommandCenterSettings> {
+  return withDemoFallback(
+    async () => mergeSettings(await apiRequest<Partial<CommandCenterSettings>>("/settings/command-center/defaults")),
+    () => defaultSettings,
+  );
+}
+
+export async function getCommandCenterPresets(): Promise<CommandCenterPreset[]> {
+  return withDemoFallback(
+    () => apiRequest<CommandCenterPreset[]>("/settings/command-center/presets"),
+    () => [],
+  );
+}
+
 export function saveCommandCenterSettings(settings: CommandCenterSettings) {
   if (typeof window === "undefined") return;
   try {
@@ -89,6 +126,48 @@ export function saveCommandCenterSettings(settings: CommandCenterSettings) {
   } catch {
     // ignore
   }
+}
+
+export async function saveCommandCenterSettingsRemote(settings: CommandCenterSettings): Promise<CommandCenterSettings> {
+  const saved = mergeSettings(await apiRequest<Partial<CommandCenterSettings>>("/settings/command-center", {
+    method: "PUT",
+    body: settings,
+  }));
+  saveCommandCenterSettings(saved);
+  return saved;
+}
+
+export async function createCommandCenterPreset(payload: {
+  presetKey: string;
+  presetName: string;
+  settings: Partial<CommandCenterSettings>;
+}): Promise<CommandCenterPreset> {
+  return apiRequest<CommandCenterPreset>("/settings/command-center/presets", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function updateCommandCenterPreset(
+  id: string,
+  payload: { presetName?: string; settings?: Partial<CommandCenterSettings> },
+): Promise<CommandCenterPreset> {
+  return apiRequest<CommandCenterPreset>(`/settings/command-center/presets/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export async function deleteCommandCenterPreset(id: string): Promise<void> {
+  await apiRequest<void>(`/settings/command-center/presets/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function activateCommandCenterPreset(id: string): Promise<CommandCenterPreset> {
+  return apiRequest<CommandCenterPreset>(`/settings/command-center/presets/${id}/activate`, {
+    method: "POST",
+  });
 }
 
 // Resolve the items to display for a given section based on the

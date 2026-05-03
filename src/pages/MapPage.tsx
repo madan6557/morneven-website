@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { getMapMarkers, getMapImage } from "@/services/api";
+import { getMapMarkers, getMapImageRemote } from "@/services/api";
 import type { MapMarker, MapZoneStatus } from "@/types";
 import { Plus, Minus, RotateCcw, MapPin, ExternalLink } from "lucide-react";
 
@@ -23,10 +23,10 @@ export default function MapPage() {
 
   useEffect(() => {
     getMapMarkers().then(setMarkers);
-    setMapImage(getMapImage());
+    getMapImageRemote().then(setMapImage);
     const refresh = () => {
       getMapMarkers().then(setMarkers);
-      setMapImage(getMapImage());
+      getMapImageRemote().then(setMapImage);
     };
     window.addEventListener("morneven:map-changed", refresh);
     return () => window.removeEventListener("morneven:map-changed", refresh);
@@ -89,7 +89,13 @@ export default function MapPage() {
             style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})` }}
           >
             {mapImage ? (
-              <img src={mapImage} alt="Gemora map" className="w-full h-full object-contain pointer-events-none" draggable={false} />
+              <img
+                src={mapImage}
+                alt="Gemora map"
+                className="w-full h-full object-contain pointer-events-none"
+                draggable={false}
+                onError={() => setMapImage("")}
+              />
             ) : (
               // SVG placeholder map of Gemora
               <svg viewBox="0 0 1000 700" className="w-full h-full pointer-events-none" preserveAspectRatio="xMidYMid meet">

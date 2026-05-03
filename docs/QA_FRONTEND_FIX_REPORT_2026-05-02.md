@@ -2,97 +2,60 @@
 
 Date: 2026-05-02
 Source QA report: `docs/QA_FRONTEND_REPORT_2026-05-02.md`
-Scope: Frontend-only fixes that can be completed without backend services or browser automation.
+Scope: Frontend fixes for the latest Conditional PASS QA report.
 
 ## Executive Summary
 
-Most actionable frontend defects from the QA report were fixed in source:
+The latest QA report had no P0 or P1 blockers. Two open defects were reviewed and fixed in the frontend:
 
-| Defect | Status after fix | Notes |
-| --- | --- | --- |
-| DEF-001 Guest direct Chat access | Fixed | `ChatPage` now blocks `role === "guest"`. |
-| DEF-002 Unknown detail IDs stay loading | Fixed | Project, Gallery, and Lore detail pages now separate loading from not-found state. |
-| DEF-003 Projects has no search UI | Fixed | Projects page now has search input backed by `getProjectsPage({ search })`. |
-| DEF-004 Author Dashboard allows blank required content | Fixed | Save is blocked with destructive toast feedback for required blank fields. |
-| DEF-005 Missing social preview image | Fixed | Open Graph and Twitter image now point to existing `/android-chrome-512x512.png`. |
-| DEF-006 NotFound logs console error | Fixed | Removed expected 404 `console.error`. |
-| DEF-007 Lint warnings remain | Partially fixed | No new lint errors. Existing non-blocking warnings remain in shared component exports and older hook patterns. |
+| Defect | Severity | Status after fix | Resolution |
+| --- | --- | --- | --- |
+| DEF-001 Invalid login email does not show expected inline validation | P2 | Fixed | Login form now uses React validation instead of native browser validation interception. |
+| DEF-002 Referenced social preview image is missing | P3 | Fixed | Metadata references an existing asset, and `/opengraph-image.png` now exists for compatibility. |
 
-## Fixed Details
+## Fix Details
 
-### DEF-001 Guest Chat Guard
+### DEF-001 Login Inline Validation
 
-Changed `src/pages/ChatPage.tsx`.
+Changed file:
 
-Behavior now matches sidebar and Management page policy:
+- `src/pages/Auth.tsx`
 
-- Authenticated guest users can no longer use direct `/chat`.
-- Guest sees a controlled access message instead of chat content.
+Fix:
 
-### DEF-002 Controlled Not Found For Detail Routes
+- Added `noValidate` to the auth form.
+- This prevents Chrome native email validation from blocking `handleSubmit`.
+- Existing React validation now consistently renders:
+  - `Valid email required`
+  - `Min 6 characters`
 
-Changed:
+Expected result:
 
-- `src/pages/ProjectDetail.tsx`
-- `src/pages/GalleryDetail.tsx`
-- `src/pages/CharacterDetail.tsx`
-- `src/pages/PlaceDetail.tsx`
-- `src/pages/TechDetail.tsx`
-- `src/pages/CreatureDetail.tsx`
-- `src/pages/EventDetail.tsx`
-- `src/pages/OtherDetail.tsx`
+- Entering `not-an-email` with a short password now allows React validation to run and show the guide-specified inline messages.
 
-Each page now:
+### DEF-002 Social Preview Image
 
-- Starts with explicit `loading` state.
-- Sets loading false after fetch resolves.
-- Renders a controlled not-found message when the record is missing.
-- Keeps the existing loading message only while fetch is pending.
+Changed file:
 
-### DEF-003 Projects Search
+- `index.html`
+- `public/opengraph-image.png`
 
-Changed `src/pages/ProjectsPage.tsx`.
-
-Added:
-
-- Search input.
-- Deferred search value.
-- Query passed into `getProjectsPage`.
-- Empty state for no search results.
-- Pagination reset when status tab or search query changes.
-
-### DEF-004 Author Dashboard Required Field Validation
-
-Changed `src/pages/AuthorDashboard.tsx`.
-
-Save is now blocked for required blank fields:
-
-- Projects: title, short description, full description.
-- Gallery: title, caption.
-- Lore entries: name or title, short description, full description.
-
-User feedback uses a destructive toast with the missing field name.
-
-### DEF-005 Social Preview Image
-
-Changed `index.html`.
-
-Updated:
-
-- `og:image`
-- `twitter:image`
-
-Both now reference an existing public asset:
+Current metadata:
 
 ```txt
-/android-chrome-512x512.png
+og:image = /android-chrome-512x512.png
+twitter:image = /android-chrome-512x512.png
 ```
 
-### DEF-006 Expected Not Found Logging
+The referenced asset exists in `public/android-chrome-512x512.png`, so future builds include it in `dist`.
 
-Changed `src/pages/NotFound.tsx`.
+Compatibility asset added:
 
-Removed console logging for expected 404 navigation. This prevents intentional unknown route smoke tests from polluting console QA.
+```txt
+public/opengraph-image.png
+```
+
+This prevents `/opengraph-image.png` from returning 404 if old metadata, cached previews, or external clients still request the previous URL.
 
 ## Validation
 
@@ -101,34 +64,36 @@ Commands run:
 ```txt
 node_modules\.bin\tsc.cmd -p tsconfig.app.json --noEmit
 npm.cmd run lint
-npm.cmd run build
 npm.cmd test
+npm.cmd run build
 ```
 
 Results:
 
-- TypeScript: PASS.
-- ESLint: PASS with warnings.
-- Build: BLOCKED by `spawn EPERM` while Vite starts esbuild.
-- Test: BLOCKED by `spawn EPERM` while Vitest starts esbuild.
+| Check | Result | Notes |
+| --- | --- | --- |
+| TypeScript | PASS | No type errors. |
+| Lint | PASS with warnings | 0 errors, existing 13 warnings remain. |
+| Tests | PASS | 3 files passed, 10 tests passed. |
+| Build | PASS | Production build completed. |
 
-Remaining warnings are the same non-blocking warning classes already called out by QA:
+Build warnings still present:
 
-- Fast refresh warnings in shared component files.
-- Hook dependency warnings in existing component effects.
+- Browserslist data is stale.
+- Main JS chunk is larger than 650 kB after minification.
 
-## Blocked Validation
+Lint warnings still present:
 
-The same environment limitation still applies and was reproduced:
-
-- `npm.cmd run build` and `npm.cmd test` are expected to remain blocked in this environment if Vite/Vitest attempts to spawn esbuild and receives `EPERM`.
-- Browser visual QA remains unverified until browser automation or a manual browser pass is available.
+- Fast refresh export warnings in shared component files.
+- Existing hook dependency warnings in `AuthorDashboard.tsx`, `ChatPage.tsx`, and `ManagementPage.tsx`.
 
 ## Residual Risk
 
-DEF-007 remains partially open. Cleaning all warnings requires a broader refactor:
+No unresolved P0, P1, or P2 defects remain from the latest QA report after this fix pass.
 
-- Move shared non-component exports from component files into utility modules.
-- Stabilize or refactor existing hook callbacks in `AuthorDashboard`, `ChatPage`, and `ManagementPage`.
+Remaining items are non-blocking release-hardening work:
 
-No backend-dependent defects were addressed in this pass.
+- Resolve lint warnings through component export cleanup and hook dependency refactors.
+- Reduce main bundle size through manual chunks or deeper code splitting.
+- Update Browserslist data.
+- Run another browser QA pass after these fixes are deployed or served from a fresh production build.

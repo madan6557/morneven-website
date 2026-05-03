@@ -33,8 +33,9 @@ import {
   type PersonnelLevel,
   type PersonnelTrack,
 } from "@/lib/pl";
-import { getChatUnreadCount, subscribeChat } from "@/services/chatApi";
-import { getReviewableRequestCount, subscribeManagement } from "@/services/managementApi";
+import { subscribeChat } from "@/services/chatApi";
+import { subscribeManagement } from "@/services/managementApi";
+import { getNavigationBadges } from "@/services/navigationBadgesApi";
 import logoColor from "@/assets/logo-color.png";
 
 interface NavItem {
@@ -121,8 +122,15 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
         return;
       }
 
-      setChatBadgeCount(getChatUnreadCount(username));
-      setManagementBadgeCount(getReviewableRequestCount({ level: personnelLevel, track, username }));
+      getNavigationBadges({ level: personnelLevel, track, username })
+        .then((badges) => {
+          setChatBadgeCount(badges.chat.unreadTotal);
+          setManagementBadgeCount(badges.management.pendingRequests);
+        })
+        .catch(() => {
+          setChatBadgeCount(0);
+          setManagementBadgeCount(0);
+        });
     };
 
     refreshBadges();
