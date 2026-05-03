@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, DatabaseZap, RefreshCw, ShieldCheck, UsersRound } from "lucide-react";
+import { AlertTriangle, CheckCircle2, DatabaseZap, Eye, EyeOff, RefreshCw, ShieldCheck, UsersRound } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,7 @@ export default function SettingsPage() {
   const [password, setPassword] = useState("");
   const [confirmText, setConfirmText] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [showExtractionPassword, setShowExtractionPassword] = useState(false);
   const [chatReport, setChatReport] = useState<ChatReconciliationReport>(() => getSystemChatSnapshot());
   const [isReconciling, setIsReconciling] = useState(false);
 
@@ -154,7 +155,12 @@ export default function SettingsPage() {
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={autoDownload} onChange={(e) => setAutoDownload(e.target.checked)} /> Auto download when completed
             </label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Account password" className="w-full bg-background border rounded px-2 py-2 text-sm" />
+            <div className="relative">
+              <input type={showExtractionPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Account password" className="w-full bg-background border rounded px-2 py-2 pr-10 text-sm" />
+              <button type="button" onClick={() => setShowExtractionPassword((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary" aria-label={showExtractionPassword ? "Hide password" : "Show password"}>
+                {showExtractionPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
             <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder='Type "CONFIRM"' className="w-full bg-background border rounded px-2 py-2 text-sm" />
             <Button type="button" disabled={!canRun} onClick={() => { startExtraction(mode, autoDownload); setHistory(listExtractionHistory()); }}>
               Start Extraction
