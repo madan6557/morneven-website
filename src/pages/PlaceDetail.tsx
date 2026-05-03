@@ -15,6 +15,7 @@ import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { getProxyUrl } from "@/services/fileProxyService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function PlaceDetail() {
