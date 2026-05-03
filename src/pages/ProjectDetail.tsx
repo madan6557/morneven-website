@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { getProject } from "@/services/api";
+import { getProxyUrl } from "@/services/fileProxyService";
 import type { Project } from "@/types";
 import { ArrowLeft, Calendar, Tag, FileText, GitBranch, Image as ImageIcon, Info } from "lucide-react";
 import RedactedBlock from "@/components/RedactedBlock";
@@ -56,7 +57,7 @@ export default function ProjectDetail() {
   return (
     <div className="space-y-0">
       {/* Parallax-style header */}
-      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={project.thumbnail ? { backgroundImage: `url(${project.thumbnail})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={project.thumbnail ? { backgroundImage: `url(${getProxyUrl(project.thumbnail)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent z-10" />
         {!project.thumbnail && (
           <div className="absolute inset-0 flex items-center justify-center">

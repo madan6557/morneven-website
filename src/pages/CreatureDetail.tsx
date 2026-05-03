@@ -9,6 +9,7 @@ import {
   editCreatureDiscussionReply,
   deleteCreatureDiscussionReply,
 } from "@/services/api";
+import { getProxyUrl } from "@/services/fileProxyService";
 import type { Creature, DiscussionComment, DiscussionMention, LoreFieldNote } from "@/types";
 import { ArrowLeft, ShieldAlert, FileText, MapPin, NotebookPen, ExternalLink, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
@@ -164,7 +165,7 @@ export default function CreatureDetail() {
 
   return (
     <div className="space-y-0">
-      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={creature.thumbnail ? { backgroundImage: `url(${creature.thumbnail})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={creature.thumbnail ? { backgroundImage: `url(${getProxyUrl(creature.thumbnail)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
         <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accent}20, transparent 60%)` }} />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent z-10" />
         <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: accent }} />

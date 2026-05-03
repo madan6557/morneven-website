@@ -29,7 +29,7 @@ export default function NewsDetail() {
         className="relative h-48 md:h-64 overflow-hidden flex items-end"
         style={
           item.thumbnail
-            ? { backgroundImage: `url(${item.thumbnail})`, backgroundSize: "cover", backgroundPosition: "center" }
+            ? { backgroundImage: `url(${getProxyUrl(item.thumbnail)})`, backgroundSize: "cover", backgroundPosition: "center" }
             : { backgroundColor: "var(--color-muted)" }
         }
       >
@@ -70,7 +70,7 @@ export default function NewsDetail() {
                 <div key={i} className="hud-border-sm bg-card overflow-hidden">
                   {a.type === "image" && a.url ? (
                     <div className="aspect-video bg-muted overflow-hidden">
-                      <img src={a.url} alt={a.caption || "attachment"} className="w-full h-full object-cover" />
+                      <img src={getProxyUrl(a.url)} alt={a.caption || "attachment"} className="w-full h-full object-cover" />
                     </div>
                   ) : a.type === "video" && a.url ? (
                     <div className="aspect-video bg-muted">

@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getProjectsPage, type PageInfo } from "@/services/api";
+import { getProxyUrl } from "@/services/fileProxyService";
 import type { Project } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { Archive, Plus, Search } from "lucide-react";
@@ -105,7 +106,7 @@ export default function ProjectsPage() {
             <div className={`hud-border bg-card overflow-hidden hover:glow-primary transition-shadow ${p.archived ? "opacity-70" : ""}`}>
               {p.thumbnail ? (
                 <div className="aspect-video bg-muted rounded-sm overflow-hidden">
-                  <img src={p.thumbnail} alt={p.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                  <img src={getProxyUrl(p.thumbnail)} alt={p.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <div className="aspect-video bg-muted rounded-sm flex items-center justify-center">

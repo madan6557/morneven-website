@@ -197,6 +197,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPersonnelLevel(DEFAULT_PL_BY_ROLE[nextRole]);
       setTrack(DEFAULT_TRACK_BY_ROLE[nextRole]);
       setPasswordSnapshot(password);
+      // Set demo token for API requests (demo mode)
+      setAuthTokens("demo-token-" + Date.now(), "demo-refresh-token");
     }
   };
 
@@ -224,12 +226,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPersonnelLevel(1);
       setTrack("executive");
       setPasswordSnapshot(password);
+      // Set demo token for API requests (demo mode)
+      setAuthTokens("demo-token-" + Date.now(), "demo-refresh-token");
     }
   };
 
   const guestLogin = async () => {
-    const data = await apiRequest<AuthResponse>("/auth/guest", { method: "POST", auth: false });
-    applyAuthResponse(data, "");
+    try {
+      const data = await apiRequest<AuthResponse>("/auth/guest", { method: "POST", auth: false });
+      applyAuthResponse(data, "");
+    } catch (error) {
+      if (!canUseAuthDemoFallback()) throw error;
+      setIsAuthenticated(true);
+      setUsername("Guest");
+      setRole("guest");
+      setPersonnelLevel(DEFAULT_PL_BY_ROLE.guest);
+      setTrack(DEFAULT_TRACK_BY_ROLE.guest);
+      setPasswordSnapshot("");
+      // Set demo token for API requests (demo mode)
+      setAuthTokens("demo-token-" + Date.now(), "demo-refresh-token");
+    }
   };
 
   const logout = () => {

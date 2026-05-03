@@ -125,7 +125,7 @@ export default function CharacterDetail() {
   return (
     <div className="space-y-0" style={{ "--char-accent": accentColor } as React.CSSProperties}>
       {/* Parallax header with custom accent and thumbnail */}
-      <div className="relative h-72 md:h-96 overflow-hidden flex items-end" style={char.thumbnail ? { backgroundImage: `url(${char.thumbnail})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+      <div className="relative h-72 md:h-96 overflow-hidden flex items-end" style={char.thumbnail ? { backgroundImage: `url(${getProxyUrl(char.thumbnail)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
         <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accentColor}15, transparent 60%)` }} />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent z-10" />
         <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: accentColor }} />

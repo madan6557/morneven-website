@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { getProxyUrl } from "@/services/fileProxyService";
 import type { MgmtRequest } from "@/services/managementApi";
 import {
   ArrowRight,
@@ -87,7 +88,7 @@ export default function RequestPayloadPreview({ req }: { req: MgmtRequest }) {
         <div className="flex gap-3 border border-border rounded-sm p-2 bg-muted/30">
           {item.thumbnail ? (
             <img
-              src={item.thumbnail}
+              src={getProxyUrl(item.thumbnail)}
               alt={item.title ?? "submission"}
               className="w-20 h-20 rounded-sm object-cover bg-background flex-shrink-0"
             />
@@ -125,7 +126,7 @@ export default function RequestPayloadPreview({ req }: { req: MgmtRequest }) {
         <div className="flex gap-3 border border-border rounded-sm p-2 bg-muted/30">
           {project.thumbnail ? (
             <img
-              src={project.thumbnail}
+              src={getProxyUrl(project.thumbnail)}
               alt={project.title ?? "project"}
               className="w-20 h-20 rounded-sm object-cover bg-background flex-shrink-0"
             />
