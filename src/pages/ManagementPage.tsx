@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PERSONNEL_TRACKS, type PersonnelTrack, type PersonnelLevel } from "@/lib/pl";
 import type { PersonnelUser } from "@/types";
 import RequestPayloadPreview from "@/components/RequestPayloadPreview";
+import { showValidation } from "@/components/ui/validation-dialog";
 
 const KIND_LABEL: Record<RequestKind, string> = {
   transfer: "Track Transfer",
@@ -94,9 +95,20 @@ export default function ManagementPage() {
   }, [requests, personnelLevel, track, username]);
 
   const decide = async (id: string, decision: "approved" | "rejected", note: string) => {
-    await decideRequest(id, decision, username, note);
-    toast({ title: `Request ${decision}` });
-    refresh();
+    showValidation({
+      variant: decision === "approved" ? "warning" : "error",
+      title: `${decision === "approved" ? "Approve" : "Reject"} management request`,
+      description: "This decision may change personnel workflow state and cannot be treated as a draft.",
+      confirmLabel: decision === "approved" ? "Approve" : "Reject",
+      cancelLabel: "Cancel",
+      critical: true,
+      confirmDelaySeconds: 5,
+      onConfirm: async () => {
+        await decideRequest(id, decision, username, note);
+        toast({ title: `Request ${decision}` });
+        refresh();
+      },
+    });
   };
 
   const submit = async (

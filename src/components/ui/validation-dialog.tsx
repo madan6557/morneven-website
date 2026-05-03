@@ -26,6 +26,10 @@ export interface ValidationDialogOptions {
   issues?: ValidationIssue[];
   confirmLabel?: string;
   cancelLabel?: string;
+  dontShowAgainKey?: string;
+  dontShowAgainLabel?: string;
+  critical?: boolean;
+  confirmDelaySeconds?: number;
   onConfirm?: () => void | Promise<void>;
   onCancel?: () => void;
 }
@@ -74,6 +78,11 @@ let externalShow: ((opts: ValidationDialogOptions) => void) | null = null;
  * Requires <ValidationDialogProvider /> to be mounted at the app root.
  */
 export function showValidation(opts: ValidationDialogOptions) {
+  if (shouldSkipDialog(opts)) {
+    void opts.onConfirm?.();
+    return;
+  }
+
   if (externalShow) externalShow(opts);
   else if (typeof window !== "undefined") {
     // eslint-disable-next-line no-console
@@ -90,9 +99,17 @@ export function useValidationDialog() {
 
 export function ValidationDialogProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = React.useState<InternalState>({ open: false });
+  const [dontShowAgain, setDontShowAgain] = React.useState(false);
+  const [secondsLeft, setSecondsLeft] = React.useState(0);
 
   const show = React.useCallback((opts: ValidationDialogOptions) => {
+    if (shouldSkipDialog(opts)) {
+      void opts.onConfirm?.();
+      return;
+    }
     setState({ ...opts, open: true });
+    setDontShowAgain(false);
+    setSecondsLeft(opts.critical ? opts.confirmDelaySeconds ?? 5 : 0);
   }, []);
 
   const close = React.useCallback(() => {
@@ -105,6 +122,12 @@ export function ValidationDialogProvider({ children }: { children: React.ReactNo
       if (externalShow === show) externalShow = null;
     };
   }, [show]);
+
+  React.useEffect(() => {
+    if (!state.open || secondsLeft <= 0) return;
+    const timer = window.setTimeout(() => setSecondsLeft((current) => Math.max(0, current - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [secondsLeft, state.open]);
 
   const variant = state.variant ?? "error";
   const styles = variantStyles[variant];
@@ -165,6 +188,17 @@ export function ValidationDialogProvider({ children }: { children: React.ReactNo
           )}
 
           <AlertDialogFooter>
+            {state.dontShowAgainKey && !state.critical && (
+              <label className="mr-auto flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={dontShowAgain}
+                  onChange={(event) => setDontShowAgain(event.target.checked)}
+                  className="h-4 w-4 accent-primary"
+                />
+                {state.dontShowAgainLabel ?? "Don't show this again"}
+              </label>
+            )}
             {showCancel && (
               <AlertDialogCancel
                 onClick={() => {
@@ -175,17 +209,47 @@ export function ValidationDialogProvider({ children }: { children: React.ReactNo
               </AlertDialogCancel>
             )}
             <AlertDialogAction
+              disabled={secondsLeft > 0}
               onClick={async () => {
+                if (secondsLeft > 0) return;
+                if (state.dontShowAgainKey && dontShowAgain && !state.critical) {
+                  setSuppressed(state.dontShowAgainKey);
+                }
                 await state.onConfirm?.();
               }}
             >
-              {state.confirmLabel ?? "OK"}
+              {secondsLeft > 0
+                ? `${state.confirmLabel ?? "OK"} (${secondsLeft})`
+                : state.confirmLabel ?? "OK"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </ValidationDialogContext.Provider>
   );
+}
+
+function shouldSkipDialog(opts: ValidationDialogOptions) {
+  if (!opts.dontShowAgainKey || opts.critical) return false;
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(suppressionKey(opts.dontShowAgainKey)) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function setSuppressed(key: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(suppressionKey(key), "true");
+  } catch {
+    // ignore
+  }
+}
+
+function suppressionKey(key: string) {
+  return `morneven_validation_suppressed_${key}`;
 }
 
 function defaultTitle(variant: ValidationVariant) {

@@ -24,6 +24,7 @@ import MetadataEditor from "@/components/MetadataEditor";
 import { canAccessAuthorPanel, canEnterAuthorPanel } from "@/lib/pl";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { showValidation } from "@/components/ui/validation-dialog";
 
 const dashTabs = ["projects", "lore", "gallery", "news", "homepage", "map"] as const;
 const loreSubs = ["characters", "places", "technology", "creatures", "other"] as const;
@@ -756,18 +757,26 @@ export default function AuthorDashboard() {
   };
 
   const handleDelete = async (id: string, title: string) => {
-    const confirmed = window.confirm(`Delete ${title}? This action cannot be undone.`);
-    if (!confirmed) return;
-
-    if (activeTab === "projects") { await deleteProject(id); await loadDashboardItems(true); }
-    else if (activeTab === "lore") {
-      if (loreSub === "characters") await deleteCharacter(id);
-      else if (loreSub === "places") await deletePlace(id);
-      else if (loreSub === "technology") await deleteTech(id);
-      else if (loreSub === "creatures") await deleteCreature(id);
-      else await deleteOther(id);
-      await loadDashboardItems(true);
-    } else if (activeTab === "gallery") { await deleteGalleryItem(id); await loadDashboardItems(true); }
+    showValidation({
+      variant: "error",
+      title: "Delete content",
+      description: `Delete "${title}"? This action cannot be undone.`,
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      critical: true,
+      confirmDelaySeconds: 5,
+      onConfirm: async () => {
+        if (activeTab === "projects") { await deleteProject(id); await loadDashboardItems(true); }
+        else if (activeTab === "lore") {
+          if (loreSub === "characters") await deleteCharacter(id);
+          else if (loreSub === "places") await deletePlace(id);
+          else if (loreSub === "technology") await deleteTech(id);
+          else if (loreSub === "creatures") await deleteCreature(id);
+          else await deleteOther(id);
+          await loadDashboardItems(true);
+        } else if (activeTab === "gallery") { await deleteGalleryItem(id); await loadDashboardItems(true); }
+      },
+    });
   };
 
   const getItems = (): DashboardItem[] => {
@@ -998,7 +1007,16 @@ export default function AuthorDashboard() {
               <LayoutDashboard className="h-4 w-4" /> Command Center Settings
             </h3>
             <button
-              onClick={resetGlobalCommandCenterSettings}
+              onClick={() => showValidation({
+                variant: "warning",
+                title: "Reset global Command Center",
+                description: "This will overwrite the active global preset for all personnel.",
+                confirmLabel: "Reset defaults",
+                cancelLabel: "Cancel",
+                critical: true,
+                confirmDelaySeconds: 5,
+                onConfirm: resetGlobalCommandCenterSettings,
+              })}
               disabled={ccSettingsSaving}
               className="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-1.5 text-[10px] font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors"
             >
@@ -1045,7 +1063,15 @@ export default function AuthorDashboard() {
                       {!preset.isActive && (
                         <button
                           type="button"
-                          onClick={() => removePreset(preset.id)}
+                          onClick={() => showValidation({
+                            variant: "warning",
+                            title: "Delete preset",
+                            description: `Delete inactive preset "${preset.presetName}"?`,
+                            confirmLabel: "Delete",
+                            cancelLabel: "Cancel",
+                            dontShowAgainKey: "delete_command_center_preset",
+                            onConfirm: () => removePreset(preset.id),
+                          })}
                           disabled={ccSettingsSaving}
                           className="px-2 py-1 text-[10px] font-display tracking-wider text-destructive hover:bg-destructive/10 rounded-sm"
                         >
