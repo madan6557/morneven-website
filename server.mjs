@@ -6,6 +6,12 @@ const port = Number(process.env.PORT || 3000);
 const distDir = resolve("dist");
 const indexPath = join(distDir, "index.html");
 
+if (!existsSync(indexPath)) {
+  console.error(`Missing build output: ${indexPath}`);
+  console.error("Run npm run build before starting the Railway web server.");
+  process.exit(1);
+}
+
 const contentTypes = {
   ".css": "text/css; charset=utf-8",
   ".gif": "image/gif",
@@ -50,6 +56,12 @@ function resolvePublicPath(requestUrl) {
 }
 
 createServer((request, response) => {
+  if (request.url === "/health" || request.url === "/ready") {
+    response.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    response.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
   if (request.method !== "GET" && request.method !== "HEAD") {
     response.writeHead(405, { "Content-Type": "text/plain; charset=utf-8" });
     response.end("Method Not Allowed");
@@ -70,7 +82,12 @@ createServer((request, response) => {
   }
 
   sendFile(response, filePath);
-}).listen(port, "0.0.0.0", () => {
-  console.log(`Morneven frontend listening on ${port}`);
-});
-
+})
+  .on("error", (error) => {
+    console.error("Morneven frontend server failed to start", error);
+    process.exit(1);
+  })
+  .listen(port, "0.0.0.0", () => {
+    console.log(`Morneven frontend listening on 0.0.0.0:${port}`);
+    console.log(`Serving static files from ${distDir}`);
+  });

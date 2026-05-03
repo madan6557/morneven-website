@@ -16,6 +16,7 @@ Railway provides the runtime port through `PORT`. The included `server.mjs` read
 - `.node-version`
 - `.nvmrc`
 - `server.mjs`
+- `Dockerfile`
 
 ## Runtime Version
 
@@ -41,7 +42,7 @@ npm run build
 Start command:
 
 ```bash
-npm start
+node server.mjs
 ```
 
 Public networking target port:
@@ -57,6 +58,43 @@ If Railway asks for a fixed target port in the UI, use:
 ```
 
 The server still binds to `process.env.PORT` when Railway injects it.
+
+## 502 Troubleshooting
+
+Railway `502 Application failed to respond` means the service did not expose a running HTTP server on the expected port.
+
+Check Deploy Logs for this line:
+
+```text
+Morneven frontend listening on 0.0.0.0:<port>
+```
+
+If that line is missing, the runtime process did not start. Confirm Railway is using:
+
+```text
+Start Command: node server.mjs
+```
+
+If the service was generated with an old target port, remove the generated public domain and generate it again, or set the target port to:
+
+```text
+3000
+```
+
+The app also exposes:
+
+```http
+GET /health
+GET /ready
+```
+
+Both should return `{"ok":true}`.
+
+If Nixpacks still fails, deploy with the included `Dockerfile`. For Dockerfile deployment, pass this build argument if Railway does not automatically expose it during build:
+
+```text
+VITE_API_BASE_URL=https://backend.dev.morneven.com
+```
 
 ## Required Environment Variables
 
