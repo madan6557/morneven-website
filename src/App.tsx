@@ -65,8 +65,9 @@ function App() {
       <Analytics />
       <AuthProvider>
         <TooltipProvider>
-          <Toaster />
-          <Sonner />
+          <ValidationDialogProvider>
+            <Toaster />
+            <Sonner />
           <BrowserRouter>
             <Suspense fallback={<RouteFallback />}>
               <Routes>
