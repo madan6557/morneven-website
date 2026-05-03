@@ -160,7 +160,8 @@ const MESSAGE_ACCENT_BY_LEVEL: Record<number, string> = {
 };
 
 function trackShort(track?: PersonnelUser["track"]) {
-  return PERSONNEL_TRACKS.find((item) => item.key === track)?.short ?? track?.toUpperCase() ?? "UNK";
+  if (!track) return "";
+  return PERSONNEL_TRACKS.find((item) => item.key === track)?.short ?? track.toUpperCase();
 }
 
 function messageThemeFor(person?: PersonnelUser) {
@@ -174,7 +175,7 @@ function messageBadgeThemeFor(person?: PersonnelUser) {
 }
 
 export default function ChatPage() {
-  const { username, isAuthenticated, role } = useAuth();
+  const { username, isAuthenticated, role, personnelLevel, track } = useAuth();
 
   const [convs, setConvs] = useState<Conversation[]>([]);
   const [invites, setInvites] = useState<Conversation[]>([]);
@@ -697,8 +698,11 @@ export default function ChatPage() {
                     const canDelete = mine || iCanManage;
                     const isHighlighted = highlightId === m.id;
                     const authorPersonnel = personnelByUsername.get(m.author);
-                    const authorLevel = authorPersonnel?.level ?? 0;
-                    const authorTrack = trackShort(authorPersonnel?.track);
+                    const authorLevel =
+                      authorPersonnel?.level ?? (mine ? personnelLevel : null);
+                    const authorTrack = trackShort(
+                      authorPersonnel?.track ?? (mine ? track : undefined),
+                    );
                     const bubbleTheme = messageThemeFor(authorPersonnel);
                     const badgeTheme = messageBadgeThemeFor(authorPersonnel);
                     const messageIsUnread =
@@ -718,12 +722,16 @@ export default function ChatPage() {
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <div className="flex min-w-0 flex-wrap items-center gap-1">
                               <p className="font-heading text-[10px] leading-4 tracking-wider text-foreground">{m.author}</p>
-                              <span className={`rounded-sm border px-1 py-0 text-[8px] leading-4 font-display tracking-wider ${badgeTheme}`}>
-                                PL{authorLevel}
-                              </span>
-                              <span className={`rounded-sm border px-1 py-0 text-[8px] leading-4 font-display tracking-wider ${badgeTheme}`}>
-                                {authorTrack}
-                              </span>
+                              {authorLevel !== null && authorLevel !== undefined && (
+                                <span className={`rounded-sm border px-1 py-0 text-[8px] leading-4 font-display tracking-wider ${badgeTheme}`}>
+                                  PL{authorLevel}
+                                </span>
+                              )}
+                              {authorTrack && (
+                                <span className={`rounded-sm border px-1 py-0 text-[8px] leading-4 font-display tracking-wider ${badgeTheme}`}>
+                                  {authorTrack}
+                                </span>
+                              )}
                               <span className="text-[8px] leading-4 font-display tracking-wider text-muted-foreground">
                                 {new Date(m.createdAt).toLocaleTimeString()}
                               </span>
