@@ -187,7 +187,7 @@ function fallbackAuthorMeta(author: string): ChatAuthorMeta {
 }
 
 export default function ChatPage() {
-  const { username, isAuthenticated, role, personnelLevel, track } = useAuth();
+  const { username, isAuthenticated, role } = useAuth();
 
   const [convs, setConvs] = useState<Conversation[]>([]);
   const [invites, setInvites] = useState<Conversation[]>([]);
@@ -282,8 +282,8 @@ export default function ChatPage() {
       .then((items) => {
         if (items.length === 0) return;
         setPersonnel((current) => {
-          const map = new Map(current.map((item) => [item.username, item]));
-          items.forEach((item) => map.set(item.username, item));
+          const map = new Map(current.map((item) => [item.username.toLowerCase(), item]));
+          items.forEach((item) => map.set(item.username.toLowerCase(), item));
           return [...map.values()];
         });
       })
@@ -420,16 +420,12 @@ export default function ChatPage() {
   const myRole: MemberRole | null = activeConv ? getMemberRole(activeConv, username) : null;
   const iCanManage = activeConv ? canManage(activeConv, username) : false;
   const personnelByUsername = useMemo(
-    () => new Map(personnel.map((person) => [person.username, person])),
+    () => new Map(personnel.map((person) => [person.username.toLowerCase(), person])),
     [personnel],
   );
   const getAuthorMeta = (author: string): ChatAuthorMeta => {
-    const fromPersonnel = personnelByUsername.get(author);
+    const fromPersonnel = personnelByUsername.get(author.toLowerCase());
     if (fromPersonnel) return fromPersonnel;
-
-    if (author === username) {
-      return { username, level: personnelLevel, track };
-    }
 
     const fromConversation = activeConv?.members.find((member) => member.username === author) as
       | (Conversation["members"][number] & { level?: number; personnelLevel?: number; track?: PersonnelTrack })
