@@ -14,6 +14,8 @@ import { ArrowLeft, FileText, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
+import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { getProxyUrl } from "@/services/fileProxyService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function TechDetail() {
@@ -120,7 +122,7 @@ export default function TechDetail() {
 
   return (
     <div className="space-y-0">
-      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={tech.thumbnail ? { backgroundImage: `url(${tech.thumbnail})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={tech.thumbnail ? { backgroundImage: `url(${getProxyUrl(tech.thumbnail)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent z-10" />
         {!tech.thumbnail && (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -164,7 +166,11 @@ export default function TechDetail() {
             <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
               {tech.docs.map((doc, i) => (
                 <div key={i} className="hud-border-sm bg-card overflow-hidden">
-                  {doc.type === "video" && doc.url ? (
+                  {doc.type === "image" && doc.url ? (
+                    <div className="aspect-video bg-muted overflow-hidden">
+                      <AuthenticatedImage src={doc.url} alt={doc.caption || "doc"} className="w-full h-full object-cover" />
+                    </div>
+                  ) : doc.type === "video" && doc.url ? (
                     <div className="aspect-video bg-muted">
                       <iframe
                         src={doc.url}

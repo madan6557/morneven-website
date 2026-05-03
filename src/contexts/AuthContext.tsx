@@ -97,10 +97,6 @@ function normalizeUser(user: BackendUser) {
   };
 }
 
-function canUseAuthDemoFallback() {
-  return import.meta.env.MODE === "test" || import.meta.env.VITE_DEMO_FALLBACK === "true";
-}
-
 function clearSavedAuth() {
   if (typeof window === "undefined") return;
 
@@ -113,21 +109,35 @@ function clearSavedAuth() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [saved] = useState(() => readSaved());
+  const hasDemoToken = Boolean(saved?.token?.startsWith("demo-token-") || saved?.refreshToken?.startsWith("demo-refresh-token"));
 
-  const [isAuthenticated, setIsAuthenticated] = useState(saved?.isAuthenticated ?? false);
-  const [username, setUsername] = useState(saved?.username ?? "Guest");
-  const [role, setRole] = useState<UserRole>(saved?.role ?? "guest");
+  const [isAuthenticated, setIsAuthenticated] = useState(saved?.isAuthenticated && !hasDemoToken);
+  const [username, setUsername] = useState(hasDemoToken ? "Guest" : (saved?.username ?? "Guest"));
+  const [role, setRole] = useState<UserRole>(hasDemoToken ? "guest" : (saved?.role ?? "guest"));
   const [personnelLevel, setPersonnelLevel] = useState<PersonnelLevel>(
-    saved?.personnelLevel ?? DEFAULT_PL_BY_ROLE[saved?.role ?? "guest"]
+    hasDemoToken ? DEFAULT_PL_BY_ROLE.guest : (saved?.personnelLevel ?? DEFAULT_PL_BY_ROLE[saved?.role ?? "guest"])
   );
   const [track, setTrack] = useState<PersonnelTrack>(
-    saved?.track ?? DEFAULT_TRACK_BY_ROLE[saved?.role ?? "guest"]
+    hasDemoToken ? DEFAULT_TRACK_BY_ROLE.guest : (saved?.track ?? DEFAULT_TRACK_BY_ROLE[saved?.role ?? "guest"])
   );
 
-  const [passwordSnapshot, setPasswordSnapshot] = useState(saved?.passwordSnapshot ?? "");
+  const [passwordSnapshot, setPasswordSnapshot] = useState(hasDemoToken ? "" : (saved?.passwordSnapshot ?? ""));
 
   useEffect(() => {
-    if (!saved?.token && !getAccessToken()) return;
+    const token = getAccessToken();
+    if (!saved?.token && !token) return;
+
+    if (token?.startsWith("demo-token-")) {
+      setIsAuthenticated(false);
+      setUsername("Guest");
+      setRole("guest");
+      setPersonnelLevel(DEFAULT_PL_BY_ROLE.guest);
+      setTrack(DEFAULT_TRACK_BY_ROLE.guest);
+      setPasswordSnapshot("");
+      clearSavedAuth();
+      clearAuthTokens();
+      return;
+    }
 
     let cancelled = false;
     apiRequest<BackendUser>("/auth/me")
@@ -163,10 +173,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated, username, role, personnelLevel, track, passwordSnapshot]);
 
   useEffect(() => {
+    if (hasDemoToken) {
+      clearSavedAuth();
+      clearAuthTokens();
+      return;
+    }
+
     if (saved?.token || saved?.refreshToken) {
       setAuthTokens(saved.token ?? getAccessToken(), saved.refreshToken ?? getRefreshToken());
     }
-  }, [saved?.refreshToken, saved?.token]);
+  }, [hasDemoToken, saved?.refreshToken, saved?.token]);
 
   const applyAuthResponse = (data: AuthResponse, password: string) => {
     if (!data.token) throw new Error("Authentication token missing");
@@ -181,49 +197,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
-    try {
-      const data = await apiRequest<AuthResponse>("/auth/login", {
-        method: "POST",
-        body: { email: email.trim().toLowerCase(), password },
-        auth: false,
-      });
-      applyAuthResponse(data, password);
-    } catch (error) {
-      if (!canUseAuthDemoFallback()) throw error;
-      const nextRole: UserRole = email.includes("author") || email.includes("admin") ? "author" : "personel";
-      setIsAuthenticated(true);
-      setUsername(email.split("@")[0]);
-      setRole(nextRole);
-      setPersonnelLevel(DEFAULT_PL_BY_ROLE[nextRole]);
-      setTrack(DEFAULT_TRACK_BY_ROLE[nextRole]);
-      setPasswordSnapshot(password);
-    }
+    const data = await apiRequest<AuthResponse>("/auth/login", {
+      method: "POST",
+      body: { email: email.trim().toLowerCase(), password },
+      auth: false,
+    });
+    applyAuthResponse(data, password);
   };
 
   const register = async (email: string, password: string, name: string) => {
-    try {
-      const data = await apiRequest<AuthResponse>("/auth/register", {
-        method: "POST",
-        body: {
-          email: email.trim().toLowerCase(),
-          password,
-          username: name.trim() || email.split("@")[0],
-        },
-        auth: false,
-      });
-      if (data.token) {
-        applyAuthResponse(data, password);
-      } else {
-        await login(email, password);
-      }
-    } catch (error) {
-      if (!canUseAuthDemoFallback()) throw error;
-      setIsAuthenticated(true);
-      setUsername(name.trim() || email.split("@")[0]);
-      setRole("personel");
-      setPersonnelLevel(1);
-      setTrack("executive");
-      setPasswordSnapshot(password);
+    const data = await apiRequest<AuthResponse>("/auth/register", {
+      method: "POST",
+      body: {
+        email: email.trim().toLowerCase(),
+        password,
+        username: name.trim() || email.split("@")[0],
+      },
+      auth: false,
+    });
+    if (data.token) {
+      applyAuthResponse(data, password);
+    } else {
+      await login(email, password);
     }
   };
 
