@@ -722,7 +722,11 @@ export function syncDivisionMembership(username: string, track: PersonnelTrack) 
 }
 
 export function getSystemChatSnapshot(): ChatReconciliationReport {
-  const systemConversations = conversations.filter((c) => c.systemManaged);
+  return getSystemChatSnapshotFromConversations(conversations);
+}
+
+export function getSystemChatSnapshotFromConversations(source: Conversation[]): ChatReconciliationReport {
+  const systemConversations = source.filter((c) => c.systemManaged || c.kind === "institute" || c.kind === "division" || c.kind === "team");
   return {
     instituteGroups: systemConversations.filter((c) => c.kind === "institute").length,
     divisionGroups: systemConversations.filter((c) => c.kind === "division").length,
@@ -733,11 +737,14 @@ export function getSystemChatSnapshot(): ChatReconciliationReport {
   };
 }
 
+export async function getSystemChatSnapshotRemote(): Promise<ChatReconciliationReport> {
+  return apiRequest<Partial<ChatReconciliationReport>>("/chat/reconcile/status")
+    .then(normalizeReconciliationReport);
+}
+
 export function reconcileSystemChatGroupsRemote(): Promise<ChatReconciliationReport> {
-  return withDemoFallback(
-    async () => normalizeReconciliationReport(await apiRequest<Partial<ChatReconciliationReport>>("/chat/reconcile", { method: "POST" })),
-    () => getSystemChatSnapshot(),
-  );
+  return apiRequest<Partial<ChatReconciliationReport>>("/chat/reconcile", { method: "POST" })
+    .then(normalizeReconciliationReport);
 }
 
 // Ensures the singleton institute conversation exists.

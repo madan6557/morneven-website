@@ -5,11 +5,18 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { PERSONNEL_TRACKS } from "@/lib/pl";
-import { getSystemChatSnapshot, reconcileAutoMemberships, reconcileSystemChatGroupsRemote, type ChatReconciliationReport } from "@/services/chatApi";
-import { getQuota, listTeams, monthKey, pl2Status, pl3Status, pl4Status, yearKey } from "@/services/managementApi";
-import { listPersonnel } from "@/services/personnelApi";
+import { getSystemChatSnapshotRemote, reconcileSystemChatGroupsRemote, type ChatReconciliationReport } from "@/services/chatApi";
+import { getQuota, monthKey, pl2Status, pl3Status, pl4Status, yearKey } from "@/services/managementApi";
 import { canUseLocalExtractionFallback, clearExtractionHistory, downloadExtractionJob, listExtractionHistory, listExtractionHistoryRemote, startExtraction, startExtractionRemote, type ExtractionMode } from "@/services/extractionService";
-import { clearDemoIntegrationState, listDemoStateKeys } from "@/services/integrationCleanup";
+
+const emptyChatReport: ChatReconciliationReport = {
+  instituteGroups: 0,
+  divisionGroups: 0,
+  teamGroups: 0,
+  activeMemberships: 0,
+  removedMemberships: 0,
+  ranAt: new Date().toISOString(),
+};
 
 export default function SettingsPage() {
   const { role, username, personnelLevel, track, verifyPassword } = useAuth();
@@ -21,7 +28,7 @@ export default function SettingsPage() {
   const [password, setPassword] = useState("");
   const [confirmText, setConfirmText] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
-  const [chatReport, setChatReport] = useState<ChatReconciliationReport>(() => getSystemChatSnapshot());
+  const [chatReport, setChatReport] = useState<ChatReconciliationReport>(emptyChatReport);
   const [isReconciling, setIsReconciling] = useState(false);
   const [shouldPollExtraction, setShouldPollExtraction] = useState(false);
   const processing = useMemo(() => history.some((h) => h.status === "processing"), [history]);
@@ -29,6 +36,11 @@ export default function SettingsPage() {
   useEffect(() => {
     listExtractionHistoryRemote().then(setHistory).catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (personnelLevel < 7) return;
+    getSystemChatSnapshotRemote().then(setChatReport).catch(() => undefined);
+  }, [personnelLevel]);
 
   useEffect(() => {
     if (!shouldPollExtraction || !processing) {
@@ -62,26 +74,38 @@ export default function SettingsPage() {
   const title = trackInfo?.titles[personnelLevel] ?? "Unknown";
   const canRun = personnelLevel >= 7 && confirmText === "CONFIRM" && verifyPassword(password);
   const canReconcileChat = personnelLevel >= 7;
-  const demoStateKeyCount = listDemoStateKeys().length;
 
   const runChatReconciliation = async () => {
     if (!canReconcileChat || isReconciling) return;
     setIsReconciling(true);
     try {
-      const report = await reconcileSystemChatGroupsRemote().catch(async () => {
-        const [personnel, teams] = await Promise.all([listPersonnel(), listTeams()]);
-        return reconcileAutoMemberships(
-          personnel,
-          teams.map((team) => ({
-            id: team.id,
-            name: team.name,
-            leader: team.leader,
-            members: team.members,
-          })),
-        );
-      });
+      const previousReport = chatReport;
+      const report = await reconcileSystemChatGroupsRemote();
       setChatReport(report);
-      toast({ title: "System chat groups synced", description: `${report.teamGroups ?? 0} team groups, ${report.divisionGroups ?? 0} division groups.` });
+      const changed =
+        report.instituteGroups !== previousReport.instituteGroups ||
+        report.divisionGroups !== previousReport.divisionGroups ||
+        report.teamGroups !== previousReport.teamGroups ||
+        report.activeMemberships !== previousReport.activeMemberships ||
+        report.removedMemberships !== previousReport.removedMemberships;
+
+      if (!changed) {
+        toast({
+          title: "System chat already synced",
+          description: "No membership or group count changed.",
+        });
+      } else {
+        toast({
+          title: "System chat groups synced",
+          description: `Channels ${previousReport.instituteGroups + previousReport.divisionGroups + previousReport.teamGroups} to ${report.instituteGroups + report.divisionGroups + report.teamGroups}, active members ${previousReport.activeMemberships} to ${report.activeMemberships}.`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Sync failed",
+        description: error instanceof Error ? error.message : "Backend rejected chat reconciliation.",
+        variant: "destructive",
+      });
     } finally {
       setIsReconciling(false);
     }
@@ -163,33 +187,6 @@ export default function SettingsPage() {
             <span>Last sync: {new Date(chatReport.ranAt).toLocaleString()}</span>
           </div>
         </section>
-        )}
-
-        {personnelLevel >= 7 && (
-          <section className="hud-border bg-card p-5 space-y-4 border-primary/25">
-            <div className="space-y-2">
-              <h3 className="font-heading text-sm tracking-[0.15em] text-primary uppercase">Integration State Cleanup</h3>
-              <p className="text-xs leading-5 text-muted-foreground">
-                Removes local demo data keys before FE QA runs against backend REST. API tokens and theme preference are kept.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const result = clearDemoIntegrationState();
-                toast({
-                  title: "Demo state cleared",
-                  description: `${result.removedKeys.length} of ${demoStateKeyCount} demo keys removed.`,
-                });
-                setHistory([]);
-                setChatReport(getSystemChatSnapshot());
-              }}
-            >
-              Clear Demo State
-            </Button>
-          </section>
         )}
 
         {personnelLevel >= 7 && (
