@@ -54,6 +54,7 @@ import {
   Check,
   Reply,
   CornerDownRight,
+  ChevronDown,
 } from "lucide-react";
 import {
   Dialog,
@@ -126,6 +127,7 @@ export default function ChatPage() {
   const [replyTo, setReplyTo] = useState<ReplyPreview | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [readMap, setReadMap] = useState<ChatReadMap>(() => readChatReadMap());
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
 
   const getConversationViewport = () =>
     conversationScrollRootRef.current?.querySelector<HTMLElement>("[data-radix-scroll-area-viewport]") ?? null;
