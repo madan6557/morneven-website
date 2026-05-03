@@ -164,6 +164,28 @@ export default function ChatPage() {
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [readMap, setReadMap] = useState<ChatReadMap>(() => readChatReadMap());
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const nearBottomRef = useRef(true);
+  const lastMessagesLenRef = useRef(0);
+  const lastActiveRef = useRef<string | null>(null);
+  const SCROLL_POS_KEY = "chat:scrollPositions";
+  const NEAR_BOTTOM_THRESHOLD = 120;
+
+  const readScrollPositions = (): Record<string, number> => {
+    try {
+      return JSON.parse(localStorage.getItem(SCROLL_POS_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  };
+  const writeScrollPosition = (convId: string, top: number) => {
+    try {
+      const map = readScrollPositions();
+      map[convId] = top;
+      localStorage.setItem(SCROLL_POS_KEY, JSON.stringify(map));
+    } catch {
+      /* ignore */
+    }
+  };
 
   const getConversationViewport = () =>
     conversationScrollRootRef.current?.querySelector<HTMLElement>("[data-radix-scroll-area-viewport]") ?? null;
