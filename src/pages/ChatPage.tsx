@@ -494,7 +494,7 @@ export default function ChatPage() {
         </div>
 
         {/* Conversation */}
-        <div className="hud-border bg-card flex flex-col h-full overflow-hidden">
+        <div className="hud-border bg-card flex flex-col h-full overflow-hidden relative">
           {activeConv ? (
             <>
               <div className="px-4 py-2 border-b border-border flex items-center gap-3">
