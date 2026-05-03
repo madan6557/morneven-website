@@ -9,6 +9,7 @@ import { PERSONNEL_TRACKS } from "@/lib/pl";
 import { getSystemChatSnapshotRemote, reconcileSystemChatGroupsRemote, type ChatReconciliationReport } from "@/services/chatApi";
 import { getQuota, monthKey, pl2Status, pl3Status, pl4Status, yearKey } from "@/services/managementApi";
 import { canUseLocalExtractionFallback, clearExtractionHistory, downloadExtractionJob, listExtractionHistory, listExtractionHistoryRemote, startExtraction, startExtractionRemote, type ExtractionMode } from "@/services/extractionService";
+import { changePassword, deleteAccount } from "@/services/accountApi";
 
 const emptyChatReport: ChatReconciliationReport = {
   instituteGroups: 0,
@@ -20,7 +21,7 @@ const emptyChatReport: ChatReconciliationReport = {
 };
 
 export default function SettingsPage() {
-  const { role, username, personnelLevel, track, verifyPassword } = useAuth();
+  const { role, username, personnelLevel, track, verifyPassword, logout } = useAuth();
   const { toast } = useToast();
   const [quota, setQuota] = useState<{ pl2: number; pl3: number; pl4: number } | null>(null);
   const [history, setHistory] = useState(listExtractionHistory());
@@ -29,6 +30,10 @@ export default function SettingsPage() {
   const [password, setPassword] = useState("");
   const [showExtractionPassword, setShowExtractionPassword] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [chatReport, setChatReport] = useState<ChatReconciliationReport>(emptyChatReport);
   const [isReconciling, setIsReconciling] = useState(false);
@@ -136,6 +141,107 @@ export default function SettingsPage() {
             <Row label="Title" value={title} />
           </div>
         </section>
+
+        {role !== "guest" && (
+          <section className="hud-border bg-card p-5 space-y-4 border-destructive/25">
+            <h3 className="font-heading text-sm tracking-[0.15em] text-accent-orange uppercase">Account Security</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                placeholder="Current password"
+                className="w-full bg-background border rounded px-2 py-2 text-sm"
+              />
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                placeholder="New password, min 12 characters"
+                className="w-full bg-background border rounded px-2 py-2 text-sm"
+              />
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!currentPassword || newPassword.length < 12}
+              onClick={() => showValidation({
+                variant: "warning",
+                title: "Change password",
+                description: "Your current session may be refreshed after the password changes.",
+                confirmLabel: "Change password",
+                cancelLabel: "Cancel",
+                onConfirm: async () => {
+                  try {
+                    await changePassword(currentPassword, newPassword);
+                    setCurrentPassword("");
+                    setNewPassword("");
+                    toast({ title: "Password changed" });
+                  } catch (error) {
+                    toast({
+                      title: "Password change failed",
+                      description: error instanceof Error ? error.message : "Backend rejected the password change.",
+                      variant: "destructive",
+                    });
+                  }
+                },
+              })}
+            >
+              Change Password
+            </Button>
+
+            <div className="mecha-line" />
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Delete account is irreversible and will require backend account cleanup policy.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(event) => setDeletePassword(event.target.value)}
+                  placeholder="Account password"
+                  className="w-full bg-background border rounded px-2 py-2 text-sm"
+                />
+                <input
+                  value={deleteConfirm}
+                  onChange={(event) => setDeleteConfirm(event.target.value)}
+                  placeholder='Type "DELETE"'
+                  className="w-full bg-background border rounded px-2 py-2 text-sm"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                disabled={!deletePassword || deleteConfirm !== "DELETE"}
+                onClick={() => showValidation({
+                  variant: "error",
+                  title: "Delete account",
+                  description: "This action is irreversible. Your account access will be removed.",
+                  confirmLabel: "Delete account",
+                  cancelLabel: "Cancel",
+                  critical: true,
+                  confirmDelaySeconds: 5,
+                  onConfirm: async () => {
+                    try {
+                      await deleteAccount(deletePassword);
+                      logout();
+                    } catch (error) {
+                      toast({
+                        title: "Account deletion failed",
+                        description: error instanceof Error ? error.message : "Backend rejected account deletion.",
+                        variant: "destructive",
+                      });
+                    }
+                  },
+                })}
+              >
+                Delete Account
+              </Button>
+            </div>
+          </section>
+        )}
 
         {role !== "guest" && (
           <section className="hud-border bg-card p-5 space-y-3">

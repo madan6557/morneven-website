@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { requestPasswordReset } from "@/services/accountApi";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -51,6 +52,23 @@ export default function Auth() {
       navigate("/home");
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Guest access failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setFormError("");
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      setErrors((current) => ({ ...current, email: "Enter your email first" }));
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await requestPasswordReset(email.trim().toLowerCase());
+      setFormError("Password reset instructions were requested. Check your email if the account exists.");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Password reset request failed");
     } finally {
       setSubmitting(false);
     }
@@ -121,6 +139,16 @@ export default function Auth() {
               </button>
             </div>
             {errors.password && <p className="text-xs text-destructive mt-1 font-body">{errors.password}</p>}
+            {isLogin && (
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={submitting}
+                className="mt-2 text-xs text-primary hover:underline"
+              >
+                Forgot password?
+              </button>
+            )}
           </div>
 
           {formError && <p className="text-xs text-destructive font-body">{formError}</p>}
