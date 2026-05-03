@@ -44,7 +44,7 @@ interface DraftState {
 }
 
 export default function PersonnelManagementPage() {
-  const { personnelLevel, username } = useAuth();
+  const { personnelLevel, username, track } = useAuth();
   const [people, setPeople] = useState<PersonnelUser[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState | null>(null);
@@ -67,6 +67,16 @@ export default function PersonnelManagementPage() {
   const [bulkLevel, setBulkLevel] = useState<PersonnelLevel | "">("");
   const [bulkTrack, setBulkTrack] = useState<PersonnelTrack | "">("");
   const [bulkSaving, setBulkSaving] = useState(false);
+  const canCreatePersonnel = personnelLevel >= 6;
+  const canBulkUpdatePersonnel = personnelLevel >= 6;
+  const canDeletePersonnelRecord = personnelLevel >= PL_FULL_AUTHORITY;
+
+  const canUpdatePersonnelRecord = (p: PersonnelUser) => {
+    if (p.level >= PL_FULL_AUTHORITY && personnelLevel < PL_FULL_AUTHORITY) return false;
+    if (personnelLevel >= PL_FULL_AUTHORITY) return true;
+    if (personnelLevel >= 5) return p.track === track;
+    return false;
+  };
 
   useEffect(() => {
     listPersonnel().then(setPeople);
@@ -92,8 +102,7 @@ export default function PersonnelManagementPage() {
   }
 
   const startEdit = (p: PersonnelUser) => {
-    // Tidak bisa edit akun LV7
-    if (p.level >= PL_FULL_AUTHORITY) return;
+    if (!canUpdatePersonnelRecord(p)) return;
     setEditingId(p.id);
     setDraft({ level: p.level, track: p.track, note: p.note ?? "" });
   };
@@ -113,6 +122,10 @@ export default function PersonnelManagementPage() {
   };
 
   const handleDelete = async (p: PersonnelUser) => {
+    if (!canDeletePersonnelRecord) {
+      window.alert("Only Full Authority personnel can delete personnel records.");
+      return;
+    }
     if (p.level >= PL_FULL_AUTHORITY) {
       window.alert("Full Authority personnel cannot be deleted.");
       return;
@@ -123,6 +136,10 @@ export default function PersonnelManagementPage() {
   };
 
   const handleCreate = async () => {
+    if (!canCreatePersonnel) {
+      window.alert("PL6 or higher is required to create personnel.");
+      return;
+    }
     if (!newUser.username.trim() || !newUser.email.trim()) {
       window.alert("Username and email are required.");
       return;
@@ -163,6 +180,10 @@ export default function PersonnelManagementPage() {
   const clearSelection = () => setSelected(new Set());
 
   const applyBulk = async () => {
+    if (!canBulkUpdatePersonnel) {
+      window.alert("PL6 or higher is required for bulk personnel updates.");
+      return;
+    }
     if (selected.size === 0) return;
     if (bulkLevel === "" && bulkTrack === "") {
       window.alert("Choose a new level and/or track to apply.");
@@ -230,7 +251,9 @@ export default function PersonnelManagementPage() {
           </div>
           <button
             onClick={() => setCreating(true)}
+            disabled={!canCreatePersonnel}
             className="flex items-center gap-1 px-3 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity"
+            title={canCreatePersonnel ? "Create personnel" : "PL6 or higher required"}
           >
             <UserPlus className="h-3.5 w-3.5" /> NEW PERSONNEL
           </button>
@@ -363,8 +386,9 @@ export default function PersonnelManagementPage() {
             </button>
             <button
               onClick={applyBulk}
-              disabled={bulkSaving || (bulkLevel === "" && bulkTrack === "")}
+              disabled={!canBulkUpdatePersonnel || bulkSaving || (bulkLevel === "" && bulkTrack === "")}
               className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              title={canBulkUpdatePersonnel ? "Apply to selected" : "PL6 or higher required"}
             >
               <Save className="h-3 w-3" /> {bulkSaving ? "APPLYING…" : "APPLY TO SELECTED"}
             </button>
@@ -476,16 +500,16 @@ export default function PersonnelManagementPage() {
                           <button
                             onClick={() => startEdit(p)}
                             className="text-muted-foreground hover:text-primary p-1.5"
-                            title={p.level >= PL_FULL_AUTHORITY ? "L7 cannot be edited" : "Edit"}
-                            disabled={p.level >= PL_FULL_AUTHORITY}
+                            title={canUpdatePersonnelRecord(p) ? "Edit" : personnelLevel >= 5 ? "PL5 can only edit same-track personnel" : "PL5 or higher required"}
+                            disabled={!canUpdatePersonnelRecord(p)}
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => handleDelete(p)}
-                            disabled={p.level >= PL_FULL_AUTHORITY}
+                            disabled={!canDeletePersonnelRecord || p.level >= PL_FULL_AUTHORITY}
                             className="text-muted-foreground hover:text-destructive p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
-                            title={p.level >= PL_FULL_AUTHORITY ? "L7 cannot be deleted" : "Delete"}
+                            title={!canDeletePersonnelRecord ? "PL7 required" : p.level >= PL_FULL_AUTHORITY ? "L7 cannot be deleted" : "Delete"}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -529,12 +553,16 @@ export default function PersonnelManagementPage() {
                   <div className="flex items-center gap-1">
                     {!isEditing && (
                       <>
-                        <button onClick={() => startEdit(p)} className="text-muted-foreground hover:text-primary p-1.5">
+                        <button
+                          onClick={() => startEdit(p)}
+                          disabled={!canUpdatePersonnelRecord(p)}
+                          className="text-muted-foreground hover:text-primary p-1.5 disabled:opacity-30"
+                        >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => handleDelete(p)}
-                          disabled={p.level >= PL_FULL_AUTHORITY}
+                          disabled={!canDeletePersonnelRecord || p.level >= PL_FULL_AUTHORITY}
                           className="text-muted-foreground hover:text-destructive p-1.5 disabled:opacity-30"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
