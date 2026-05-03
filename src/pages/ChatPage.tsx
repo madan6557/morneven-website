@@ -164,6 +164,28 @@ export default function ChatPage() {
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [readMap, setReadMap] = useState<ChatReadMap>(() => readChatReadMap());
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const nearBottomRef = useRef(true);
+  const lastMessagesLenRef = useRef(0);
+  const lastActiveRef = useRef<string | null>(null);
+  const SCROLL_POS_KEY = "chat:scrollPositions";
+  const NEAR_BOTTOM_THRESHOLD = 120;
+
+  const readScrollPositions = (): Record<string, number> => {
+    try {
+      return JSON.parse(localStorage.getItem(SCROLL_POS_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  };
+  const writeScrollPosition = (convId: string, top: number) => {
+    try {
+      const map = readScrollPositions();
+      map[convId] = top;
+      localStorage.setItem(SCROLL_POS_KEY, JSON.stringify(map));
+    } catch {
+      /* ignore */
+    }
+  };
 
   const getConversationViewport = () =>
     conversationScrollRootRef.current?.querySelector<HTMLElement>("[data-radix-scroll-area-viewport]") ?? null;
@@ -247,45 +269,78 @@ export default function ChatPage() {
 
   // Scroll behavior:
   // 1) after sending -> scroll to latest
-  // 2) when opening conversation -> scroll to oldest unread (if any)
+  // 2) when opening conversation -> restore saved position, else oldest unread, else bottom
+  // 3) on new incoming messages -> auto-scroll only if user is near the bottom
   useEffect(() => {
     if (!active || messages.length === 0) return;
+
+    const isNewConversation = lastActiveRef.current !== active;
+    const prevLen = lastMessagesLenRef.current;
+    lastMessagesLenRef.current = messages.length;
+    lastActiveRef.current = active;
 
     if (shouldScrollToLatestRef.current) {
       scrollConversationToBottom("smooth");
       shouldScrollToLatestRef.current = false;
+      nearBottomRef.current = true;
       markConversationRead(active, messages);
       return;
     }
 
-    if (pendingOpenScrollRef.current) {
-      const lastReadAt = readMap[active];
-      const oldestUnread = messages.find(
-        (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
-      );
+    if (pendingOpenScrollRef.current || isNewConversation) {
+      const saved = readScrollPositions()[active];
+      const viewport = getConversationViewport();
 
-      if (oldestUnread) {
-        const didScroll = scrollMessageIntoView(oldestUnread.id, "center");
-        if (didScroll) {
-          setHighlightId(oldestUnread.id);
-          window.setTimeout(
-            () => setHighlightId((cur) => (cur === oldestUnread.id ? null : cur)),
-            1600,
-          );
+      if (typeof saved === "number" && viewport) {
+        // Restore previously saved scroll position.
+        requestAnimationFrame(() => {
+          viewport.scrollTo({ top: saved, behavior: "auto" });
+          const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+          nearBottomRef.current = distanceFromBottom <= NEAR_BOTTOM_THRESHOLD;
+          setShowJumpToLatest(distanceFromBottom > NEAR_BOTTOM_THRESHOLD);
+        });
+      } else {
+        const lastReadAt = readMap[active];
+        const oldestUnread = messages.find(
+          (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
+        );
+
+        if (oldestUnread) {
+          const didScroll = scrollMessageIntoView(oldestUnread.id, "center");
+          if (didScroll) {
+            setHighlightId(oldestUnread.id);
+            window.setTimeout(
+              () => setHighlightId((cur) => (cur === oldestUnread.id ? null : cur)),
+              1600,
+            );
+          }
+        } else {
+          scrollConversationToBottom("auto");
+          nearBottomRef.current = true;
         }
       }
 
       pendingOpenScrollRef.current = false;
+      return;
+    }
+
+    // New messages arrived in the same conversation.
+    if (messages.length > prevLen && nearBottomRef.current) {
+      scrollConversationToBottom("smooth");
+      markConversationRead(active, messages);
     }
   }, [active, messages, readMap, username]);
 
-  // Track scroll position to show "jump to latest" button.
+  // Track scroll position to show "jump to latest" button + persist position.
   useEffect(() => {
     const viewport = getConversationViewport();
-    if (!viewport) return;
+    if (!viewport || !active) return;
     const onScroll = () => {
       const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-      setShowJumpToLatest(distanceFromBottom > 120);
+      const near = distanceFromBottom <= NEAR_BOTTOM_THRESHOLD;
+      nearBottomRef.current = near;
+      setShowJumpToLatest(!near);
+      writeScrollPosition(active, viewport.scrollTop);
     };
     onScroll();
     viewport.addEventListener("scroll", onScroll, { passive: true });
