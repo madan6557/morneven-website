@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ValidationDialogProvider } from "@/components/ui/validation-dialog";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthorRoute } from "@/components/AuthorRoute";
@@ -64,8 +65,9 @@ function App() {
       <Analytics />
       <AuthProvider>
         <TooltipProvider>
-          <Toaster />
-          <Sonner />
+          <ValidationDialogProvider>
+            <Toaster />
+            <Sonner />
           <BrowserRouter>
             <Suspense fallback={<RouteFallback />}>
               <Routes>
@@ -98,6 +100,7 @@ function App() {
               </Routes>
             </Suspense>
           </BrowserRouter>
+          </ValidationDialogProvider>
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>

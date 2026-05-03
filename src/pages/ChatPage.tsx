@@ -83,6 +83,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
+import { PERSONNEL_TRACKS } from "@/lib/pl";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB demo cap
 function fileToAttachment(file: File): Promise<ChatAttachment> {
@@ -136,6 +137,42 @@ const KIND_ICON: Record<Conversation["kind"], typeof MessageSquare> = {
   institute: Building2,
 };
 
+const MESSAGE_THEME_BY_LEVEL: Record<number, string> = {
+  0: "bg-zinc-500/10 border-zinc-500/25",
+  1: "bg-sky-500/10 border-sky-500/25",
+  2: "bg-emerald-500/10 border-emerald-500/25",
+  3: "bg-cyan-500/10 border-cyan-500/25",
+  4: "bg-amber-500/10 border-amber-500/30",
+  5: "bg-orange-500/10 border-orange-500/30",
+  6: "bg-rose-500/10 border-rose-500/30",
+  7: "bg-primary/15 border-primary/35",
+};
+
+const MESSAGE_ACCENT_BY_LEVEL: Record<number, string> = {
+  0: "text-zinc-400 border-zinc-500/30 bg-zinc-500/10",
+  1: "text-sky-400 border-sky-500/30 bg-sky-500/10",
+  2: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
+  3: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10",
+  4: "text-amber-400 border-amber-500/30 bg-amber-500/10",
+  5: "text-orange-400 border-orange-500/30 bg-orange-500/10",
+  6: "text-rose-400 border-rose-500/30 bg-rose-500/10",
+  7: "text-primary border-primary/40 bg-primary/10",
+};
+
+function trackShort(track?: PersonnelUser["track"]) {
+  return PERSONNEL_TRACKS.find((item) => item.key === track)?.short ?? track?.toUpperCase() ?? "UNK";
+}
+
+function messageThemeFor(person?: PersonnelUser) {
+  const level = person?.level ?? 0;
+  return MESSAGE_THEME_BY_LEVEL[level] ?? MESSAGE_THEME_BY_LEVEL[0];
+}
+
+function messageBadgeThemeFor(person?: PersonnelUser) {
+  const level = person?.level ?? 0;
+  return MESSAGE_ACCENT_BY_LEVEL[level] ?? MESSAGE_ACCENT_BY_LEVEL[0];
+}
+
 export default function ChatPage() {
   const { username, isAuthenticated, role } = useAuth();
 
@@ -164,6 +201,28 @@ export default function ChatPage() {
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [readMap, setReadMap] = useState<ChatReadMap>(() => readChatReadMap());
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const nearBottomRef = useRef(true);
+  const lastMessagesLenRef = useRef(0);
+  const lastActiveRef = useRef<string | null>(null);
+  const SCROLL_POS_KEY = "chat:scrollPositions";
+  const NEAR_BOTTOM_THRESHOLD = 120;
+
+  const readScrollPositions = (): Record<string, number> => {
+    try {
+      return JSON.parse(localStorage.getItem(SCROLL_POS_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  };
+  const writeScrollPosition = (convId: string, top: number) => {
+    try {
+      const map = readScrollPositions();
+      map[convId] = top;
+      localStorage.setItem(SCROLL_POS_KEY, JSON.stringify(map));
+    } catch {
+      /* ignore */
+    }
+  };
 
   const getConversationViewport = () =>
     conversationScrollRootRef.current?.querySelector<HTMLElement>("[data-radix-scroll-area-viewport]") ?? null;
@@ -247,45 +306,78 @@ export default function ChatPage() {
 
   // Scroll behavior:
   // 1) after sending -> scroll to latest
-  // 2) when opening conversation -> scroll to oldest unread (if any)
+  // 2) when opening conversation -> restore saved position, else oldest unread, else bottom
+  // 3) on new incoming messages -> auto-scroll only if user is near the bottom
   useEffect(() => {
     if (!active || messages.length === 0) return;
+
+    const isNewConversation = lastActiveRef.current !== active;
+    const prevLen = lastMessagesLenRef.current;
+    lastMessagesLenRef.current = messages.length;
+    lastActiveRef.current = active;
 
     if (shouldScrollToLatestRef.current) {
       scrollConversationToBottom("smooth");
       shouldScrollToLatestRef.current = false;
+      nearBottomRef.current = true;
       markConversationRead(active, messages);
       return;
     }
 
-    if (pendingOpenScrollRef.current) {
-      const lastReadAt = readMap[active];
-      const oldestUnread = messages.find(
-        (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
-      );
+    if (pendingOpenScrollRef.current || isNewConversation) {
+      const saved = readScrollPositions()[active];
+      const viewport = getConversationViewport();
 
-      if (oldestUnread) {
-        const didScroll = scrollMessageIntoView(oldestUnread.id, "center");
-        if (didScroll) {
-          setHighlightId(oldestUnread.id);
-          window.setTimeout(
-            () => setHighlightId((cur) => (cur === oldestUnread.id ? null : cur)),
-            1600,
-          );
+      if (typeof saved === "number" && viewport) {
+        // Restore previously saved scroll position.
+        requestAnimationFrame(() => {
+          viewport.scrollTo({ top: saved, behavior: "auto" });
+          const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+          nearBottomRef.current = distanceFromBottom <= NEAR_BOTTOM_THRESHOLD;
+          setShowJumpToLatest(distanceFromBottom > NEAR_BOTTOM_THRESHOLD);
+        });
+      } else {
+        const lastReadAt = readMap[active];
+        const oldestUnread = messages.find(
+          (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
+        );
+
+        if (oldestUnread) {
+          const didScroll = scrollMessageIntoView(oldestUnread.id, "center");
+          if (didScroll) {
+            setHighlightId(oldestUnread.id);
+            window.setTimeout(
+              () => setHighlightId((cur) => (cur === oldestUnread.id ? null : cur)),
+              1600,
+            );
+          }
+        } else {
+          scrollConversationToBottom("auto");
+          nearBottomRef.current = true;
         }
       }
 
       pendingOpenScrollRef.current = false;
+      return;
+    }
+
+    // New messages arrived in the same conversation.
+    if (messages.length > prevLen && nearBottomRef.current) {
+      scrollConversationToBottom("smooth");
+      markConversationRead(active, messages);
     }
   }, [active, messages, readMap, username]);
 
-  // Track scroll position to show "jump to latest" button.
+  // Track scroll position to show "jump to latest" button + persist position.
   useEffect(() => {
     const viewport = getConversationViewport();
-    if (!viewport) return;
+    if (!viewport || !active) return;
     const onScroll = () => {
       const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-      setShowJumpToLatest(distanceFromBottom > 120);
+      const near = distanceFromBottom <= NEAR_BOTTOM_THRESHOLD;
+      nearBottomRef.current = near;
+      setShowJumpToLatest(!near);
+      writeScrollPosition(active, viewport.scrollTop);
     };
     onScroll();
     viewport.addEventListener("scroll", onScroll, { passive: true });
@@ -295,6 +387,10 @@ export default function ChatPage() {
   const activeConv = useMemo(() => convs.find((c) => c.id === active) ?? null, [convs, active]);
   const myRole: MemberRole | null = activeConv ? getMemberRole(activeConv, username) : null;
   const iCanManage = activeConv ? canManage(activeConv, username) : false;
+  const personnelByUsername = useMemo(
+    () => new Map(personnel.map((person) => [person.username, person])),
+    [personnel],
+  );
 
   // Demo helper: for institute channel, pre-mark roughly half history as read
   // on first open so unread auto-scroll behavior is easy to verify.
@@ -600,6 +696,11 @@ export default function ChatPage() {
                     const mine = m.author === username;
                     const canDelete = mine || iCanManage;
                     const isHighlighted = highlightId === m.id;
+                    const authorPersonnel = personnelByUsername.get(m.author);
+                    const authorLevel = authorPersonnel?.level ?? 0;
+                    const authorTrack = trackShort(authorPersonnel?.track);
+                    const bubbleTheme = messageThemeFor(authorPersonnel);
+                    const badgeTheme = messageBadgeThemeFor(authorPersonnel);
                     const messageIsUnread =
                       !m.system &&
                       m.author !== username &&
@@ -612,14 +713,23 @@ export default function ChatPage() {
                         className={`flex group ${mine ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`w-fit max-w-[85%] md:max-w-[80%] rounded-md px-3 py-2 text-sm transition-shadow ${mine ? "bg-primary/15 text-foreground" : "bg-muted text-foreground"} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
+                          className={`w-fit max-w-[85%] md:max-w-[80%] rounded-md border px-3 py-2 text-sm text-foreground transition-shadow ${bubbleTheme} ${mine ? "shadow-[inset_3px_0_0_hsl(var(--primary)/0.55)]" : ""} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
                         >
-                          <div className="flex items-center justify-between gap-2 mb-0.5">
-                            <p className="font-heading text-xs tracking-wider text-muted-foreground">
-                              {m.author} · {new Date(m.createdAt).toLocaleTimeString()}
-                            </p>
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <div className="flex min-w-0 flex-wrap items-center gap-1">
+                              <p className="font-heading text-[10px] leading-4 tracking-wider text-foreground">{m.author}</p>
+                              <span className={`rounded-sm border px-1 py-0 text-[8px] leading-4 font-display tracking-wider ${badgeTheme}`}>
+                                PL{authorLevel}
+                              </span>
+                              <span className={`rounded-sm border px-1 py-0 text-[8px] leading-4 font-display tracking-wider ${badgeTheme}`}>
+                                {authorTrack}
+                              </span>
+                              <span className="text-[8px] leading-4 font-display tracking-wider text-muted-foreground">
+                                {new Date(m.createdAt).toLocaleTimeString()}
+                              </span>
+                            </div>
                             {!mine && (
-                              <span className={`text-[9px] font-display tracking-wider ${messageIsUnread ? "text-destructive" : "text-muted-foreground"}`}>
+                              <span className={`text-[8px] leading-4 font-display tracking-wider ${messageIsUnread ? "text-destructive" : "text-muted-foreground"}`}>
                                 {messageIsUnread ? "UNREAD" : "READ"}
                               </span>
                             )}

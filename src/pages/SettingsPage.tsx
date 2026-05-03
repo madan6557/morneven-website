@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, DatabaseZap, Eye, EyeOff, RefreshCw, Shiel
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { showValidation } from "@/components/ui/validation-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { PERSONNEL_TRACKS } from "@/lib/pl";
 import { getSystemChatSnapshotRemote, reconcileSystemChatGroupsRemote, type ChatReconciliationReport } from "@/services/chatApi";
@@ -167,7 +168,16 @@ export default function SettingsPage() {
               type="button"
               size="sm"
               disabled={isReconciling}
-              onClick={runChatReconciliation}
+              onClick={() => showValidation({
+                variant: "warning",
+                title: "Sync system chat groups",
+                description: "This will reconcile institute, division, and team chat memberships from backend personnel and team data.",
+                confirmLabel: "Sync groups",
+                cancelLabel: "Cancel",
+                critical: true,
+                confirmDelaySeconds: 5,
+                onConfirm: runChatReconciliation,
+              })}
               className="gap-2 sm:min-w-36"
             >
               <RefreshCw className={`h-4 w-4 ${isReconciling ? "animate-spin" : ""}`} />
@@ -223,25 +233,34 @@ export default function SettingsPage() {
                 </button>
               </div>
               <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder='Type "CONFIRM"' className="w-full bg-background border rounded px-2 py-2 text-sm" />
-            <Button type="button" disabled={!canRun} onClick={async () => {
-              try {
-                const job = await startExtractionRemote(mode, autoDownload, { confirmText, password });
-                setHistory([job, ...history]);
-                setShouldPollExtraction(job.status === "processing");
-              } catch (error) {
-                if (!canUseLocalExtractionFallback()) {
-                  toast({
-                    title: "Extraction failed",
-                    description: error instanceof Error ? error.message : "Backend rejected the extraction request.",
-                    variant: "destructive",
-                  });
-                  return;
+            <Button type="button" disabled={!canRun} onClick={() => showValidation({
+              variant: "warning",
+              title: "Start data extraction",
+              description: "This creates a backend extraction job and prepares downloadable archive data.",
+              confirmLabel: "Start extraction",
+              cancelLabel: "Cancel",
+              critical: true,
+              confirmDelaySeconds: 5,
+              onConfirm: async () => {
+                try {
+                  const job = await startExtractionRemote(mode, autoDownload, { confirmText, password });
+                  setHistory([job, ...history]);
+                  setShouldPollExtraction(job.status === "processing");
+                } catch (error) {
+                  if (!canUseLocalExtractionFallback()) {
+                    toast({
+                      title: "Extraction failed",
+                      description: error instanceof Error ? error.message : "Backend rejected the extraction request.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  startExtraction(mode, autoDownload);
+                  setHistory(listExtractionHistory());
+                  setShouldPollExtraction(true);
                 }
-                startExtraction(mode, autoDownload);
-                setHistory(listExtractionHistory());
-                setShouldPollExtraction(true);
-              }
-            }}>
+              },
+            })}>
               Start Extraction
             </Button>
             {processing && <p className="text-xs text-muted-foreground">Extraction in progress...</p>}
@@ -277,8 +296,25 @@ export default function SettingsPage() {
               ))}
             </div>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => { clearExtractionHistory(selected); setSelected([]); setHistory(listExtractionHistory()); }}>Clear selected</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => { clearExtractionHistory(); setSelected([]); setHistory([]); }}>Clear all</Button>
+              <Button type="button" variant="outline" size="sm" disabled={selected.length === 0} onClick={() => showValidation({
+                variant: "warning",
+                title: "Clear selected extraction jobs",
+                description: `Clear ${selected.length} selected history item(s)?`,
+                confirmLabel: "Clear selected",
+                cancelLabel: "Cancel",
+                dontShowAgainKey: "clear_selected_extractions",
+                onConfirm: () => { clearExtractionHistory(selected); setSelected([]); setHistory(listExtractionHistory()); },
+              })}>Clear selected</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => showValidation({
+                variant: "error",
+                title: "Clear all extraction history",
+                description: "This clears all extraction history visible to this account.",
+                confirmLabel: "Clear all",
+                cancelLabel: "Cancel",
+                critical: true,
+                confirmDelaySeconds: 5,
+                onConfirm: () => { clearExtractionHistory(); setSelected([]); setHistory([]); },
+              })}>Clear all</Button>
             </div>
           </section>
         )}
