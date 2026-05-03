@@ -47,7 +47,8 @@ import {
   type ReplyPreview,
 } from "@/services/chatApi";
 import { apiUpload, isDemoFallbackEnabled } from "@/services/api";
-import { getProxyUrl } from "@/services/fileProxyService";
+import { downloadAuthenticatedFile } from "@/services/fileProxyService";
+import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import type { PersonnelUser } from "@/types";
 import {
   Send,
@@ -847,23 +848,22 @@ export default function ChatPage() {
                             <div className="mt-2 space-y-1.5">
                               {m.attachments.map((a) => {
                                 const isImg = a.mimeType.startsWith("image/");
-                                const displayUrl = getProxyUrl(a.dataUrl);
                                 return (
                                   <div key={a.id} className="border border-border/60 rounded-sm bg-background/40 p-1.5">
                                     {isImg ? (
-                                      <img src={displayUrl} alt={a.name} className="max-h-48 rounded-sm" />
+                                      <AuthenticatedImage src={a.dataUrl} alt={a.name} className="max-h-48 rounded-sm" />
                                     ) : null}
                                     <div className="flex items-start justify-between gap-2 mt-1">
                                       <span className="flex-1 min-w-0 pr-1 text-xs font-body break-all whitespace-normal">
                                         {a.name} <span className="text-muted-foreground">({formatBytes(a.size)})</span>
                                       </span>
-                                      <a
-                                        href={displayUrl}
-                                        download={a.name}
+                                      <button
+                                        type="button"
+                                        onClick={() => void downloadAuthenticatedFile(a.dataUrl, a.name)}
                                         className="text-primary hover:text-primary/80 flex-shrink-0"
                                       >
                                         <Download className="h-3 w-3" />
-                                      </a>
+                                      </button>
                                     </div>
                                   </div>
                                 );

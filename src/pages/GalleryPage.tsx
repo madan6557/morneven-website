@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpDown, Plus, Search } from "lucide-react";
 import { getGalleryPage, type PageInfo } from "@/services/api";
-import { getProxyUrl } from "@/services/fileProxyService";
+import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import type { GalleryItem } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -141,8 +141,8 @@ export default function GalleryPage() {
                 </div>
               ) : item.type === "image" && item.thumbnail ? (
                 <div className="aspect-video bg-muted overflow-hidden">
-                  <img
-                    src={getProxyUrl(item.thumbnail)}
+                  <AuthenticatedImage
+                    src={item.thumbnail}
                     alt={item.title}
                     loading="lazy"
                     decoding="async"
