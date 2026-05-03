@@ -70,7 +70,7 @@ export default function NewsDetail() {
                 <div key={i} className="hud-border-sm bg-card overflow-hidden">
                   {a.type === "image" && a.url ? (
                     <div className="aspect-video bg-muted overflow-hidden">
-                      <img src={getProxyUrl(a.url)} alt={a.caption || "attachment"} className="w-full h-full object-cover" />
+                      <AuthenticatedImage src={a.url} alt={a.caption || "attachment"} className="w-full h-full object-cover" />
                     </div>
                   ) : a.type === "video" && a.url ? (
                     <div className="aspect-video bg-muted">

@@ -166,7 +166,7 @@ export default function TechDetail() {
                 <div key={i} className="hud-border-sm bg-card overflow-hidden">
                   {doc.type === "image" && doc.url ? (
                     <div className="aspect-video bg-muted overflow-hidden">
-                      <img src={getProxyUrl(doc.url)} alt={doc.caption || "doc"} className="w-full h-full object-cover" />
+                      <AuthenticatedImage src={doc.url} alt={doc.caption || "doc"} className="w-full h-full object-cover" />
                     </div>
                   ) : doc.type === "video" && doc.url ? (
                     <div className="aspect-video bg-muted">

@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, MessageCircle, Reply, AtSign } from "lucide-react";
 import { getGalleryItem, addComment, addReply } from "@/services/api";
 import { getProxyUrl } from "@/services/fileProxyService";
+import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import type { GalleryItem } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import MentionInput, { extractMentions, renderWithMentions } from "@/components/MentionInput";
@@ -93,7 +94,7 @@ export default function GalleryDetail() {
           </div>
         ) : item.type === "image" && item.thumbnail ? (
           <div className="aspect-video bg-muted overflow-hidden">
-            <img src={getProxyUrl(item.thumbnail)} alt={item.title} className="w-full h-full object-cover" />
+            <AuthenticatedImage src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
           </div>
         ) : (
           <div className="aspect-video bg-muted flex items-center justify-center">

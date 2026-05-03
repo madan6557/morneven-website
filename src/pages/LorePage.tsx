@@ -280,7 +280,7 @@ export default function LorePage() {
               <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow" style={{ borderColor: `${c.accentColor}30` }}>
                 {c.thumbnail ? (
                   <div className="aspect-[3/4] bg-muted overflow-hidden relative">
-                    <img src={getProxyUrl(c.thumbnail)} alt={c.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    <AuthenticatedImage src={c.thumbnail} alt={c.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: c.accentColor }} />
                   </div>
                 ) : (
@@ -309,7 +309,7 @@ export default function LorePage() {
               <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
                 {p.thumbnail ? (
                   <div className="aspect-video bg-muted overflow-hidden">
-                    <img src={getProxyUrl(p.thumbnail)} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    <AuthenticatedImage src={p.thumbnail} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="aspect-video bg-muted flex items-center justify-center">
@@ -336,7 +336,7 @@ export default function LorePage() {
               <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
                 {t.thumbnail ? (
                   <div className="aspect-video bg-muted overflow-hidden">
-                    <img src={getProxyUrl(t.thumbnail)} alt={t.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    <AuthenticatedImage src={t.thumbnail} alt={t.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="aspect-video bg-muted flex items-center justify-center">
@@ -363,7 +363,7 @@ export default function LorePage() {
               <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow" style={{ borderColor: `${c.accentColor}30` }}>
                 {c.thumbnail ? (
                   <div className="aspect-video bg-muted overflow-hidden relative">
-                    <img src={c.thumbnail} alt={c.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    <AuthenticatedImage src={c.thumbnail} alt={c.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: c.accentColor }} />
                   </div>
                 ) : (
@@ -404,7 +404,7 @@ export default function LorePage() {
               <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
                 {e.thumbnail ? (
                   <div className="aspect-video bg-muted overflow-hidden">
-                    <img src={e.thumbnail} alt={e.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    <AuthenticatedImage src={e.thumbnail} alt={e.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="aspect-video bg-muted flex items-center justify-center">
@@ -441,7 +441,7 @@ export default function LorePage() {
               <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
                 {o.thumbnail ? (
                   <div className="aspect-video bg-muted overflow-hidden">
-                    <img src={o.thumbnail} alt={o.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    <AuthenticatedImage src={o.thumbnail} alt={o.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="aspect-video bg-muted flex items-center justify-center">
