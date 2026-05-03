@@ -201,7 +201,7 @@ export default function PlaceDetail() {
                     </a>
                   ) : doc.type === "image" && doc.url ? (
                     <div className="aspect-video bg-muted overflow-hidden">
-                      <img src={getProxyUrl(doc.url)} alt={doc.caption} className="w-full h-full object-cover" />
+                      <AuthenticatedImage src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
                     </div>
                   ) : (
                     <div className="aspect-video bg-muted flex items-center justify-center">

@@ -339,7 +339,7 @@ export default function HomePage() {
               >
                 <div className="aspect-video bg-muted flex items-center justify-center">
                   {g.thumbnail ? (
-                    <img src={getProxyUrl(g.thumbnail)} alt={g.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    <AuthenticatedImage src={g.thumbnail} alt={g.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   ) : (
                     <Image className="h-8 w-8 text-muted-foreground/30" />
                   )}
