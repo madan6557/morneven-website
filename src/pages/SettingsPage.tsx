@@ -23,6 +23,7 @@ export default function SettingsPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [chatReport, setChatReport] = useState<ChatReconciliationReport>(() => getSystemChatSnapshot());
   const [isReconciling, setIsReconciling] = useState(false);
+  const [shouldPollExtraction, setShouldPollExtraction] = useState(false);
   const processing = useMemo(() => history.some((h) => h.status === "processing"), [history]);
 
   useEffect(() => {
@@ -30,14 +31,26 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (!processing) return;
+    if (!shouldPollExtraction || !processing) {
+      if (shouldPollExtraction && !processing) setShouldPollExtraction(false);
+      return;
+    }
     const t = window.setInterval(() => {
-      listExtractionHistoryRemote().then(setHistory).catch(() => {
-        setHistory(listExtractionHistory());
+      listExtractionHistoryRemote().then((nextHistory) => {
+        setHistory(nextHistory);
+        if (!nextHistory.some((job) => job.status === "processing")) {
+          setShouldPollExtraction(false);
+        }
+      }).catch(() => {
+        const nextHistory = listExtractionHistory();
+        setHistory(nextHistory);
+        if (!nextHistory.some((job) => job.status === "processing")) {
+          setShouldPollExtraction(false);
+        }
       });
     }, 3000);
     return () => window.clearInterval(t);
-  }, [processing]);
+  }, [processing, shouldPollExtraction]);
 
   useEffect(() => {
     getQuota(username).then((q) =>
@@ -200,6 +213,7 @@ export default function SettingsPage() {
               try {
                 const job = await startExtractionRemote(mode, autoDownload, { confirmText, password });
                 setHistory([job, ...history]);
+                setShouldPollExtraction(job.status === "processing");
               } catch (error) {
                 if (!canUseLocalExtractionFallback()) {
                   toast({
@@ -211,6 +225,7 @@ export default function SettingsPage() {
                 }
                 startExtraction(mode, autoDownload);
                 setHistory(listExtractionHistory());
+                setShouldPollExtraction(true);
               }
             }}>
               Start Extraction
