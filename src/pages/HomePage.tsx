@@ -26,6 +26,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 
 const fadeUp = (delay: number) => ({
   initial: { opacity: 0, y: 20 },

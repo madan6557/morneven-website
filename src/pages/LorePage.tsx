@@ -12,6 +12,7 @@ import {
 } from "@/services/api";
 import type { Character, Creature, OtherLore, Place, Technology, LoreEvent } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import { ArrowUpDown, CalendarClock, Plus, Search, ShieldAlert, ShieldCheck } from "lucide-react";
 import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 

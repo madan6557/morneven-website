@@ -14,6 +14,7 @@ import { ArrowLeft, Map, FileText, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
+import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function PlaceDetail() {
