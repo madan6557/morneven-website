@@ -54,7 +54,7 @@ Use the PORT environment variable provided by Railway.
 If Railway asks for a fixed target port in the UI, use:
 
 ```text
-3000
+8080
 ```
 
 The server still binds to `process.env.PORT` when Railway injects it.
@@ -78,7 +78,7 @@ Start Command: node server.mjs
 If the service was generated with an old target port, remove the generated public domain and generate it again, or set the target port to:
 
 ```text
-3000
+8080
 ```
 
 The app also exposes:
