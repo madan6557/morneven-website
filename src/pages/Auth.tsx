@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Auth() {
@@ -8,9 +9,8 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; username?: string; password?: string }>({});
-  const [formError, setFormError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const { login, register, guestLogin } = useAuth();
 
@@ -18,40 +18,22 @@ export default function Auth() {
     const e: typeof errors = {};
     if (!email || !/\S+@\S+\.\S+/.test(email)) e.email = "Valid email required";
     if (!isLogin && (!username || username.length < 3)) e.username = "Min 3 characters";
-    if (!password || password.length < (isLogin ? 1 : 12)) {
-      e.password = isLogin ? "Password required" : "Min 12 characters";
-    }
+    if (!password || password.length < 6) e.password = "Min 6 characters";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = async (ev: React.FormEvent) => {
+  const handleSubmit = (ev: React.FormEvent) => {
     ev.preventDefault();
-    setFormError("");
     if (!validate()) return;
-    setSubmitting(true);
-    try {
-      if (isLogin) await login(email, password);
-      else await register(email, password, username);
-      navigate("/home");
-    } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Authentication failed");
-    } finally {
-      setSubmitting(false);
-    }
+    if (isLogin) login(email, password);
+    else register(email, password, username);
+    navigate("/home");
   };
 
-  const handleGuest = async () => {
-    setFormError("");
-    setSubmitting(true);
-    try {
-      await guestLogin();
-      navigate("/home");
-    } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Guest access failed");
-    } finally {
-      setSubmitting(false);
-    }
+  const handleGuest = () => {
+    guestLogin();
+    navigate("/home");
   };
 
   return (
@@ -72,7 +54,7 @@ export default function Auth() {
           <div className="mecha-line w-24 mx-auto" />
         </div>
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        <form noValidate onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="font-heading text-xs tracking-wider text-muted-foreground uppercase">Email</label>
             <input
@@ -101,24 +83,31 @@ export default function Auth() {
 
           <div>
             <label className="font-heading text-xs tracking-wider text-muted-foreground uppercase">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full mt-1 px-3 py-2 bg-card border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder={isLogin ? "Password" : "Min 12 characters"}
-            />
+            <div className="relative mt-1">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2 pr-10 bg-card border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                placeholder="Min 6 characters"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
             {errors.password && <p className="text-xs text-destructive mt-1 font-body">{errors.password}</p>}
           </div>
 
-          {formError && <p className="text-xs text-destructive font-body">{formError}</p>}
-
           <button
             type="submit"
-            disabled={submitting}
             className="w-full hud-border-sm py-2.5 bg-primary text-primary-foreground font-display text-xs tracking-[0.2em] uppercase hover:opacity-90 transition-opacity"
           >
-            {submitting ? "Processing" : isLogin ? "Access" : "Register"}
+            {isLogin ? "Access" : "Register"}
           </button>
         </form>
 
@@ -130,7 +119,6 @@ export default function Auth() {
 
         <button
           onClick={handleGuest}
-          disabled={submitting}
           className="w-full py-2.5 border border-border rounded-sm text-xs font-display tracking-[0.15em] text-muted-foreground hover:bg-muted transition-colors uppercase"
         >
           Guest Mode
@@ -138,7 +126,7 @@ export default function Auth() {
 
         <p className="text-center text-xs text-muted-foreground font-body">
           {isLogin ? "No account?" : "Already registered?"}{" "}
-          <button onClick={() => { setIsLogin(!isLogin); setErrors({}); setFormError(""); }} className="text-primary hover:underline">
+          <button onClick={() => { setIsLogin(!isLogin); setErrors({}); }} className="text-primary hover:underline">
             {isLogin ? "Register" : "Login"}
           </button>
         </p>

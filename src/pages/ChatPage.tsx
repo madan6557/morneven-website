@@ -69,6 +69,7 @@ import {
   Check,
   Reply,
   CornerDownRight,
+  ChevronDown,
 } from "lucide-react";
 import {
   Dialog,
@@ -162,6 +163,7 @@ export default function ChatPage() {
   const [replyTo, setReplyTo] = useState<ReplyPreview | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [readMap, setReadMap] = useState<ChatReadMap>(() => readChatReadMap());
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
 
   const getConversationViewport = () =>
     conversationScrollRootRef.current?.querySelector<HTMLElement>("[data-radix-scroll-area-viewport]") ?? null;
@@ -276,6 +278,19 @@ export default function ChatPage() {
       pendingOpenScrollRef.current = false;
     }
   }, [active, messages, readMap, username]);
+
+  // Track scroll position to show "jump to latest" button.
+  useEffect(() => {
+    const viewport = getConversationViewport();
+    if (!viewport) return;
+    const onScroll = () => {
+      const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+      setShowJumpToLatest(distanceFromBottom > 120);
+    };
+    onScroll();
+    viewport.addEventListener("scroll", onScroll, { passive: true });
+    return () => viewport.removeEventListener("scroll", onScroll);
+  }, [active, messages.length]);
 
   const activeConv = useMemo(() => convs.find((c) => c.id === active) ?? null, [convs, active]);
   const myRole: MemberRole | null = activeConv ? getMemberRole(activeConv, username) : null;
@@ -538,7 +553,7 @@ export default function ChatPage() {
         </div>
 
         {/* Conversation */}
-        <div className="hud-border bg-card flex flex-col h-full overflow-hidden">
+        <div className="hud-border bg-card flex flex-col h-full overflow-hidden relative">
           {activeConv ? (
             <>
               <div className="px-4 py-2 border-b border-border flex items-center gap-3">
@@ -681,6 +696,21 @@ export default function ChatPage() {
                   )}
                 </div>
               </ScrollArea>
+
+              {showJumpToLatest && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    scrollConversationToBottom("smooth");
+                    if (active) markConversationRead(active, messages);
+                  }}
+                  className="absolute right-4 bottom-24 z-10 h-9 w-9 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:opacity-90"
+                  aria-label="Scroll to latest message"
+                  title="Jump to latest"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              )}
 
               {/* Pending attachments preview */}
               {pendingFiles.length > 0 && (
