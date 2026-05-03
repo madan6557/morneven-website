@@ -100,6 +100,7 @@ function App() {
               </Routes>
             </Suspense>
           </BrowserRouter>
+          </ValidationDialogProvider>
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
