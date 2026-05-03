@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, ExternalLink } from "lucide-react";
 import { getNewsItem } from "@/services/newsApi";
+import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import type { NewsItem } from "@/types";
 
 export default function NewsDetail() {
@@ -70,7 +71,7 @@ export default function NewsDetail() {
                 <div key={i} className="hud-border-sm bg-card overflow-hidden">
                   {a.type === "image" && a.url ? (
                     <div className="aspect-video bg-muted overflow-hidden">
-                      <img src={getProxyUrl(a.url)} alt={a.caption || "attachment"} className="w-full h-full object-cover" />
+                      <AuthenticatedImage src={a.url} alt={a.caption || "attachment"} className="w-full h-full object-cover" />
                     </div>
                   ) : a.type === "video" && a.url ? (
                     <div className="aspect-video bg-muted">

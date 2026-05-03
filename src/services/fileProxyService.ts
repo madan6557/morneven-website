@@ -79,7 +79,7 @@ export function getProxyUrl(url: string): string {
  * @returns Promise<string> - Blob URL for rendering, or empty string on error
  * @throws Will warn if Bearer token is missing (should always be present in production)
  */
-export async function getAuthenticatedImageUrl(url: string): Promise<string> {
+export async function getAuthenticatedFileUrl(url: string, accept = "*/*"): Promise<string> {
   if (!url) return "";
 
   // Skip data URLs - use directly
@@ -89,8 +89,9 @@ export async function getAuthenticatedImageUrl(url: string): Promise<string> {
   const proxyUrl = getProxyUrl(url);
 
   // Check cache first
-  if (blobUrlCache.has(proxyUrl)) {
-    return blobUrlCache.get(proxyUrl) || "";
+  const cacheKey = `${accept}:${proxyUrl}`;
+  if (blobUrlCache.has(cacheKey)) {
+    return blobUrlCache.get(cacheKey) || "";
   }
 
   try {
@@ -101,7 +102,7 @@ export async function getAuthenticatedImageUrl(url: string): Promise<string> {
     }
 
     const headers: Record<string, string> = {
-      "Accept": "image/*",
+      "Accept": accept,
       "Authorization": `Bearer ${token}`,
     };
 
@@ -113,7 +114,7 @@ export async function getAuthenticatedImageUrl(url: string): Promise<string> {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(
-        `❌ Failed to fetch image from proxy: ${response.status}`,
+        `❌ Failed to fetch file from proxy: ${response.status}`,
         errorText
       );
       return "";
@@ -123,13 +124,28 @@ export async function getAuthenticatedImageUrl(url: string): Promise<string> {
     const blobUrl = URL.createObjectURL(blob);
 
     // Cache the blob URL
-    blobUrlCache.set(proxyUrl, blobUrl);
+    blobUrlCache.set(cacheKey, blobUrl);
 
     return blobUrl;
   } catch (error) {
-    console.error(`❌ Error fetching authenticated image from ${proxyUrl}:`, error);
+    console.error(`❌ Error fetching authenticated file from ${proxyUrl}:`, error);
     return "";
   }
+}
+
+export async function getAuthenticatedImageUrl(url: string): Promise<string> {
+  return getAuthenticatedFileUrl(url, "image/*");
+}
+
+export async function downloadAuthenticatedFile(url: string, filename?: string): Promise<void> {
+  const fileUrl = await getAuthenticatedFileUrl(url, "*/*");
+  if (!fileUrl) return;
+  const link = document.createElement("a");
+  link.href = fileUrl;
+  link.download = filename || "download";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 /**

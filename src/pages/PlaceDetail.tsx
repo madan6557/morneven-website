@@ -14,6 +14,7 @@ import { ArrowLeft, Map, FileText, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
+import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function PlaceDetail() {
@@ -201,7 +202,7 @@ export default function PlaceDetail() {
                     </a>
                   ) : doc.type === "image" && doc.url ? (
                     <div className="aspect-video bg-muted overflow-hidden">
-                      <img src={getProxyUrl(doc.url)} alt={doc.caption} className="w-full h-full object-cover" />
+                      <AuthenticatedImage src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
                     </div>
                   ) : (
                     <div className="aspect-video bg-muted flex items-center justify-center">

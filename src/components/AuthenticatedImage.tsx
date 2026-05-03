@@ -1,44 +1,42 @@
-import { useAuthenticatedImageUrl } from "@/hooks/useAuthenticatedImageUrl";
+import { useEffect, useState } from "react";
+import { getAuthenticatedImageUrl, getProxyUrl } from "@/services/fileProxyService";
 
-interface AuthenticatedImageProps {
-  src: string | undefined;
+type AuthenticatedImageProps = {
+  src: string;
   alt: string;
   className?: string;
-  onError?: (error: Error) => void;
-}
+  loading?: "eager" | "lazy";
+  decoding?: "sync" | "async" | "auto";
+};
 
-/**
- * Image component that handles Bearer token authentication
- * Automatically fetches from proxy endpoint with auth header
- * Shows placeholder while loading
- */
-export default function AuthenticatedImage({ src, alt, className = "", onError }: AuthenticatedImageProps) {
-  const { blobUrl, loading, error } = useAuthenticatedImageUrl(src);
+export function AuthenticatedImage({ src, alt, className, loading, decoding }: AuthenticatedImageProps) {
+  const [resolvedSrc, setResolvedSrc] = useState("");
 
-  if (error && onError) {
-    onError(error);
-  }
+  useEffect(() => {
+    let cancelled = false;
 
-  // While loading, show placeholder
-  if (loading) {
-    return (
-      <div className={`${className} bg-muted/50 flex items-center justify-center`}>
-        <div className="animate-pulse w-full h-full bg-muted/30" />
-      </div>
-    );
-  }
+    const load = async () => {
+      if (!src) {
+        setResolvedSrc("");
+        return;
+      }
+      if (src.startsWith("data:")) {
+        setResolvedSrc(src);
+        return;
+      }
 
-  // If there's an error or no URL, show placeholder
-  if (!blobUrl) {
-    return (
-      <div className={`${className} bg-muted flex items-center justify-center`}>
-        <span className="text-xs text-muted-foreground font-body">Failed to load image</span>
-      </div>
-    );
-  }
+      const blobUrl = await getAuthenticatedImageUrl(src);
+      if (!cancelled) {
+        setResolvedSrc(blobUrl || getProxyUrl(src));
+      }
+    };
 
-  // Render image with blob URL
-  return (
-    <img src={blobUrl} alt={alt} className={className} />
-  );
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [src]);
+
+  if (!resolvedSrc) return null;
+  return <img src={resolvedSrc} alt={alt} className={className} loading={loading} decoding={decoding} />;
 }
