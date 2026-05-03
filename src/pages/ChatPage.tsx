@@ -441,6 +441,12 @@ export default function ChatPage() {
       }
     }
 
+    if (author.toLowerCase() === username.toLowerCase()) {
+      return role === "guest"
+        ? { username: author, level: 0, track: "executive", note: "Guest access" }
+        : { username: author, level: 1, track: "executive" };
+    }
+
     return fallbackAuthorMeta(author);
   };
   const openAuthorProfile = (author: string) => setProfileUser(getAuthorMeta(author));
@@ -751,7 +757,7 @@ export default function ChatPage() {
                     const isHighlighted = highlightId === m.id;
                     const authorPersonnel = getAuthorMeta(m.author);
                     const authorLevel = authorPersonnel.level;
-                    const authorTrack = trackShort(authorPersonnel.track);
+                    const authorTrack = authorLevel === 0 ? "GUEST" : trackShort(authorPersonnel.track);
                     const bubbleTheme = messageThemeFor(authorPersonnel);
                     const badgeTheme = messageBadgeThemeFor(authorPersonnel);
                     const messageIsUnread =
@@ -1244,7 +1250,9 @@ export default function ChatPage() {
               <InfoRow label="PL" value={`PL${profileUser.level}`} />
               <InfoRow
                 label="Track"
-                value={`${trackShort(profileUser.track)} - ${PERSONNEL_TRACKS.find((item) => item.key === profileUser.track)?.label ?? profileUser.track}`}
+                value={profileUser.level === 0
+                  ? "GUEST"
+                  : `${trackShort(profileUser.track)} - ${PERSONNEL_TRACKS.find((item) => item.key === profileUser.track)?.label ?? profileUser.track}`}
               />
               <div className="space-y-1">
                 <p className="font-heading text-[10px] uppercase tracking-wider text-muted-foreground">Note</p>
