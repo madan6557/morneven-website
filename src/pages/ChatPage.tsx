@@ -228,6 +228,19 @@ export default function ChatPage() {
     }
   }, [active, messages, readMap, username]);
 
+  // Track scroll position to show "jump to latest" button.
+  useEffect(() => {
+    const viewport = getConversationViewport();
+    if (!viewport) return;
+    const onScroll = () => {
+      const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+      setShowJumpToLatest(distanceFromBottom > 120);
+    };
+    onScroll();
+    viewport.addEventListener("scroll", onScroll, { passive: true });
+    return () => viewport.removeEventListener("scroll", onScroll);
+  }, [active, messages.length]);
+
   const activeConv = useMemo(() => convs.find((c) => c.id === active) ?? null, [convs, active]);
   const myRole: MemberRole | null = activeConv ? getMemberRole(activeConv, username) : null;
   const iCanManage = activeConv ? canManage(activeConv, username) : false;
@@ -620,6 +633,21 @@ export default function ChatPage() {
                   )}
                 </div>
               </ScrollArea>
+
+              {showJumpToLatest && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    scrollConversationToBottom("smooth");
+                    if (active) markConversationRead(active, messages);
+                  }}
+                  className="absolute right-4 bottom-24 z-10 h-9 w-9 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:opacity-90"
+                  aria-label="Scroll to latest message"
+                  title="Jump to latest"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              )}
 
               {/* Pending attachments preview */}
               {pendingFiles.length > 0 && (
