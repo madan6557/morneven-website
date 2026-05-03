@@ -99,6 +99,26 @@ export interface ChatReconciliationReport {
   ranAt: string;
 }
 
+function normalizeReconciliationReport(
+  payload: Partial<ChatReconciliationReport> | { report?: Partial<ChatReconciliationReport>; summary?: Partial<ChatReconciliationReport> } | null | undefined,
+): ChatReconciliationReport {
+  const report =
+    payload && "report" in payload && payload.report
+      ? payload.report
+      : payload && "summary" in payload && payload.summary
+        ? payload.summary
+        : payload as Partial<ChatReconciliationReport> | null | undefined;
+
+  return {
+    instituteGroups: Number(report?.instituteGroups ?? 0),
+    divisionGroups: Number(report?.divisionGroups ?? 0),
+    teamGroups: Number(report?.teamGroups ?? 0),
+    activeMemberships: Number(report?.activeMemberships ?? 0),
+    removedMemberships: Number(report?.removedMemberships ?? 0),
+    ranAt: report?.ranAt ?? todayISO(),
+  };
+}
+
 const KEY_CONV = "morneven_chat_conversations_v2";
 const KEY_MSG = "morneven_chat_messages_v2";
 export const CHAT_READ_KEY = "morneven_chat_last_read_v1";
@@ -715,7 +735,7 @@ export function getSystemChatSnapshot(): ChatReconciliationReport {
 
 export function reconcileSystemChatGroupsRemote(): Promise<ChatReconciliationReport> {
   return withDemoFallback(
-    () => apiRequest<ChatReconciliationReport>("/chat/reconcile", { method: "POST" }),
+    async () => normalizeReconciliationReport(await apiRequest<Partial<ChatReconciliationReport>>("/chat/reconcile", { method: "POST" })),
     () => getSystemChatSnapshot(),
   );
 }

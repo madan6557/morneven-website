@@ -1,5 +1,5 @@
 import { db, hasStorage } from "@/services/dataStore";
-import { apiRequest, getApiBaseUrl, isDemoFallbackEnabled, unwrapPageItems, withDemoFallback, type BackendPage } from "@/services/restClient";
+import { apiRequest, getAccessToken, getApiBaseUrl, isDemoFallbackEnabled, unwrapPageItems, withDemoFallback, type BackendPage } from "@/services/restClient";
 
 export type ExtractionMode = "db" | "images" | "all";
 export type ExtractionStatus = "processing" | "completed" | "failed";
@@ -145,6 +145,33 @@ export function pollExtractionJob(id: string): Promise<ExtractionJob> {
 
 export function getExtractionDownloadUrl(id: string): string {
   return `${getApiBaseUrl()}/settings/extractions/${id}/download`;
+}
+
+export async function downloadExtractionJob(job: ExtractionJob): Promise<void> {
+  if (job.blobUrl) {
+    const anchor = document.createElement("a");
+    anchor.href = job.blobUrl;
+    anchor.download = job.downloadName ?? `morneven-extract-${job.id}.zip`;
+    anchor.click();
+    return;
+  }
+
+  const headers = new Headers();
+  const token = getAccessToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const response = await fetch(getExtractionDownloadUrl(job.id), { headers });
+  if (!response.ok) {
+    throw new Error(`Download failed with status ${response.status}`);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = job.downloadName ?? `morneven-extract-${job.id}.zip`;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
 export function canUseLocalExtractionFallback(): boolean {

@@ -89,7 +89,13 @@ export default function MapPage() {
             style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})` }}
           >
             {mapImage ? (
-              <img src={mapImage} alt="Gemora map" className="w-full h-full object-contain pointer-events-none" draggable={false} />
+              <img
+                src={mapImage}
+                alt="Gemora map"
+                className="w-full h-full object-contain pointer-events-none"
+                draggable={false}
+                onError={() => setMapImage("")}
+              />
             ) : (
               // SVG placeholder map of Gemora
               <svg viewBox="0 0 1000 700" className="w-full h-full pointer-events-none" preserveAspectRatio="xMidYMid meet">

@@ -8,7 +8,7 @@ import { PERSONNEL_TRACKS } from "@/lib/pl";
 import { getSystemChatSnapshot, reconcileAutoMemberships, reconcileSystemChatGroupsRemote, type ChatReconciliationReport } from "@/services/chatApi";
 import { getQuota, listTeams, monthKey, pl2Status, pl3Status, pl4Status, yearKey } from "@/services/managementApi";
 import { listPersonnel } from "@/services/personnelApi";
-import { canUseLocalExtractionFallback, clearExtractionHistory, getExtractionDownloadUrl, listExtractionHistory, listExtractionHistoryRemote, startExtraction, startExtractionRemote, type ExtractionMode } from "@/services/extractionService";
+import { canUseLocalExtractionFallback, clearExtractionHistory, downloadExtractionJob, listExtractionHistory, listExtractionHistoryRemote, startExtraction, startExtractionRemote, type ExtractionMode } from "@/services/extractionService";
 import { clearDemoIntegrationState, listDemoStateKeys } from "@/services/integrationCleanup";
 
 export default function SettingsPage() {
@@ -23,15 +23,21 @@ export default function SettingsPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [chatReport, setChatReport] = useState<ChatReconciliationReport>(() => getSystemChatSnapshot());
   const [isReconciling, setIsReconciling] = useState(false);
+  const processing = useMemo(() => history.some((h) => h.status === "processing"), [history]);
 
   useEffect(() => {
     listExtractionHistoryRemote().then(setHistory).catch(() => undefined);
-    const t = setInterval(() => {
-      setHistory(listExtractionHistory());
-      listExtractionHistoryRemote().then(setHistory).catch(() => undefined);
-    }, 3000);
-    return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    if (!processing) return;
+    const t = window.setInterval(() => {
+      listExtractionHistoryRemote().then(setHistory).catch(() => {
+        setHistory(listExtractionHistory());
+      });
+    }, 3000);
+    return () => window.clearInterval(t);
+  }, [processing]);
 
   useEffect(() => {
     getQuota(username).then((q) =>
@@ -42,7 +48,6 @@ export default function SettingsPage() {
   const trackInfo = PERSONNEL_TRACKS.find((t) => t.key === track);
   const title = trackInfo?.titles[personnelLevel] ?? "Unknown";
   const canRun = personnelLevel >= 7 && confirmText === "CONFIRM" && verifyPassword(password);
-  const processing = useMemo(() => history.some((h) => h.status === "processing"), [history]);
   const canReconcileChat = personnelLevel >= 7;
   const demoStateKeyCount = listDemoStateKeys().length;
 
@@ -63,7 +68,7 @@ export default function SettingsPage() {
         );
       });
       setChatReport(report);
-      toast({ title: "System chat groups synced", description: `${report.teamGroups} team groups, ${report.divisionGroups} division groups.` });
+      toast({ title: "System chat groups synced", description: `${report.teamGroups ?? 0} team groups, ${report.divisionGroups ?? 0} division groups.` });
     } finally {
       setIsReconciling(false);
     }
@@ -222,9 +227,21 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     {h.status === "completed" && (
-                      <a className="underline text-primary" href={h.blobUrl ?? getExtractionDownloadUrl(h.id)} download={h.downloadName}>
+                      <button
+                        type="button"
+                        className="underline text-primary"
+                        onClick={() => {
+                          downloadExtractionJob(h).catch((error) => {
+                            toast({
+                              title: "Download failed",
+                              description: error instanceof Error ? error.message : "Could not download extraction archive.",
+                              variant: "destructive",
+                            });
+                          });
+                        }}
+                      >
                         Download ZIP
-                      </a>
+                      </button>
                     )}
                   </div>
                 </div>
