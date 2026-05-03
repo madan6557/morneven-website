@@ -63,7 +63,9 @@ export interface ApiRequestOptions extends Omit<RequestInit, "body" | "method"> 
 
 export function getApiBaseUrl(): string {
   const configured = import.meta.env.VITE_API_BASE_URL as string | undefined;
-  return (configured || DEFAULT_BASE_URL).replace(/\/+$/, "");
+  const baseUrl = (configured || DEFAULT_BASE_URL).replace(/\/+$/, "");
+  if (/\/(api|v1)$/i.test(baseUrl)) return baseUrl;
+  return `${baseUrl}/api`;
 }
 
 export function isDemoFallbackEnabled(): boolean {

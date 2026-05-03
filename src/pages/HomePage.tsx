@@ -3,19 +3,11 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
-  getCharactersPage,
-  getContentStats,
-  getGalleryPage,
-  getNewsPage,
-  getPlacesPage,
-  getProjectsPage,
-  getTechnologyPage,
+  getCommandCenterSnapshot,
   type ContentStats,
 } from "@/services/api";
 import {
   getCommandCenterSettings,
-  getCommandCenterSettingsRemote,
-  type CommandCenterSection,
   type CommandCenterSettings,
 } from "@/services/commandCenterSettings";
 import type { Project, Character, NewsItem, GalleryItem, Place, Technology } from "@/types";
@@ -41,7 +33,6 @@ const fadeUp = (delay: number) => ({
   transition: { delay, duration: 0.4 },
 });
 
-const COMMAND_CENTER_SAFE_PAGE_SIZE = 24;
 const emptyStats: ContentStats = {
   totalProjects: 0,
   activeProjects: 0,
@@ -77,50 +68,32 @@ export default function HomePage() {
   useEffect(() => {
     let isActive = true;
 
-    const pageSizeFor = (section: CommandCenterSection) => {
-      const manual = settings.manualSelections[section] ?? [];
-      if (manual.length > 0) return manual.length;
-
-      const limit = settings.itemLimits[section] ?? 0;
-      return limit > 0 ? limit : COMMAND_CENTER_SAFE_PAGE_SIZE;
-    };
-
-    const idsFor = (section: CommandCenterSection) => {
-      const manual = settings.manualSelections[section] ?? [];
-      return manual.length > 0 ? manual : undefined;
-    };
-
-    void Promise.all([
-      getContentStats(),
-      settings.showProjects ? getProjectsPage({ page: 1, pageSize: pageSizeFor("projects"), ids: idsFor("projects") }) : Promise.resolve(null),
-      settings.showNews ? getNewsPage({ page: 1, pageSize: pageSizeFor("news"), ids: idsFor("news") }) : Promise.resolve(null),
-      settings.showCharacters ? getCharactersPage({ page: 1, pageSize: pageSizeFor("characters"), ids: idsFor("characters"), sort: idsFor("characters") ? undefined : "name" }) : Promise.resolve(null),
-      settings.showPlaces ? getPlacesPage({ page: 1, pageSize: pageSizeFor("places"), ids: idsFor("places"), sort: idsFor("places") ? undefined : "name" }) : Promise.resolve(null),
-      settings.showTechnology ? getTechnologyPage({ page: 1, pageSize: pageSizeFor("technology"), ids: idsFor("technology"), sort: idsFor("technology") ? undefined : "name" }) : Promise.resolve(null),
-      settings.showGallery ? getGalleryPage({ page: 1, pageSize: pageSizeFor("gallery"), ids: idsFor("gallery") }) : Promise.resolve(null),
-    ]).then(([nextStats, nextProjects, nextNews, nextCharacters, nextPlaces, nextTech, nextGallery]) => {
-      if (!isActive) return;
-
-      setStats(nextStats);
-      setProjects(nextProjects?.items ?? []);
-      setNews(nextNews?.items ?? []);
-      setCharacters(nextCharacters?.items ?? []);
-      setPlaces(nextPlaces?.items ?? []);
-      setTech(nextTech?.items ?? []);
-      setGallery(nextGallery?.items ?? []);
-    });
-
-    return () => {
-      isActive = false;
-    };
-  }, [settings]);
-
-  // Refresh settings when author saves them, or when tab regains focus
-  useEffect(() => {
     const refresh = () => {
-      setSettings(getCommandCenterSettings());
-      getCommandCenterSettingsRemote().then(setSettings).catch(() => undefined);
+      getCommandCenterSnapshot()
+        .then((snapshot) => {
+          if (!isActive) return;
+
+          setSettings(snapshot.settings);
+          setStats(snapshot.stats);
+          setProjects(snapshot.sections.projects);
+          setNews(snapshot.sections.news);
+          setCharacters(snapshot.sections.characters);
+          setPlaces(snapshot.sections.places);
+          setTech(snapshot.sections.technology);
+          setGallery(snapshot.sections.gallery);
+        })
+        .catch(() => {
+          if (!isActive) return;
+          setStats(emptyStats);
+          setProjects([]);
+          setNews([]);
+          setCharacters([]);
+          setPlaces([]);
+          setTech([]);
+          setGallery([]);
+        });
     };
+
     refresh();
     window.addEventListener("morneven:cc-settings-changed", refresh);
     window.addEventListener("focus", refresh);
@@ -129,6 +102,7 @@ export default function HomePage() {
       window.removeEventListener("morneven:cc-settings-changed", refresh);
       window.removeEventListener("focus", refresh);
       window.removeEventListener("storage", refresh);
+      isActive = false;
     };
   }, []);
 

@@ -9,3 +9,4 @@ export * from "@/services/newsApi";
 export * from "@/services/mapApi";
 export * from "@/services/pagination";
 export * from "@/services/contentStatsApi";
+export * from "@/services/commandCenterApi";

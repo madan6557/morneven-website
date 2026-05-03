@@ -2,7 +2,19 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiUpload, getProjectsPage, createProject, updateProject, deleteProject, getCharactersPage, createCharacter, updateCharacter, deleteCharacter, getPlacesPage, createPlace, updatePlace, deletePlace, getTechnologyPage, createTech, updateTech, deleteTech, getGalleryPage, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreaturesPage, createCreature, updateCreature, deleteCreature, getOthersPage, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImageRemote, setMapImageRemote, type PageInfo } from "@/services/api";
-import { getCommandCenterSettings, saveCommandCenterSettings, defaultSettings, type CommandCenterSettings } from "@/services/commandCenterSettings";
+import {
+  activateCommandCenterPreset,
+  deleteCommandCenterPreset,
+  getCommandCenterDefaults,
+  getCommandCenterPresets,
+  getCommandCenterSettings,
+  getCommandCenterSettingsRemote,
+  saveCommandCenterSettings,
+  saveCommandCenterSettingsRemote,
+  defaultSettings,
+  type CommandCenterPreset,
+  type CommandCenterSettings,
+} from "@/services/commandCenterSettings";
 import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel, LoreMeta, LoreFieldNote } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, File as FileIcon, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon } from "lucide-react";
 import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
@@ -286,6 +298,9 @@ export default function AuthorDashboard() {
   const [editing, setEditing] = useState<EditableState | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [ccSettings, setCcSettings] = useState<CommandCenterSettings>(() => getCommandCenterSettings());
+  const [ccPresets, setCcPresets] = useState<CommandCenterPreset[]>([]);
+  const [ccSettingsLoading, setCcSettingsLoading] = useState(false);
+  const [ccSettingsSaving, setCcSettingsSaving] = useState(false);
   const fullDescRef = useRef<HTMLTextAreaElement>(null);
   const editFormRef = useRef<HTMLDivElement>(null);
   // Key of the most-recently-added inline list item (doc/contribution/patch).
@@ -335,6 +350,133 @@ export default function AuthorDashboard() {
     void getMapImageRemote().then(setMapImageUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, personnelLevel, role, track]);
+
+  useEffect(() => {
+    if (activeTab !== "homepage" || !canAccess("homepage")) return;
+    let isActive = true;
+
+    setCcSettingsLoading(true);
+    void Promise.all([
+      getCommandCenterSettingsRemote(),
+      getCommandCenterPresets(),
+    ])
+      .then(([settings, presets]) => {
+        if (!isActive) return;
+        setCcSettings(settings);
+        setCcPresets(presets);
+      })
+      .catch(() => {
+        if (!isActive) return;
+        toast({
+          title: "Command Center unavailable",
+          description: "Could not load global presets from backend.",
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        if (isActive) setCcSettingsLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, personnelLevel, role, track]);
+
+  const refreshCommandCenterPresets = async () => {
+    setCcPresets(await getCommandCenterPresets());
+  };
+
+  const saveGlobalCommandCenterSettings = async () => {
+    setCcSettingsSaving(true);
+    try {
+      const saved = await saveCommandCenterSettingsRemote(ccSettings);
+      setCcSettings(saved);
+      await refreshCommandCenterPresets();
+      toast({
+        title: "Command Center saved",
+        description: "Active global preset has been updated.",
+      });
+    } catch {
+      toast({
+        title: "Save failed",
+        description: "Backend rejected the Command Center settings update.",
+        variant: "destructive",
+      });
+    } finally {
+      setCcSettingsSaving(false);
+    }
+  };
+
+  const resetGlobalCommandCenterSettings = async () => {
+    setCcSettingsSaving(true);
+    try {
+      const defaults = await getCommandCenterDefaults();
+      const saved = await saveCommandCenterSettingsRemote(defaults);
+      setCcSettings(saved);
+      await refreshCommandCenterPresets();
+      toast({
+        title: "Command Center reset",
+        description: "Active global preset now uses backend defaults.",
+      });
+    } catch {
+      const fallback = { ...defaultSettings };
+      setCcSettings(fallback);
+      saveCommandCenterSettings(fallback);
+      toast({
+        title: "Reset saved locally",
+        description: "Backend defaults were unavailable, so local demo settings were reset.",
+        variant: "destructive",
+      });
+    } finally {
+      setCcSettingsSaving(false);
+    }
+  };
+
+  const activatePreset = async (id: string) => {
+    setCcSettingsSaving(true);
+    try {
+      await activateCommandCenterPreset(id);
+      const [settings, presets] = await Promise.all([
+        getCommandCenterSettingsRemote(),
+        getCommandCenterPresets(),
+      ]);
+      setCcSettings(settings);
+      setCcPresets(presets);
+      toast({
+        title: "Preset activated",
+        description: "Command Center now uses the selected global preset.",
+      });
+    } catch {
+      toast({
+        title: "Activation failed",
+        description: "Backend could not activate this preset.",
+        variant: "destructive",
+      });
+    } finally {
+      setCcSettingsSaving(false);
+    }
+  };
+
+  const removePreset = async (id: string) => {
+    setCcSettingsSaving(true);
+    try {
+      await deleteCommandCenterPreset(id);
+      await refreshCommandCenterPresets();
+      toast({
+        title: "Preset deleted",
+        description: "The inactive preset was removed.",
+      });
+    } catch {
+      toast({
+        title: "Delete failed",
+        description: "Active presets cannot be deleted. Activate another preset first.",
+        variant: "destructive",
+      });
+    } finally {
+      setCcSettingsSaving(false);
+    }
+  };
 
   useEffect(() => {
     const tab = params.get("tab");
@@ -856,13 +998,66 @@ export default function AuthorDashboard() {
               <LayoutDashboard className="h-4 w-4" /> Command Center Settings
             </h3>
             <button
-              onClick={() => { setCcSettings({ ...defaultSettings }); saveCommandCenterSettings({ ...defaultSettings }); }}
+              onClick={resetGlobalCommandCenterSettings}
+              disabled={ccSettingsSaving}
               className="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-1.5 text-[10px] font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors"
             >
               <RotateCcw className="h-3 w-3" /> RESET DEFAULTS
             </button>
           </div>
           <div className="mecha-line" />
+
+          <div className="rounded-sm border border-border bg-background/50 p-3 space-y-3">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className={labelClass}>Global System Presets</p>
+                <p className="text-[11px] font-body text-muted-foreground italic">
+                  Active preset is shared across all personnel Home screens.
+                </p>
+              </div>
+              {ccSettingsLoading && (
+                <span className="text-[10px] font-display tracking-wider uppercase text-muted-foreground">Loading</span>
+              )}
+            </div>
+            {ccPresets.length === 0 ? (
+              <p className="text-xs font-body text-muted-foreground">No backend presets returned.</p>
+            ) : (
+              <div className="grid gap-2 md:grid-cols-2">
+                {ccPresets.map((preset) => (
+                  <div key={preset.id} className="flex items-center justify-between gap-3 rounded-sm border border-border bg-card p-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-heading uppercase tracking-wider text-foreground">{preset.presetName}</p>
+                      <p className="truncate text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+                        {preset.presetKey}{preset.isActive ? " | Active" : ""}
+                      </p>
+                    </div>
+                    <div className="flex flex-shrink-0 items-center gap-1">
+                      {!preset.isActive && (
+                        <button
+                          type="button"
+                          onClick={() => activatePreset(preset.id)}
+                          disabled={ccSettingsSaving}
+                          className="px-2 py-1 text-[10px] font-display tracking-wider text-primary hover:bg-primary/10 rounded-sm"
+                        >
+                          ACTIVATE
+                        </button>
+                      )}
+                      {!preset.isActive && (
+                        <button
+                          type="button"
+                          onClick={() => removePreset(preset.id)}
+                          disabled={ccSettingsSaving}
+                          className="px-2 py-1 text-[10px] font-display tracking-wider text-destructive hover:bg-destructive/10 rounded-sm"
+                        >
+                          DELETE
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div>
             <label className={labelClass}>Welcome Message</label>
@@ -909,10 +1104,11 @@ export default function AuthorDashboard() {
 
           <div className="flex justify-end">
             <button
-              onClick={() => { saveCommandCenterSettings(ccSettings); }}
+              onClick={saveGlobalCommandCenterSettings}
+              disabled={ccSettingsSaving}
               className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity"
             >
-              <Save className="h-3 w-3" /> SAVE SETTINGS
+              <Save className="h-3 w-3" /> {ccSettingsSaving ? "SAVING" : "SAVE SETTINGS"}
             </button>
           </div>
         </div>
