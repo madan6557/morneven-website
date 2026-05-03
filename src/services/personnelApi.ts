@@ -53,6 +53,22 @@ export async function listPersonnel(): Promise<PersonnelUser[]> {
   );
 }
 
+export async function lookupPersonnelByUsernames(usernames: string[]): Promise<PersonnelUser[]> {
+  const unique = [...new Set(usernames.map((name) => name.trim()).filter(Boolean))];
+  if (unique.length === 0) return [];
+
+  return withDemoFallback(
+    async () => unwrapPageItems(await apiRequest<PersonnelUser[] | BackendPage<PersonnelUser>>(
+      `/personnel/lookup?usernames=${encodeURIComponent(unique.join(","))}`,
+    )),
+    async () => {
+      await delay();
+      const wanted = new Set(unique);
+      return personnel.filter((person) => wanted.has(person.username));
+    },
+  );
+}
+
 export async function getPersonnel(id: string): Promise<PersonnelUser | undefined> {
   return withDemoFallback(
     () => apiRequest<PersonnelUser>(`/personnel/${id}`),

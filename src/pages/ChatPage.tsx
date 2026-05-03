@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { listPersonnel } from "@/services/personnelApi";
+import { listPersonnel, lookupPersonnelByUsernames } from "@/services/personnelApi";
 import { pushNotification } from "@/services/notificationsApi";
 import {
   listConversationsFor,
@@ -74,6 +74,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -84,6 +85,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { PERSONNEL_TRACKS } from "@/lib/pl";
+import type { PersonnelTrack } from "@/lib/pl";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB demo cap
 function fileToAttachment(file: File): Promise<ChatAttachment> {
@@ -164,14 +166,24 @@ function trackShort(track?: PersonnelUser["track"]) {
   return PERSONNEL_TRACKS.find((item) => item.key === track)?.short ?? track.toUpperCase();
 }
 
-function messageThemeFor(person?: PersonnelUser) {
+function messageThemeFor(person?: ChatAuthorMeta) {
   const level = person?.level ?? 0;
   return MESSAGE_THEME_BY_LEVEL[level] ?? MESSAGE_THEME_BY_LEVEL[0];
 }
 
-function messageBadgeThemeFor(person?: PersonnelUser) {
+function messageBadgeThemeFor(person?: ChatAuthorMeta) {
   const level = person?.level ?? 0;
   return MESSAGE_ACCENT_BY_LEVEL[level] ?? MESSAGE_ACCENT_BY_LEVEL[0];
+}
+
+type ChatAuthorMeta = Pick<PersonnelUser, "username" | "level" | "track" | "note">;
+
+function fallbackAuthorMeta(author: string): ChatAuthorMeta {
+  const normalized = author.toLowerCase();
+  if (normalized === "author" || normalized === "admin") {
+    return { username: author, level: 7, track: "executive" };
+  }
+  return { username: author, level: 0, track: "executive" };
 }
 
 export default function ChatPage() {
@@ -192,6 +204,7 @@ export default function ChatPage() {
   const [dmTarget, setDmTarget] = useState("");
   const [inviteSelection, setInviteSelection] = useState<string[]>([]);
   const [renameValue, setRenameValue] = useState("");
+  const [profileUser, setProfileUser] = useState<ChatAuthorMeta | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const conversationScrollRootRef = useRef<HTMLDivElement>(null);
@@ -258,6 +271,24 @@ export default function ChatPage() {
       reconcileAutoMemberships(roster);
     });
   }, []);
+
+  useEffect(() => {
+    const usernames = [
+      ...convs.flatMap((conversation) => conversation.members.map((member) => member.username)),
+      ...messages.map((message) => message.author),
+    ];
+    if (usernames.length === 0) return;
+    lookupPersonnelByUsernames(usernames)
+      .then((items) => {
+        if (items.length === 0) return;
+        setPersonnel((current) => {
+          const map = new Map(current.map((item) => [item.username, item]));
+          items.forEach((item) => map.set(item.username, item));
+          return [...map.values()];
+        });
+      })
+      .catch(() => undefined);
+  }, [convs, messages]);
 
   const refresh = () => {
     if (!isAuthenticated) return;
@@ -392,6 +423,31 @@ export default function ChatPage() {
     () => new Map(personnel.map((person) => [person.username, person])),
     [personnel],
   );
+  const getAuthorMeta = (author: string): ChatAuthorMeta => {
+    const fromPersonnel = personnelByUsername.get(author);
+    if (fromPersonnel) return fromPersonnel;
+
+    if (author === username) {
+      return { username, level: personnelLevel, track };
+    }
+
+    const fromConversation = activeConv?.members.find((member) => member.username === author) as
+      | (Conversation["members"][number] & { level?: number; personnelLevel?: number; track?: PersonnelTrack })
+      | undefined;
+    if (fromConversation) {
+      const level = fromConversation.level ?? fromConversation.personnelLevel;
+      if (typeof level === "number" && fromConversation.track) {
+        return {
+          username: author,
+          level: Math.max(0, Math.min(7, level)) as ChatAuthorMeta["level"],
+          track: fromConversation.track,
+        };
+      }
+    }
+
+    return fallbackAuthorMeta(author);
+  };
+  const openAuthorProfile = (author: string) => setProfileUser(getAuthorMeta(author));
 
   // Demo helper: for institute channel, pre-mark roughly half history as read
   // on first open so unread auto-scroll behavior is easy to verify.
@@ -697,12 +753,9 @@ export default function ChatPage() {
                     const mine = m.author === username;
                     const canDelete = mine || iCanManage;
                     const isHighlighted = highlightId === m.id;
-                    const authorPersonnel = personnelByUsername.get(m.author);
-                    const authorLevel =
-                      authorPersonnel?.level ?? (mine ? personnelLevel : null);
-                    const authorTrack = trackShort(
-                      authorPersonnel?.track ?? (mine ? track : undefined),
-                    );
+                    const authorPersonnel = getAuthorMeta(m.author);
+                    const authorLevel = authorPersonnel.level;
+                    const authorTrack = trackShort(authorPersonnel.track);
                     const bubbleTheme = messageThemeFor(authorPersonnel);
                     const badgeTheme = messageBadgeThemeFor(authorPersonnel);
                     const messageIsUnread =
@@ -721,7 +774,13 @@ export default function ChatPage() {
                         >
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <div className="flex min-w-0 flex-wrap items-center gap-1">
-                              <p className="font-heading text-[10px] leading-4 tracking-wider text-foreground">{m.author}</p>
+                              <button
+                                type="button"
+                                onClick={() => openAuthorProfile(m.author)}
+                                className="font-heading text-[10px] leading-4 tracking-wider text-foreground hover:text-primary"
+                              >
+                                {m.author}
+                              </button>
                               {authorLevel !== null && authorLevel !== undefined && (
                                 <span className={`rounded-sm border px-1 py-0 text-[8px] leading-4 font-display tracking-wider ${badgeTheme}`}>
                                   PL{authorLevel}
@@ -1176,6 +1235,40 @@ export default function ChatPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!profileUser} onOpenChange={(open) => { if (!open) setProfileUser(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display tracking-wider">USER INFO</DialogTitle>
+            <DialogDescription>Public personnel metadata for chat identity.</DialogDescription>
+          </DialogHeader>
+          {profileUser && (
+            <div className="space-y-3 text-sm">
+              <InfoRow label="Username" value={profileUser.username} />
+              <InfoRow label="PL" value={`PL${profileUser.level}`} />
+              <InfoRow
+                label="Track"
+                value={`${trackShort(profileUser.track)} - ${PERSONNEL_TRACKS.find((item) => item.key === profileUser.track)?.label ?? profileUser.track}`}
+              />
+              <div className="space-y-1">
+                <p className="font-heading text-[10px] uppercase tracking-wider text-muted-foreground">Note</p>
+                <p className="rounded-sm border border-border bg-background/60 p-2 text-sm text-foreground">
+                  {profileUser.note || "No public note."}
+                </p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="font-heading text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="text-right text-sm text-foreground">{value}</span>
     </div>
   );
 }
