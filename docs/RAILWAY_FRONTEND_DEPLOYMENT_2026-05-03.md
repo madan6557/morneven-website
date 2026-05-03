@@ -12,7 +12,21 @@ Railway provides the runtime port through `PORT`. The included `server.mjs` read
 ## Files Added
 
 - `railway.json`
+- `nixpacks.toml`
+- `.node-version`
+- `.nvmrc`
 - `server.mjs`
+
+## Runtime Version
+
+Railway Nixpacks must use Node 20 or newer. Node 18 has reached end of life and may fail during the Railway build image generation.
+
+This repo pins Node through:
+
+- `package.json` engines
+- `.node-version`
+- `.nvmrc`
+- `nixpacks.toml`
 
 ## Railway Settings
 
@@ -21,7 +35,7 @@ Use these settings if Railway does not auto-detect from `railway.json`:
 Build command:
 
 ```bash
-npm ci && npm run build
+npm run build
 ```
 
 Start command:
@@ -50,6 +64,12 @@ Set this in Railway Variables:
 
 ```text
 VITE_API_BASE_URL=https://backend.dev.morneven.com
+```
+
+If Railway still tries Node 18, add this Railway variable manually:
+
+```text
+NODE_VERSION=20
 ```
 
 The FE client accepts either:
@@ -82,4 +102,3 @@ against the backend domain.
 
 4. Refresh a nested route such as `/home` or `/projects`.
 5. Confirm the page loads instead of returning 404.
-
