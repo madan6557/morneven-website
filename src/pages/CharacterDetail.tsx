@@ -10,6 +10,7 @@ import {
   editCharacterDiscussionReply,
   deleteCharacterDiscussionReply,
 } from "@/services/api";
+import { getProxyUrl } from "@/services/fileProxyService";
 import type { Character, DiscussionComment, DiscussionMention, LoreFieldNote } from "@/types";
 import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
