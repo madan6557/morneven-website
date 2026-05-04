@@ -481,6 +481,91 @@ export default function AuthorDashboard() {
     }
   };
 
+  const slugifyPresetKey = (name: string) =>
+    name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 48) || `preset-${Date.now().toString(36)}`;
+
+  const promptCreatePreset = () => {
+    showValidation({
+      variant: "info",
+      title: "Save current settings as preset",
+      description: "Captures the unsaved Command Center configuration above as a new preset.",
+      confirmLabel: "Name it",
+      cancelLabel: "Cancel",
+      onConfirm: () => {
+        const name = window.prompt("Preset name", "New preset")?.trim();
+        if (!name) return;
+        void createPresetFromCurrent(name);
+      },
+    });
+  };
+
+  const createPresetFromCurrent = async (name: string) => {
+    setCcSettingsSaving(true);
+    try {
+      const existingKeys = new Set(ccPresets.map((p) => p.presetKey));
+      let key = slugifyPresetKey(name);
+      let n = 2;
+      while (existingKeys.has(key)) {
+        key = `${slugifyPresetKey(name)}-${n++}`;
+      }
+      await createCommandCenterPreset({ presetKey: key, presetName: name, settings: ccSettings });
+      await refreshCommandCenterPresets();
+      toast({ title: "Preset saved", description: `"${name}" added to global presets.` });
+    } catch {
+      toast({
+        title: "Create failed",
+        description: "Backend rejected the new preset.",
+        variant: "destructive",
+      });
+    } finally {
+      setCcSettingsSaving(false);
+    }
+  };
+
+  const renamePreset = (preset: CommandCenterPreset) => {
+    const name = window.prompt("Rename preset", preset.presetName)?.trim();
+    if (!name || name === preset.presetName) return;
+    void (async () => {
+      setCcSettingsSaving(true);
+      try {
+        await updateCommandCenterPreset(preset.id, { presetName: name });
+        await refreshCommandCenterPresets();
+        toast({ title: "Preset renamed", description: `Now called "${name}".` });
+      } catch {
+        toast({ title: "Rename failed", variant: "destructive", description: "Backend rejected the update." });
+      } finally {
+        setCcSettingsSaving(false);
+      }
+    })();
+  };
+
+  const overwritePresetWithCurrent = (preset: CommandCenterPreset) => {
+    showValidation({
+      variant: "warning",
+      title: `Overwrite "${preset.presetName}"?`,
+      description: "Replaces the saved preset configuration with the current Command Center settings.",
+      confirmLabel: "Overwrite",
+      cancelLabel: "Cancel",
+      onConfirm: async () => {
+        setCcSettingsSaving(true);
+        try {
+          await updateCommandCenterPreset(preset.id, { settings: ccSettings });
+          await refreshCommandCenterPresets();
+          toast({ title: "Preset updated", description: `"${preset.presetName}" now matches current settings.` });
+        } catch {
+          toast({ title: "Update failed", variant: "destructive", description: "Backend rejected the update." });
+        } finally {
+          setCcSettingsSaving(false);
+        }
+      },
+    });
+  };
+
   useEffect(() => {
     const tab = params.get("tab");
     if (isDashboardTab(tab)) {
