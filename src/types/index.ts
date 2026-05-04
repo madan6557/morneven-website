@@ -119,6 +119,14 @@ export type CreatureClassification = "Amorphous" | "Crystalline" | "Metamorphic"
 // Gemora danger level scale 1-5 (5 = world-ending)
 export type CreatureDangerLevel = 1 | 2 | 3 | 4 | 5;
 
+export interface CreatureStats {
+  combat: number;
+  intelligence: number;
+  stealth: number;
+  ferocity: number;
+  endurance: number;
+}
+
 export interface Creature {
   id: string;
   name: string;
@@ -129,6 +137,7 @@ export interface Creature {
   accentColor: string;
   shortDesc: string;
   fullDesc: string;
+  stats?: CreatureStats;
   docs: DocItem[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];

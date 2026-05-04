@@ -10,6 +10,7 @@ import {
   editCharacterDiscussionReply,
   deleteCharacterDiscussionReply,
 } from "@/services/api";
+import { getProxyUrl } from "@/services/fileProxyService";
 import type { Character, DiscussionComment, DiscussionMention, LoreFieldNote } from "@/types";
 import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
@@ -170,7 +171,19 @@ export default function CharacterDetail() {
           <div className="space-y-6">
             {/* Stats bars */}
             <div className="hud-border bg-card p-5 space-y-4" style={{ borderColor: `${accentColor}30` }}>
-              <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accentColor }}>Combat Stats</h3>
+              <div className="flex items-baseline justify-between">
+                <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accentColor }}>Combat Stats</h3>
+                {(() => {
+                  const values = Object.values(char.stats);
+                  const overall = values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
+                  return (
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Overall</span>
+                      <span className="font-display text-lg leading-none" style={{ color: accentColor }}>{overall}</span>
+                    </div>
+                  );
+                })()}
+              </div>
               <div className="space-y-3">
                 {Object.entries(char.stats).map(([key, value]) => (
                   <div key={key} className="space-y-1">

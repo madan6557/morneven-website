@@ -87,7 +87,14 @@
         "body": "Observed behavior aligns with current doctrine; no escalation required beyond standing protocols.",
         "date": "2026-04-26"
       }
-    ]
+    ],
+    "stats": {
+      "combat": 90,
+      "intelligence": 62,
+      "stealth": 61,
+      "ferocity": 98,
+      "endurance": 78
+    }
   },
   {
     "id": "crea-002",
@@ -98,7 +105,7 @@
     "thumbnail": "",
     "accentColor": "#A855F7",
     "shortDesc": "A swarm-mind entity that mimics human voices to draw survivors deeper into collapsed Jewerlian shrines.",
-    "fullDesc": "The Hollow Choir is not a single creature but a colonial intelligence formed when Jewerlian vocal-print fragments bonded to mutated locust biomass during the Final Resonance. Field recordings describe choirs of stolen voices - children, partners, fallen comrades - emanating from sealed substructures.\n\nThe Choir shifts vocal frequency the moment a counter-signal is broadcast, defeating most acoustic countermeasures. Doctrine therefore mandates High-Intensity Suppression: incendiary saturation before the swarm completes its adaptive cycle. All encounters are designated Code Black.\n\n[L3+]Identified Fracture Point: the colonial nucleus collapses when exposed to a sustained 14.7 kHz Jewerlian counter-resonance for ≥ 9 seconds, provided the broadcast originates from at least three spatially separated emitters. Field teams holding L3+ clearance may requisition the MK-VII triad rig from Armory West. Any attempt below the three-emitter threshold has resulted in 100% operative loss in past trials (see incident dossiers HC-04 through HC-09).[/L3+]",
+    "fullDesc": "The Hollow Choir is not a single creature but a colonial intelligence formed when Jewerlian vocal-print fragments bonded to mutated locust biomass during the Final Resonance. Field recordings describe choirs of stolen voices - children, partners, fallen comrades - emanating from sealed substructures.\n\nThe Choir shifts vocal frequency the moment a counter-signal is broadcast, defeating most acoustic countermeasures. Doctrine therefore mandates High-Intensity Suppression: incendiary saturation before the swarm completes its adaptive cycle. All encounters are designated Code Black.\n\n[L3+]Identified Fracture Point: the colonial nucleus collapses when exposed to a sustained 14.7 kHz Jewerlian counter-resonance for \u2265 9 seconds, provided the broadcast originates from at least three spatially separated emitters. Field teams holding L3+ clearance may requisition the MK-VII triad rig from Armory West. Any attempt below the three-emitter threshold has resulted in 100% operative loss in past trials (see incident dossiers HC-04 through HC-09).[/L3+]",
     "docs": [],
     "meta": {
       "creator": "Dr. Vey",
@@ -147,7 +154,14 @@
         "body": "Observed behavior aligns with current doctrine; no escalation required beyond standing protocols.",
         "date": "2026-04-26"
       }
-    ]
+    ],
+    "stats": {
+      "combat": 87,
+      "intelligence": 79,
+      "stealth": 78,
+      "ferocity": 99,
+      "endurance": 83
+    }
   },
   {
     "id": "crea-003",
@@ -207,7 +221,14 @@
         "body": "Observed behavior aligns with current doctrine; no escalation required beyond standing protocols.",
         "date": "2026-04-26"
       }
-    ]
+    ],
+    "stats": {
+      "combat": 61,
+      "intelligence": 59,
+      "stealth": 35,
+      "ferocity": 63,
+      "endurance": 53
+    }
   },
   {
     "id": "crea-004",
@@ -267,7 +288,14 @@
         "body": "Observed behavior aligns with current doctrine; no escalation required beyond standing protocols.",
         "date": "2026-04-26"
       }
-    ]
+    ],
+    "stats": {
+      "combat": 51,
+      "intelligence": 36,
+      "stealth": 45,
+      "ferocity": 61,
+      "endurance": 57
+    }
   },
   {
     "id": "crea-005",
@@ -327,7 +355,14 @@
         "body": "Observed behavior aligns with current doctrine; no escalation required beyond standing protocols.",
         "date": "2026-04-26"
       }
-    ]
+    ],
+    "stats": {
+      "combat": 96,
+      "intelligence": 66,
+      "stealth": 105,
+      "ferocity": 91,
+      "endurance": 99
+    }
   },
   {
     "id": "crea-006",
@@ -387,7 +422,14 @@
         "body": "Observed behavior aligns with current doctrine; no escalation required beyond standing protocols.",
         "date": "2026-04-26"
       }
-    ]
+    ],
+    "stats": {
+      "combat": 60,
+      "intelligence": 59,
+      "stealth": 56,
+      "ferocity": 52,
+      "endurance": 54
+    }
   },
   {
     "id": "crea-007",
@@ -447,7 +489,14 @@
         "body": "Observed behavior aligns with current doctrine; no escalation required beyond standing protocols.",
         "date": "2026-04-26"
       }
-    ]
+    ],
+    "stats": {
+      "combat": 98,
+      "intelligence": 82,
+      "stealth": 70,
+      "ferocity": 99,
+      "endurance": 99
+    }
   },
   {
     "id": "crea-008",
@@ -507,7 +556,14 @@
         "body": "Observed behavior aligns with current doctrine; no escalation required beyond standing protocols.",
         "date": "2026-04-26"
       }
-    ]
+    ],
+    "stats": {
+      "combat": 65,
+      "intelligence": 72,
+      "stealth": 71,
+      "ferocity": 73,
+      "endurance": 64
+    }
   },
   {
     "id": "crea-009",
@@ -567,7 +623,14 @@
         "body": "Observed behavior aligns with current doctrine; no escalation required beyond standing protocols.",
         "date": "2026-04-26"
       }
-    ]
+    ],
+    "stats": {
+      "combat": 56,
+      "intelligence": 56,
+      "stealth": 46,
+      "ferocity": 57,
+      "endurance": 62
+    }
   },
   {
     "id": "crea-010",
@@ -627,6 +690,13 @@
         "body": "Observed behavior aligns with current doctrine; no escalation required beyond standing protocols.",
         "date": "2026-04-26"
       }
-    ]
+    ],
+    "stats": {
+      "combat": 63,
+      "intelligence": 67,
+      "stealth": 72,
+      "ferocity": 84,
+      "endurance": 68
+    }
   }
 ]
