@@ -1088,140 +1088,235 @@ export default function AuthorDashboard() {
 
       {/* Command Center settings panel */}
       {activeTab === "homepage" && canAccess("homepage") && (
-        <div className="hud-border bg-card p-4 md:p-6 space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase flex items-center gap-2">
-              <LayoutDashboard className="h-4 w-4" /> Command Center Settings
-            </h3>
-            <button
-              onClick={() => showValidation({
-                variant: "warning",
-                title: "Reset global Command Center",
-                description: "This will overwrite the active global preset for all personnel.",
-                confirmLabel: "Reset defaults",
-                cancelLabel: "Cancel",
-                critical: true,
-                confirmDelaySeconds: 5,
-                onConfirm: resetGlobalCommandCenterSettings,
-              })}
-              disabled={ccSettingsSaving}
-              className="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-1.5 text-[10px] font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors"
-            >
-              <RotateCcw className="h-3 w-3" /> RESET DEFAULTS
-            </button>
+        <div className="hud-border bg-card p-4 md:p-6 space-y-6">
+          {/* Header */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1">
+              <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase flex items-center gap-2">
+                <LayoutDashboard className="h-4 w-4" /> Command Center Settings
+              </h3>
+              <p className="text-[11px] font-body text-muted-foreground italic">
+                Configure the global Home screen shared by all personnel.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={saveGlobalCommandCenterSettings}
+                disabled={ccSettingsSaving}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                title="Save changes to the active preset"
+              >
+                <Save className="h-3 w-3" /> {ccSettingsSaving ? "SAVING" : "SAVE ACTIVE"}
+              </button>
+              <button
+                onClick={promptCreatePreset}
+                disabled={ccSettingsSaving}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-display tracking-wider border border-primary/40 text-primary rounded-sm hover:bg-primary/10 transition-colors disabled:opacity-50"
+                title="Save current configuration as a new preset"
+              >
+                <FilePlus className="h-3 w-3" /> SAVE AS NEW
+              </button>
+              <button
+                onClick={() => showValidation({
+                  variant: "warning",
+                  title: "Reset global Command Center",
+                  description: "This will overwrite the active global preset for all personnel.",
+                  confirmLabel: "Reset defaults",
+                  cancelLabel: "Cancel",
+                  critical: true,
+                  confirmDelaySeconds: 5,
+                  onConfirm: resetGlobalCommandCenterSettings,
+                })}
+                disabled={ccSettingsSaving}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                <RotateCcw className="h-3 w-3" /> RESET
+              </button>
+            </div>
           </div>
-          <div className="mecha-line" />
 
-          <div className="rounded-sm border border-border bg-background/50 p-3 space-y-3">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className={labelClass}>Global System Presets</p>
+          {/* Preset Library */}
+          <div className="rounded-sm border border-border bg-background/40 p-3 md:p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <p className={labelClass}>Preset Library</p>
+                <span className="text-[10px] font-display tracking-wider px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground">
+                  {ccPresets.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => void refreshCommandCenterPresets()}
+                disabled={ccSettingsLoading || ccSettingsSaving}
+                className="inline-flex items-center gap-1 text-[10px] font-display tracking-wider text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3 w-3 ${ccSettingsLoading ? "animate-spin" : ""}`} /> REFRESH
+              </button>
+            </div>
+
+            {ccPresets.length === 0 ? (
+              <div className="rounded-sm border border-dashed border-border bg-card/40 p-6 text-center space-y-2">
+                <p className="text-xs font-heading tracking-wider uppercase text-muted-foreground">No presets yet</p>
                 <p className="text-[11px] font-body text-muted-foreground italic">
-                  Active preset is shared across all personnel Home screens.
+                  Configure the settings below, then click <span className="text-foreground">Save as New</span> to create one.
                 </p>
               </div>
-              {ccSettingsLoading && (
-                <span className="text-[10px] font-display tracking-wider uppercase text-muted-foreground">Loading</span>
-              )}
-            </div>
-            {ccPresets.length === 0 ? (
-              <p className="text-xs font-body text-muted-foreground">No backend presets returned.</p>
             ) : (
               <div className="grid gap-2 md:grid-cols-2">
-                {ccPresets.map((preset) => (
-                  <div key={preset.id} className="flex items-center justify-between gap-3 rounded-sm border border-border bg-card p-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-heading uppercase tracking-wider text-foreground">{preset.presetName}</p>
-                      <p className="truncate text-[10px] font-display uppercase tracking-wider text-muted-foreground">
-                        {preset.presetKey}{preset.isActive ? " | Active" : ""}
-                      </p>
-                    </div>
-                    <div className="flex flex-shrink-0 items-center gap-1">
-                      {!preset.isActive && (
+                {[...ccPresets]
+                  .sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.presetName.localeCompare(b.presetName))
+                  .map((preset) => (
+                    <div
+                      key={preset.id}
+                      className={`group relative rounded-sm border p-3 transition-colors ${
+                        preset.isActive
+                          ? "border-primary/60 bg-primary/5"
+                          : "border-border bg-card hover:border-border/80 hover:bg-card/80"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            {preset.isActive ? (
+                              <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
+                            ) : (
+                              <Star className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground/60" />
+                            )}
+                            <p className="truncate text-sm font-heading uppercase tracking-wider text-foreground">
+                              {preset.presetName}
+                            </p>
+                          </div>
+                          <p className="truncate text-[10px] font-mono text-muted-foreground/80">
+                            {preset.presetKey}
+                          </p>
+                          {preset.isActive && (
+                            <span className="inline-block text-[9px] font-display tracking-wider uppercase px-1.5 py-0.5 rounded-sm bg-primary/15 text-primary">
+                              Active · Live for all
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-border/50 pt-2">
+                        {!preset.isActive && (
+                          <button
+                            type="button"
+                            onClick={() => activatePreset(preset.id)}
+                            disabled={ccSettingsSaving}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary hover:bg-primary/10 rounded-sm disabled:opacity-50"
+                          >
+                            <CheckCircle2 className="h-3 w-3" /> ACTIVATE
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => activatePreset(preset.id)}
+                          onClick={() => overwritePresetWithCurrent(preset)}
                           disabled={ccSettingsSaving}
-                          className="px-2 py-1 text-[10px] font-display tracking-wider text-primary hover:bg-primary/10 rounded-sm"
+                          className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-sm disabled:opacity-50"
+                          title="Overwrite this preset with current settings"
                         >
-                          ACTIVATE
+                          <Save className="h-3 w-3" /> OVERWRITE
                         </button>
-                      )}
-                      {!preset.isActive && (
                         <button
                           type="button"
-                          onClick={() => showValidation({
-                            variant: "warning",
-                            title: "Delete preset",
-                            description: `Delete inactive preset "${preset.presetName}"?`,
-                            confirmLabel: "Delete",
-                            cancelLabel: "Cancel",
-                            dontShowAgainKey: "delete_command_center_preset",
-                            onConfirm: () => removePreset(preset.id),
-                          })}
+                          onClick={() => renamePreset(preset)}
                           disabled={ccSettingsSaving}
-                          className="px-2 py-1 text-[10px] font-display tracking-wider text-destructive hover:bg-destructive/10 rounded-sm"
+                          className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-sm disabled:opacity-50"
                         >
-                          DELETE
+                          <Pencil className="h-3 w-3" /> RENAME
                         </button>
-                      )}
+                        {!preset.isActive && (
+                          <button
+                            type="button"
+                            onClick={() => showValidation({
+                              variant: "warning",
+                              title: "Delete preset",
+                              description: `Delete inactive preset "${preset.presetName}"?`,
+                              confirmLabel: "Delete",
+                              cancelLabel: "Cancel",
+                              dontShowAgainKey: "delete_command_center_preset",
+                              onConfirm: () => removePreset(preset.id),
+                            })}
+                            disabled={ccSettingsSaving}
+                            className="ml-auto inline-flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-destructive hover:bg-destructive/10 rounded-sm disabled:opacity-50"
+                          >
+                            <Trash2 className="h-3 w-3" /> DELETE
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>
 
-          <div>
-            <label className={labelClass}>Welcome Message</label>
-            <input
-              type="text"
-              value={ccSettings.welcomeMessage}
-              onChange={(e) => setCcSettings({ ...ccSettings, welcomeMessage: e.target.value })}
-              className={inputClass}
-              placeholder="Here's your operational overview."
+          <div className="mecha-line" />
+
+          {/* Configuration */}
+          <div className="space-y-5">
+            <p className="text-[10px] font-display tracking-wider uppercase text-muted-foreground">
+              Configuration · edits apply to the active preset on save
+            </p>
+
+            <div>
+              <label className={labelClass}>Welcome Message</label>
+              <input
+                type="text"
+                value={ccSettings.welcomeMessage}
+                onChange={(e) => setCcSettings({ ...ccSettings, welcomeMessage: e.target.value })}
+                className={inputClass}
+                placeholder="Here's your operational overview."
+              />
+            </div>
+
+            <div>
+              <p className={labelClass + " mb-2"}>Visible Sections</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {([
+                  ["showStats", "Stat Cards"],
+                  ["showProjects", "Project Status"],
+                  ["showNews", "News Feed"],
+                  ["showCharacters", "Key Personnel"],
+                  ["showPlaces", "Key Locations"],
+                  ["showTechnology", "Technology"],
+                  ["showGallery", "Recent Gallery"],
+                  ["showQuickActions", "Quick Navigation"],
+                ] as const).map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-2 p-2 rounded-sm bg-background/50 border border-border cursor-pointer hover:bg-background transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={ccSettings[key]}
+                      onChange={(e) => setCcSettings({ ...ccSettings, [key]: e.target.checked })}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span className="text-sm font-body text-foreground">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="mecha-line" />
+            <CommandCenterSelectionPanel
+              settings={ccSettings}
+              onChange={(next) => setCcSettings(next)}
             />
           </div>
 
-          <div>
-            <p className={labelClass + " mb-2"}>Visible Sections</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {([
-                ["showStats", "Stat Cards"],
-                ["showProjects", "Project Status"],
-                ["showNews", "News Feed"],
-                ["showCharacters", "Key Personnel"],
-                ["showPlaces", "Key Locations"],
-                ["showTechnology", "Technology"],
-                ["showGallery", "Recent Gallery"],
-                ["showQuickActions", "Quick Navigation"],
-              ] as const).map(([key, label]) => (
-                <label key={key} className="flex items-center gap-2 p-2 rounded-sm bg-background/50 border border-border cursor-pointer hover:bg-background transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={ccSettings[key]}
-                    onChange={(e) => setCcSettings({ ...ccSettings, [key]: e.target.checked })}
-                    className="h-4 w-4 accent-primary"
-                  />
-                  <span className="text-sm font-body text-foreground">{label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="mecha-line" />
-          <CommandCenterSelectionPanel
-            settings={ccSettings}
-            onChange={(next) => setCcSettings(next)}
-          />
-
-          <div className="flex justify-end">
+          {/* Sticky-feel save bar at bottom */}
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:items-center pt-2 border-t border-border/50">
+            <button
+              onClick={promptCreatePreset}
+              disabled={ccSettingsSaving}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-display tracking-wider border border-primary/40 text-primary rounded-sm hover:bg-primary/10 transition-colors disabled:opacity-50"
+            >
+              <FilePlus className="h-3 w-3" /> SAVE AS NEW PRESET
+            </button>
             <button
               onClick={saveGlobalCommandCenterSettings}
               disabled={ccSettingsSaving}
-              className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity disabled:opacity-50"
             >
-              <Save className="h-3 w-3" /> {ccSettingsSaving ? "SAVING" : "SAVE SETTINGS"}
+              <Save className="h-3 w-3" /> {ccSettingsSaving ? "SAVING" : "SAVE TO ACTIVE"}
             </button>
           </div>
         </div>
