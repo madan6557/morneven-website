@@ -242,6 +242,41 @@ export default function CreatureDetail() {
           </div>
         </div>
 
+        {/* Threat Stats */}
+        {creature.stats && (
+          <div className="hud-border bg-card p-5 space-y-4 max-w-2xl" style={{ borderColor: `${accent}30` }}>
+            <div className="flex items-baseline justify-between">
+              <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accent }}>Threat Profile</h3>
+              {(() => {
+                const values = Object.values(creature.stats);
+                const overall = values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
+                return (
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Overall</span>
+                    <span className="font-display text-lg leading-none" style={{ color: accent }}>{overall}</span>
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="space-y-3">
+              {Object.entries(creature.stats).map(([key, value]) => (
+                <div key={key} className="space-y-1">
+                  <div className="flex justify-between text-xs font-heading">
+                    <span className="text-muted-foreground uppercase tracking-wider">{key}</span>
+                    <span className="text-foreground">{value}</span>
+                  </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${value}%`, backgroundColor: accent }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Tabbed sections: Overview / Habitat / Notes */}
           <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:w-auto sm:inline-flex sm:grid-cols-4 sm:gap-0 sm:h-10">
