@@ -17,6 +17,7 @@ import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SkillList } from "@/components/SkillCard";
 
 export default function CharacterDetail() {
   const { id } = useParams<{ id: string }>();
@@ -318,6 +319,11 @@ export default function CharacterDetail() {
                 <LoreMetaPanel meta={char.meta} fallbackCreator={char.contributor} accentColor={accentColor} />
               </TabsContent>
             </Tabs>
+
+            {/* Skills - living entity */}
+            <div className="pt-6">
+              <SkillList items={char.skills} accent={accentColor} variant="skill" />
+            </div>
 
             {/* Documentation - always visible (outside tabs) */}
             {char.docs && char.docs.length > 0 && (
