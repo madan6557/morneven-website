@@ -153,6 +153,8 @@ export default function OtherDetail() {
           </TabsContent>
         </Tabs>
 
+        <SkillList items={item.features} variant="feature" />
+
         {item.docs && item.docs.length > 0 && (
           <div className="space-y-4">
             <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Documentation</h2>

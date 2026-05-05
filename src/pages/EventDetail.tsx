@@ -152,6 +152,8 @@ export default function EventDetail() {
           </TabsContent>
         </Tabs>
 
+        <SkillList items={item.features} variant="feature" />
+
         {item.consequences && item.consequences.length > 0 && (
           <div className="space-y-3">
             <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Consequences & Downstream Doctrine</h2>
