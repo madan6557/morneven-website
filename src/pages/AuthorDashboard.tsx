@@ -17,7 +17,7 @@ import {
   type CommandCenterPreset,
   type CommandCenterSettings,
 } from "@/services/commandCenterSettings";
-import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel, LoreMeta, LoreFieldNote } from "@/types";
+import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel, LoreMeta, LoreFieldNote, Skill, Feature } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, File as FileIcon, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon, Star, CheckCircle2, FilePlus, RefreshCw } from "lucide-react";
 import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
 import NewsManagementSection from "@/components/NewsManagementSection";
@@ -27,6 +27,7 @@ import { canAccessAuthorPanel, canEnterAuthorPanel } from "@/lib/pl";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { showValidation } from "@/components/ui/validation-dialog";
+import SkillFeatureEditor from "@/components/SkillFeatureEditor";
 
 const dashTabs = ["projects", "lore", "gallery", "news", "homepage", "map"] as const;
 const loreSubs = ["characters", "places", "technology", "creatures", "other"] as const;
@@ -108,6 +109,8 @@ type EditableState = {
   contributions?: CharacterContribution[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
+  skills?: Skill[];
+  features?: Feature[];
   // Gallery - preserved across edits so ownership doesn't transfer.
   uploadedBy?: string;
   // Production-credit metadata (all lore + projects).
