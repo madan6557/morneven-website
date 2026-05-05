@@ -17,6 +17,7 @@ import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SkillList } from "@/components/SkillCard";
 
 const dangerLabel: Record<number, string> = {
   1: "DL-1 - Negligible",
@@ -359,6 +360,11 @@ export default function CreatureDetail() {
             <LoreMetaPanel meta={creature.meta} fallbackCreator={creature.contributor} accentColor={accent} />
           </TabsContent>
         </Tabs>
+
+        {/* Skills - living entity */}
+        <div className="pt-6">
+          <SkillList items={creature.skills} accent={accent} variant="skill" />
+        </div>
 
         {/* Documentation - always visible (outside tabs) */}
         {creature.docs && creature.docs.length > 0 && (
