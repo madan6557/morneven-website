@@ -1,5 +1,35 @@
 // Types for all data models
 
+// MOBA-style ability attached to living entities (characters, creatures).
+// `description` may contain inline attribute tags like [[attr:physical-damage|5%]]
+// which the renderer converts into colored AttributeBadge chips.
+export interface Skill {
+  id: string;
+  name: string;
+  // Lucide icon key — defaults to "Zap" when missing/unknown.
+  icon?: string;
+  // Color hue for the skill icon frame (HSL or hex). Optional.
+  accentColor?: string;
+  // Short tagline shown next to the icon.
+  tagline?: string;
+  // Long description with attribute tags inline.
+  description: string;
+  // Limitation/cooldown/cost text. e.g. "3 times per day", "Drains 20 SP".
+  cost?: string;
+}
+
+// Non-living equivalent of a Skill — used for places, technology, projects,
+// events and other lore. Same shape so the editor and renderer can reuse code.
+export interface Feature {
+  id: string;
+  name: string;
+  icon?: string;
+  accentColor?: string;
+  tagline?: string;
+  description: string;
+  cost?: string;
+}
+
 export interface ProjectPatch {
   version: string;
   date: string;
