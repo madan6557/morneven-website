@@ -748,6 +748,7 @@ export default function AuthorDashboard() {
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
           contributions: editing.contributions ?? [],
+          skills: editing.skills ?? [],
           meta: editing.meta,
         };
 
