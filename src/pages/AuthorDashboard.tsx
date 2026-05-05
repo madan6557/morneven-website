@@ -722,6 +722,7 @@ export default function AuthorDashboard() {
         fullDesc: editing.fullDesc ?? "",
         patches: editing.patches ?? [],
         docs: editing.docs ?? [],
+        features: editing.features ?? [],
         meta: editing.meta,
       };
 
