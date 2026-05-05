@@ -8,6 +8,7 @@ import { ArrowLeft, Calendar, Tag, FileText, GitBranch, Image as ImageIcon, Info
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SkillList } from "@/components/SkillCard";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -187,6 +188,8 @@ export default function ProjectDetail() {
             <LoreMetaPanel meta={project.meta} fallbackCreator={project.contributor} />
           </TabsContent>
         </Tabs>
+
+        <SkillList items={project.features} variant="feature" />
       </div>
     </div>
   );
