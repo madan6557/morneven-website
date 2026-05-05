@@ -97,6 +97,7 @@ export interface Project {
   // Archived projects are hidden from active lists but remain accessible
   // through the dedicated Archives view.
   archived?: boolean;
+  features?: Feature[];
   // Original author / contributor of the project.
   contributor?: string;
   // Production credits (creator, designer, team, dates, patch notes, etc.)
