@@ -12,6 +12,7 @@ import {
 import type { LoreEvent, DiscussionComment, DiscussionMention } from "@/types";
 import { ArrowLeft, Calendar, Globe2, Activity, Tag, ArrowUpRight, FileText, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
+import { SkillList } from "@/components/SkillCard";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

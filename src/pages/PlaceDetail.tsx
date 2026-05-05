@@ -12,6 +12,7 @@ import {
 import type { Place, DiscussionComment, DiscussionMention } from "@/types";
 import { ArrowLeft, Map, FileText, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
+import { SkillList } from "@/components/SkillCard";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
