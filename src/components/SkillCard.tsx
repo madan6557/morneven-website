@@ -74,6 +74,7 @@ interface SkillListProps {
 
 export function SkillList({ title, items, accent, variant = "skill" }: SkillListProps) {
   const list = items ?? [];
+  if (list.length === 0) return null;
   const heading = title ?? (variant === "skill" ? "Skills" : "Features");
   return (
     <div className="space-y-3">
@@ -82,17 +83,11 @@ export function SkillList({ title, items, accent, variant = "skill" }: SkillList
           {heading}
         </h2>
       </div>
-      {list.length === 0 ? (
-        <div className="hud-border-sm bg-card/40 p-4 text-center text-xs font-body text-muted-foreground">
-          No {variant === "skill" ? "skills" : "features"} catalogued.
-        </div>
-      ) : (
-        <div className="grid gap-3 md:grid-cols-2">
-          {list.map((s) => (
-            <SkillCard key={s.id} item={s} accent={accent} variant={variant} />
-          ))}
-        </div>
-      )}
+      <div className="grid gap-3 md:grid-cols-2">
+        {list.map((s) => (
+          <SkillCard key={s.id} item={s} accent={accent} variant={variant} />
+        ))}
+      </div>
       {/* Attribute legend */}
       {list.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pt-1">
