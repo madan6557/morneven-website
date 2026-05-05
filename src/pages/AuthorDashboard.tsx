@@ -765,6 +765,7 @@ export default function AuthorDashboard() {
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
+          features: editing.features ?? [],
           meta: editing.meta,
         };
 
@@ -781,6 +782,7 @@ export default function AuthorDashboard() {
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
+          features: editing.features ?? [],
           meta: editing.meta,
         };
 
@@ -800,6 +802,7 @@ export default function AuthorDashboard() {
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
+          skills: editing.skills ?? [],
           meta: editing.meta,
         };
 
@@ -816,6 +819,7 @@ export default function AuthorDashboard() {
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
+          features: editing.features ?? [],
           meta: editing.meta,
         };
 
