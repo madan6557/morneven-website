@@ -12,6 +12,7 @@ import {
 import type { OtherLore, DiscussionComment, DiscussionMention } from "@/types";
 import { ArrowLeft, FileText, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
+import { SkillList } from "@/components/SkillCard";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -151,6 +152,8 @@ export default function OtherDetail() {
             <LoreMetaPanel meta={item.meta} fallbackCreator={item.contributor} />
           </TabsContent>
         </Tabs>
+
+        <SkillList items={item.features} variant="feature" />
 
         {item.docs && item.docs.length > 0 && (
           <div className="space-y-4">

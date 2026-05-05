@@ -1,5 +1,35 @@
 // Types for all data models
 
+// MOBA-style ability attached to living entities (characters, creatures).
+// `description` may contain inline attribute tags like [[attr:physical-damage|5%]]
+// which the renderer converts into colored AttributeBadge chips.
+export interface Skill {
+  id: string;
+  name: string;
+  // Lucide icon key — defaults to "Zap" when missing/unknown.
+  icon?: string;
+  // Color hue for the skill icon frame (HSL or hex). Optional.
+  accentColor?: string;
+  // Short tagline shown next to the icon.
+  tagline?: string;
+  // Long description with attribute tags inline.
+  description: string;
+  // Limitation/cooldown/cost text. e.g. "3 times per day", "Drains 20 SP".
+  cost?: string;
+}
+
+// Non-living equivalent of a Skill — used for places, technology, projects,
+// events and other lore. Same shape so the editor and renderer can reuse code.
+export interface Feature {
+  id: string;
+  name: string;
+  icon?: string;
+  accentColor?: string;
+  tagline?: string;
+  description: string;
+  cost?: string;
+}
+
 export interface ProjectPatch {
   version: string;
   date: string;
@@ -67,6 +97,7 @@ export interface Project {
   // Archived projects are hidden from active lists but remain accessible
   // through the dedicated Archives view.
   archived?: boolean;
+  features?: Feature[];
   // Original author / contributor of the project.
   contributor?: string;
   // Production credits (creator, designer, team, dates, patch notes, etc.)
@@ -106,6 +137,7 @@ export interface Character {
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
   contributions?: CharacterContribution[];
+  skills?: Skill[];
   discussions?: DiscussionComment[];
   // Original author / contributor for attribution.
   contributor?: string;
@@ -141,6 +173,7 @@ export interface Creature {
   docs: DocItem[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
+  skills?: Skill[];
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
@@ -156,6 +189,7 @@ export interface OtherLore {
   docs: DocItem[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
+  features?: Feature[];
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
@@ -197,6 +231,7 @@ export interface LoreEvent {
   docs: DocItem[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
+  features?: Feature[];
   discussions?: DiscussionComment[];
   // Original author / contributor for attribution.
   contributor?: string;
@@ -236,6 +271,7 @@ export interface Place {
   docs: DocItem[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
+  features?: Feature[];
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
@@ -251,6 +287,7 @@ export interface Technology {
   docs: DocItem[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
+  features?: Feature[];
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;

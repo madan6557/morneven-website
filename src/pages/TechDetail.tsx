@@ -12,6 +12,7 @@ import {
 import type { Technology, DiscussionComment, DiscussionMention } from "@/types";
 import { ArrowLeft, FileText, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
+import { SkillList } from "@/components/SkillCard";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
@@ -159,6 +160,8 @@ export default function TechDetail() {
             <LoreMetaPanel meta={tech.meta} fallbackCreator={tech.contributor} />
           </TabsContent>
         </Tabs>
+
+        <SkillList items={tech.features} variant="feature" />
 
         {tech.docs.length > 0 && (
           <div className="space-y-4">

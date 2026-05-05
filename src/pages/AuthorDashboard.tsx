@@ -17,7 +17,7 @@ import {
   type CommandCenterPreset,
   type CommandCenterSettings,
 } from "@/services/commandCenterSettings";
-import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel, LoreMeta, LoreFieldNote } from "@/types";
+import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel, LoreMeta, LoreFieldNote, Skill, Feature } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, File as FileIcon, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon, Star, CheckCircle2, FilePlus, RefreshCw } from "lucide-react";
 import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
 import NewsManagementSection from "@/components/NewsManagementSection";
@@ -27,6 +27,7 @@ import { canAccessAuthorPanel, canEnterAuthorPanel } from "@/lib/pl";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { showValidation } from "@/components/ui/validation-dialog";
+import SkillFeatureEditor from "@/components/SkillFeatureEditor";
 
 const dashTabs = ["projects", "lore", "gallery", "news", "homepage", "map"] as const;
 const loreSubs = ["characters", "places", "technology", "creatures", "other"] as const;
@@ -108,6 +109,8 @@ type EditableState = {
   contributions?: CharacterContribution[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
+  skills?: Skill[];
+  features?: Feature[];
   // Gallery - preserved across edits so ownership doesn't transfer.
   uploadedBy?: string;
   // Production-credit metadata (all lore + projects).
@@ -648,18 +651,18 @@ export default function AuthorDashboard() {
   const startCreate = () => {
     setIsCreating(true);
     if (activeTab === "projects") {
-      setEditing({ title: "", status: "Planning", thumbnail: "", shortDesc: "", fullDesc: "", patches: [], docs: [] });
+      setEditing({ title: "", status: "Planning", thumbnail: "", shortDesc: "", fullDesc: "", patches: [], docs: [], features: [] });
     } else if (activeTab === "lore") {
       if (loreSub === "characters") {
-        setEditing({ name: "", race: "", occupation: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 }, docs: [], fieldNotes: [], observations: [], contributions: [] });
+        setEditing({ name: "", race: "", occupation: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 }, docs: [], fieldNotes: [], observations: [], contributions: [], skills: [] });
       } else if (loreSub === "places") {
-        setEditing({ name: "", type: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [] });
+        setEditing({ name: "", type: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       } else if (loreSub === "technology") {
-        setEditing({ name: "", category: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [] });
+        setEditing({ name: "", category: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       } else if (loreSub === "creatures") {
-        setEditing({ name: "", classification: "Amorphous", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [] });
+        setEditing({ name: "", classification: "Amorphous", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], skills: [] });
       } else {
-        setEditing({ title: "", category: "World Systems", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [] });
+        setEditing({ title: "", category: "World Systems", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       }
     } else {
       setEditing({ type: "image", title: "", thumbnail: "", videoUrl: "", caption: "", tags: [], date: new Date().toISOString().split("T")[0], comments: [] });
@@ -719,6 +722,7 @@ export default function AuthorDashboard() {
         fullDesc: editing.fullDesc ?? "",
         patches: editing.patches ?? [],
         docs: editing.docs ?? [],
+        features: editing.features ?? [],
         meta: editing.meta,
       };
 
@@ -744,6 +748,7 @@ export default function AuthorDashboard() {
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
           contributions: editing.contributions ?? [],
+          skills: editing.skills ?? [],
           meta: editing.meta,
         };
 
@@ -760,6 +765,7 @@ export default function AuthorDashboard() {
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
+          features: editing.features ?? [],
           meta: editing.meta,
         };
 
@@ -776,6 +782,7 @@ export default function AuthorDashboard() {
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
+          features: editing.features ?? [],
           meta: editing.meta,
         };
 
@@ -795,6 +802,7 @@ export default function AuthorDashboard() {
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
+          skills: editing.skills ?? [],
           meta: editing.meta,
         };
 
@@ -811,6 +819,7 @@ export default function AuthorDashboard() {
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
+          features: editing.features ?? [],
           meta: editing.meta,
         };
 
@@ -1595,6 +1604,25 @@ export default function AuthorDashboard() {
               />
             </div>
           )}
+
+          {/* Skills (living entities: characters, creatures) */}
+          {(isCharacter || isCreature) && (
+            <SkillFeatureEditor
+              variant="skill"
+              items={editing.skills ?? []}
+              onChange={(skills) => setEditing({ ...editing, skills: skills as Skill[] })}
+            />
+          )}
+
+          {/* Features (non-living entities: places, tech, other, projects) */}
+          {(isPlace || isTech || isOther || isProject) && (
+            <SkillFeatureEditor
+              variant="feature"
+              items={editing.features ?? []}
+              onChange={(features) => setEditing({ ...editing, features: features as Feature[] })}
+            />
+          )}
+
 
           {/* Contributions (characters) */}
           {isCharacter && (
