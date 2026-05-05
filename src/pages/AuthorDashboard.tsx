@@ -1605,6 +1605,25 @@ export default function AuthorDashboard() {
             </div>
           )}
 
+          {/* Skills (living entities: characters, creatures) */}
+          {(isCharacter || isCreature) && (
+            <SkillFeatureEditor
+              variant="skill"
+              items={editing.skills ?? []}
+              onChange={(skills) => setEditing({ ...editing, skills: skills as Skill[] })}
+            />
+          )}
+
+          {/* Features (non-living entities: places, tech, other, projects) */}
+          {(isPlace || isTech || isOther || isProject) && (
+            <SkillFeatureEditor
+              variant="feature"
+              items={editing.features ?? []}
+              onChange={(features) => setEditing({ ...editing, features: features as Feature[] })}
+            />
+          )}
+
+
           {/* Contributions (characters) */}
           {isCharacter && (
             <div className="space-y-3">
