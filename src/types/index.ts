@@ -136,6 +136,7 @@ export interface Character {
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
   contributions?: CharacterContribution[];
+  skills?: Skill[];
   discussions?: DiscussionComment[];
   // Original author / contributor for attribution.
   contributor?: string;
@@ -171,6 +172,7 @@ export interface Creature {
   docs: DocItem[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
+  skills?: Skill[];
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
@@ -186,6 +188,7 @@ export interface OtherLore {
   docs: DocItem[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
+  features?: Feature[];
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
@@ -227,6 +230,7 @@ export interface LoreEvent {
   docs: DocItem[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
+  features?: Feature[];
   discussions?: DiscussionComment[];
   // Original author / contributor for attribution.
   contributor?: string;
@@ -266,6 +270,7 @@ export interface Place {
   docs: DocItem[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
+  features?: Feature[];
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
@@ -281,6 +286,7 @@ export interface Technology {
   docs: DocItem[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
+  features?: Feature[];
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
