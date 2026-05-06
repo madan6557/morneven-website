@@ -1463,15 +1463,23 @@ export default function AuthorDashboard() {
               </div>
             )}
 
-            {isCharacter && editing.stats && (
-              <>
+            {(isCharacter || isCreature) && editing.stats && (
+              <div className="md:col-span-2 space-y-2 p-3 border border-border rounded-sm bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <label className={labelClass}>{isCharacter ? "Combat Stats" : "Threat Profile"}</label>
+                  {(() => {
+                    const vals = Object.values(editing.stats as Record<string, number>);
+                    const overall = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+                    return <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Overall <span className="text-primary">{overall}</span></span>;
+                  })()}
+                </div>
                 {Object.keys(editing.stats).map((stat) => (
                   <div key={stat}>
-                    <label className={labelClass}>{stat} ({editing.stats[stat]})</label>
-                    <input type="range" min="0" max="100" value={editing.stats[stat]} onChange={(e) => setEditing({ ...editing, stats: { ...editing.stats, [stat]: Number(e.target.value) } })} className="w-full mt-1 accent-primary" />
+                    <label className={labelClass}>{stat} ({(editing.stats as Record<string, number>)[stat]})</label>
+                    <input type="range" min="0" max="100" value={(editing.stats as Record<string, number>)[stat]} onChange={(e) => setEditing({ ...editing, stats: { ...(editing.stats as Record<string, number>), [stat]: Number(e.target.value) } as Character["stats"] })} className="w-full mt-1 accent-primary" />
                   </div>
                 ))}
-              </>
+              </div>
             )}
 
             {/* Place type */}
