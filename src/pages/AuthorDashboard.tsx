@@ -654,13 +654,13 @@ export default function AuthorDashboard() {
       setEditing({ title: "", status: "Planning", thumbnail: "", shortDesc: "", fullDesc: "", patches: [], docs: [], features: [] });
     } else if (activeTab === "lore") {
       if (loreSub === "characters") {
-        setEditing({ name: "", race: "", occupation: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 }, docs: [], fieldNotes: [], observations: [], contributions: [], skills: [] });
+        setEditing({ name: "", race: "", occupation: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50, perception: 50 }, docs: [], fieldNotes: [], observations: [], contributions: [], skills: [] });
       } else if (loreSub === "places") {
         setEditing({ name: "", type: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       } else if (loreSub === "technology") {
         setEditing({ name: "", category: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       } else if (loreSub === "creatures") {
-        setEditing({ name: "", classification: "Amorphous", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, ferocity: 50, endurance: 50 }, docs: [], fieldNotes: [], observations: [], skills: [] });
+        setEditing({ name: "", classification: "Amorphous", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, cognition: 50, stealth: 50, predation: 50, ferocity: 50, endurance: 50, senses: 50 }, docs: [], fieldNotes: [], observations: [], skills: [] });
       } else {
         setEditing({ title: "", category: "World Systems", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       }
@@ -743,7 +743,7 @@ export default function AuthorDashboard() {
           thumbnail: editing.thumbnail ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
-          stats: (editing.stats as Character["stats"]) ?? { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 },
+          stats: (editing.stats as Character["stats"]) ?? { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50, perception: 50 },
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
@@ -802,7 +802,7 @@ export default function AuthorDashboard() {
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
-          stats: (editing.stats as Creature["stats"]) ?? { combat: 50, intelligence: 50, stealth: 50, ferocity: 50, endurance: 50 },
+          stats: (editing.stats as Creature["stats"]) ?? { combat: 50, intelligence: 50, cognition: 50, stealth: 50, predation: 50, ferocity: 50, endurance: 50, senses: 50 },
           skills: editing.skills ?? [],
           meta: editing.meta,
         };
@@ -1476,7 +1476,7 @@ export default function AuthorDashboard() {
                 </div>
                 {Object.keys(editing.stats).map((stat) => (
                   <div key={stat}>
-                    <label className={labelClass}>{stat} ({(editing.stats as unknown as Record<string, number>)[stat]})</label>
+                    <label className={labelClass}>{(isCharacter && stat === "endurance") ? "perception" : stat} ({(editing.stats as unknown as Record<string, number>)[stat]})</label>
                     <input type="range" min="0" max="100" value={(editing.stats as unknown as Record<string, number>)[stat]} onChange={(e) => setEditing({ ...editing, stats: { ...(editing.stats as unknown as Record<string, number>), [stat]: Number(e.target.value) } as unknown as Character["stats"] })} className="w-full mt-1 accent-primary" />
                   </div>
                 ))}
