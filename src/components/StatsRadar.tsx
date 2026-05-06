@@ -18,7 +18,7 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
 
   const cx = size / 2;
   const cy = size / 2;
-  const radius = size / 2 - 36;
+  const radius = size / 2 - 44;
   const rings = 4;
 
   // angle for index i — start at top (-90deg)
