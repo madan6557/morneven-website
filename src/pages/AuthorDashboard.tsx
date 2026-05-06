@@ -660,7 +660,7 @@ export default function AuthorDashboard() {
       } else if (loreSub === "technology") {
         setEditing({ name: "", category: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       } else if (loreSub === "creatures") {
-        setEditing({ name: "", classification: "Amorphous", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], skills: [] });
+        setEditing({ name: "", classification: "Amorphous", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, ferocity: 50, endurance: 50 }, docs: [], fieldNotes: [], observations: [], skills: [] });
       } else {
         setEditing({ title: "", category: "World Systems", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       }
