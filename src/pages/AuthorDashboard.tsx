@@ -802,6 +802,7 @@ export default function AuthorDashboard() {
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
+          stats: (editing.stats as Creature["stats"]) ?? { combat: 50, intelligence: 50, stealth: 50, ferocity: 50, endurance: 50 },
           skills: editing.skills ?? [],
           meta: editing.meta,
         };
