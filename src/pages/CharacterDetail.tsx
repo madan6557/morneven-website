@@ -12,12 +12,13 @@ import {
 } from "@/services/api";
 import { getProxyUrl } from "@/services/fileProxyService";
 import type { Character, DiscussionComment, DiscussionMention, LoreFieldNote } from "@/types";
-import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen, Info } from "lucide-react";
+import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen, Info, BarChart3, Hexagon } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillList } from "@/components/SkillCard";
+import StatsRadar from "@/components/StatsRadar";
 
 export default function CharacterDetail() {
   const { id } = useParams<{ id: string }>();
