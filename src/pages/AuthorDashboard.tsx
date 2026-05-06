@@ -93,7 +93,7 @@ type EditableState = {
   likes?: string[];
   dislikes?: string[];
   accentColor?: string;
-  stats?: Character["stats"];
+  stats?: Character["stats"] | Creature["stats"];
   type?: GalleryItem["type"] | string;
   category?: string;
   videoUrl?: string;
@@ -660,7 +660,7 @@ export default function AuthorDashboard() {
       } else if (loreSub === "technology") {
         setEditing({ name: "", category: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       } else if (loreSub === "creatures") {
-        setEditing({ name: "", classification: "Amorphous", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], skills: [] });
+        setEditing({ name: "", classification: "Amorphous", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, ferocity: 50, endurance: 50 }, docs: [], fieldNotes: [], observations: [], skills: [] });
       } else {
         setEditing({ title: "", category: "World Systems", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       }
@@ -743,7 +743,7 @@ export default function AuthorDashboard() {
           thumbnail: editing.thumbnail ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
-          stats: editing.stats ?? { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 },
+          stats: (editing.stats as Character["stats"]) ?? { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 },
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
@@ -802,6 +802,7 @@ export default function AuthorDashboard() {
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
+          stats: (editing.stats as Creature["stats"]) ?? { combat: 50, intelligence: 50, stealth: 50, ferocity: 50, endurance: 50 },
           skills: editing.skills ?? [],
           meta: editing.meta,
         };
@@ -1463,15 +1464,23 @@ export default function AuthorDashboard() {
               </div>
             )}
 
-            {isCharacter && editing.stats && (
-              <>
+            {(isCharacter || isCreature) && editing.stats && (
+              <div className="md:col-span-2 space-y-2 p-3 border border-border rounded-sm bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <label className={labelClass}>{isCharacter ? "Combat Stats" : "Threat Profile"}</label>
+                  {(() => {
+                    const vals = Object.values(editing.stats as unknown as Record<string, number>);
+                    const overall = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+                    return <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Overall <span className="text-primary">{overall}</span></span>;
+                  })()}
+                </div>
                 {Object.keys(editing.stats).map((stat) => (
                   <div key={stat}>
-                    <label className={labelClass}>{stat} ({editing.stats[stat]})</label>
-                    <input type="range" min="0" max="100" value={editing.stats[stat]} onChange={(e) => setEditing({ ...editing, stats: { ...editing.stats, [stat]: Number(e.target.value) } })} className="w-full mt-1 accent-primary" />
+                    <label className={labelClass}>{stat} ({(editing.stats as unknown as Record<string, number>)[stat]})</label>
+                    <input type="range" min="0" max="100" value={(editing.stats as unknown as Record<string, number>)[stat]} onChange={(e) => setEditing({ ...editing, stats: { ...(editing.stats as unknown as Record<string, number>), [stat]: Number(e.target.value) } as unknown as Character["stats"] })} className="w-full mt-1 accent-primary" />
                   </div>
                 ))}
-              </>
+              </div>
             )}
 
             {/* Place type */}
