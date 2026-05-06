@@ -11,7 +11,7 @@ import {
 } from "@/services/api";
 import { getProxyUrl } from "@/services/fileProxyService";
 import type { Creature, DiscussionComment, DiscussionMention, LoreFieldNote } from "@/types";
-import { ArrowLeft, ShieldAlert, FileText, MapPin, NotebookPen, ExternalLink, Info, BarChart3, Hexagon } from "lucide-react";
+import { ArrowLeft, ShieldAlert, FileText, MapPin, NotebookPen, ExternalLink, Info } from "lucide-react";
 import StatsRadar from "@/components/StatsRadar";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
@@ -19,6 +19,7 @@ import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillList } from "@/components/SkillCard";
+import { averageScore, CREATURE_STAT_DETAIL_AXES, CREATURE_STAT_DETAIL_LABELS, toCreaturePrimaryStats, type CreatureStatCategoryKey } from "@/lib/statDetails";
 
 const dangerLabel: Record<number, string> = {
   1: "DL-1 - Negligible",
@@ -65,7 +66,7 @@ export default function CreatureDetail() {
   const [creature, setCreature] = useState<Creature | null>(null);
   const [loading, setLoading] = useState(true);
   const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
-  const [statView, setStatView] = useState<"bars" | "radar">("bars");
+  const [selectedStatDetail, setSelectedStatDetail] = useState<CreatureStatCategoryKey | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -248,63 +249,54 @@ export default function CreatureDetail() {
         {/* Threat Stats */}
         {creature.stats && (
           <div className="hud-border bg-card p-5 space-y-4 max-w-2xl" style={{ borderColor: `${accent}30` }}>
-            <div className="flex items-baseline justify-between gap-2">
-              <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accent }}>Threat Profile</h3>
-              <div className="flex items-center gap-2">
-                {(() => {
-                  const values = Object.values(creature.stats!);
-                  const overall = values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
-                  return (
+            {(() => {
+              const primaryStats = toCreaturePrimaryStats(creature.stats!);
+              const overall = averageScore(Object.values(primaryStats));
+              return (
+                <>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accent }}>Threat Profile</h3>
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Overall</span>
                       <span className="font-display text-lg leading-none" style={{ color: accent }}>{overall}</span>
                     </div>
-                  );
-                })()}
-                <div className="inline-flex rounded-sm border border-border overflow-hidden" role="group" aria-label="Stats view toggle">
-                  <button
-                    type="button"
-                    onClick={() => setStatView("bars")}
-                    className={`p-1 transition-colors ${statView === "bars" ? "text-background" : "text-muted-foreground hover:text-foreground"}`}
-                    style={statView === "bars" ? { backgroundColor: accent } : undefined}
-                    aria-label="Bar view"
-                    title="Bar view"
-                  >
-                    <BarChart3 className="h-3 w-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStatView("radar")}
-                    className={`p-1 transition-colors ${statView === "radar" ? "text-background" : "text-muted-foreground hover:text-foreground"}`}
-                    style={statView === "radar" ? { backgroundColor: accent } : undefined}
-                    aria-label="Radar view"
-                    title="Radar view"
-                  >
-                    <Hexagon className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-            </div>
-            {statView === "radar" ? (
-              <StatsRadar stats={creature.stats as unknown as Record<string, number>} color={accent} />
-            ) : (
-              <div className="space-y-3">
-                {Object.entries(creature.stats).map(([key, value]) => (
-                  <div key={key} className="space-y-1">
-                    <div className="flex justify-between text-xs font-heading">
-                      <span className="text-muted-foreground uppercase tracking-wider">{key}</span>
-                      <span className="text-foreground">{value}</span>
-                    </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${value}%`, backgroundColor: accent }}
-                      />
-                    </div>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="space-y-3">
+                    {Object.entries(primaryStats).map(([key, value]) => (
+                      <div key={key} className="space-y-1">
+                        <div className="flex justify-between items-center gap-2 text-xs font-heading">
+                          <span className="text-muted-foreground uppercase tracking-wider">{key}</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedStatDetail(key as CreatureStatCategoryKey)}
+                              className="text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              Stat Detail
+                            </button>
+                            <span className="text-foreground">{value}</span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${value}%`, backgroundColor: accent }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {selectedStatDetail && (
+                    <div className="pt-2 border-t border-border/70 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-display tracking-wider uppercase text-muted-foreground">
+                          {CREATURE_STAT_DETAIL_LABELS[selectedStatDetail]} Breakdown
+                        </p>
+                        <button type="button" onClick={() => setSelectedStatDetail(null)} className="text-[10px] uppercase text-muted-foreground hover:text-foreground">Close</button>
+                      </div>
+                      <StatsRadar stats={CREATURE_STAT_DETAIL_AXES[selectedStatDetail]} color={accent} />
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 

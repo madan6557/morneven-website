@@ -110,6 +110,7 @@ export interface CharacterStats {
   stealth: number;
   charisma: number;
   endurance: number;
+  perception?: number;
 }
 
 export interface CharacterContribution {
@@ -154,9 +155,12 @@ export type CreatureDangerLevel = 1 | 2 | 3 | 4 | 5;
 export interface CreatureStats {
   combat: number;
   intelligence: number;
+  cognition?: number;
   stealth: number;
+  predation?: number;
   ferocity: number;
   endurance: number;
+  senses?: number;
 }
 
 export interface Creature {
