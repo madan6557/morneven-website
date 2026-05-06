@@ -743,7 +743,7 @@ export default function AuthorDashboard() {
           thumbnail: editing.thumbnail ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
-          stats: editing.stats ?? { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 },
+          stats: (editing.stats as Character["stats"]) ?? { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 },
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
