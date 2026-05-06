@@ -11,7 +11,8 @@ import {
 } from "@/services/api";
 import { getProxyUrl } from "@/services/fileProxyService";
 import type { Creature, DiscussionComment, DiscussionMention, LoreFieldNote } from "@/types";
-import { ArrowLeft, ShieldAlert, FileText, MapPin, NotebookPen, ExternalLink, Info } from "lucide-react";
+import { ArrowLeft, ShieldAlert, FileText, MapPin, NotebookPen, ExternalLink, Info, BarChart3, Hexagon } from "lucide-react";
+import StatsRadar from "@/components/StatsRadar";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
