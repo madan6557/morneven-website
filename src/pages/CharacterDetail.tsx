@@ -12,20 +12,21 @@ import {
 } from "@/services/api";
 import { getProxyUrl } from "@/services/fileProxyService";
 import type { Character, DiscussionComment, DiscussionMention, LoreFieldNote } from "@/types";
-import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen, Info, BarChart3, Hexagon } from "lucide-react";
+import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillList } from "@/components/SkillCard";
 import StatsRadar from "@/components/StatsRadar";
+import { averageScore, STAT_DETAIL_AXES, STAT_DETAIL_LABELS, toCharacterPrimaryStats, type StatCategoryKey } from "@/lib/statDetails";
 
 export default function CharacterDetail() {
   const { id } = useParams<{ id: string }>();
   const [char, setChar] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
   const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
-  const [statView, setStatView] = useState<"bars" | "radar">("bars");
+  const [selectedStatDetail, setSelectedStatDetail] = useState<StatCategoryKey | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -174,66 +175,60 @@ export default function CharacterDetail() {
           <div className="space-y-6">
             {/* Stats bars */}
             <div className="hud-border bg-card p-5 space-y-4" style={{ borderColor: `${accentColor}30` }}>
-              <div className="flex items-baseline justify-between gap-2">
-                <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accentColor }}>Combat Stats</h3>
-                <div className="flex items-center gap-2">
-                  {(() => {
-                    const values = Object.values(char.stats);
-                    const overall = values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
-                    return (
+              {(() => {
+                const primaryStats = toCharacterPrimaryStats(char.stats);
+                const overall = averageScore(Object.values(primaryStats));
+                return (
+                  <>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accentColor }}>Combat Stats</h3>
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Overall</span>
                         <span className="font-display text-lg leading-none" style={{ color: accentColor }}>{overall}</span>
                       </div>
-                    );
-                  })()}
-                  <div className="inline-flex rounded-sm border border-border overflow-hidden" role="group" aria-label="Stats view toggle">
-                    <button
-                      type="button"
-                      onClick={() => setStatView("bars")}
-                      className={`p-1 transition-colors ${statView === "bars" ? "text-background" : "text-muted-foreground hover:text-foreground"}`}
-                      style={statView === "bars" ? { backgroundColor: accentColor } : undefined}
-                      aria-label="Bar view"
-                      title="Bar view"
-                    >
-                      <BarChart3 className="h-3 w-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStatView("radar")}
-                      className={`p-1 transition-colors ${statView === "radar" ? "text-background" : "text-muted-foreground hover:text-foreground"}`}
-                      style={statView === "radar" ? { backgroundColor: accentColor } : undefined}
-                      aria-label="Radar view"
-                      title="Radar view"
-                    >
-                      <Hexagon className="h-3 w-3" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-              {statView === "radar" ? (
-                <StatsRadar stats={char.stats as unknown as Record<string, number>} color={accentColor} />
-              ) : (
-                <div className="space-y-3">
-                  {Object.entries(char.stats).map(([key, value]) => (
-                    <div key={key} className="space-y-1">
-                      <div className="flex justify-between text-xs font-heading">
-                        <span className="text-muted-foreground uppercase tracking-wider">{key}</span>
-                        <span className="text-foreground">{value}</span>
-                      </div>
-                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${value}%` }}
-                          transition={{ duration: 0.8, delay: 0.2 }}
-                          className="h-full rounded-full"
-                          style={{ backgroundColor: accentColor }}
-                        />
-                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="space-y-3">
+                      {Object.entries(primaryStats).map(([key, value]) => (
+                        <div key={key} className="space-y-1">
+                          <div className="flex justify-between items-center gap-2 text-xs font-heading">
+                            <span className="text-muted-foreground uppercase tracking-wider">{key}</span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedStatDetail(key as StatCategoryKey)}
+                                className="text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                Stat Detail
+                              </button>
+                              <span className="text-foreground">{value}</span>
+                            </div>
+                          </div>
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${value}%` }}
+                              transition={{ duration: 0.8, delay: 0.2 }}
+                              className="h-full rounded-full"
+                              style={{ backgroundColor: accentColor }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {selectedStatDetail && (
+                      <div className="pt-2 border-t border-border/70 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] font-display tracking-wider uppercase text-muted-foreground">
+                            {STAT_DETAIL_LABELS[selectedStatDetail]} Breakdown
+                          </p>
+                          <button type="button" onClick={() => setSelectedStatDetail(null)} className="text-[10px] uppercase text-muted-foreground hover:text-foreground">Close</button>
+                        </div>
+                        <StatsRadar stats={STAT_DETAIL_AXES[selectedStatDetail]} color={accentColor} />
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {/* Traits */}
