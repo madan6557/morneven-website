@@ -65,6 +65,7 @@ export default function CreatureDetail() {
   const [creature, setCreature] = useState<Creature | null>(null);
   const [loading, setLoading] = useState(true);
   const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
+  const [statView, setStatView] = useState<"bars" | "radar">("bars");
 
   useEffect(() => {
     let active = true;
