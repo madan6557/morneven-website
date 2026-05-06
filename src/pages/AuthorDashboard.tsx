@@ -93,7 +93,7 @@ type EditableState = {
   likes?: string[];
   dislikes?: string[];
   accentColor?: string;
-  stats?: Character["stats"];
+  stats?: Character["stats"] | Creature["stats"];
   type?: GalleryItem["type"] | string;
   category?: string;
   videoUrl?: string;
