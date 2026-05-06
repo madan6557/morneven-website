@@ -174,38 +174,66 @@ export default function CharacterDetail() {
           <div className="space-y-6">
             {/* Stats bars */}
             <div className="hud-border bg-card p-5 space-y-4" style={{ borderColor: `${accentColor}30` }}>
-              <div className="flex items-baseline justify-between">
+              <div className="flex items-baseline justify-between gap-2">
                 <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accentColor }}>Combat Stats</h3>
-                {(() => {
-                  const values = Object.values(char.stats);
-                  const overall = values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
-                  return (
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Overall</span>
-                      <span className="font-display text-lg leading-none" style={{ color: accentColor }}>{overall}</span>
-                    </div>
-                  );
-                })()}
-              </div>
-              <div className="space-y-3">
-                {Object.entries(char.stats).map(([key, value]) => (
-                  <div key={key} className="space-y-1">
-                    <div className="flex justify-between text-xs font-heading">
-                      <span className="text-muted-foreground uppercase tracking-wider">{key}</span>
-                      <span className="text-foreground">{value}</span>
-                    </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${value}%` }}
-                        transition={{ duration: 0.8, delay: 0.2 }}
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: accentColor }}
-                      />
-                    </div>
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const values = Object.values(char.stats);
+                    const overall = values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
+                    return (
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Overall</span>
+                        <span className="font-display text-lg leading-none" style={{ color: accentColor }}>{overall}</span>
+                      </div>
+                    );
+                  })()}
+                  <div className="inline-flex rounded-sm border border-border overflow-hidden" role="group" aria-label="Stats view toggle">
+                    <button
+                      type="button"
+                      onClick={() => setStatView("bars")}
+                      className={`p-1 transition-colors ${statView === "bars" ? "text-background" : "text-muted-foreground hover:text-foreground"}`}
+                      style={statView === "bars" ? { backgroundColor: accentColor } : undefined}
+                      aria-label="Bar view"
+                      title="Bar view"
+                    >
+                      <BarChart3 className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStatView("radar")}
+                      className={`p-1 transition-colors ${statView === "radar" ? "text-background" : "text-muted-foreground hover:text-foreground"}`}
+                      style={statView === "radar" ? { backgroundColor: accentColor } : undefined}
+                      aria-label="Radar view"
+                      title="Radar view"
+                    >
+                      <Hexagon className="h-3 w-3" />
+                    </button>
                   </div>
-                ))}
+                </div>
               </div>
+              {statView === "radar" ? (
+                <StatsRadar stats={char.stats as unknown as Record<string, number>} color={accentColor} />
+              ) : (
+                <div className="space-y-3">
+                  {Object.entries(char.stats).map(([key, value]) => (
+                    <div key={key} className="space-y-1">
+                      <div className="flex justify-between text-xs font-heading">
+                        <span className="text-muted-foreground uppercase tracking-wider">{key}</span>
+                        <span className="text-foreground">{value}</span>
+                      </div>
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${value}%` }}
+                          transition={{ duration: 0.8, delay: 0.2 }}
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: accentColor }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Traits */}
