@@ -25,6 +25,7 @@ export default function CharacterDetail() {
   const [char, setChar] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
   const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
+  const [statView, setStatView] = useState<"bars" | "radar">("bars");
 
   useEffect(() => {
     let active = true;
