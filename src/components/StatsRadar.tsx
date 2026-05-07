@@ -114,17 +114,14 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
           const [key, value] = entries[i];
           return (
             <g key={i} className="cursor-pointer group">
-              {/* Visible vertex */}
-              <circle cx={p.x} cy={p.y} r={3} fill={color} />
-              {/* Larger invisible hit area */}
-              <circle cx={p.x} cy={p.y} r={12} fill="transparent">
+              <circle cx={p.x} cy={p.y} r={vertexR} fill={color} />
+              <circle cx={p.x} cy={p.y} r={hitR} fill="transparent">
                 <title>{`${key}: ${value} / ${max}`}</title>
               </circle>
-              {/* Hover ring */}
               <circle
                 cx={p.x}
                 cy={p.y}
-                r={6}
+                r={hoverR}
                 fill="none"
                 stroke={color}
                 strokeWidth={1.5}
@@ -136,7 +133,7 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
         })}
         {/* Labels */}
         {entries.map(([key, value], i) => {
-          const lp = point(i, radius + 18);
+          const lp = point(i, radius + labelOffset);
           const a = angle(i);
           const cos = Math.cos(a);
           const anchor = Math.abs(cos) < 0.2 ? "middle" : cos > 0 ? "start" : "end";
@@ -148,16 +145,16 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
                 textAnchor={anchor}
                 dominantBaseline="middle"
                 className="fill-muted-foreground"
-                style={{ fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-display, inherit)" }}
+                style={{ fontSize: labelFont, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-display, inherit)" }}
               >
                 {key}
               </text>
               <text
                 x={lp.x}
-                y={lp.y + 11}
+                y={lp.y + valueGap}
                 textAnchor={anchor}
                 dominantBaseline="middle"
-                style={{ fontSize: 10, fill: color, fontWeight: 600 }}
+                style={{ fontSize: valueFont, fill: color, fontWeight: 600 }}
               >
                 {value}
               </text>
