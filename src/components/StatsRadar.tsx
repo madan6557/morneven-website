@@ -6,13 +6,15 @@ interface StatsRadarProps {
   color: string;
   size?: number;
   max?: number;
+  /** Optional map of stat key -> full descriptive name (e.g. STR -> Strength). */
+  labels?: Record<string, string>;
 }
 
 /**
  * Pentagram / spider-web visualization for 3-8 stat values (0-max).
  * Pure SVG, no chart library — keeps bundle small and theme-true.
  */
-export default function StatsRadar({ stats, color, size = 240, max = 100 }: StatsRadarProps) {
+export default function StatsRadar({ stats, color, size = 240, max = 100, labels }: StatsRadarProps) {
   const entries = Object.entries(stats);
   const n = entries.length;
   const [hovered, setHovered] = useState<number | null>(null);
@@ -173,6 +175,7 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
       {/* Themed hover tooltip — positioned over the active vertex */}
       {hovered !== null && (() => {
         const [key, value] = entries[hovered];
+        const fullName = labels?.[key];
         const p = dataPoints[hovered];
         const leftPct = (p.x / size) * 100;
         const topPct = (p.y / size) * 100;
@@ -181,7 +184,7 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
             className="pointer-events-none absolute z-50 -translate-x-1/2 -translate-y-[calc(100%+10px)] rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-lg whitespace-nowrap animate-in fade-in-0 zoom-in-95"
             style={{ left: `${leftPct}%`, top: `${topPct}%` }}
           >
-            <div className="font-display uppercase tracking-wider text-[10px] text-muted-foreground">{key}</div>
+            <div className="font-display uppercase tracking-wider text-[10px] text-muted-foreground">{fullName ?? key}{fullName ? <span className="ml-1 opacity-60">({key})</span> : null}</div>
             <div className="font-semibold" style={{ color }}>{value} <span className="text-muted-foreground font-normal">/ {max}</span></div>
           </div>
         );

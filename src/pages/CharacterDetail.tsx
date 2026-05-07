@@ -19,7 +19,7 @@ import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillList } from "@/components/SkillCard";
 import StatsRadar from "@/components/StatsRadar";
-import { averageScore, STAT_DETAIL_AXES, STAT_DETAIL_LABELS, toCharacterPrimaryStats, type StatCategoryKey } from "@/lib/statDetails";
+import { averageScore, STAT_DETAIL_AXES, STAT_DETAIL_LABELS, STAT_AXIS_FULL_NAMES, toCharacterPrimaryStats, type StatCategoryKey } from "@/lib/statDetails";
 
 export default function CharacterDetail() {
   const { id } = useParams<{ id: string }>();
@@ -223,7 +223,7 @@ export default function CharacterDetail() {
                           </p>
                           <button type="button" onClick={() => setSelectedStatDetail(null)} className="text-[10px] uppercase text-muted-foreground hover:text-foreground">Close</button>
                         </div>
-                        <StatsRadar stats={STAT_DETAIL_AXES[selectedStatDetail]} color={accentColor} />
+                        <StatsRadar stats={STAT_DETAIL_AXES[selectedStatDetail]} color={accentColor} labels={STAT_AXIS_FULL_NAMES} />
                       </div>
                     )}
                   </>
