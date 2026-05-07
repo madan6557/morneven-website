@@ -3,6 +3,7 @@ import { Zap, Clock } from "lucide-react";
 import type { Skill, Feature } from "@/types";
 import { RichDescription } from "./AttributeBadge";
 import { SKILL_ATTRIBUTE_LIST } from "@/lib/skillAttributes";
+import { AuthenticatedImage } from "./AuthenticatedImage";
 
 type LucideIconName = keyof typeof Lucide;
 
@@ -15,6 +16,11 @@ function resolveIcon(name?: string) {
   return Zap;
 }
 
+function isImageSource(value?: string) {
+  if (!value) return false;
+  return /^(https?:\/\/|\/api\/files\/|\/uploads\/|\/storage\/|data:image\/)/i.test(value);
+}
+
 interface SkillCardProps {
   item: Skill | Feature;
   accent?: string;
@@ -23,6 +29,7 @@ interface SkillCardProps {
 
 export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
   const Icon = resolveIcon(item.icon);
+  const hasImageIcon = isImageSource(item.icon);
   const hue = item.accentColor || accent || "hsl(var(--primary))";
   return (
     <div
@@ -38,7 +45,15 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
           boxShadow: `0 0 14px ${hue}40, inset 0 0 12px ${hue}20`,
         }}
       >
-        <Icon className="h-7 w-7" style={{ color: hue }} aria-hidden />
+        {hasImageIcon ? (
+          <AuthenticatedImage
+            src={item.icon as string}
+            alt={item.name || "feature icon"}
+            className="h-8 w-8 object-contain"
+          />
+        ) : (
+          <Icon className="h-7 w-7" style={{ color: hue }} aria-hidden />
+        )}
       </div>
 
       <div className="flex-1 min-w-0 space-y-1.5">
@@ -72,8 +87,27 @@ interface SkillListProps {
   variant?: "skill" | "feature";
 }
 
+type RawSkillFeature = Partial<Skill & Feature> & {
+  title?: string;
+  summary?: string;
+  details?: string;
+  color?: string;
+};
+
+function normalizeItem(raw: RawSkillFeature, idx: number, variant: "skill" | "feature"): Skill | Feature {
+  return {
+    id: raw.id || `${variant}-${idx}`,
+    name: raw.name || raw.title || "",
+    icon: raw.icon,
+    accentColor: raw.accentColor || raw.color,
+    tagline: raw.tagline || raw.summary,
+    description: raw.description || raw.details || raw.summary || "",
+    cost: raw.cost,
+  };
+}
+
 export function SkillList({ title, items, accent, variant = "skill" }: SkillListProps) {
-  const list = items ?? [];
+  const list = (items ?? []).map((item, idx) => normalizeItem(item as RawSkillFeature, idx, variant));
   if (list.length === 0) return null;
   const heading = title ?? (variant === "skill" ? "Skills" : "Features");
   return (

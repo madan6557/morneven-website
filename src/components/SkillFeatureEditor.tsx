@@ -92,12 +92,12 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                 />
               </div>
               <div>
-                <label className={labelClass}>Icon (Lucide)</label>
+                <label className={labelClass}>Icon (Lucide / URL)</label>
                 <input
                   type="text"
                   value={item.icon || ""}
                   onChange={(e) => update(idx, "icon", e.target.value)}
-                  placeholder="Zap, Sword, Flame…"
+                  placeholder="Zap, Sword, Flame… atau https://..."
                   className={inputClass}
                 />
               </div>
