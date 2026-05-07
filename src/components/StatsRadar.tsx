@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useState } from "react";
 
 interface StatsRadarProps {
   stats: Record<string, number>;
@@ -14,6 +15,7 @@ interface StatsRadarProps {
 export default function StatsRadar({ stats, color, size = 240, max = 100 }: StatsRadarProps) {
   const entries = Object.entries(stats);
   const n = entries.length;
+  const [hovered, setHovered] = useState<number | null>(null);
   if (n < 3) return null;
 
   // Scale-aware paddings & label metrics — keeps geometry consistent
@@ -61,7 +63,7 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
   const dataPath = dataPoints.map((p) => `${p.x},${p.y}`).join(" ");
 
   return (
-    <div className="flex justify-center w-full overflow-visible">
+    <div className="relative flex justify-center w-full overflow-visible" style={{ maxWidth: size, marginInline: "auto" }}>
       <svg
         viewBox={`0 0 ${size} ${size}`}
         width="100%"
@@ -111,13 +113,19 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
         />
         {/* Data vertices with hover tooltips */}
         {dataPoints.map((p, i) => {
-          const [key, value] = entries[i];
+          const isActive = hovered === i;
           return (
-            <g key={i} className="cursor-pointer group">
+            <g
+              key={i}
+              className="cursor-pointer"
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered(null)}
+              onTouchStart={() => setHovered(i)}
+            >
               <circle cx={p.x} cy={p.y} r={vertexR} fill={color} />
-              <circle cx={p.x} cy={p.y} r={hitR} fill="transparent">
-                <title>{`${key}: ${value} / ${max}`}</title>
-              </circle>
+              {/* Larger transparent hit area */}
+              <circle cx={p.x} cy={p.y} r={hitR} fill="transparent" />
+              {/* Hover ring */}
               <circle
                 cx={p.x}
                 cy={p.y}
@@ -125,8 +133,8 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
                 fill="none"
                 stroke={color}
                 strokeWidth={1.5}
-                opacity={0}
-                className="transition-opacity group-hover:opacity-80 pointer-events-none"
+                opacity={isActive ? 0.85 : 0}
+                className="transition-opacity pointer-events-none"
               />
             </g>
           );
@@ -162,6 +170,22 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
           );
         })}
       </svg>
+      {/* Themed hover tooltip — positioned over the active vertex */}
+      {hovered !== null && (() => {
+        const [key, value] = entries[hovered];
+        const p = dataPoints[hovered];
+        const leftPct = (p.x / size) * 100;
+        const topPct = (p.y / size) * 100;
+        return (
+          <div
+            className="pointer-events-none absolute z-50 -translate-x-1/2 -translate-y-[calc(100%+10px)] rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-lg whitespace-nowrap animate-in fade-in-0 zoom-in-95"
+            style={{ left: `${leftPct}%`, top: `${topPct}%` }}
+          >
+            <div className="font-display uppercase tracking-wider text-[10px] text-muted-foreground">{key}</div>
+            <div className="font-semibold" style={{ color }}>{value} <span className="text-muted-foreground font-normal">/ {max}</span></div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
