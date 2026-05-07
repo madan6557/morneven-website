@@ -15,6 +15,7 @@ interface StatsRadarProps {
 export default function StatsRadar({ stats, color, size = 240, max = 100 }: StatsRadarProps) {
   const entries = Object.entries(stats);
   const n = entries.length;
+  const [hovered, setHovered] = useState<number | null>(null);
   if (n < 3) return null;
 
   // Scale-aware paddings & label metrics — keeps geometry consistent
