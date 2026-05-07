@@ -88,10 +88,31 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
           stroke={color}
           strokeWidth={1.5}
         />
-        {/* Data vertices */}
-        {dataPoints.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r={3} fill={color} />
-        ))}
+        {/* Data vertices with hover tooltips */}
+        {dataPoints.map((p, i) => {
+          const [key, value] = entries[i];
+          return (
+            <g key={i} className="cursor-pointer group">
+              {/* Visible vertex */}
+              <circle cx={p.x} cy={p.y} r={3} fill={color} />
+              {/* Larger invisible hit area */}
+              <circle cx={p.x} cy={p.y} r={12} fill="transparent">
+                <title>{`${key}: ${value} / ${max}`}</title>
+              </circle>
+              {/* Hover ring */}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={6}
+                fill="none"
+                stroke={color}
+                strokeWidth={1.5}
+                opacity={0}
+                className="transition-opacity group-hover:opacity-80 pointer-events-none"
+              />
+            </g>
+          );
+        })}
         {/* Labels */}
         {entries.map(([key, value], i) => {
           const lp = point(i, radius + 18);
