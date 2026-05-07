@@ -291,7 +291,7 @@ export default function CreatureDetail() {
                         </p>
                         <button type="button" onClick={() => setSelectedStatDetail(null)} className="text-[10px] uppercase text-muted-foreground hover:text-foreground">Close</button>
                       </div>
-                      <StatsRadar stats={CREATURE_STAT_DETAIL_AXES[selectedStatDetail]} color={accent} />
+                      <StatsRadar stats={CREATURE_STAT_DETAIL_AXES[selectedStatDetail]} color={accent} labels={STAT_AXIS_FULL_NAMES} />
                     </div>
                   )}
                 </>
