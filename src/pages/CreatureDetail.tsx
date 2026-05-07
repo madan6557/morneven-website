@@ -252,7 +252,7 @@ export default function CreatureDetail() {
         {creatureStats && (
           <div className="hud-border bg-card p-5 space-y-4 max-w-2xl" style={{ borderColor: `${accent}30` }}>
             {(() => {
-              const primaryStats = toCreaturePrimaryStats(creature.stats!);
+              const primaryStats = toCreaturePrimaryStats(creatureStats);
               const overall = averageScore(Object.values(primaryStats));
               return (
                 <>

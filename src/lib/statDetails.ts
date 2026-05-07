@@ -26,9 +26,9 @@ export const STAT_AXIS_FULL_NAMES: Record<string, string> = {
   AGI: "Agility",
   END: "Endurance",
   ADP: "Adaptability",
-  IQ: "Intelligence Quotient",
-  EQ: "Emotional Quotient",
-  SQ: "Social Quotient",
+  IQ: "Intelligence",
+  EQ: "Emotional Intelligence",
+  SQ: "Social Intelligence",
   PRS: "Presence",
   INT: "Intuition",
   MNP: "Manipulation",
@@ -51,7 +51,6 @@ export const STAT_AXIS_FULL_NAMES: Record<string, string> = {
   DOM: "Dominance",
   HOS: "Hostility",
 };
-
 export const averageScore = (values: number[]) => (values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0);
 
 export function toCharacterPrimaryStats(stats: CharacterStats): Record<StatCategoryKey, number> {
