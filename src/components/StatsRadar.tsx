@@ -16,9 +16,20 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
   const n = entries.length;
   if (n < 3) return null;
 
+  // Scale-aware paddings & label metrics — keeps geometry consistent
+  // whether the SVG is rendered at 140px (mobile) or 320px (desktop).
+  const labelOffset = Math.max(12, size * 0.075);
+  const padding = Math.max(36, size * 0.18);
+  const labelFont = Math.max(7, size * 0.038);
+  const valueFont = Math.max(8, size * 0.042);
+  const valueGap = Math.max(9, size * 0.046);
+  const vertexR = Math.max(2.5, size * 0.013);
+  const hitR = Math.max(10, size * 0.05);
+  const hoverR = Math.max(5, size * 0.025);
+
   const cx = size / 2;
   const cy = size / 2;
-  const radius = size / 2 - 44;
+  const radius = size / 2 - padding;
   const rings = 4;
 
   // angle for index i — start at top (-90deg)
@@ -51,7 +62,17 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
 
   return (
     <div className="flex justify-center w-full overflow-visible">
-      <svg viewBox={`0 0 ${size} ${size}`} width="100%" height="auto" style={{ maxWidth: size }} role="img" aria-label="Stats radar chart" overflow="visible">
+      <svg
+        viewBox={`0 0 ${size} ${size}`}
+        width="100%"
+        height="auto"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ maxWidth: size, aspectRatio: "1 / 1" }}
+        className="w-full h-auto"
+        role="img"
+        aria-label="Stats radar chart"
+        overflow="visible"
+      >
         {/* Grid rings */}
         {gridPolys.map((pts, idx) => (
           <polygon
@@ -93,17 +114,14 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
           const [key, value] = entries[i];
           return (
             <g key={i} className="cursor-pointer group">
-              {/* Visible vertex */}
-              <circle cx={p.x} cy={p.y} r={3} fill={color} />
-              {/* Larger invisible hit area */}
-              <circle cx={p.x} cy={p.y} r={12} fill="transparent">
+              <circle cx={p.x} cy={p.y} r={vertexR} fill={color} />
+              <circle cx={p.x} cy={p.y} r={hitR} fill="transparent">
                 <title>{`${key}: ${value} / ${max}`}</title>
               </circle>
-              {/* Hover ring */}
               <circle
                 cx={p.x}
                 cy={p.y}
-                r={6}
+                r={hoverR}
                 fill="none"
                 stroke={color}
                 strokeWidth={1.5}
@@ -115,7 +133,7 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
         })}
         {/* Labels */}
         {entries.map(([key, value], i) => {
-          const lp = point(i, radius + 18);
+          const lp = point(i, radius + labelOffset);
           const a = angle(i);
           const cos = Math.cos(a);
           const anchor = Math.abs(cos) < 0.2 ? "middle" : cos > 0 ? "start" : "end";
@@ -127,16 +145,16 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
                 textAnchor={anchor}
                 dominantBaseline="middle"
                 className="fill-muted-foreground"
-                style={{ fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-display, inherit)" }}
+                style={{ fontSize: labelFont, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--font-display, inherit)" }}
               >
                 {key}
               </text>
               <text
                 x={lp.x}
-                y={lp.y + 11}
+                y={lp.y + valueGap}
                 textAnchor={anchor}
                 dominantBaseline="middle"
-                style={{ fontSize: 10, fill: color, fontWeight: 600 }}
+                style={{ fontSize: valueFont, fill: color, fontWeight: 600 }}
               >
                 {value}
               </text>
