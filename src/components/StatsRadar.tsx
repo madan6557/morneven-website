@@ -6,13 +6,15 @@ interface StatsRadarProps {
   color: string;
   size?: number;
   max?: number;
+  /** Optional map of stat key -> full descriptive name (e.g. STR -> Strength). */
+  labels?: Record<string, string>;
 }
 
 /**
  * Pentagram / spider-web visualization for 3-8 stat values (0-max).
  * Pure SVG, no chart library — keeps bundle small and theme-true.
  */
-export default function StatsRadar({ stats, color, size = 240, max = 100 }: StatsRadarProps) {
+export default function StatsRadar({ stats, color, size = 240, max = 100, labels }: StatsRadarProps) {
   const entries = Object.entries(stats);
   const n = entries.length;
   const [hovered, setHovered] = useState<number | null>(null);
