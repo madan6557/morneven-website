@@ -170,6 +170,22 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
           );
         })}
       </svg>
+      {/* Themed hover tooltip — positioned over the active vertex */}
+      {hovered !== null && (() => {
+        const [key, value] = entries[hovered];
+        const p = dataPoints[hovered];
+        const leftPct = (p.x / size) * 100;
+        const topPct = (p.y / size) * 100;
+        return (
+          <div
+            className="pointer-events-none absolute z-50 -translate-x-1/2 -translate-y-[calc(100%+10px)] rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-lg whitespace-nowrap animate-in fade-in-0 zoom-in-95"
+            style={{ left: `${leftPct}%`, top: `${topPct}%` }}
+          >
+            <div className="font-display uppercase tracking-wider text-[10px] text-muted-foreground">{key}</div>
+            <div className="font-semibold" style={{ color }}>{value} <span className="text-muted-foreground font-normal">/ {max}</span></div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
