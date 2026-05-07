@@ -113,13 +113,19 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
         />
         {/* Data vertices with hover tooltips */}
         {dataPoints.map((p, i) => {
-          const [key, value] = entries[i];
+          const isActive = hovered === i;
           return (
-            <g key={i} className="cursor-pointer group">
+            <g
+              key={i}
+              className="cursor-pointer"
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered(null)}
+              onTouchStart={() => setHovered(i)}
+            >
               <circle cx={p.x} cy={p.y} r={vertexR} fill={color} />
-              <circle cx={p.x} cy={p.y} r={hitR} fill="transparent">
-                <title>{`${key}: ${value} / ${max}`}</title>
-              </circle>
+              {/* Larger transparent hit area */}
+              <circle cx={p.x} cy={p.y} r={hitR} fill="transparent" />
+              {/* Hover ring */}
               <circle
                 cx={p.x}
                 cy={p.y}
@@ -127,8 +133,8 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
                 fill="none"
                 stroke={color}
                 strokeWidth={1.5}
-                opacity={0}
-                className="transition-opacity group-hover:opacity-80 pointer-events-none"
+                opacity={isActive ? 0.85 : 0}
+                className="transition-opacity pointer-events-none"
               />
             </g>
           );
