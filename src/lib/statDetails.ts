@@ -18,6 +18,40 @@ export const STAT_DETAIL_AXES: Record<StatCategoryKey, Record<string, number>> =
   perception: { ACU: 50, FOC: 50, INT: 50 },
 };
 
+// Full names for stat axis abbreviations — used in tooltips so users see
+// "Strength" instead of "STR". Keep keys in sync with *_AXES above.
+export const STAT_AXIS_FULL_NAMES: Record<string, string> = {
+  STR: "Strength",
+  DEF: "Defense",
+  AGI: "Agility",
+  END: "Endurance",
+  ADP: "Adaptability",
+  IQ: "Intelligence Quotient",
+  EQ: "Emotional Quotient",
+  SQ: "Social Quotient",
+  PRS: "Presence",
+  INT: "Intuition",
+  MNP: "Manipulation",
+  PRC: "Precision",
+  SIL: "Silence",
+  ENC: "Concealment",
+  VIS: "Vision",
+  ACU: "Acuity",
+  FOC: "Focus",
+  PRB: "Problem Solving",
+  MEM: "Memory",
+  INS: "Instinct",
+  AMB: "Ambush",
+  CAM: "Camouflage",
+  QUI: "Quickness",
+  TRP: "Trap Setting",
+  TRK: "Tracking",
+  DET: "Detection",
+  AWR: "Awareness",
+  DOM: "Dominance",
+  HOS: "Hostility",
+};
+
 export const averageScore = (values: number[]) => (values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0);
 
 export function toCharacterPrimaryStats(stats: CharacterStats): Record<StatCategoryKey, number> {
