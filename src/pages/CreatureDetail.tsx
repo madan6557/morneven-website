@@ -108,6 +108,8 @@ export default function CreatureDetail() {
 
   const accent = creature.accentColor;
   const doctrine = getDoctrine(creature.classification);
+  const creatureStats = (creature.stats ?? (creature as unknown as { threatStats?: Creature["stats"] }).threatStats) as Creature["stats"] | undefined;
+  const creatureSkills = (creature.skills ?? (creature as unknown as { skillSection?: Creature["skills"] }).skillSection) as Creature["skills"];
 
   const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
     if (!creature) return;
@@ -247,7 +249,7 @@ export default function CreatureDetail() {
         </div>
 
         {/* Threat Stats */}
-        {creature.stats && (
+        {creatureStats && (
           <div className="hud-border bg-card p-5 space-y-4 max-w-2xl" style={{ borderColor: `${accent}30` }}>
             {(() => {
               const primaryStats = toCreaturePrimaryStats(creature.stats!);
@@ -385,7 +387,7 @@ export default function CreatureDetail() {
 
         {/* Skills - living entity */}
         <div className="pt-6">
-          <SkillList items={creature.skills} accent={accent} variant="skill" />
+          <SkillList items={creatureSkills} accent={accent} variant="skill" />
         </div>
 
         {/* Documentation - always visible (outside tabs) */}

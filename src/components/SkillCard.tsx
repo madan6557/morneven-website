@@ -87,8 +87,27 @@ interface SkillListProps {
   variant?: "skill" | "feature";
 }
 
+type RawSkillFeature = Partial<Skill & Feature> & {
+  title?: string;
+  summary?: string;
+  details?: string;
+  color?: string;
+};
+
+function normalizeItem(raw: RawSkillFeature, idx: number, variant: "skill" | "feature"): Skill | Feature {
+  return {
+    id: raw.id || `${variant}-${idx}`,
+    name: raw.name || raw.title || "",
+    icon: raw.icon,
+    accentColor: raw.accentColor || raw.color,
+    tagline: raw.tagline || raw.summary,
+    description: raw.description || raw.details || raw.summary || "",
+    cost: raw.cost,
+  };
+}
+
 export function SkillList({ title, items, accent, variant = "skill" }: SkillListProps) {
-  const list = items ?? [];
+  const list = (items ?? []).map((item, idx) => normalizeItem(item as RawSkillFeature, idx, variant));
   if (list.length === 0) return null;
   const heading = title ?? (variant === "skill" ? "Skills" : "Features");
   return (

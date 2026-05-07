@@ -82,12 +82,29 @@ export const CREATURE_STAT_DETAIL_AXES: Record<CreatureStatCategoryKey, Record<s
   ferocity: { INT: 50, DOM: 50, HOS: 50 },
 };
 
-export function toCreaturePrimaryStats(stats: CreatureStats): Record<CreatureStatCategoryKey, number> {
+type CreatureStatsLike = Partial<CreatureStats> & {
+  detail?: {
+    combat?: Record<string, number>;
+    cognition?: Record<string, number>;
+    predation?: Record<string, number>;
+    senses?: Record<string, number>;
+    ferocity?: Record<string, number>;
+  };
+};
+
+const fromDetailAverage = (detail?: Record<string, number>) => {
+  if (!detail) return undefined;
+  const values = Object.values(detail).filter((v) => typeof v === "number");
+  return values.length ? averageScore(values) : undefined;
+};
+
+export function toCreaturePrimaryStats(stats: CreatureStatsLike): Record<CreatureStatCategoryKey, number> {
+  const detail = stats.detail;
   return {
-    combat: stats.combat,
-    cognition: stats.cognition ?? stats.intelligence,
-    predation: stats.predation ?? stats.stealth,
-    senses: stats.senses ?? stats.endurance,
-    ferocity: stats.ferocity,
+    combat: stats.combat ?? fromDetailAverage(detail?.combat) ?? 0,
+    cognition: stats.cognition ?? stats.intelligence ?? fromDetailAverage(detail?.cognition) ?? 0,
+    predation: stats.predation ?? stats.stealth ?? fromDetailAverage(detail?.predation) ?? 0,
+    senses: stats.senses ?? stats.endurance ?? fromDetailAverage(detail?.senses) ?? 0,
+    ferocity: stats.ferocity ?? fromDetailAverage(detail?.ferocity) ?? 0,
   };
 }
