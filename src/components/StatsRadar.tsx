@@ -63,7 +63,7 @@ export default function StatsRadar({ stats, color, size = 240, max = 100 }: Stat
   const dataPath = dataPoints.map((p) => `${p.x},${p.y}`).join(" ");
 
   return (
-    <div className="flex justify-center w-full overflow-visible">
+    <div className="relative flex justify-center w-full overflow-visible" style={{ maxWidth: size, marginInline: "auto" }}>
       <svg
         viewBox={`0 0 ${size} ${size}`}
         width="100%"
