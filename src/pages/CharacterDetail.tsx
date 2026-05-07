@@ -223,7 +223,7 @@ export default function CharacterDetail() {
                           </p>
                           <button type="button" onClick={() => setSelectedStatDetail(null)} className="text-[10px] uppercase text-muted-foreground hover:text-foreground">Close</button>
                         </div>
-                        <StatsRadar stats={STAT_DETAIL_AXES[selectedStatDetail]} color={accentColor} />
+                        <StatsRadar stats={STAT_DETAIL_AXES[selectedStatDetail]} color={accentColor} labels={STAT_AXIS_FULL_NAMES} />
                       </div>
                     )}
                   </>
