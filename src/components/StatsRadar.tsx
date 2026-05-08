@@ -229,7 +229,7 @@ export default function StatsRadar({ stats, color, size = 240, max = 100, labels
         const topPct = (p.y / size) * 100;
         return (
           <div
-            className="pointer-events-none absolute z-50 max-w-[min(80vw,16rem)] rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-lg whitespace-nowrap animate-in fade-in-0 zoom-in-95"
+            className="pointer-events-none absolute z-50 w-max max-w-[min(75vw,14rem)] rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-lg break-words animate-in fade-in-0 zoom-in-95"
             style={{
               left: `${leftPct}%`,
               top: `${topPct}%`,
