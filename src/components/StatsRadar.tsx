@@ -135,18 +135,35 @@ export default function StatsRadar({ stats, color, size = 240, max = 100, labels
         {/* Data vertices with hover tooltips */}
         {dataPoints.map((p, i) => {
           const isActive = hovered === i;
+          const [vKey, vValue] = entries[i];
+          const vFull = labels?.[vKey];
+          const aria = `${vFull ?? vKey}: ${vValue} of ${max}`;
           return (
             <g
               key={i}
-              className="cursor-pointer"
+              className="cursor-pointer focus:outline-none"
+              role="button"
+              tabIndex={0}
+              aria-label={aria}
               onMouseEnter={() => setHovered(i)}
               onMouseLeave={() => setHovered(null)}
-              onTouchStart={() => setHovered(i)}
+              onFocus={() => setHovered(i)}
+              onBlur={() => setHovered(null)}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                setHovered((cur) => (cur === i ? null : i));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setHovered((cur) => (cur === i ? null : i));
+                }
+              }}
             >
               <circle cx={p.x} cy={p.y} r={vertexR} fill={color} />
               {/* Larger transparent hit area */}
               <circle cx={p.x} cy={p.y} r={hitR} fill="transparent" />
-              {/* Hover ring */}
+              {/* Hover/focus ring */}
               <circle
                 cx={p.x}
                 cy={p.y}
