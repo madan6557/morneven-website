@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface StatsRadarProps {
   stats: Record<string, number>;
@@ -18,6 +18,25 @@ export default function StatsRadar({ stats, color, size = 240, max = 100, labels
   const entries = Object.entries(stats);
   const n = entries.length;
   const [hovered, setHovered] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Dismiss tooltip on outside tap / Escape for mobile + keyboard users
+  useEffect(() => {
+    if (hovered === null) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setHovered(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setHovered(null);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [hovered]);
+
   if (n < 3) return null;
 
   // Scale-aware paddings & label metrics — keeps geometry consistent
@@ -65,7 +84,7 @@ export default function StatsRadar({ stats, color, size = 240, max = 100, labels
   const dataPath = dataPoints.map((p) => `${p.x},${p.y}`).join(" ");
 
   return (
-    <div className="relative flex justify-center w-full overflow-visible" style={{ maxWidth: size, marginInline: "auto" }}>
+    <div ref={containerRef} className="relative flex justify-center w-full overflow-visible" style={{ maxWidth: size, marginInline: "auto" }}>
       <svg
         viewBox={`0 0 ${size} ${size}`}
         width="100%"
