@@ -208,18 +208,33 @@ export default function StatsRadar({ stats, color, size = 240, max = 100, labels
           );
         })}
       </svg>
-      {/* Themed hover tooltip — positioned over the active vertex */}
+      {/* Themed hover tooltip — placement adapts to vertex position so it stays inside the viewport */}
       {hovered !== null && (() => {
         const [key, value] = entries[hovered];
         const fullName = labels?.[key];
         const labelText = fullName ? `${fullName} (${key})` : key;
         const p = dataPoints[hovered];
+        const a = angle(hovered);
+        const cos = Math.cos(a);
+        const sin = Math.sin(a);
+        const gap = 12;
+        // Vertical placement: above for top half, below for bottom half
+        const placeBelow = sin > 0.25;
+        // Horizontal placement: shift toward the center side when near left/right edges
+        const horiz: "left" | "center" | "right" =
+          cos < -0.4 ? "right" : cos > 0.4 ? "left" : "center";
+        const translateX = horiz === "center" ? "-50%" : horiz === "left" ? "-100%" : "0%";
+        const translateY = placeBelow ? `${gap}px` : `calc(-100% - ${gap}px)`;
         const leftPct = (p.x / size) * 100;
         const topPct = (p.y / size) * 100;
         return (
           <div
-            className="pointer-events-none absolute z-50 -translate-x-1/2 -translate-y-[calc(100%+10px)] rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-lg whitespace-nowrap animate-in fade-in-0 zoom-in-95"
-            style={{ left: `${leftPct}%`, top: `${topPct}%` }}
+            className="pointer-events-none absolute z-50 max-w-[min(80vw,16rem)] rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-lg whitespace-nowrap animate-in fade-in-0 zoom-in-95"
+            style={{
+              left: `${leftPct}%`,
+              top: `${topPct}%`,
+              transform: `translate(${translateX}, ${translateY})`,
+            }}
           >
             <div className="font-display uppercase tracking-wider text-[10px] text-muted-foreground">{labelText}</div>
             <div className="font-semibold" style={{ color }}>{value} <span className="text-muted-foreground font-normal">/ {max}</span></div>
