@@ -1,9 +1,14 @@
 import { useMemo, useState } from "react";
 import * as Lucide from "lucide-react";
-import { Zap, Clock, Filter, X } from "lucide-react";
+import { Zap, Clock, Filter, X, ChevronDown, Tag } from "lucide-react";
 import type { Skill, Feature } from "@/types";
-import { RichDescription } from "./AttributeBadge";
-import { SKILL_ATTRIBUTE_LIST, type SkillAttribute } from "@/lib/skillAttributes";
+import { AttributeBadge, RichDescription } from "./AttributeBadge";
+import {
+  SKILL_ATTRIBUTES,
+  SKILL_ATTRIBUTE_LIST,
+  parseDescription,
+  type SkillAttribute,
+} from "@/lib/skillAttributes";
 import { AuthenticatedImage } from "./AuthenticatedImage";
 import { cn } from "@/lib/utils";
 
