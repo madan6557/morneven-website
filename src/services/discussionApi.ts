@@ -2,6 +2,7 @@ import type {
   Character,
   Creature,
   DiscussionMention,
+  Project,
   LoreEvent,
   OtherLore,
   Place,
@@ -65,12 +66,69 @@ function createLoreDiscussionCrud<T>(category: string) {
   };
 }
 
+function createProjectDiscussionCrud<T>() {
+  return {
+    addComment(entityId: string, _author: string, text: string, mentions: DiscussionMention[] = []) {
+      return apiRequest<T>(`/projects/${entityId}/comments`, {
+        method: "POST",
+        body: { text, mentions },
+      });
+    },
+
+    addReply(
+      entityId: string,
+      commentId: string,
+      _author: string,
+      text: string,
+      mentions: DiscussionMention[] = [],
+    ) {
+      return apiRequest<T>(`/projects/${entityId}/comments/${commentId}/replies`, {
+        method: "POST",
+        body: { text, mentions },
+      });
+    },
+
+    editComment(entityId: string, commentId: string, text: string, mentions: DiscussionMention[] = []) {
+      return apiRequest<T>(`/projects/${entityId}/comments/${commentId}`, {
+        method: "PUT",
+        body: { text, mentions },
+      });
+    },
+
+    deleteComment(entityId: string, commentId: string) {
+      return apiRequest<T>(`/projects/${entityId}/comments/${commentId}`, {
+        method: "DELETE",
+      });
+    },
+
+    editReply(
+      entityId: string,
+      commentId: string,
+      replyId: string,
+      text: string,
+      mentions: DiscussionMention[] = [],
+    ) {
+      return apiRequest<T>(`/projects/${entityId}/comments/${commentId}/replies/${replyId}`, {
+        method: "PUT",
+        body: { text, mentions },
+      });
+    },
+
+    deleteReply(entityId: string, commentId: string, replyId: string) {
+      return apiRequest<T>(`/projects/${entityId}/comments/${commentId}/replies/${replyId}`, {
+        method: "DELETE",
+      });
+    },
+  };
+}
+
 const placeDiscussion = createLoreDiscussionCrud<Place>("places");
 const techDiscussion = createLoreDiscussionCrud<Technology>("technology");
 const otherDiscussion = createLoreDiscussionCrud<OtherLore>("other");
 const characterDiscussion = createLoreDiscussionCrud<Character>("characters");
 const creatureDiscussion = createLoreDiscussionCrud<Creature>("creatures");
 const eventDiscussion = createLoreDiscussionCrud<LoreEvent>("events");
+const projectDiscussion = createProjectDiscussionCrud<Project>();
 
 export const addPlaceDiscussionComment = placeDiscussion.addComment;
 export const addPlaceDiscussionReply = placeDiscussion.addReply;
@@ -113,3 +171,10 @@ export const editEventDiscussionComment = eventDiscussion.editComment;
 export const deleteEventDiscussionComment = eventDiscussion.deleteComment;
 export const editEventDiscussionReply = eventDiscussion.editReply;
 export const deleteEventDiscussionReply = eventDiscussion.deleteReply;
+
+export const addProjectDiscussionComment = projectDiscussion.addComment;
+export const addProjectDiscussionReply = projectDiscussion.addReply;
+export const editProjectDiscussionComment = projectDiscussion.editComment;
+export const deleteProjectDiscussionComment = projectDiscussion.deleteComment;
+export const editProjectDiscussionReply = projectDiscussion.editReply;
+export const deleteProjectDiscussionReply = projectDiscussion.deleteReply;

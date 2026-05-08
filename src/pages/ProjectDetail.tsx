@@ -1,19 +1,29 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { getProject } from "@/services/api";
+import {
+  getProject,
+  addProjectDiscussionComment,
+  addProjectDiscussionReply,
+  editProjectDiscussionComment,
+  deleteProjectDiscussionComment,
+  editProjectDiscussionReply,
+  deleteProjectDiscussionReply,
+} from "@/services/api";
 import { getProxyUrl } from "@/services/fileProxyService";
-import type { Project } from "@/types";
+import type { DiscussionComment, DiscussionMention, Project } from "@/types";
 import { ArrowLeft, Calendar, Tag, FileText, GitBranch, Image as ImageIcon, Info } from "lucide-react";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillList } from "@/components/SkillCard";
+import DiscussionSection from "@/components/DiscussionSection";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -30,6 +40,7 @@ export default function ProjectDetail() {
     getProject(id).then((p) => {
       if (!active) return;
       setProject(p ?? null);
+      setDiscussion(p?.discussions ?? []);
       setLoading(false);
     });
 
@@ -55,12 +66,56 @@ export default function ProjectDetail() {
     );
   }
 
+  const headerImage = project.headerImage || project.thumbnail;
+
+  const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
+    const updated = await addProjectDiscussionComment(project.id, author, text, mentions);
+    if (!updated) return;
+    setProject(updated);
+    setDiscussion(updated.discussions ?? []);
+  };
+
+  const handleAddReply = async (commentId: string, author: string, text: string, mentions: DiscussionMention[] = []) => {
+    const updated = await addProjectDiscussionReply(project.id, commentId, author, text, mentions);
+    if (!updated) return;
+    setProject(updated);
+    setDiscussion(updated.discussions ?? []);
+  };
+
+  const handleEditComment = async (commentId: string, text: string, mentions: DiscussionMention[] = []) => {
+    const updated = await editProjectDiscussionComment(project.id, commentId, text, mentions);
+    if (!updated) return;
+    setProject(updated);
+    setDiscussion(updated.discussions ?? []);
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    const updated = await deleteProjectDiscussionComment(project.id, commentId);
+    if (!updated) return;
+    setProject(updated);
+    setDiscussion(updated.discussions ?? []);
+  };
+
+  const handleEditReply = async (commentId: string, replyId: string, text: string, mentions: DiscussionMention[] = []) => {
+    const updated = await editProjectDiscussionReply(project.id, commentId, replyId, text, mentions);
+    if (!updated) return;
+    setProject(updated);
+    setDiscussion(updated.discussions ?? []);
+  };
+
+  const handleDeleteReply = async (commentId: string, replyId: string) => {
+    const updated = await deleteProjectDiscussionReply(project.id, commentId, replyId);
+    if (!updated) return;
+    setProject(updated);
+    setDiscussion(updated.discussions ?? []);
+  };
+
   return (
     <div className="space-y-0">
       {/* Parallax-style header */}
-      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={project.thumbnail ? { backgroundImage: `url(${getProxyUrl(project.thumbnail)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={headerImage ? { backgroundImage: `url(${getProxyUrl(headerImage)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent z-10" />
-        {!project.thumbnail && (
+        {!headerImage && (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="font-display text-6xl text-muted-foreground/10 tracking-[0.3em]">MORNEVEN</span>
           </div>
@@ -190,6 +245,19 @@ export default function ProjectDetail() {
         </Tabs>
 
         <SkillList items={project.features} variant="feature" />
+
+        <div className="space-y-4">
+          <div className="mecha-line" />
+          <DiscussionSection
+            comments={discussion}
+            onAddComment={handleAddComment}
+            onAddReply={handleAddReply}
+            onEditComment={handleEditComment}
+            onDeleteComment={handleDeleteComment}
+            onEditReply={handleEditReply}
+            onDeleteReply={handleDeleteReply}
+          />
+        </div>
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ import { SkillList } from "@/components/SkillCard";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getProxyUrl } from "@/services/fileProxyService";
 
 export default function OtherDetail() {
   const { id } = useParams<{ id: string }>();
@@ -60,6 +61,8 @@ export default function OtherDetail() {
       </div>
     );
   }
+
+  const headerImage = item.headerImage || item.thumbnail;
 
   const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
     if (!item) return;
@@ -121,7 +124,7 @@ export default function OtherDetail() {
 
   return (
     <div className="space-y-0">
-      <div className="relative h-48 md:h-64 overflow-hidden flex items-end" style={item.thumbnail ? { backgroundImage: `url(${item.thumbnail})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+      <div className="relative h-48 md:h-64 overflow-hidden flex items-end" style={headerImage ? { backgroundImage: `url(${getProxyUrl(headerImage)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent z-10" />
         <div className="relative z-20 p-6 md:p-8 w-full">
           <Link to="/lore/other" className="inline-flex items-center gap-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors mb-3">

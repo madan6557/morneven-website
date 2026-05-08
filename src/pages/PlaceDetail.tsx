@@ -64,6 +64,8 @@ export default function PlaceDetail() {
     );
   }
 
+  const headerImage = place.headerImage || place.thumbnail;
+
   const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
     if (!place) return;
     const updated = await addPlaceDiscussionComment(place.id, author, text, mentions);
@@ -124,9 +126,9 @@ export default function PlaceDetail() {
 
   return (
     <div className="space-y-0">
-      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={place.thumbnail ? { backgroundImage: `url(${getProxyUrl(place.thumbnail)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={headerImage ? { backgroundImage: `url(${getProxyUrl(headerImage)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent z-10" />
-        {!place.thumbnail && (
+        {!headerImage && (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="font-display text-6xl text-muted-foreground/10 tracking-[0.3em]">GEMORA</span>
           </div>

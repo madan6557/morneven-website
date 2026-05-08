@@ -16,6 +16,7 @@ import { SkillList } from "@/components/SkillCard";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getProxyUrl } from "@/services/fileProxyService";
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
@@ -61,6 +62,8 @@ export default function EventDetail() {
     );
   }
 
+  const headerImage = item.headerImage || item.thumbnail;
+
   const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
     const updated = await addEventDiscussionComment(item.id, author, text, mentions);
     if (!updated) return;
@@ -102,7 +105,7 @@ export default function EventDetail() {
     <div className="space-y-0">
       <div
         className="relative h-48 md:h-64 overflow-hidden flex items-end"
-        style={item.thumbnail ? { backgroundImage: `url(${item.thumbnail})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}
+        style={headerImage ? { backgroundImage: `url(${getProxyUrl(headerImage)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent z-10" />
         <div className="relative z-20 p-6 md:p-8 w-full">

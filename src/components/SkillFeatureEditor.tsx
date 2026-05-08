@@ -1,7 +1,9 @@
-import { useRef } from "react";
-import { Plus, X, Zap } from "lucide-react";
+import { useRef, useState } from "react";
+import { Image, Plus, Upload, X, Zap } from "lucide-react";
 import type { Feature, Skill } from "@/types";
 import { SKILL_ATTRIBUTE_LIST, buildAttributeTag } from "@/lib/skillAttributes";
+import { themedHslBorder, themedHslColor, themedHslSurface } from "@/lib/themeColor";
+import { apiUpload } from "@/services/restClient";
 import { AttributeBadge } from "./AttributeBadge";
 
 const inputClass =
@@ -16,6 +18,9 @@ interface SkillFeatureEditorProps {
 
 export default function SkillFeatureEditor({ variant, items, onChange }: SkillFeatureEditorProps) {
   const refs = useRef<Record<string, HTMLTextAreaElement | null>>({});
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<Record<string, string>>({});
 
   const add = () => {
     if (variant === "skill") {
@@ -23,7 +28,7 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
         id: `skill-${Date.now()}`,
         name: "",
         category: "general",
-        level: 50,
+        cooldown: "",
         description: "",
         icon: "Zap",
       };
@@ -83,6 +88,25 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
   const heading = variant === "skill" ? "Skills" : "Features";
   const addLabel = variant === "skill" ? "ADD SKILL" : "ADD FEATURE";
 
+  const uploadSkillIcon = async (skillId: string, idx: number, file?: File | null) => {
+    if (!file || variant !== "skill") return;
+    setUploadingId(skillId);
+    setUploadError((current) => ({ ...current, [skillId]: "" }));
+    try {
+      const uploaded = await apiUpload<{ url?: string }>("/files/upload?folder=lore", file);
+      if (!uploaded.url) throw new Error("Upload response did not include a file URL");
+      updateSkill(idx, "icon", uploaded.url);
+    } catch (error) {
+      setUploadError((current) => ({
+        ...current,
+        [skillId]: error instanceof Error ? error.message : "Upload failed",
+      }));
+    } finally {
+      setUploadingId(null);
+      if (fileRefs.current[skillId]) fileRefs.current[skillId]!.value = "";
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -131,14 +155,13 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Level ({(item as Skill).level})</label>
+                    <label className={labelClass}>Cooldown</label>
                     <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={(item as Skill).level}
-                      onChange={(e) => updateSkill(idx, "level", Number(e.target.value))}
-                      className="w-full mt-1 accent-primary"
+                      type="text"
+                      value={(item as Skill).cooldown}
+                      onChange={(e) => updateSkill(idx, "cooldown", e.target.value)}
+                      placeholder="e.g. 12s, 2 turns, passive"
+                      className={inputClass}
                     />
                   </div>
                 </>
@@ -177,18 +200,54 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
               )}
 
               <div className="sm:col-span-2">
-                <label className={labelClass}>{variant === "skill" ? "Icon (Lucide or URL)" : "Icon (optional)"}</label>
-                <input
-                  type="text"
-                  value={item.icon || ""}
-                  onChange={(e) =>
-                    variant === "skill"
-                      ? updateSkill(idx, "icon", e.target.value)
-                      : updateFeature(idx, "icon", e.target.value)
-                  }
-                  placeholder="Zap or https://..."
-                  className={inputClass}
-                />
+                <label className={labelClass}>{variant === "skill" ? "Icon (Lucide, URL, or upload)" : "Icon (optional)"}</label>
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={item.icon || ""}
+                    onChange={(e) =>
+                      variant === "skill"
+                        ? updateSkill(idx, "icon", e.target.value)
+                        : updateFeature(idx, "icon", e.target.value)
+                    }
+                    placeholder="Zap or https://..."
+                    className={inputClass}
+                  />
+                  {variant === "skill" ? (
+                    <div className="space-y-2">
+                      <input
+                        ref={(el) => {
+                          fileRefs.current[item.id] = el;
+                        }}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => uploadSkillIcon(item.id, idx, e.target.files?.[0])}
+                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fileRefs.current[item.id]?.click()}
+                          className="inline-flex items-center gap-1.5 rounded-sm border border-dashed border-primary/40 px-3 py-2 text-[10px] font-display tracking-wider text-primary hover:bg-primary/10 transition-colors"
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                          {uploadingId === item.id ? "UPLOADING" : "UPLOAD ICON"}
+                        </button>
+                        {(item as Skill).icon ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-muted px-2 py-1 text-[10px] font-display uppercase tracking-wider text-foreground">
+                            <Image className="h-3 w-3" /> icon ready
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="text-[10px] font-body text-muted-foreground">
+                        Icon requirement: 1:1 ratio. Recommended resolution 512x512 or higher.
+                      </p>
+                      {uploadError[item.id] ? (
+                        <p className="text-[10px] font-body text-destructive">{uploadError[item.id]}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               </div>
               <div>
                 <label className={labelClass}>Color</label>
@@ -241,9 +300,9 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                       onClick={() => wrapAttr(idx, attr.key)}
                       className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-display tracking-wider uppercase border transition-opacity hover:opacity-80"
                       style={{
-                        color: `hsl(${attr.hsl})`,
-                        borderColor: `hsl(${attr.hsl} / 0.45)`,
-                        backgroundColor: `hsl(${attr.hsl} / 0.1)`,
+                        color: themedHslColor(attr.hsl),
+                        borderColor: themedHslBorder(attr.hsl),
+                        backgroundColor: themedHslSurface(attr.hsl),
                       }}
                       title={`Insert ${attr.label} tag`}
                     >

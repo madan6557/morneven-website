@@ -63,6 +63,8 @@ export default function TechDetail() {
     );
   }
 
+  const headerImage = tech.headerImage || tech.thumbnail;
+
   const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
     if (!tech) return;
     const updated = await addTechDiscussionComment(tech.id, author, text, mentions);
@@ -123,9 +125,9 @@ export default function TechDetail() {
 
   return (
     <div className="space-y-0">
-      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={tech.thumbnail ? { backgroundImage: `url(${getProxyUrl(tech.thumbnail)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={headerImage ? { backgroundImage: `url(${getProxyUrl(headerImage)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent z-10" />
-        {!tech.thumbnail && (
+        {!headerImage && (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="font-display text-6xl text-muted-foreground/10 tracking-[0.3em]">TECH</span>
           </div>

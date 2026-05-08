@@ -1,4 +1,5 @@
 import { SKILL_ATTRIBUTES, parseDescription, type SkillAttribute } from "@/lib/skillAttributes";
+import { themedHslBorder, themedHslColor, themedHslSurface } from "@/lib/themeColor";
 import { cn } from "@/lib/utils";
 
 interface AttributeBadgeProps {
@@ -22,10 +23,10 @@ export function AttributeBadge({ attribute, value, size = "sm" }: AttributeBadge
         text,
       )}
       style={{
-        color: `hsl(${cfg.hsl})`,
-        backgroundColor: `hsl(${cfg.hsl} / 0.12)`,
-        borderColor: `hsl(${cfg.hsl} / 0.45)`,
-        textShadow: `0 0 8px hsl(${cfg.hsl} / 0.35)`,
+        color: cfg.textColor ?? themedHslColor(cfg.hsl),
+        backgroundColor: cfg.backgroundColor ?? themedHslSurface(cfg.hsl),
+        borderColor: cfg.borderColor ?? themedHslBorder(cfg.hsl),
+        textShadow: cfg.textShadow ?? "none",
       }}
       title={cfg.label}
     >

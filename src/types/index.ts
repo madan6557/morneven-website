@@ -2,7 +2,7 @@ export interface Skill {
   id: string;
   name: string;
   category: string;
-  level: number;
+  cooldown: string;
   description: string;
   icon?: string;
   color?: string;
@@ -64,12 +64,14 @@ export interface Project {
   title: string;
   status: "Planning" | "On Progress" | "On Hold" | "Completed" | "Canceled";
   thumbnail: string;
+  headerImage?: string;
   shortDesc: string;
   fullDesc: string;
   patches: ProjectPatch[];
   docs: DocItem[];
   archived?: boolean;
   features?: Feature[];
+  discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
 }
@@ -130,6 +132,7 @@ export interface Character {
   dislikes: string[];
   accentColor: string;
   thumbnail: string;
+  headerImage?: string;
   shortDesc: string;
   fullDesc: string;
   stats: CharacterStats;
@@ -198,11 +201,15 @@ export interface Creature {
   dangerLevel: CreatureDangerLevel;
   habitat: string;
   thumbnail: string;
+  headerImage?: string;
   accentColor: string;
   shortDesc: string;
   fullDesc: string;
   stats?: CreatureStats;
   docs: DocItem[];
+  traits?: string[];
+  instincts?: string[];
+  aversions?: string[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
   skills?: Skill[];
@@ -216,6 +223,7 @@ export interface OtherLore {
   title: string;
   category: string;
   thumbnail: string;
+  headerImage?: string;
   shortDesc: string;
   fullDesc: string;
   docs: DocItem[];
@@ -250,6 +258,7 @@ export interface LoreEvent {
   scope?: string;
   impactLevel?: string;
   thumbnail: string;
+  headerImage?: string;
   shortDesc: string;
   fullDesc: string;
   consequences?: string[];
@@ -291,6 +300,7 @@ export interface Place {
   name: string;
   type: string;
   thumbnail: string;
+  headerImage?: string;
   shortDesc: string;
   fullDesc: string;
   docs: DocItem[];
@@ -307,6 +317,7 @@ export interface Technology {
   name: string;
   category: string;
   thumbnail: string;
+  headerImage?: string;
   shortDesc: string;
   fullDesc: string;
   docs: DocItem[];

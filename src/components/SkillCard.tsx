@@ -11,6 +11,7 @@ import {
 } from "@/lib/skillAttributes";
 import { AuthenticatedImage } from "./AuthenticatedImage";
 import { cn } from "@/lib/utils";
+import { accentBorder, accentMuted, accentSurface, accentText, themedHslBorder, themedHslColor, themedHslSurface } from "@/lib/themeColor";
 
 function resolveIcon(name?: string) {
   if (!name) return Zap;
@@ -36,6 +37,10 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
   const Icon = resolveIcon(item.icon);
   const hasImageIcon = isImageSource(item.icon);
   const hue = item.color || accent || "hsl(var(--primary))";
+  const readableHue = accentText(hue);
+  const softBorder = accentBorder(hue);
+  const softSurface = accentSurface(hue);
+  const mutedHue = accentMuted(hue);
   const [expanded, setExpanded] = useState(false);
   const skill = variant === "skill" ? (item as Skill) : null;
   const feature = variant === "feature" ? (item as Feature) : null;
@@ -70,32 +75,32 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
         expanded && "bg-card",
       )}
       style={{
-        borderColor: `${hue}${expanded ? "80" : "40"}`,
-        boxShadow: expanded ? `0 8px 28px -10px ${hue}80, 0 0 0 1px ${hue}66` : `0 0 0 0 ${hue}00`,
-        ["--tw-ring-color" as string]: hue,
+        borderColor: expanded ? readableHue : softBorder,
+        boxShadow: expanded ? `0 8px 28px -14px ${readableHue}, 0 0 0 1px ${softBorder}` : "none",
+        ["--tw-ring-color" as string]: readableHue,
       }}
       onMouseEnter={(event) => {
         if (expanded) return;
-        event.currentTarget.style.boxShadow = `0 6px 24px -8px ${hue}66, 0 0 0 1px ${hue}55`;
+        event.currentTarget.style.boxShadow = `0 6px 24px -14px ${readableHue}, 0 0 0 1px ${softBorder}`;
       }}
       onMouseLeave={(event) => {
         if (expanded) return;
-        event.currentTarget.style.boxShadow = `0 0 0 0 ${hue}00`;
+        event.currentTarget.style.boxShadow = "none";
       }}
     >
       <div className="flex gap-3 sm:gap-4 items-start">
         <span
           aria-hidden
           className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full opacity-60 group-hover:opacity-100 transition-opacity"
-          style={{ background: `linear-gradient(to bottom, ${hue}, transparent)` }}
+          style={{ background: `linear-gradient(to bottom, ${readableHue}, transparent)` }}
         />
 
         <div
           className="relative shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-sm flex items-center justify-center transition-transform group-hover:scale-105"
           style={{
-            background: `linear-gradient(135deg, ${hue}26, ${hue}10)`,
-            border: `1px solid ${hue}80`,
-            boxShadow: `0 0 14px ${hue}40, inset 0 0 12px ${hue}20`,
+            background: `linear-gradient(135deg, ${softSurface}, ${mutedHue})`,
+            border: `1px solid ${softBorder}`,
+            boxShadow: `inset 0 0 12px ${softSurface}`,
           }}
         >
           {hasImageIcon ? (
@@ -105,7 +110,7 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
               className="h-7 w-7 sm:h-8 sm:w-8 object-contain"
             />
           ) : (
-            <Icon className="h-6 w-6 sm:h-7 sm:w-7" style={{ color: hue }} aria-hidden />
+            <Icon className="h-6 w-6 sm:h-7 sm:w-7" style={{ color: readableHue }} aria-hidden />
           )}
         </div>
 
@@ -113,7 +118,7 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
           <div className="flex items-start justify-between gap-2 flex-wrap">
             <h3
               className="font-display text-sm tracking-[0.12em] uppercase text-foreground break-words"
-              style={{ color: hue }}
+              style={{ color: readableHue }}
             >
               {variant === "skill" ? skill?.name || "Unnamed Skill" : feature?.title || "Unnamed Feature"}
             </h3>
@@ -123,16 +128,18 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
                   <span
                     className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-display tracking-wider uppercase rounded-sm border"
                     style={{
-                      color: hue,
-                      borderColor: `${hue}66`,
-                      backgroundColor: `${hue}14`,
+                      color: readableHue,
+                      borderColor: softBorder,
+                      backgroundColor: softSurface,
                     }}
                   >
                     {skill.category || "general"}
                   </span>
-                  <span className="text-[10px] font-display tracking-wider uppercase text-muted-foreground">
-                    Lv {skill.level}
-                  </span>
+                  {skill.cooldown ? (
+                    <span className="text-[10px] font-display tracking-wider uppercase text-muted-foreground">
+                      CD {skill.cooldown}
+                    </span>
+                  ) : null}
                 </>
               ) : null}
               <ChevronDown
@@ -140,7 +147,7 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
                   "h-4 w-4 text-muted-foreground transition-transform duration-200",
                   expanded && "rotate-180",
                 )}
-                style={{ color: expanded ? hue : undefined }}
+                style={{ color: expanded ? readableHue : undefined }}
                 aria-hidden
               />
             </div>
@@ -148,12 +155,6 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
 
           {variant === "skill" && skill ? (
             <>
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-300"
-                  style={{ width: `${skill.level}%`, backgroundColor: hue }}
-                />
-              </div>
               {!expanded && attrSummary.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {attrSummary.map(({ attribute }) => {
@@ -164,9 +165,9 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
                         key={attribute}
                         className="inline-flex items-center justify-center h-4 w-4 rounded-sm border"
                         style={{
-                          color: `hsl(${config.hsl})`,
-                          borderColor: `hsl(${config.hsl} / 0.5)`,
-                          backgroundColor: `hsl(${config.hsl} / 0.12)`,
+                          color: themedHslColor(config.hsl),
+                          borderColor: themedHslBorder(config.hsl),
+                          backgroundColor: themedHslSurface(config.hsl),
                         }}
                         title={config.label}
                       >
@@ -194,9 +195,9 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
                       key={tag}
                       className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-display tracking-wider uppercase rounded-sm border"
                       style={{
-                        color: hue,
-                        borderColor: `${hue}50`,
-                        backgroundColor: `${hue}12`,
+                        color: readableHue,
+                        borderColor: softBorder,
+                        backgroundColor: softSurface,
                       }}
                     >
                       <Tag className="h-2.5 w-2.5" /> {tag}
@@ -242,6 +243,11 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
                 <h4 className="text-[10px] font-display tracking-[0.18em] uppercase text-muted-foreground">
                   Skill Brief
                 </h4>
+                {skill.cooldown ? (
+                  <p className="text-[11px] font-display tracking-wider uppercase text-muted-foreground">
+                    Cooldown {skill.cooldown}
+                  </p>
+                ) : null}
                 <RichDescription text={skill.description || "-"} />
               </section>
             </>
@@ -315,21 +321,24 @@ export function SkillList({ title, items, accent, variant = "skill" }: SkillList
 
   const heading = title ?? (variant === "skill" ? "Skills" : "Features");
   const accentColor = accent || "hsl(var(--primary))";
+  const readableAccent = accentText(accentColor);
+  const softAccentBorder = accentBorder(accentColor);
+  const softAccentSurface = accentSurface(accentColor);
 
   return (
     <div className="space-y-3">
       <div
         className="flex items-center justify-between gap-3 border-b pb-2"
-        style={{ borderColor: `${accentColor}30` }}
+        style={{ borderColor: softAccentBorder }}
       >
         <h2 className="font-heading text-lg tracking-wider text-foreground uppercase flex items-center gap-2">
           {heading}
           <span
             className="inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 text-[10px] font-display tracking-wider rounded-sm border"
             style={{
-              color: accentColor,
-              borderColor: `${accentColor}66`,
-              backgroundColor: `${accentColor}1A`,
+              color: readableAccent,
+              borderColor: softAccentBorder,
+              backgroundColor: softAccentSurface,
             }}
             aria-label={`${list.length} ${variant === "skill" ? "skills" : "features"}`}
           >
@@ -359,9 +368,9 @@ export function SkillList({ title, items, accent, variant = "skill" }: SkillList
                   active ? "ring-1 ring-offset-0 scale-[1.02]" : "opacity-70 hover:opacity-100",
                 )}
                 style={{
-                  color: `hsl(${attr.hsl})`,
-                  borderColor: `hsl(${attr.hsl} / ${active ? 0.9 : 0.4})`,
-                  backgroundColor: `hsl(${attr.hsl} / ${active ? 0.22 : 0.08})`,
+                  color: themedHslColor(attr.hsl),
+                  borderColor: themedHslBorder(attr.hsl, active ? 0.56 : 0.28),
+                  backgroundColor: themedHslSurface(attr.hsl, active ? 0.2 : 0.08),
                 }}
                 title={`Filter by ${attr.label}`}
                 aria-pressed={active}
@@ -387,7 +396,7 @@ export function SkillList({ title, items, accent, variant = "skill" }: SkillList
           No {variant === "skill" ? "skills" : "features"} match this filter.
         </p>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {filtered.map((item) => (
             <SkillCard key={item.id} item={item} accent={accent} variant={variant} />
           ))}

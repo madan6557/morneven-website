@@ -89,6 +89,7 @@ type EditableState = {
   name?: string;
   status?: Project["status"];
   thumbnail?: string;
+  headerImage?: string;
   shortDesc?: string;
   fullDesc?: string;
   patches?: ProjectPatch[];
@@ -112,6 +113,8 @@ type EditableState = {
   classification?: CreatureClassification;
   dangerLevel?: CreatureDangerLevel;
   habitat?: string;
+  instincts?: string[];
+  aversions?: string[];
   era?: string;
   dateLabel?: string;
   scope?: string;
@@ -824,7 +827,7 @@ export default function AuthorDashboard() {
   const startCreate = () => {
     setIsCreating(true);
     if (activeTab === "projects") {
-      setEditing({ title: "", status: "Planning", thumbnail: "", shortDesc: "", fullDesc: "", patches: [], docs: [], features: [] });
+      setEditing({ title: "", status: "Planning", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", patches: [], docs: [], features: [] });
     } else if (activeTab === "lore") {
       if (loreSub === "characters") {
         setEditing({
@@ -837,6 +840,7 @@ export default function AuthorDashboard() {
           dislikes: [],
           accentColor: "#4A90D9",
           thumbnail: "",
+          headerImage: "",
           shortDesc: "",
           fullDesc: "",
           stats: createDefaultCharacterStats(),
@@ -847,17 +851,21 @@ export default function AuthorDashboard() {
           skills: [],
         });
       } else if (loreSub === "places") {
-        setEditing({ name: "", type: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
+        setEditing({ name: "", type: "", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       } else if (loreSub === "technology") {
-        setEditing({ name: "", category: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
+        setEditing({ name: "", category: "", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       } else if (loreSub === "creatures") {
         setEditing({
           name: "",
           classification: "Amorphous",
           dangerLevel: 1,
           habitat: "",
+          traits: [],
+          instincts: [],
+          aversions: [],
           accentColor: "#7DD3FC",
           thumbnail: "",
+          headerImage: "",
           shortDesc: "",
           fullDesc: "",
           stats: createDefaultCreatureStats(),
@@ -875,6 +883,7 @@ export default function AuthorDashboard() {
           scope: "",
           impactLevel: "",
           thumbnail: "",
+          headerImage: "",
           shortDesc: "",
           fullDesc: "",
           consequences: [],
@@ -885,7 +894,7 @@ export default function AuthorDashboard() {
           features: [],
         });
       } else {
-        setEditing({ title: "", category: "World Systems", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
+        setEditing({ title: "", category: "World Systems", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       }
     } else {
       setEditing({ type: "image", title: "", thumbnail: "", videoUrl: "", caption: "", tags: [], date: new Date().toISOString().split("T")[0], comments: [] });
@@ -941,6 +950,7 @@ export default function AuthorDashboard() {
         title: editing.title ?? "",
         status: (editing.status as Project["status"]) ?? "Planning",
         thumbnail: editing.thumbnail ?? "",
+        headerImage: editing.headerImage ?? "",
         shortDesc: editing.shortDesc ?? "",
         fullDesc: editing.fullDesc ?? "",
         patches: editing.patches ?? [],
@@ -965,6 +975,7 @@ export default function AuthorDashboard() {
           dislikes: editing.dislikes ?? [],
           accentColor: editing.accentColor ?? "#4A90D9",
           thumbnail: editing.thumbnail ?? "",
+          headerImage: editing.headerImage ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           stats: normalizedStats,
@@ -984,6 +995,7 @@ export default function AuthorDashboard() {
           name: editing.name ?? "",
           type: editing.type ?? "",
           thumbnail: editing.thumbnail ?? "",
+          headerImage: editing.headerImage ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
@@ -1001,6 +1013,7 @@ export default function AuthorDashboard() {
           name: editing.name ?? "",
           category: editing.category ?? "",
           thumbnail: editing.thumbnail ?? "",
+          headerImage: editing.headerImage ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
@@ -1020,8 +1033,12 @@ export default function AuthorDashboard() {
           classification: (editing.classification as CreatureClassification) ?? "Amorphous",
           dangerLevel: (editing.dangerLevel as CreatureDangerLevel) ?? 1,
           habitat: editing.habitat ?? "",
+          traits: editing.traits ?? [],
+          instincts: editing.instincts ?? [],
+          aversions: editing.aversions ?? [],
           accentColor: editing.accentColor ?? "#7DD3FC",
           thumbnail: editing.thumbnail ?? "",
+          headerImage: editing.headerImage ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
@@ -1044,6 +1061,7 @@ export default function AuthorDashboard() {
           scope: editing.scope,
           impactLevel: editing.impactLevel,
           thumbnail: editing.thumbnail ?? "",
+          headerImage: editing.headerImage ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           consequences: editing.consequences ?? [],
@@ -1063,6 +1081,7 @@ export default function AuthorDashboard() {
           title: editing.title ?? "",
           category: editing.category ?? "World Systems",
           thumbnail: editing.thumbnail ?? "",
+          headerImage: editing.headerImage ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
@@ -1284,6 +1303,9 @@ export default function AuthorDashboard() {
         docs: creature.docs ?? [],
         fieldNotes: creature.fieldNotes ?? [],
         observations: creature.observations ?? [],
+        traits: creature.traits ?? [],
+        instincts: creature.instincts ?? [],
+        aversions: creature.aversions ?? [],
         skills: creature.skills ?? [],
         stats: normalizeCreatureStatsForEditor(creature.stats),
       });
@@ -1749,6 +1771,16 @@ export default function AuthorDashboard() {
               folder={isProject ? "projects" : isGallery ? "gallery" : "lore"}
             />
 
+            {!isGallery && editing.fullDesc !== undefined && (
+              <FileUploadField
+                label="Header Image"
+                value={editing.headerImage || ""}
+                onChange={(url) => setEditing({ ...editing, headerImage: url })}
+                accept="image/*"
+                folder={isProject ? "projects" : "lore"}
+              />
+            )}
+
             {/* Project-specific: Status */}
             {isProject && (
               <div>
@@ -1842,6 +1874,36 @@ export default function AuthorDashboard() {
                     <input type="color" value={editing.accentColor || "#7DD3FC"} onChange={(e) => setEditing({ ...editing, accentColor: e.target.value })} className="h-10 w-16 border border-border rounded-sm cursor-pointer" />
                     <input type="text" value={editing.accentColor || "#7DD3FC"} onChange={(e) => setEditing({ ...editing, accentColor: e.target.value })} className="flex-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
                   </div>
+                </div>
+                <div>
+                  <label className={labelClass}>Traits (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={(editing.traits || []).join(", ")}
+                    onChange={(e) => setEditing({ ...editing, traits: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                    className={inputClass}
+                    placeholder="e.g. Territorial, Pack-Hunting, Nocturnal"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Instincts (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={(editing.instincts || []).join(", ")}
+                    onChange={(e) => setEditing({ ...editing, instincts: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                    className={inputClass}
+                    placeholder="e.g. Follows heat, Protects nest, Drawn to vibration"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Aversions (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={(editing.aversions || []).join(", ")}
+                    onChange={(e) => setEditing({ ...editing, aversions: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                    className={inputClass}
+                    placeholder="e.g. Bright magnesium light, Salt fog, High-frequency noise"
+                  />
                 </div>
               </>
             )}

@@ -8,9 +8,11 @@ export type SkillAttribute =
   | "physical-damage"
   | "magic-damage"
   | "mental-effect"
+  | "shield"
   | "physical-defense"
   | "magic-defense"
-  | "mental-defense";
+  | "mental-defense"
+  | "immune";
 
 export interface SkillAttributeConfig {
   key: SkillAttribute;
@@ -19,6 +21,10 @@ export interface SkillAttributeConfig {
   // HSL token from the design system (used for badge bg + glow).
   hsl: string;
   Icon: ComponentType<SVGProps<SVGSVGElement>>;
+  textColor?: string;
+  backgroundColor?: string;
+  borderColor?: string;
+  textShadow?: string;
 }
 
 export const SKILL_ATTRIBUTES: Record<SkillAttribute, SkillAttributeConfig> = {
@@ -43,6 +49,13 @@ export const SKILL_ATTRIBUTES: Record<SkillAttribute, SkillAttributeConfig> = {
     hsl: "190 80% 55%",
     Icon: Brain,
   },
+  shield: {
+    key: "shield",
+    label: "Shield",
+    shortLabel: "SHIELD",
+    hsl: "44 96% 68%",
+    Icon: Shield,
+  },
   "physical-defense": {
     key: "physical-defense",
     label: "Physical Defense",
@@ -63,6 +76,17 @@ export const SKILL_ATTRIBUTES: Record<SkillAttribute, SkillAttributeConfig> = {
     shortLabel: "MENTAL DEF",
     hsl: "190 80% 55%",
     Icon: ShieldCheck,
+  },
+  immune: {
+    key: "immune",
+    label: "Immune",
+    shortLabel: "IMMUNE",
+    hsl: "0 0% 100%",
+    Icon: ShieldCheck,
+    textColor: "hsl(0 0% 100%)",
+    backgroundColor: "hsl(0 0% 100% / 0.12)",
+    borderColor: "hsl(0 0% 100% / 0.4)",
+    textShadow: "0 0 8px hsl(0 0% 100% / 0.2)",
   },
 };
 

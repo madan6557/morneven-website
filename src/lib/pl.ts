@@ -246,5 +246,5 @@ export function canModerateDiscussions(level: PersonnelLevel, track: PersonnelTr
 }
 
 export function canManagePersonnel(level: PersonnelLevel): boolean {
-  return level >= 4;
+  return level >= 5;
 }
