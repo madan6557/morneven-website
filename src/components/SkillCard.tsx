@@ -1,9 +1,14 @@
 import { useMemo, useState } from "react";
 import * as Lucide from "lucide-react";
-import { Zap, Clock, Filter, X } from "lucide-react";
+import { Zap, Clock, Filter, X, ChevronDown, Tag } from "lucide-react";
 import type { Skill, Feature } from "@/types";
-import { RichDescription } from "./AttributeBadge";
-import { SKILL_ATTRIBUTE_LIST, type SkillAttribute } from "@/lib/skillAttributes";
+import { AttributeBadge, RichDescription } from "./AttributeBadge";
+import {
+  SKILL_ATTRIBUTES,
+  SKILL_ATTRIBUTE_LIST,
+  parseDescription,
+  type SkillAttribute,
+} from "@/lib/skillAttributes";
 import { AuthenticatedImage } from "./AuthenticatedImage";
 import { cn } from "@/lib/utils";
 
@@ -31,76 +36,194 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
   const Icon = resolveIcon(item.icon);
   const hasImageIcon = isImageSource(item.icon);
   const hue = item.accentColor || accent || "hsl(var(--primary))";
+  const [expanded, setExpanded] = useState(false);
+
+  // Aggregate every [[attr:..]] tag in the description so the expanded panel
+  // can summarise PHYS / MAG / mental requirements & defences at a glance.
+  const attrSummary = useMemo(() => {
+    const tokens = parseDescription(item.description || "");
+    const map = new Map<SkillAttribute, string[]>();
+    for (const t of tokens) {
+      if (t.type !== "tag") continue;
+      const arr = map.get(t.attribute) ?? [];
+      if (t.value) arr.push(t.value);
+      map.set(t.attribute, arr);
+    }
+    return Array.from(map.entries()).map(([attribute, values]) => ({ attribute, values }));
+  }, [item.description]);
+
+  const toggle = () => setExpanded((v) => !v);
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggle();
+    }
+  };
+
   return (
     <div
-      className="group relative hud-border-sm bg-card/70 p-3 sm:p-4 flex gap-3 sm:gap-4 items-start transition-all duration-200 hover:bg-card hover:-translate-y-0.5"
+      role="button"
+      tabIndex={0}
+      aria-expanded={expanded}
+      onClick={toggle}
+      onKeyDown={onKey}
+      className={cn(
+        "group relative hud-border-sm bg-card/70 p-3 sm:p-4 flex flex-col gap-3 transition-all duration-200 hover:bg-card hover:-translate-y-0.5 cursor-pointer focus:outline-none focus-visible:ring-2",
+        expanded && "bg-card",
+      )}
       style={{
-        borderColor: `${hue}40`,
-        boxShadow: `0 0 0 0 ${hue}00`,
+        borderColor: `${hue}${expanded ? "80" : "40"}`,
+        boxShadow: expanded ? `0 8px 28px -10px ${hue}80, 0 0 0 1px ${hue}66` : `0 0 0 0 ${hue}00`,
+        ["--tw-ring-color" as string]: hue,
       }}
       onMouseEnter={(e) => {
+        if (expanded) return;
         e.currentTarget.style.boxShadow = `0 6px 24px -8px ${hue}66, 0 0 0 1px ${hue}55`;
       }}
       onMouseLeave={(e) => {
+        if (expanded) return;
         e.currentTarget.style.boxShadow = `0 0 0 0 ${hue}00`;
       }}
     >
-      {/* Accent stripe */}
-      <span
-        aria-hidden
-        className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full opacity-60 group-hover:opacity-100 transition-opacity"
-        style={{ background: `linear-gradient(to bottom, ${hue}, transparent)` }}
-      />
+      <div className="flex gap-3 sm:gap-4 items-start">
+        {/* Accent stripe */}
+        <span
+          aria-hidden
+          className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full opacity-60 group-hover:opacity-100 transition-opacity"
+          style={{ background: `linear-gradient(to bottom, ${hue}, transparent)` }}
+        />
 
-      {/* Icon frame */}
-      <div
-        className="relative shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-sm flex items-center justify-center transition-transform group-hover:scale-105"
-        style={{
-          background: `linear-gradient(135deg, ${hue}26, ${hue}10)`,
-          border: `1px solid ${hue}80`,
-          boxShadow: `0 0 14px ${hue}40, inset 0 0 12px ${hue}20`,
-        }}
-      >
-        {hasImageIcon ? (
-          <AuthenticatedImage
-            src={item.icon as string}
-            alt={item.name || "feature icon"}
-            className="h-7 w-7 sm:h-8 sm:w-8 object-contain"
-          />
-        ) : (
-          <Icon className="h-6 w-6 sm:h-7 sm:w-7" style={{ color: hue }} aria-hidden />
-        )}
-      </div>
-
-      <div className="flex-1 min-w-0 space-y-1.5">
-        <div className="flex items-start justify-between gap-2 flex-wrap">
-          <h3
-            className="font-display text-sm tracking-[0.12em] uppercase text-foreground break-words"
-            style={{ color: hue }}
-          >
-            {item.name || (variant === "skill" ? "Unnamed Skill" : "Unnamed Feature")}
-          </h3>
-          {item.cost && (
-            <span
-              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-display tracking-wider uppercase rounded-sm border shrink-0"
-              style={{
-                color: "hsl(var(--accent-foreground))",
-                borderColor: "hsl(var(--accent) / 0.6)",
-                backgroundColor: "hsl(var(--accent) / 0.18)",
-              }}
-              title="Limitation / cooldown / cost"
-            >
-              <Clock className="h-3 w-3" /> {item.cost}
-            </span>
+        {/* Icon frame */}
+        <div
+          className="relative shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-sm flex items-center justify-center transition-transform group-hover:scale-105"
+          style={{
+            background: `linear-gradient(135deg, ${hue}26, ${hue}10)`,
+            border: `1px solid ${hue}80`,
+            boxShadow: `0 0 14px ${hue}40, inset 0 0 12px ${hue}20`,
+          }}
+        >
+          {hasImageIcon ? (
+            <AuthenticatedImage
+              src={item.icon as string}
+              alt={item.name || "feature icon"}
+              className="h-7 w-7 sm:h-8 sm:w-8 object-contain"
+            />
+          ) : (
+            <Icon className="h-6 w-6 sm:h-7 sm:w-7" style={{ color: hue }} aria-hidden />
           )}
         </div>
-        {item.tagline && (
-          <p className="text-[11px] font-heading tracking-wider uppercase text-muted-foreground">
-            {item.tagline}
-          </p>
-        )}
-        <RichDescription text={item.description || ""} />
+
+        <div className="flex-1 min-w-0 space-y-1.5">
+          <div className="flex items-start justify-between gap-2 flex-wrap">
+            <h3
+              className="font-display text-sm tracking-[0.12em] uppercase text-foreground break-words"
+              style={{ color: hue }}
+            >
+              {item.name || (variant === "skill" ? "Unnamed Skill" : "Unnamed Feature")}
+            </h3>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {item.cost && (
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-display tracking-wider uppercase rounded-sm border"
+                  style={{
+                    color: "hsl(var(--accent-foreground))",
+                    borderColor: "hsl(var(--accent) / 0.6)",
+                    backgroundColor: "hsl(var(--accent) / 0.18)",
+                  }}
+                  title="Limitation / cooldown / cost"
+                >
+                  <Clock className="h-3 w-3" /> {item.cost}
+                </span>
+              )}
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                  expanded && "rotate-180",
+                )}
+                style={{ color: expanded ? hue : undefined }}
+                aria-hidden
+              />
+            </div>
+          </div>
+          {item.tagline && (
+            <p className="text-[11px] font-heading tracking-wider uppercase text-muted-foreground">
+              {item.tagline}
+            </p>
+          )}
+          {!expanded && attrSummary.length > 0 && (
+            <div className="flex flex-wrap gap-1 pt-0.5">
+              {attrSummary.map(({ attribute }) => {
+                const cfg = SKILL_ATTRIBUTES[attribute];
+                const A = cfg.Icon;
+                return (
+                  <span
+                    key={attribute}
+                    className="inline-flex items-center justify-center h-4 w-4 rounded-sm border"
+                    style={{
+                      color: `hsl(${cfg.hsl})`,
+                      borderColor: `hsl(${cfg.hsl} / 0.5)`,
+                      backgroundColor: `hsl(${cfg.hsl} / 0.12)`,
+                    }}
+                    title={cfg.label}
+                  >
+                    <A className="h-2.5 w-2.5" />
+                  </span>
+                );
+              })}
+            </div>
+          )}
+          {!expanded && (
+            <RichDescription text={item.description || ""} className="line-clamp-2" />
+          )}
+        </div>
       </div>
+
+      {expanded && (
+        <div
+          className="space-y-3 pl-0 sm:pl-[4.5rem] animate-in fade-in slide-in-from-top-1 duration-200"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {attrSummary.length > 0 && (
+            <section className="space-y-1.5">
+              <h4 className="text-[10px] font-display tracking-[0.18em] uppercase text-muted-foreground flex items-center gap-1">
+                <Tag className="h-3 w-3" /> Attribute Details
+              </h4>
+              <div className="flex flex-wrap gap-1.5">
+                {attrSummary.flatMap(({ attribute, values }) =>
+                  values.length === 0
+                    ? [<AttributeBadge key={attribute} attribute={attribute} size="md" />]
+                    : values.map((v, i) => (
+                        <AttributeBadge
+                          key={`${attribute}-${i}`}
+                          attribute={attribute}
+                          value={v}
+                          size="md"
+                        />
+                      )),
+                )}
+              </div>
+            </section>
+          )}
+
+          <section className="space-y-1.5">
+            <h4 className="text-[10px] font-display tracking-[0.18em] uppercase text-muted-foreground">
+              {variant === "skill" ? "Skill Brief" : "Feature Brief"}
+            </h4>
+            <RichDescription text={item.description || "—"} />
+          </section>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded(false);
+            }}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[10px] font-display tracking-wider uppercase border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
+          >
+            <X className="h-2.5 w-2.5" /> Collapse
+          </button>
+        </div>
+      )}
     </div>
   );
 }
