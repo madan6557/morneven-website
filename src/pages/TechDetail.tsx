@@ -16,6 +16,7 @@ import { SkillList } from "@/components/SkillCard";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { AuthenticatedImage, useResolvedImageUrl } from "@/components/AuthenticatedImage";
+import DocumentationViewer from "@/components/DocumentationViewer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function TechDetail() {
@@ -37,12 +38,19 @@ export default function TechDetail() {
       };
     }
 
-    getTech(id).then((t) => {
-      if (!active) return;
-      setTech(t ?? null);
-      setDiscussion(t?.discussions ?? []);
-      setLoading(false);
-    });
+    getTech(id)
+      .then((t) => {
+        if (!active) return;
+        setTech(t ?? null);
+        setDiscussion(t?.discussions ?? []);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setTech(null);
+        setDiscussion([]);
+        setLoading(false);
+      });
 
     return () => {
       active = false;
@@ -165,49 +173,7 @@ export default function TechDetail() {
         </Tabs>
 
         <SkillList items={tech.features} variant="feature" />
-
-        {tech.docs.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Documentation</h2>
-            <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-              {tech.docs.map((doc, i) => (
-                <div key={i} className="hud-border-sm bg-card overflow-hidden">
-                  {doc.type === "image" && doc.url ? (
-                    <div className="aspect-video bg-muted overflow-hidden">
-                      <AuthenticatedImage src={doc.url} alt={doc.caption || "doc"} className="w-full h-full object-cover" />
-                    </div>
-                  ) : doc.type === "video" && doc.url ? (
-                    <div className="aspect-video bg-muted">
-                      <iframe
-                        src={doc.url}
-                        className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        title={`${tech.name} Documentation`}
-                      />
-                    </div>
-                  ) : doc.type === "file" && doc.url ? (
-                    <a href={doc.url} target="_blank" rel="noreferrer" className="aspect-video bg-muted flex flex-col items-center justify-center gap-2 hover:bg-muted/80 transition-colors">
-                      <FileText className="h-6 w-6 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground font-heading tracking-wider">FILE</span>
-                    </a>
-                  ) : doc.type === "image" && doc.url ? (
-                    <div className="aspect-video bg-muted overflow-hidden">
-                      <img src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="aspect-video bg-muted flex items-center justify-center">
-                      <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : doc.type === "file" ? "FILE" : "IMAGE"}</span>
-                    </div>
-                  )}
-                  <div className="p-3">
-                    <p className="text-xs font-body text-muted-foreground">{doc.caption}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <DocumentationViewer docs={tech.docs} itemLabel={tech.name} />
 
         <div className="mecha-line" />
         <DiscussionSection
@@ -223,3 +189,4 @@ export default function TechDetail() {
     </div>
   );
 }
+

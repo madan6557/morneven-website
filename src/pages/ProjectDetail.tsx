@@ -17,7 +17,8 @@ import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillList } from "@/components/SkillCard";
 import DiscussionSection from "@/components/DiscussionSection";
-import { useResolvedImageUrl } from "@/components/AuthenticatedImage";
+import { AuthenticatedImage, useResolvedImageUrl } from "@/components/AuthenticatedImage";
+import DocumentationViewer from "@/components/DocumentationViewer";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -37,12 +38,19 @@ export default function ProjectDetail() {
       };
     }
 
-    getProject(id).then((p) => {
-      if (!active) return;
-      setProject(p ?? null);
-      setDiscussion(p?.discussions ?? []);
-      setLoading(false);
-    });
+    getProject(id)
+      .then((p) => {
+        if (!active) return;
+        setProject(p ?? null);
+        setDiscussion(p?.discussions ?? []);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setProject(null);
+        setDiscussion([]);
+        setLoading(false);
+      });
 
     return () => {
       active = false;
@@ -196,49 +204,8 @@ export default function ProjectDetail() {
             )}
           </TabsContent>
 
-          <TabsContent value="docs" className="mt-6 space-y-4">
-            <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Documentation</h2>
-            {project.docs.length === 0 ? (
-              <div className="hud-border bg-card p-6 text-center">
-                <p className="text-sm font-body text-muted-foreground italic">No documentation attached.</p>
-              </div>
-            ) : (
-              <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-                {project.docs.map((doc, i) => (
-                  <div key={i} className="hud-border-sm bg-card overflow-hidden">
-                    {doc.type === "video" && doc.url ? (
-                      <div className="aspect-video bg-muted">
-                        <iframe
-                          src={doc.url}
-                          className="w-full h-full"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          title={`${project.title} Documentation`}
-                        />
-                      </div>
-                    ) : doc.type === "file" && doc.url ? (
-                      <a href={doc.url} target="_blank" rel="noreferrer" className="aspect-video bg-muted flex flex-col items-center justify-center gap-2 hover:bg-muted/80 transition-colors">
-                        <FileText className="h-6 w-6 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground font-heading tracking-wider">FILE</span>
-                      </a>
-                    ) : doc.type === "image" && doc.url ? (
-                      <div className="aspect-video bg-muted overflow-hidden">
-                        <img src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className="aspect-video bg-muted flex items-center justify-center">
-                        <span className="text-xs text-muted-foreground font-heading tracking-wider">
-                          {doc.type === "video" ? "▶ VIDEO" : doc.type === "file" ? "FILE" : "IMAGE"}
-                        </span>
-                      </div>
-                    )}
-                    <div className="p-3">
-                      <p className="text-xs font-body text-muted-foreground">{doc.caption}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <TabsContent value="docs" className="mt-6">
+            <DocumentationViewer docs={project.docs} itemLabel={project.title} showEmpty />
           </TabsContent>
 
           <TabsContent value="metadata" className="mt-6">
@@ -264,3 +231,4 @@ export default function ProjectDetail() {
     </div>
   );
 }
+

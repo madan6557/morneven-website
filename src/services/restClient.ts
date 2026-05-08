@@ -49,6 +49,7 @@ export class ApiError extends Error {
 }
 
 const DEFAULT_BASE_URL = "https://backend.dev.morneven.com/api";
+const DEFAULT_REQUEST_TIMEOUT_MS = 10000;
 const TOKEN_KEY = "morneven_api_token";
 const REFRESH_TOKEN_KEY = "morneven_api_refresh_token";
 
@@ -178,12 +179,41 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     if (token) requestHeaders.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    ...init,
-    method,
-    headers: requestHeaders,
-    body: body instanceof FormData ? body : body === undefined ? undefined : JSON.stringify(body),
-  });
+  const timeoutController = new AbortController();
+  let timedOut = false;
+  const forwardAbort = () => timeoutController.abort();
+  if (init.signal) {
+    if (init.signal.aborted) {
+      timeoutController.abort();
+    } else {
+      init.signal.addEventListener("abort", forwardAbort, { once: true });
+    }
+  }
+  const timeoutId = globalThis.setTimeout(() => {
+    timedOut = true;
+    timeoutController.abort();
+  }, DEFAULT_REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(`${getApiBaseUrl()}${path}`, {
+      ...init,
+      method,
+      headers: requestHeaders,
+      body: body instanceof FormData ? body : body === undefined ? undefined : JSON.stringify(body),
+      signal: timeoutController.signal,
+    });
+  } catch (error) {
+    if (timedOut) {
+      throw new Error("Request timed out.");
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+    if (init.signal) {
+      init.signal.removeEventListener("abort", forwardAbort);
+    }
+  }
 
   const payload = await parsePayload(response);
 

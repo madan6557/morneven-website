@@ -15,7 +15,8 @@ import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen, Info }
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
-import { useResolvedImageUrl } from "@/components/AuthenticatedImage";
+import { AuthenticatedImage, useResolvedImageUrl } from "@/components/AuthenticatedImage";
+import DocumentationViewer from "@/components/DocumentationViewer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillList } from "@/components/SkillCard";
 import StatsRadar from "@/components/StatsRadar";
@@ -49,12 +50,19 @@ export default function CharacterDetail() {
       };
     }
 
-    getCharacter(id).then((c) => {
-      if (!active) return;
-      setChar(c ?? null);
-      setDiscussion(c?.discussions ?? []);
-      setLoading(false);
-    });
+    getCharacter(id)
+      .then((c) => {
+        if (!active) return;
+        setChar(c ?? null);
+        setDiscussion(c?.discussions ?? []);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setChar(null);
+        setDiscussion([]);
+        setLoading(false);
+      });
 
     return () => {
       active = false;
@@ -368,45 +376,7 @@ export default function CharacterDetail() {
               <SkillList items={char.skills} accent={accentColor} variant="skill" />
             </div>
 
-            {/* Documentation - always visible (outside tabs) */}
-            {char.docs && char.docs.length > 0 && (
-              <div className="space-y-4 pt-6">
-                <h2 className="font-heading text-lg tracking-wider text-foreground uppercase border-b pb-2" style={{ borderColor: `${accentColor}30` }}>Documentation</h2>
-                <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-                  {char.docs.map((doc, i) => (
-                    <div key={i} className="hud-border-sm bg-card overflow-hidden" style={{ borderColor: `${accentColor}20` }}>
-                      {doc.type === "video" && doc.url ? (
-                        <div className="aspect-video bg-muted">
-                          <iframe
-                            src={doc.url}
-                            className="w-full h-full"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            title={`${char.name} Documentation`}
-                          />
-                        </div>
-                      ) : doc.type === "file" && doc.url ? (
-                        <a href={doc.url} target="_blank" rel="noreferrer" className="aspect-video bg-muted flex flex-col items-center justify-center gap-2 hover:bg-muted/80 transition-colors">
-                          <FileText className="h-6 w-6 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground font-heading tracking-wider">FILE</span>
-                        </a>
-                      ) : doc.type === "image" && doc.url ? (
-                        <div className="aspect-video bg-muted overflow-hidden">
-                          <img src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
-                        </div>
-                      ) : (
-                        <div className="aspect-video bg-muted flex items-center justify-center">
-                          <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : doc.type === "file" ? "FILE" : "IMAGE"}</span>
-                        </div>
-                      )}
-                      <div className="p-3">
-                        <p className="text-xs font-body text-muted-foreground">{doc.caption}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <DocumentationViewer docs={char.docs} itemLabel={char.name} accentColor={accentColor} className="pt-6" />
 
             {/* Discussion Section - standalone, outside tabs */}
             <div className="space-y-4 pt-6">
@@ -454,3 +424,4 @@ function FieldNoteList({ title, items, accent }: { title: string; items: LoreFie
     </div>
   );
 }
+

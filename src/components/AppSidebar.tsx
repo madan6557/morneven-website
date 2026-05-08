@@ -391,6 +391,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
               className="fixed inset-0 bg-black/50 z-40"
             />
             <motion.aside
+              id="morneven-mobile-sidebar"
               ref={mobileSidebarRef}
               initial={{ x: -256 }}
               animate={{ x: 0 }}

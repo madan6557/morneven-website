@@ -36,10 +36,10 @@ const features = [
 ];
 
 const socialLinks = [
-  { name: "Discord", url: "#", label: "Join Community" },
-  { name: "Twitter / X", url: "#", label: "@MornevenInst" },
-  { name: "YouTube", url: "#", label: "Watch Trailers" },
-  { name: "Instagram", url: "#", label: "Behind the Scenes" },
+  { name: "Discord", url: "", label: "Community channel pending" },
+  { name: "Twitter / X", url: "", label: "Profile not public yet" },
+  { name: "YouTube", url: "", label: "Trailer channel pending" },
+  { name: "Instagram", url: "", label: "Behind the scenes soon" },
 ];
 
 export default function Landing() {
@@ -66,8 +66,26 @@ export default function Landing() {
         </div>
       </nav>
 
+      <div className="fixed top-14 inset-x-0 z-40 border-b border-border/70 bg-background/65 backdrop-blur-sm md:hidden">
+        <div className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-4 py-2">
+          {[
+            { href: "#about", label: "About" },
+            { href: "#features", label: "Features" },
+            { href: "#community", label: "Community" },
+          ].map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="shrink-0 rounded-sm border border-border px-3 py-1.5 text-[11px] font-heading tracking-[0.12em] text-foreground/85 uppercase transition-colors hover:border-primary/40 hover:text-primary"
+            >
+              {item.label}
+            </a>
+          ))}
+        </div>
+      </div>
+
       {/* ───── HERO ───── */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center pt-14">
+      <section className="relative flex min-h-[calc(100svh-6.25rem)] flex-col items-center justify-start pt-24 pb-12 md:min-h-screen md:justify-center md:pt-14 md:pb-0">
         {/* Scan line */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="w-full h-px bg-primary/10 animate-scan-line" />
@@ -76,7 +94,7 @@ export default function Landing() {
         <motion.div
           initial="hidden"
           animate="visible"
-          className="relative text-center z-10 space-y-8 px-6 py-10 md:py-12"
+          className="relative z-10 space-y-4 px-6 py-2 text-center md:space-y-8 md:py-12"
         >
           {/* Grid decoration */}
           <div className="pointer-events-none absolute inset-0">
@@ -89,13 +107,13 @@ export default function Landing() {
           <motion.img
             src={logoColor}
             alt="Morneven Institute Logo"
-            className="h-24 w-24 md:h-32 md:w-32 mx-auto drop-shadow-lg"
+            className="h-20 w-20 md:h-32 md:w-32 mx-auto drop-shadow-lg"
             variants={fadeUp}
             custom={0}
           />
 
           <motion.div className="space-y-2" variants={fadeUp} custom={1}>
-            <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold tracking-[0.15em] text-primary">
+            <h1 className="font-display text-[2.8rem] md:text-6xl lg:text-7xl font-bold tracking-[0.15em] text-primary">
               MORNEVEN
             </h1>
             <p className="font-heading text-lg md:text-xl tracking-[0.3em] text-muted-foreground uppercase">
@@ -105,27 +123,27 @@ export default function Landing() {
 
           <motion.div className="mecha-line w-48 mx-auto" variants={fadeUp} custom={2} />
 
-          <motion.div variants={fadeUp} custom={3} className="space-y-4 max-w-lg mx-auto">
-            <p className="font-body text-sm text-muted-foreground leading-relaxed">
-              An interspecies research institute led by the Jewerlians, in collaboration with Humans and Demi-humans.
-              Dedicated to developing technology for peace and uncovering the ancient history of Gemora.
-            </p>
-          </motion.div>
-
-          <motion.div variants={fadeUp} custom={4} className="relative z-20 flex flex-col sm:flex-row gap-4 justify-center">
+          <motion.div variants={fadeUp} custom={3} className="relative z-20 flex flex-col gap-3 justify-center sm:flex-row sm:gap-4">
             <Link
               to="/auth"
-              className="inline-flex items-center gap-2 hud-border px-10 py-3 bg-primary/5 hover:bg-primary/10 transition-colors font-display text-xs tracking-[0.25em] text-primary uppercase glow-primary"
+              className="inline-flex items-center justify-center gap-2 hud-border px-8 py-3 bg-primary/25 hover:bg-primary/35 transition-colors font-display text-xs tracking-[0.25em] text-primary-foreground uppercase glow-primary"
             >
               Enter the Archive
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             <a
               href="#about"
-              className="inline-flex items-center gap-2 px-10 py-3 border border-border hover:border-primary/40 transition-colors font-display text-xs tracking-[0.25em] text-muted-foreground uppercase bg-background/80 backdrop-blur-sm"
+              className="inline-flex items-center justify-center gap-2 px-8 py-3 border border-border/90 hover:border-primary/40 transition-colors font-display text-xs tracking-[0.22em] text-foreground/90 uppercase bg-card/85 backdrop-blur-sm"
             >
               Learn More
             </a>
+          </motion.div>
+
+          <motion.div variants={fadeUp} custom={4} className="space-y-4 max-w-md mx-auto">
+            <p className="font-body text-sm text-foreground/90 leading-7">
+              An interspecies research institute led by the Jewerlians, in collaboration with Humans and Demi-humans.
+              Dedicated to developing technology for peace and uncovering the ancient history of Gemora.
+            </p>
           </motion.div>
         </motion.div>
 
@@ -240,23 +258,46 @@ export default function Landing() {
             </motion.div>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {socialLinks.map((s, i) => (
-                <motion.a
-                  key={s.name}
-                  href={s.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variants={fadeUp}
-                  custom={i + 1}
-                  className="group flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/30 bg-card/30 hover:bg-card/60 transition-all duration-300"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-heading text-sm text-foreground">{s.name}</p>
-                    <p className="font-body text-xs text-muted-foreground truncate">{s.label}</p>
-                  </div>
-                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
-                </motion.a>
-              ))}
+              {socialLinks.map((s, i) => {
+                const isReady = Boolean(s.url);
+                const cardClass = isReady
+                  ? "group flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/30 bg-card/30 hover:bg-card/60 transition-all duration-300"
+                  : "flex items-center gap-3 p-4 rounded-lg border border-border/70 bg-card/20 opacity-80";
+
+                return isReady ? (
+                  <motion.a
+                    key={s.name}
+                    href={s.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variants={fadeUp}
+                    custom={i + 1}
+                    className={cardClass}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-heading text-sm text-foreground">{s.name}</p>
+                      <p className="font-body text-xs text-muted-foreground truncate">{s.label}</p>
+                    </div>
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+                  </motion.a>
+                ) : (
+                  <motion.div
+                    key={s.name}
+                    variants={fadeUp}
+                    custom={i + 1}
+                    className={cardClass}
+                    aria-disabled="true"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-heading text-sm text-foreground">{s.name}</p>
+                      <p className="font-body text-xs text-muted-foreground truncate">{s.label}</p>
+                    </div>
+                    <span className="rounded-sm border border-border/70 px-2 py-1 text-[10px] font-heading tracking-wider text-muted-foreground uppercase">
+                      Soon
+                    </span>
+                  </motion.div>
+                );
+              })}
             </div>
           </motion.div>
         </div>
