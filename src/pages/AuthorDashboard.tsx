@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiUpload, getProjectsPage, createProject, updateProject, deleteProject, getCharactersPage, createCharacter, updateCharacter, deleteCharacter, getPlacesPage, createPlace, updatePlace, deletePlace, getTechnologyPage, createTech, updateTech, deleteTech, getGalleryPage, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreaturesPage, createCreature, updateCreature, deleteCreature, getOthersPage, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImageRemote, setMapImageRemote, type PageInfo } from "@/services/api";
+import { apiUpload, getProjectsPage, createProject, updateProject, deleteProject, getCharactersPage, createCharacter, updateCharacter, deleteCharacter, getPlacesPage, createPlace, updatePlace, deletePlace, getTechnologyPage, createTech, updateTech, deleteTech, getGalleryPage, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreaturesPage, createCreature, updateCreature, deleteCreature, getEventsPage, createEvent, updateEvent, deleteEvent, getOthersPage, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImageRemote, setMapImageRemote, type PageInfo } from "@/services/api";
 import {
   activateCommandCenterPreset,
   createCommandCenterPreset,
@@ -17,7 +17,7 @@ import {
   type CommandCenterPreset,
   type CommandCenterSettings,
 } from "@/services/commandCenterSettings";
-import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel, LoreMeta, LoreFieldNote, Skill, Feature } from "@/types";
+import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, LoreEvent, EventRelatedLink, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel, LoreMeta, LoreFieldNote, Skill, Feature } from "@/types";
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, File as FileIcon, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon, Star, CheckCircle2, FilePlus, RefreshCw } from "lucide-react";
 import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
 import NewsManagementSection from "@/components/NewsManagementSection";
@@ -37,7 +37,7 @@ import {
 } from "@/lib/statDetails";
 
 const dashTabs = ["projects", "lore", "gallery", "news", "homepage", "map"] as const;
-const loreSubs = ["characters", "places", "technology", "creatures", "other"] as const;
+const loreSubs = ["characters", "places", "technology", "creatures", "events", "other"] as const;
 const inputClass = "w-full mt-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 const labelClass = "font-heading text-xs tracking-wider text-muted-foreground uppercase";
 const DASHBOARD_LIST_PAGE_SIZE = 25;
@@ -82,7 +82,7 @@ function highestVersion(versions: string[]): string {
 
 type DashboardTab = typeof dashTabs[number];
 type LoreSub = typeof loreSubs[number];
-type DashboardItem = Project | Character | Place | Technology | GalleryItem | Creature | OtherLore;
+type DashboardItem = Project | Character | Place | Technology | GalleryItem | Creature | LoreEvent | OtherLore;
 type EditableState = {
   id?: string;
   title?: string;
@@ -112,6 +112,12 @@ type EditableState = {
   classification?: CreatureClassification;
   dangerLevel?: CreatureDangerLevel;
   habitat?: string;
+  era?: string;
+  dateLabel?: string;
+  scope?: string;
+  impactLevel?: string;
+  consequences?: string[];
+  relatedLinks?: EventRelatedLink[];
   // Character
   contributions?: CharacterContribution[];
   fieldNotes?: LoreFieldNote[];
@@ -460,6 +466,7 @@ export default function AuthorDashboard() {
   const [tech, setTech] = useState<Technology[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [creatures, setCreatures] = useState<Creature[]>([]);
+  const [events, setEvents] = useState<LoreEvent[]>([]);
   const [others, setOthers] = useState<OtherLore[]>([]);
   const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
   const [mapImageUrl, setMapImageUrl] = useState<string>("");
@@ -591,12 +598,9 @@ export default function AuthorDashboard() {
         description: "Active global preset now uses backend defaults.",
       });
     } catch {
-      const fallback = { ...defaultSettings };
-      setCcSettings(fallback);
-      saveCommandCenterSettings(fallback);
       toast({
-        title: "Reset saved locally",
-        description: "Backend defaults were unavailable, so local demo settings were reset.",
+        title: "Reset failed",
+        description: "Backend defaults were unavailable, so the active preset was left unchanged.",
         variant: "destructive",
       });
     } finally {
@@ -785,6 +789,10 @@ export default function AuthorDashboard() {
         const response = await getCreaturesPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
         setCreatures((current) => reset ? response.items : [...current, ...response.items]);
         setDashboardPageInfo(response.pageInfo);
+      } else if (loreSub === "events") {
+        const response = await getEventsPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
+        setEvents((current) => reset ? response.items : [...current, ...response.items]);
+        setDashboardPageInfo(response.pageInfo);
       } else {
         const response = await getOthersPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
         setOthers((current) => reset ? response.items : [...current, ...response.items]);
@@ -858,6 +866,24 @@ export default function AuthorDashboard() {
           observations: [],
           skills: [],
         });
+      } else if (loreSub === "events") {
+        setEditing({
+          title: "",
+          category: "Institute Milestone",
+          era: "",
+          dateLabel: "",
+          scope: "",
+          impactLevel: "",
+          thumbnail: "",
+          shortDesc: "",
+          fullDesc: "",
+          consequences: [],
+          relatedLinks: [],
+          docs: [],
+          fieldNotes: [],
+          observations: [],
+          features: [],
+        });
       } else {
         setEditing({ title: "", category: "World Systems", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       }
@@ -895,9 +921,9 @@ export default function AuthorDashboard() {
     }
 
     if (activeTab === "lore") {
-      const label = loreSub === "other" ? "Lore title" : "Lore name";
+      const label = loreSub === "other" || loreSub === "events" ? "Lore title" : "Lore name";
       return (
-        requireText(loreSub === "other" ? editing.title : editing.name, label) &&
+        requireText(loreSub === "other" || loreSub === "events" ? editing.title : editing.name, label) &&
         requireText(editing.shortDesc, "Lore short description") &&
         requireText(editing.fullDesc, "Lore full description")
       );
@@ -1009,6 +1035,29 @@ export default function AuthorDashboard() {
         if (isCreating) await createCreature(payload);
         else if (editing.id) await updateCreature(editing.id, payload);
         await loadDashboardItems(true);
+      } else if (loreSub === "events") {
+        const payload: Omit<LoreEvent, "id"> = {
+          title: editing.title ?? "",
+          category: editing.category ?? "Institute Milestone",
+          era: editing.era,
+          dateLabel: editing.dateLabel,
+          scope: editing.scope,
+          impactLevel: editing.impactLevel,
+          thumbnail: editing.thumbnail ?? "",
+          shortDesc: editing.shortDesc ?? "",
+          fullDesc: editing.fullDesc ?? "",
+          consequences: editing.consequences ?? [],
+          relatedLinks: editing.relatedLinks ?? [],
+          docs: editing.docs ?? [],
+          fieldNotes: editing.fieldNotes ?? [],
+          observations: editing.observations ?? [],
+          features: editing.features ?? [],
+          meta: editing.meta,
+        };
+
+        if (isCreating) await createEvent(payload);
+        else if (editing.id) await updateEvent(editing.id, payload);
+        await loadDashboardItems(true);
       } else {
         const payload: Omit<OtherLore, "id"> = {
           title: editing.title ?? "",
@@ -1068,6 +1117,7 @@ export default function AuthorDashboard() {
           else if (loreSub === "places") await deletePlace(id);
           else if (loreSub === "technology") await deleteTech(id);
           else if (loreSub === "creatures") await deleteCreature(id);
+          else if (loreSub === "events") await deleteEvent(id);
           else await deleteOther(id);
           await loadDashboardItems(true);
         } else if (activeTab === "gallery") { await deleteGalleryItem(id); await loadDashboardItems(true); }
@@ -1082,6 +1132,7 @@ export default function AuthorDashboard() {
       if (loreSub === "places") return places;
       if (loreSub === "technology") return tech;
       if (loreSub === "creatures") return creatures;
+      if (loreSub === "events") return events;
       return others;
     }
     if (activeTab === "gallery") {
@@ -1240,6 +1291,21 @@ export default function AuthorDashboard() {
       return;
     }
 
+    if (loreSub === "events") {
+      const event = item as LoreEvent;
+      setEditing({
+        ...event,
+        docs: event.docs ?? [],
+        fieldNotes: event.fieldNotes ?? [],
+        observations: event.observations ?? [],
+        features: event.features ?? [],
+        consequences: event.consequences ?? [],
+        relatedLinks: event.relatedLinks ?? [],
+      });
+      setIsCreating(false);
+      return;
+    }
+
     if (loreSub === "places") {
       const place = item as Place;
       setEditing({
@@ -1315,11 +1381,12 @@ export default function AuthorDashboard() {
   const isPlace = activeTab === "lore" && loreSub === "places";
   const isTech = activeTab === "lore" && loreSub === "technology";
   const isCreature = activeTab === "lore" && loreSub === "creatures";
+  const isEvent = activeTab === "lore" && loreSub === "events";
   const isOther = activeTab === "lore" && loreSub === "other";
   const isProject = activeTab === "projects";
   const isGallery = activeTab === "gallery";
   const isMap = activeTab === "map";
-  const hasDocs = isProject || isCharacter || isPlace || isTech || isCreature || isOther;
+  const hasDocs = isProject || isCharacter || isPlace || isTech || isCreature || isEvent || isOther;
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -1787,6 +1854,102 @@ export default function AuthorDashboard() {
               </div>
             )}
 
+            {isEvent && (
+              <>
+                <div>
+                  <label className={labelClass}>Category</label>
+                  <input type="text" value={editing.category || ""} onChange={(e) => setEditing({ ...editing, category: e.target.value })} className={inputClass} placeholder="e.g. Institute Milestone, Incident" />
+                </div>
+                <div>
+                  <label className={labelClass}>Era</label>
+                  <input type="text" value={editing.era || ""} onChange={(e) => setEditing({ ...editing, era: e.target.value })} className={inputClass} placeholder="e.g. Post Fracture Era" />
+                </div>
+                <div>
+                  <label className={labelClass}>Date Label</label>
+                  <input type="text" value={editing.dateLabel || ""} onChange={(e) => setEditing({ ...editing, dateLabel: e.target.value })} className={inputClass} placeholder="e.g. Cycle 04, 2026" />
+                </div>
+                <div>
+                  <label className={labelClass}>Scope</label>
+                  <input type="text" value={editing.scope || ""} onChange={(e) => setEditing({ ...editing, scope: e.target.value })} className={inputClass} placeholder="e.g. Institute-wide, Regional" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Impact Level</label>
+                  <input type="text" value={editing.impactLevel || ""} onChange={(e) => setEditing({ ...editing, impactLevel: e.target.value })} className={inputClass} placeholder="e.g. High, Critical, Contained" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Consequences (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={(editing.consequences || []).join(", ")}
+                    onChange={(e) => setEditing({
+                      ...editing,
+                      consequences: e.target.value.split(",").map((item) => item.trim()).filter(Boolean),
+                    })}
+                    className={inputClass}
+                    placeholder="e.g. Archive lockdown, Team redeployment"
+                  />
+                </div>
+                <div className="md:col-span-2 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className={labelClass}>Related Links</label>
+                    <button
+                      type="button"
+                      onClick={() => setEditing({
+                        ...editing,
+                        relatedLinks: [...(editing.relatedLinks || []), { label: "", url: "" }],
+                      })}
+                      className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors"
+                    >
+                      <Plus className="h-3 w-3" /> ADD LINK
+                    </button>
+                  </div>
+                  {(editing.relatedLinks || []).length === 0 && (
+                    <p className="text-[11px] font-body text-muted-foreground italic">No related links yet.</p>
+                  )}
+                  {(editing.relatedLinks || []).map((link, idx) => (
+                    <div key={`event-link-${idx}`} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
+                      <div className="flex-1 grid gap-2 md:grid-cols-2">
+                        <input
+                          type="text"
+                          value={link.label}
+                          onChange={(e) => setEditing({
+                            ...editing,
+                            relatedLinks: (editing.relatedLinks || []).map((item, linkIdx) =>
+                              linkIdx === idx ? { ...item, label: e.target.value } : item,
+                            ),
+                          })}
+                          placeholder="Link label"
+                          className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground"
+                        />
+                        <input
+                          type="text"
+                          value={link.url}
+                          onChange={(e) => setEditing({
+                            ...editing,
+                            relatedLinks: (editing.relatedLinks || []).map((item, linkIdx) =>
+                              linkIdx === idx ? { ...item, url: e.target.value } : item,
+                            ),
+                          })}
+                          placeholder="/lore/characters/char-001 or https://..."
+                          className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditing({
+                          ...editing,
+                          relatedLinks: (editing.relatedLinks || []).filter((_, linkIdx) => linkIdx !== idx),
+                        })}
+                        className="text-muted-foreground hover:text-destructive mt-1"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
             {isCharacter && editing.stats && (() => {
               const stats = normalizeCharacterStatsForEditor(editing.stats as Partial<Character["stats"]>);
               const overall = averageScore([
@@ -1996,7 +2159,7 @@ export default function AuthorDashboard() {
           )}
 
           {/* Features (non-living entities: places, tech, other, projects) */}
-          {(isPlace || isTech || isOther || isProject) && (
+          {(isPlace || isTech || isEvent || isOther || isProject) && (
             <SkillFeatureEditor
               variant="feature"
               items={editing.features ?? []}

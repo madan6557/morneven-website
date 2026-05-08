@@ -3,9 +3,7 @@ import { Link } from "react-router-dom";
 import { Bell, Check, Trash2, AlertTriangle, Info, Settings as SettingsIcon, AtSign, ClipboardList } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  listNotifications,
   listNotificationsRemote,
-  unreadCount,
   unreadCountRemote,
   markRead,
   markAllRead,
@@ -43,8 +41,6 @@ export default function NotificationBell() {
   useEffect(() => {
     if (!isAuthenticated) return;
     const refresh = () => {
-      setItems(listNotifications(username));
-      setCount(unreadCount(username));
       listNotificationsRemote(username).then(setItems).catch(() => undefined);
       unreadCountRemote(username).then(setCount).catch(() => undefined);
     };

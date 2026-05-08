@@ -190,7 +190,7 @@ export const PL_LORE_ID = "other-005";
 // Author Panel section access
 // ────────────────────────────────────────────────────────────────────────────
 export type AuthorSection = "projects" | "lore" | "gallery" | "homepage" | "map" | "news";
-export type LoreSubSection = "characters" | "places" | "technology" | "creatures" | "other";
+export type LoreSubSection = "characters" | "places" | "technology" | "creatures" | "events" | "other";
 
 export interface SectionAccessOpts {
   level: PersonnelLevel;
