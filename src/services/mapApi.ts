@@ -1,6 +1,6 @@
 import type { MapMarker } from "@/types";
-import { db, delay, hasStorage, STORAGE_KEYS, writeCollection } from "@/services/dataStore";
-import { apiRequest, withDemoFallback } from "@/services/restClient";
+import { hasStorage, STORAGE_KEYS } from "@/services/dataStore";
+import { apiRequest } from "@/services/restClient";
 
 function normalizeMapImageUrl(url?: string): string {
   if (!url) return "";
@@ -9,13 +9,7 @@ function normalizeMapImageUrl(url?: string): string {
 }
 
 export async function getMapMarkers(): Promise<MapMarker[]> {
-  return withDemoFallback(
-    () => apiRequest<MapMarker[]>("/map/markers"),
-    async () => {
-      await delay();
-      return [...db.mapMarkers];
-    },
-  );
+  return apiRequest<MapMarker[]>("/map/markers");
 }
 
 export async function saveMapMarkers(next: MapMarker[]): Promise<MapMarker[]> {
@@ -32,14 +26,9 @@ export function getMapImage(): string {
 }
 
 export async function getMapImageRemote(): Promise<string> {
-  return withDemoFallback(
-    async () => {
-      const data = await apiRequest<string | { url?: string; imageUrl?: string }>("/map/image");
-      if (typeof data === "string") return normalizeMapImageUrl(data);
-      return normalizeMapImageUrl(data.url ?? data.imageUrl);
-    },
-    () => getMapImage(),
-  );
+  const data = await apiRequest<string | { url?: string; imageUrl?: string }>("/map/image");
+  if (typeof data === "string") return normalizeMapImageUrl(data);
+  return normalizeMapImageUrl(data.url ?? data.imageUrl);
 }
 
 export function setMapImage(url: string) {

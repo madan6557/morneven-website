@@ -12,6 +12,7 @@ import {
 import type { Place, DiscussionComment, DiscussionMention } from "@/types";
 import { ArrowLeft, Map, FileText, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
+import { SkillList } from "@/components/SkillCard";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
@@ -62,6 +63,8 @@ export default function PlaceDetail() {
       </div>
     );
   }
+
+  const headerImage = place.headerImage || place.thumbnail;
 
   const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
     if (!place) return;
@@ -123,9 +126,9 @@ export default function PlaceDetail() {
 
   return (
     <div className="space-y-0">
-      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={place.thumbnail ? { backgroundImage: `url(${getProxyUrl(place.thumbnail)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={headerImage ? { backgroundImage: `url(${getProxyUrl(headerImage)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent z-10" />
-        {!place.thumbnail && (
+        {!headerImage && (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="font-display text-6xl text-muted-foreground/10 tracking-[0.3em]">GEMORA</span>
           </div>
@@ -179,6 +182,8 @@ export default function PlaceDetail() {
             <LoreMetaPanel meta={place.meta} fallbackCreator={place.contributor} />
           </TabsContent>
         </Tabs>
+
+        <SkillList items={place.features} variant="feature" />
 
         {place.docs.length > 0 && (
           <div className="space-y-4">

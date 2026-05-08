@@ -1,167 +1,134 @@
 import type {
   Character,
   Creature,
-  DiscussionComment,
   DiscussionMention,
+  Project,
   LoreEvent,
   OtherLore,
   Place,
   Technology,
 } from "@/types";
-import { db, delay, STORAGE_KEYS, todayISO, writeCollection } from "@/services/dataStore";
+import { apiRequest } from "@/services/restClient";
 
-type EntityWithDiscussions = {
-  id: string;
-  discussions?: DiscussionComment[];
-};
-
-function appendComment(
-  list: DiscussionComment[],
-  author: string,
-  text: string,
-  mentions: DiscussionMention[],
-): DiscussionComment[] {
-  return [
-    ...list,
-    { id: `dc-${Date.now()}`, author, text, date: todayISO(), mentions, replies: [] },
-  ];
-}
-
-function appendReply(
-  list: DiscussionComment[],
-  commentId: string,
-  author: string,
-  text: string,
-  mentions: DiscussionMention[],
-): DiscussionComment[] {
-  return list.map((c) =>
-    c.id === commentId
-      ? {
-          ...c,
-          replies: [
-            ...c.replies,
-            { id: `dr-${Date.now()}`, author, text, date: todayISO(), mentions },
-          ],
-        }
-      : c,
-  );
-}
-
-function editComment(
-  list: DiscussionComment[],
-  commentId: string,
-  text: string,
-  mentions: DiscussionMention[],
-): DiscussionComment[] {
-  return list.map((c) => (c.id === commentId ? { ...c, text, mentions } : c));
-}
-
-function deleteComment(list: DiscussionComment[], commentId: string): DiscussionComment[] {
-  return list.filter((c) => c.id !== commentId);
-}
-
-function editReply(
-  list: DiscussionComment[],
-  commentId: string,
-  replyId: string,
-  text: string,
-  mentions: DiscussionMention[],
-): DiscussionComment[] {
-  return list.map((c) =>
-    c.id === commentId
-      ? { ...c, replies: c.replies.map((r) => (r.id === replyId ? { ...r, text, mentions } : r)) }
-      : c,
-  );
-}
-
-function deleteReply(list: DiscussionComment[], commentId: string, replyId: string): DiscussionComment[] {
-  return list.map((c) =>
-    c.id === commentId ? { ...c, replies: c.replies.filter((r) => r.id !== replyId) } : c,
-  );
-}
-
-function createDiscussionCrud<T extends EntityWithDiscussions>(
-  collection: T[],
-  storageKey: string,
-) {
-  const mutate = (entityId: string, updater: (current: DiscussionComment[]) => DiscussionComment[]): T | undefined => {
-    const idx = collection.findIndex((item) => item.id === entityId);
-    if (idx === -1) return undefined;
-
-    collection[idx] = {
-      ...collection[idx],
-      discussions: updater(collection[idx].discussions ?? []),
-    } as T;
-
-    writeCollection(storageKey, collection);
-    return collection[idx];
-  };
-
+function createLoreDiscussionCrud<T>(category: string) {
   return {
-    async addComment(
-      entityId: string,
-      author: string,
-      text: string,
-      mentions: DiscussionMention[] = [],
-    ): Promise<T | undefined> {
-      await delay();
-      return mutate(entityId, (list) => appendComment(list, author, text, mentions));
+    addComment(entityId: string, _author: string, text: string, mentions: DiscussionMention[] = []) {
+      return apiRequest<T>(`/lore/${category}/${entityId}/comments`, {
+        method: "POST",
+        body: { text, mentions },
+      });
     },
 
-    async addReply(
+    addReply(
       entityId: string,
       commentId: string,
-      author: string,
+      _author: string,
       text: string,
       mentions: DiscussionMention[] = [],
-    ): Promise<T | undefined> {
-      await delay();
-      return mutate(entityId, (list) => appendReply(list, commentId, author, text, mentions));
+    ) {
+      return apiRequest<T>(`/lore/${category}/${entityId}/comments/${commentId}/replies`, {
+        method: "POST",
+        body: { text, mentions },
+      });
     },
 
-    async editComment(
-      entityId: string,
-      commentId: string,
-      text: string,
-      mentions: DiscussionMention[] = [],
-    ): Promise<T | undefined> {
-      await delay();
-      return mutate(entityId, (list) => editComment(list, commentId, text, mentions));
+    editComment(entityId: string, commentId: string, text: string, mentions: DiscussionMention[] = []) {
+      return apiRequest<T>(`/lore/${category}/${entityId}/comments/${commentId}`, {
+        method: "PUT",
+        body: { text, mentions },
+      });
     },
 
-    async deleteComment(entityId: string, commentId: string): Promise<T | undefined> {
-      await delay();
-      return mutate(entityId, (list) => deleteComment(list, commentId));
+    deleteComment(entityId: string, commentId: string) {
+      return apiRequest<T>(`/lore/${category}/${entityId}/comments/${commentId}`, {
+        method: "DELETE",
+      });
     },
 
-    async editReply(
+    editReply(
       entityId: string,
       commentId: string,
       replyId: string,
       text: string,
       mentions: DiscussionMention[] = [],
-    ): Promise<T | undefined> {
-      await delay();
-      return mutate(entityId, (list) => editReply(list, commentId, replyId, text, mentions));
+    ) {
+      return apiRequest<T>(`/lore/${category}/${entityId}/comments/${commentId}/replies/${replyId}`, {
+        method: "PUT",
+        body: { text, mentions },
+      });
     },
 
-    async deleteReply(
-      entityId: string,
-      commentId: string,
-      replyId: string,
-    ): Promise<T | undefined> {
-      await delay();
-      return mutate(entityId, (list) => deleteReply(list, commentId, replyId));
+    deleteReply(entityId: string, commentId: string, replyId: string) {
+      return apiRequest<T>(`/lore/${category}/${entityId}/comments/${commentId}/replies/${replyId}`, {
+        method: "DELETE",
+      });
     },
   };
 }
 
-const placeDiscussion = createDiscussionCrud<Place>(db.places, STORAGE_KEYS.places);
-const techDiscussion = createDiscussionCrud<Technology>(db.technology, STORAGE_KEYS.technology);
-const otherDiscussion = createDiscussionCrud<OtherLore>(db.others, STORAGE_KEYS.other);
-const characterDiscussion = createDiscussionCrud<Character>(db.characters, STORAGE_KEYS.characters);
-const creatureDiscussion = createDiscussionCrud<Creature>(db.creatures, STORAGE_KEYS.creatures);
-const eventDiscussion = createDiscussionCrud<LoreEvent>(db.events, STORAGE_KEYS.events);
+function createProjectDiscussionCrud<T>() {
+  return {
+    addComment(entityId: string, _author: string, text: string, mentions: DiscussionMention[] = []) {
+      return apiRequest<T>(`/projects/${entityId}/comments`, {
+        method: "POST",
+        body: { text, mentions },
+      });
+    },
+
+    addReply(
+      entityId: string,
+      commentId: string,
+      _author: string,
+      text: string,
+      mentions: DiscussionMention[] = [],
+    ) {
+      return apiRequest<T>(`/projects/${entityId}/comments/${commentId}/replies`, {
+        method: "POST",
+        body: { text, mentions },
+      });
+    },
+
+    editComment(entityId: string, commentId: string, text: string, mentions: DiscussionMention[] = []) {
+      return apiRequest<T>(`/projects/${entityId}/comments/${commentId}`, {
+        method: "PUT",
+        body: { text, mentions },
+      });
+    },
+
+    deleteComment(entityId: string, commentId: string) {
+      return apiRequest<T>(`/projects/${entityId}/comments/${commentId}`, {
+        method: "DELETE",
+      });
+    },
+
+    editReply(
+      entityId: string,
+      commentId: string,
+      replyId: string,
+      text: string,
+      mentions: DiscussionMention[] = [],
+    ) {
+      return apiRequest<T>(`/projects/${entityId}/comments/${commentId}/replies/${replyId}`, {
+        method: "PUT",
+        body: { text, mentions },
+      });
+    },
+
+    deleteReply(entityId: string, commentId: string, replyId: string) {
+      return apiRequest<T>(`/projects/${entityId}/comments/${commentId}/replies/${replyId}`, {
+        method: "DELETE",
+      });
+    },
+  };
+}
+
+const placeDiscussion = createLoreDiscussionCrud<Place>("places");
+const techDiscussion = createLoreDiscussionCrud<Technology>("technology");
+const otherDiscussion = createLoreDiscussionCrud<OtherLore>("other");
+const characterDiscussion = createLoreDiscussionCrud<Character>("characters");
+const creatureDiscussion = createLoreDiscussionCrud<Creature>("creatures");
+const eventDiscussion = createLoreDiscussionCrud<LoreEvent>("events");
+const projectDiscussion = createProjectDiscussionCrud<Project>();
 
 export const addPlaceDiscussionComment = placeDiscussion.addComment;
 export const addPlaceDiscussionReply = placeDiscussion.addReply;
@@ -204,3 +171,10 @@ export const editEventDiscussionComment = eventDiscussion.editComment;
 export const deleteEventDiscussionComment = eventDiscussion.deleteComment;
 export const editEventDiscussionReply = eventDiscussion.editReply;
 export const deleteEventDiscussionReply = eventDiscussion.deleteReply;
+
+export const addProjectDiscussionComment = projectDiscussion.addComment;
+export const addProjectDiscussionReply = projectDiscussion.addReply;
+export const editProjectDiscussionComment = projectDiscussion.editComment;
+export const deleteProjectDiscussionComment = projectDiscussion.deleteComment;
+export const editProjectDiscussionReply = projectDiscussion.editReply;
+export const deleteProjectDiscussionReply = projectDiscussion.deleteReply;

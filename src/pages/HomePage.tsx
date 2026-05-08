@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { averageScore, toCharacterPrimaryStats } from "@/lib/statDetails";
 
 const fadeUp = (delay: number) => ({
   initial: { opacity: 0, y: 20 },
@@ -255,8 +256,10 @@ export default function HomePage() {
                     </div>
                     {c.stats && (
                       <div className="text-right flex-shrink-0">
-                        <p className="text-xs font-display text-primary">{c.stats.combat}</p>
-                        <p className="text-[9px] text-muted-foreground uppercase">Combat</p>
+                        <p className="text-xs font-display text-primary">
+                          {averageScore(Object.values(toCharacterPrimaryStats(c.stats)))}
+                        </p>
+                        <p className="text-[9px] text-muted-foreground uppercase">Overall</p>
                       </div>
                     )}
                   </Link>

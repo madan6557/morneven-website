@@ -1,27 +1,3 @@
-import type {
-  Character,
-  Creature,
-  GalleryItem,
-  LoreEvent,
-  MapMarker,
-  NewsItem,
-  OtherLore,
-  Place,
-  Project,
-  Technology,
-} from "@/types";
-
-import projectsData from "@/data/projects.json";
-import charactersData from "@/data/characters.json";
-import placesData from "@/data/places.json";
-import technologyData from "@/data/technology.json";
-import galleryData from "@/data/gallery.json";
-import newsData from "@/data/news.json";
-import creaturesData from "@/data/creatures.json";
-import otherData from "@/data/other.json";
-import eventsData from "@/data/events.json";
-import mapData from "@/data/map.json";
-
 export const STORAGE_KEYS = {
   projects: "morneven_projects",
   characters: "morneven_characters",
@@ -39,73 +15,6 @@ export const STORAGE_KEYS = {
 export function hasStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
-
-export function readCollection<T>(key: string, fallback: T[]): T[] {
-  if (!hasStorage()) return [...fallback];
-
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return [...fallback];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? mergeSeededNoteFields(parsed as T[], fallback) : [...fallback];
-  } catch {
-    return [...fallback];
-  }
-}
-
-function mergeSeededNoteFields<T>(stored: T[], fallback: T[]): T[] {
-  const seededById = new Map(
-    fallback
-      .filter((item): item is T & { id: string; fieldNotes?: unknown[]; observations?: unknown[] } => {
-        return typeof item === "object" && item !== null && "id" in item && typeof item.id === "string";
-      })
-      .map((item) => [item.id, item]),
-  );
-
-  return stored.map((item) => {
-    if (typeof item !== "object" || item === null || !("id" in item) || typeof item.id !== "string") {
-      return item;
-    }
-
-    const seeded = seededById.get(item.id);
-    if (!seeded) return item;
-
-    const current = item as T & { fieldNotes?: unknown[]; observations?: unknown[] };
-    return {
-      ...current,
-      fieldNotes: current.fieldNotes?.length ? current.fieldNotes : seeded.fieldNotes ?? current.fieldNotes,
-      observations: current.observations?.length ? current.observations : seeded.observations ?? current.observations,
-    };
-  });
-}
-
-export function writeCollection<T>(key: string, value: T[]) {
-  if (!hasStorage()) return;
-
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Ignore storage write failures and keep in-memory behavior.
-  }
-}
-
-export const delay = (ms = 100) => new Promise((r) => setTimeout(r, ms));
-
-export const db = {
-  projects: readCollection<Project>(STORAGE_KEYS.projects, projectsData as Project[]),
-  characters: readCollection<Character>(STORAGE_KEYS.characters, charactersData as Character[]),
-  places: readCollection<Place>(STORAGE_KEYS.places, placesData as Place[]),
-  technology: readCollection<Technology>(STORAGE_KEYS.technology, technologyData as Technology[]),
-  gallery: readCollection<GalleryItem>(STORAGE_KEYS.gallery, galleryData as GalleryItem[]),
-  creatures: readCollection<Creature>(STORAGE_KEYS.creatures, creaturesData as Creature[]),
-  others: readCollection<OtherLore>(STORAGE_KEYS.other, otherData as OtherLore[]),
-  events: readCollection<LoreEvent>(STORAGE_KEYS.events, eventsData as LoreEvent[]),
-  mapMarkers: readCollection<MapMarker>(
-    STORAGE_KEYS.mapMarkers,
-    (mapData as { markers: MapMarker[] }).markers,
-  ),
-  news: readCollection<NewsItem>(STORAGE_KEYS.news, newsData as NewsItem[]),
-};
 
 export function todayISO(): string {
   return new Date().toISOString().split("T")[0];

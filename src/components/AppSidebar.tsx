@@ -172,7 +172,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
   const sidebarContent = (
     <div className="flex flex-col h-full" style={{ width: sidebarWidth }}>
       {/* Header */}
-      <div className="h-14 flex items-center px-3 border-b border-border">
+      <div className="h-14 flex items-center px-3 border-b border-sidebar-border">
         <div className="flex items-center gap-2 min-w-0 w-full justify-center">
           <img src={logoColor} alt="Morneven" className="h-7 w-7 flex-shrink-0" />
           {isExpanded && (
@@ -191,18 +191,18 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
 
       {/* User info */}
       {isExpanded && (
-        <div className="px-4 py-3 border-b border-border space-y-2">
+        <div className="px-4 py-3 border-b border-sidebar-border space-y-2">
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center">
               <User className="h-3.5 w-3.5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-heading text-foreground truncate">{username}</p>
-              <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">{role}</p>
+              <p className="text-xs font-heading text-sidebar-foreground truncate">{username}</p>
+              <p className="text-[10px] font-display tracking-wider text-sidebar-foreground/70 uppercase">{role}</p>
             </div>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <label htmlFor="pl-switch" className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+            <label htmlFor="pl-switch" className="text-[10px] font-display tracking-wider text-sidebar-foreground/70 uppercase">
               Clearance
             </label>
             {role === "author" ? (
@@ -210,7 +210,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
                 id="pl-switch"
                 value={personnelLevel}
                 onChange={(e) => setPersonnelLevel(Number(e.target.value) as PersonnelLevel)}
-                className="text-[10px] font-display tracking-wider bg-card border border-border rounded-sm px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                className="text-[10px] font-display tracking-wider bg-sidebar-accent border border-sidebar-border rounded-sm px-1.5 py-0.5 text-sidebar-foreground focus:outline-none focus:ring-1 focus:ring-sidebar-primary"
                 aria-label="Personnel Level clearance switcher"
               >
                 {selectableLevels.map((l) => (
@@ -222,7 +222,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
             ) : (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="text-[10px] font-display tracking-wider bg-muted border border-border/50 rounded-sm px-1.5 py-0.5 text-muted-foreground cursor-not-allowed">
+                  <span className="text-[10px] font-display tracking-wider bg-sidebar-accent border border-sidebar-border rounded-sm px-1.5 py-0.5 text-sidebar-foreground/85 cursor-not-allowed">
                     L{personnelLevel}
                   </span>
                 </TooltipTrigger>
@@ -233,7 +233,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
             )}
           </div>
           <div className="flex items-center justify-between gap-2">
-            <label htmlFor="track-switch" className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+            <label htmlFor="track-switch" className="text-[10px] font-display tracking-wider text-sidebar-foreground/70 uppercase">
               Track
             </label>
             {personnelLevel >= PL_FULL_AUTHORITY ? (
@@ -241,7 +241,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
                 id="track-switch"
                 value={track}
                 onChange={(e) => setTrack(e.target.value as PersonnelTrack)}
-                className="text-[10px] font-display tracking-wider bg-card border border-border rounded-sm px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                className="text-[10px] font-display tracking-wider bg-sidebar-accent border border-sidebar-border rounded-sm px-1.5 py-0.5 text-sidebar-foreground focus:outline-none focus:ring-1 focus:ring-sidebar-primary"
                 aria-label="Personnel Track switcher"
               >
                 {PERSONNEL_TRACKS.map((t) => (
@@ -251,7 +251,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
             ) : (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="text-[10px] font-display tracking-wider bg-muted border border-border/50 rounded-sm px-1.5 py-0.5 text-muted-foreground cursor-not-allowed">
+                  <span className="text-[10px] font-display tracking-wider bg-sidebar-accent border border-sidebar-border rounded-sm px-1.5 py-0.5 text-sidebar-foreground/85 cursor-not-allowed">
                     {PERSONNEL_TRACKS.find((t) => t.key === track)?.short}
                   </span>
                 </TooltipTrigger>
@@ -282,7 +282,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
                 {active && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r" />
                 )}
-                <item.icon className={`h-4 w-4 flex-shrink-0 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
+                <item.icon className={`h-4 w-4 flex-shrink-0 ${active ? "text-primary" : "text-sidebar-foreground/55 group-hover:text-sidebar-foreground"}`} />
                 {isExpanded && (
                   <span className="font-heading text-sm tracking-wide truncate">
                     {item.title}
@@ -317,17 +317,17 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
       </ScrollArea>
 
       {/* Footer */}
-      <div className="border-t border-border p-2 space-y-1">
+      <div className="border-t border-sidebar-border p-2 space-y-1">
         {isExpanded ? (
           <>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm text-muted-foreground hover:bg-sidebar-accent transition-colors"
+              className="flex items-center gap-3 px-3 py-2 w-full rounded-md text-sm text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
             >
               <LogOut className="h-4 w-4" />
               <span className="font-heading text-sm tracking-wide">Logout</span>
             </button>
-            <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground font-heading tracking-wide">
+            <div className="flex items-center gap-2 px-3 py-2 text-xs text-sidebar-foreground/60 font-heading tracking-wide">
               <div className="h-1.5 w-1.5 rounded-full bg-accent-yellow animate-pulse-glow" />
               SYSTEM ONLINE
             </div>
@@ -336,7 +336,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
           <div className="space-y-1">
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
-                <button onClick={handleLogout} className="flex justify-center w-full py-2 text-muted-foreground hover:text-foreground transition-colors">
+                <button onClick={handleLogout} className="flex justify-center w-full py-2 text-sidebar-foreground/65 hover:text-sidebar-foreground transition-colors">
                   <LogOut className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
@@ -385,7 +385,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
     <motion.aside
       animate={{ width: sidebarWidth }}
       transition={{ duration: 0.25, ease: "easeInOut" }}
-      className="h-screen sticky top-0 border-r border-border bg-sidebar z-40 flex-shrink-0"
+      className="h-screen sticky top-0 border-r border-sidebar-border bg-sidebar z-40 flex-shrink-0"
       style={{ overflow: "visible" }}
     >
       <div className="h-full overflow-hidden">

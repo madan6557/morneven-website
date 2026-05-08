@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiUpload, getProjectsPage, createProject, updateProject, deleteProject, getCharactersPage, createCharacter, updateCharacter, deleteCharacter, getPlacesPage, createPlace, updatePlace, deletePlace, getTechnologyPage, createTech, updateTech, deleteTech, getGalleryPage, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreaturesPage, createCreature, updateCreature, deleteCreature, getOthersPage, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImageRemote, setMapImageRemote, type PageInfo } from "@/services/api";
+import { apiUpload, getProjectsPage, createProject, updateProject, deleteProject, getCharactersPage, createCharacter, updateCharacter, deleteCharacter, getPlacesPage, createPlace, updatePlace, deletePlace, getTechnologyPage, createTech, updateTech, deleteTech, getGalleryPage, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreaturesPage, createCreature, updateCreature, deleteCreature, getEventsPage, createEvent, updateEvent, deleteEvent, getOthersPage, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImageRemote, setMapImageRemote, type PageInfo } from "@/services/api";
 import {
   activateCommandCenterPreset,
+  createCommandCenterPreset,
+  updateCommandCenterPreset,
   deleteCommandCenterPreset,
   getCommandCenterDefaults,
   getCommandCenterPresets,
@@ -15,8 +17,8 @@ import {
   type CommandCenterPreset,
   type CommandCenterSettings,
 } from "@/services/commandCenterSettings";
-import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel, LoreMeta, LoreFieldNote } from "@/types";
-import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, File as FileIcon, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon } from "lucide-react";
+import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, LoreEvent, EventRelatedLink, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel, LoreMeta, LoreFieldNote, Skill, Feature } from "@/types";
+import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, File as FileIcon, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon, Star, CheckCircle2, FilePlus, RefreshCw } from "lucide-react";
 import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
 import NewsManagementSection from "@/components/NewsManagementSection";
 import CommandCenterSelectionPanel from "@/components/CommandCenterSelectionPanel";
@@ -25,9 +27,17 @@ import { canAccessAuthorPanel, canEnterAuthorPanel } from "@/lib/pl";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { showValidation } from "@/components/ui/validation-dialog";
+import SkillFeatureEditor from "@/components/SkillFeatureEditor";
+import {
+  averageScore,
+  createDefaultCharacterStats,
+  createDefaultCreatureStats,
+  normalizeCharacterStatsForEditor,
+  normalizeCreatureStatsForEditor,
+} from "@/lib/statDetails";
 
 const dashTabs = ["projects", "lore", "gallery", "news", "homepage", "map"] as const;
-const loreSubs = ["characters", "places", "technology", "creatures", "other"] as const;
+const loreSubs = ["characters", "places", "technology", "creatures", "events", "other"] as const;
 const inputClass = "w-full mt-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 const labelClass = "font-heading text-xs tracking-wider text-muted-foreground uppercase";
 const DASHBOARD_LIST_PAGE_SIZE = 25;
@@ -72,13 +82,14 @@ function highestVersion(versions: string[]): string {
 
 type DashboardTab = typeof dashTabs[number];
 type LoreSub = typeof loreSubs[number];
-type DashboardItem = Project | Character | Place | Technology | GalleryItem | Creature | OtherLore;
+type DashboardItem = Project | Character | Place | Technology | GalleryItem | Creature | LoreEvent | OtherLore;
 type EditableState = {
   id?: string;
   title?: string;
   name?: string;
   status?: Project["status"];
   thumbnail?: string;
+  headerImage?: string;
   shortDesc?: string;
   fullDesc?: string;
   patches?: ProjectPatch[];
@@ -90,7 +101,7 @@ type EditableState = {
   likes?: string[];
   dislikes?: string[];
   accentColor?: string;
-  stats?: Character["stats"];
+  stats?: Character["stats"] | Creature["stats"];
   type?: GalleryItem["type"] | string;
   category?: string;
   videoUrl?: string;
@@ -102,10 +113,20 @@ type EditableState = {
   classification?: CreatureClassification;
   dangerLevel?: CreatureDangerLevel;
   habitat?: string;
+  instincts?: string[];
+  aversions?: string[];
+  era?: string;
+  dateLabel?: string;
+  scope?: string;
+  impactLevel?: string;
+  consequences?: string[];
+  relatedLinks?: EventRelatedLink[];
   // Character
   contributions?: CharacterContribution[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
+  skills?: Skill[];
+  features?: Feature[];
   // Gallery - preserved across edits so ownership doesn't transfer.
   uploadedBy?: string;
   // Production-credit metadata (all lore + projects).
@@ -119,6 +140,164 @@ const isDashboardTab = (value: string | null): value is DashboardTab => {
 
 type AttachmentMode = "url" | "image" | "video" | "file";
 
+type StatSliderField = {
+  key: string;
+  label: string;
+};
+
+type StatEditorGroup = {
+  key: string;
+  label: string;
+  fields: readonly StatSliderField[];
+};
+
+const characterStatEditorGroups: readonly StatEditorGroup[] = [
+  {
+    key: "combat",
+    label: "Combat",
+    fields: [
+      { key: "strength", label: "Strength" },
+      { key: "defense", label: "Defense" },
+      { key: "agility", label: "Agility" },
+      { key: "endurance", label: "Endurance" },
+      { key: "adaptation", label: "Adaptation" },
+    ],
+  },
+  {
+    key: "intelligence",
+    label: "Intelligence",
+    fields: [
+      { key: "iq", label: "IQ" },
+      { key: "eq", label: "EQ" },
+      { key: "sq", label: "SQ" },
+    ],
+  },
+  {
+    key: "charisma",
+    label: "Charisma",
+    fields: [
+      { key: "persuasion", label: "Persuasion" },
+      { key: "intimidation", label: "Intimidation" },
+      { key: "manipulation", label: "Manipulation" },
+    ],
+  },
+  {
+    key: "stealth",
+    label: "Stealth",
+    fields: [
+      { key: "presenceControl", label: "Presence Control" },
+      { key: "silence", label: "Silence" },
+      { key: "environmentControl", label: "Environment Control" },
+      { key: "visualMasking", label: "Visual Masking" },
+    ],
+  },
+  {
+    key: "perception",
+    label: "Perception",
+    fields: [
+      { key: "acuity", label: "Acuity" },
+      { key: "focus", label: "Focus" },
+      { key: "intuition", label: "Intuition" },
+    ],
+  },
+] as const;
+
+const creatureStatEditorGroups: readonly StatEditorGroup[] = [
+  {
+    key: "combat",
+    label: "Combat",
+    fields: [
+      { key: "strength", label: "Strength" },
+      { key: "defense", label: "Defense" },
+      { key: "agility", label: "Agility" },
+      { key: "endurance", label: "Endurance" },
+      { key: "adaptation", label: "Adaptation" },
+    ],
+  },
+  {
+    key: "cognition",
+    label: "Cognition",
+    fields: [
+      { key: "problemSolving", label: "Problem Solving" },
+      { key: "memory", label: "Memory" },
+      { key: "instinct", label: "Instinct" },
+    ],
+  },
+  {
+    key: "predation",
+    label: "Predation",
+    fields: [
+      { key: "ambush", label: "Ambush" },
+      { key: "camouflage", label: "Camouflage" },
+      { key: "quietude", label: "Quietude" },
+      { key: "trapping", label: "Trapping" },
+    ],
+  },
+  {
+    key: "senses",
+    label: "Senses",
+    fields: [
+      { key: "tracking", label: "Tracking" },
+      { key: "detection", label: "Detection" },
+      { key: "awareness", label: "Awareness" },
+    ],
+  },
+  {
+    key: "ferocity",
+    label: "Ferocity",
+    fields: [
+      { key: "intimidation", label: "Intimidation" },
+      { key: "dominance", label: "Dominance" },
+      { key: "hostility", label: "Hostility" },
+    ],
+  },
+] as const;
+
+function StatEditorCard({
+  title,
+  score,
+  fields,
+  values,
+  onChange,
+}: {
+  title: string;
+  score: number;
+  fields: readonly StatSliderField[];
+  values: Record<string, number>;
+  onChange: (key: string, value: number) => void;
+}) {
+  return (
+    <div className="rounded-sm border border-border bg-background/40 p-3 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <label className={labelClass}>{title}</label>
+        <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+          Primary <span className="text-primary">{score}</span>
+        </span>
+      </div>
+      <div className="space-y-2">
+        {fields.map((field) => (
+          <div key={field.key}>
+            <div className="flex items-center justify-between gap-3">
+              <label className={labelClass}>{field.label}</label>
+              <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+                {values[field.key] ?? 0}
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={values[field.key] ?? 0}
+              onChange={(e) => onChange(field.key, Number(e.target.value))}
+              className="w-full mt-1 accent-primary"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FileUploadField({ label, value, onChange, accept = "image/*,video/*", attachmentType = "image", folder = "uploads" }: { label: string; value: string; onChange: (url: string) => void; accept?: string; attachmentType?: Exclude<AttachmentMode, "url">; folder?: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const looksLikeManualUrl = /^https?:\/\//i.test(value) && !/storage|blob:|object|assets/i.test(value);
@@ -131,7 +310,7 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*", a
 
   useEffect(() => {
     if (mode !== "url") setMode(attachmentType);
-  }, [attachmentType]);
+  }, [attachmentType, mode]);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -290,6 +469,7 @@ export default function AuthorDashboard() {
   const [tech, setTech] = useState<Technology[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [creatures, setCreatures] = useState<Creature[]>([]);
+  const [events, setEvents] = useState<LoreEvent[]>([]);
   const [others, setOthers] = useState<OtherLore[]>([]);
   const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
   const [mapImageUrl, setMapImageUrl] = useState<string>("");
@@ -421,12 +601,9 @@ export default function AuthorDashboard() {
         description: "Active global preset now uses backend defaults.",
       });
     } catch {
-      const fallback = { ...defaultSettings };
-      setCcSettings(fallback);
-      saveCommandCenterSettings(fallback);
       toast({
-        title: "Reset saved locally",
-        description: "Backend defaults were unavailable, so local demo settings were reset.",
+        title: "Reset failed",
+        description: "Backend defaults were unavailable, so the active preset was left unchanged.",
         variant: "destructive",
       });
     } finally {
@@ -477,6 +654,91 @@ export default function AuthorDashboard() {
     } finally {
       setCcSettingsSaving(false);
     }
+  };
+
+  const slugifyPresetKey = (name: string) =>
+    name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 48) || `preset-${Date.now().toString(36)}`;
+
+  const promptCreatePreset = () => {
+    showValidation({
+      variant: "info",
+      title: "Save current settings as preset",
+      description: "Captures the unsaved Command Center configuration above as a new preset.",
+      confirmLabel: "Name it",
+      cancelLabel: "Cancel",
+      onConfirm: () => {
+        const name = window.prompt("Preset name", "New preset")?.trim();
+        if (!name) return;
+        void createPresetFromCurrent(name);
+      },
+    });
+  };
+
+  const createPresetFromCurrent = async (name: string) => {
+    setCcSettingsSaving(true);
+    try {
+      const existingKeys = new Set(ccPresets.map((p) => p.presetKey));
+      let key = slugifyPresetKey(name);
+      let n = 2;
+      while (existingKeys.has(key)) {
+        key = `${slugifyPresetKey(name)}-${n++}`;
+      }
+      await createCommandCenterPreset({ presetKey: key, presetName: name, settings: ccSettings });
+      await refreshCommandCenterPresets();
+      toast({ title: "Preset saved", description: `"${name}" added to global presets.` });
+    } catch {
+      toast({
+        title: "Create failed",
+        description: "Backend rejected the new preset.",
+        variant: "destructive",
+      });
+    } finally {
+      setCcSettingsSaving(false);
+    }
+  };
+
+  const renamePreset = (preset: CommandCenterPreset) => {
+    const name = window.prompt("Rename preset", preset.presetName)?.trim();
+    if (!name || name === preset.presetName) return;
+    void (async () => {
+      setCcSettingsSaving(true);
+      try {
+        await updateCommandCenterPreset(preset.id, { presetName: name });
+        await refreshCommandCenterPresets();
+        toast({ title: "Preset renamed", description: `Now called "${name}".` });
+      } catch {
+        toast({ title: "Rename failed", variant: "destructive", description: "Backend rejected the update." });
+      } finally {
+        setCcSettingsSaving(false);
+      }
+    })();
+  };
+
+  const overwritePresetWithCurrent = (preset: CommandCenterPreset) => {
+    showValidation({
+      variant: "warning",
+      title: `Overwrite "${preset.presetName}"?`,
+      description: "Replaces the saved preset configuration with the current Command Center settings.",
+      confirmLabel: "Overwrite",
+      cancelLabel: "Cancel",
+      onConfirm: async () => {
+        setCcSettingsSaving(true);
+        try {
+          await updateCommandCenterPreset(preset.id, { settings: ccSettings });
+          await refreshCommandCenterPresets();
+          toast({ title: "Preset updated", description: `"${preset.presetName}" now matches current settings.` });
+        } catch {
+          toast({ title: "Update failed", variant: "destructive", description: "Backend rejected the update." });
+        } finally {
+          setCcSettingsSaving(false);
+        }
+      },
+    });
   };
 
   useEffect(() => {
@@ -530,6 +792,10 @@ export default function AuthorDashboard() {
         const response = await getCreaturesPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
         setCreatures((current) => reset ? response.items : [...current, ...response.items]);
         setDashboardPageInfo(response.pageInfo);
+      } else if (loreSub === "events") {
+        const response = await getEventsPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
+        setEvents((current) => reset ? response.items : [...current, ...response.items]);
+        setDashboardPageInfo(response.pageInfo);
       } else {
         const response = await getOthersPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
         setOthers((current) => reset ? response.items : [...current, ...response.items]);
@@ -561,18 +827,74 @@ export default function AuthorDashboard() {
   const startCreate = () => {
     setIsCreating(true);
     if (activeTab === "projects") {
-      setEditing({ title: "", status: "Planning", thumbnail: "", shortDesc: "", fullDesc: "", patches: [], docs: [] });
+      setEditing({ title: "", status: "Planning", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", patches: [], docs: [], features: [] });
     } else if (activeTab === "lore") {
       if (loreSub === "characters") {
-        setEditing({ name: "", race: "", occupation: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 }, docs: [], fieldNotes: [], observations: [], contributions: [] });
+        setEditing({
+          name: "",
+          race: "",
+          occupation: "",
+          height: "",
+          traits: [],
+          likes: [],
+          dislikes: [],
+          accentColor: "#4A90D9",
+          thumbnail: "",
+          headerImage: "",
+          shortDesc: "",
+          fullDesc: "",
+          stats: createDefaultCharacterStats(),
+          docs: [],
+          fieldNotes: [],
+          observations: [],
+          contributions: [],
+          skills: [],
+        });
       } else if (loreSub === "places") {
-        setEditing({ name: "", type: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [] });
+        setEditing({ name: "", type: "", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       } else if (loreSub === "technology") {
-        setEditing({ name: "", category: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [] });
+        setEditing({ name: "", category: "", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       } else if (loreSub === "creatures") {
-        setEditing({ name: "", classification: "Amorphous", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [] });
+        setEditing({
+          name: "",
+          classification: "Amorphous",
+          dangerLevel: 1,
+          habitat: "",
+          traits: [],
+          instincts: [],
+          aversions: [],
+          accentColor: "#7DD3FC",
+          thumbnail: "",
+          headerImage: "",
+          shortDesc: "",
+          fullDesc: "",
+          stats: createDefaultCreatureStats(),
+          docs: [],
+          fieldNotes: [],
+          observations: [],
+          skills: [],
+        });
+      } else if (loreSub === "events") {
+        setEditing({
+          title: "",
+          category: "Institute Milestone",
+          era: "",
+          dateLabel: "",
+          scope: "",
+          impactLevel: "",
+          thumbnail: "",
+          headerImage: "",
+          shortDesc: "",
+          fullDesc: "",
+          consequences: [],
+          relatedLinks: [],
+          docs: [],
+          fieldNotes: [],
+          observations: [],
+          features: [],
+        });
       } else {
-        setEditing({ title: "", category: "World Systems", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [] });
+        setEditing({ title: "", category: "World Systems", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       }
     } else {
       setEditing({ type: "image", title: "", thumbnail: "", videoUrl: "", caption: "", tags: [], date: new Date().toISOString().split("T")[0], comments: [] });
@@ -608,9 +930,9 @@ export default function AuthorDashboard() {
     }
 
     if (activeTab === "lore") {
-      const label = loreSub === "other" ? "Lore title" : "Lore name";
+      const label = loreSub === "other" || loreSub === "events" ? "Lore title" : "Lore name";
       return (
-        requireText(loreSub === "other" ? editing.title : editing.name, label) &&
+        requireText(loreSub === "other" || loreSub === "events" ? editing.title : editing.name, label) &&
         requireText(editing.shortDesc, "Lore short description") &&
         requireText(editing.fullDesc, "Lore full description")
       );
@@ -628,10 +950,12 @@ export default function AuthorDashboard() {
         title: editing.title ?? "",
         status: (editing.status as Project["status"]) ?? "Planning",
         thumbnail: editing.thumbnail ?? "",
+        headerImage: editing.headerImage ?? "",
         shortDesc: editing.shortDesc ?? "",
         fullDesc: editing.fullDesc ?? "",
         patches: editing.patches ?? [],
         docs: editing.docs ?? [],
+        features: editing.features ?? [],
         meta: editing.meta,
       };
 
@@ -640,6 +964,7 @@ export default function AuthorDashboard() {
       await loadDashboardItems(true);
     } else if (activeTab === "lore") {
       if (loreSub === "characters") {
+        const normalizedStats = normalizeCharacterStatsForEditor(editing.stats as Partial<Character["stats"]>);
         const payload: Omit<Character, "id"> = {
           name: editing.name ?? "",
           race: editing.race ?? "",
@@ -650,13 +975,15 @@ export default function AuthorDashboard() {
           dislikes: editing.dislikes ?? [],
           accentColor: editing.accentColor ?? "#4A90D9",
           thumbnail: editing.thumbnail ?? "",
+          headerImage: editing.headerImage ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
-          stats: editing.stats ?? { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50 },
+          stats: normalizedStats,
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
           contributions: editing.contributions ?? [],
+          skills: editing.skills ?? [],
           meta: editing.meta,
         };
 
@@ -668,11 +995,13 @@ export default function AuthorDashboard() {
           name: editing.name ?? "",
           type: editing.type ?? "",
           thumbnail: editing.thumbnail ?? "",
+          headerImage: editing.headerImage ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
+          features: editing.features ?? [],
           meta: editing.meta,
         };
 
@@ -684,11 +1013,13 @@ export default function AuthorDashboard() {
           name: editing.name ?? "",
           category: editing.category ?? "",
           thumbnail: editing.thumbnail ?? "",
+          headerImage: editing.headerImage ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
+          features: editing.features ?? [],
           meta: editing.meta,
         };
 
@@ -696,34 +1027,67 @@ export default function AuthorDashboard() {
         else if (editing.id) await updateTech(editing.id, payload);
         await loadDashboardItems(true);
       } else if (loreSub === "creatures") {
+        const normalizedStats = normalizeCreatureStatsForEditor(editing.stats as Partial<Creature["stats"]>);
         const payload: Omit<Creature, "id"> = {
           name: editing.name ?? "",
           classification: (editing.classification as CreatureClassification) ?? "Amorphous",
           dangerLevel: (editing.dangerLevel as CreatureDangerLevel) ?? 1,
           habitat: editing.habitat ?? "",
+          traits: editing.traits ?? [],
+          instincts: editing.instincts ?? [],
+          aversions: editing.aversions ?? [],
           accentColor: editing.accentColor ?? "#7DD3FC",
           thumbnail: editing.thumbnail ?? "",
+          headerImage: editing.headerImage ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
+          stats: normalizedStats,
+          skills: editing.skills ?? [],
           meta: editing.meta,
         };
 
         if (isCreating) await createCreature(payload);
         else if (editing.id) await updateCreature(editing.id, payload);
         await loadDashboardItems(true);
+      } else if (loreSub === "events") {
+        const payload: Omit<LoreEvent, "id"> = {
+          title: editing.title ?? "",
+          category: editing.category ?? "Institute Milestone",
+          era: editing.era,
+          dateLabel: editing.dateLabel,
+          scope: editing.scope,
+          impactLevel: editing.impactLevel,
+          thumbnail: editing.thumbnail ?? "",
+          headerImage: editing.headerImage ?? "",
+          shortDesc: editing.shortDesc ?? "",
+          fullDesc: editing.fullDesc ?? "",
+          consequences: editing.consequences ?? [],
+          relatedLinks: editing.relatedLinks ?? [],
+          docs: editing.docs ?? [],
+          fieldNotes: editing.fieldNotes ?? [],
+          observations: editing.observations ?? [],
+          features: editing.features ?? [],
+          meta: editing.meta,
+        };
+
+        if (isCreating) await createEvent(payload);
+        else if (editing.id) await updateEvent(editing.id, payload);
+        await loadDashboardItems(true);
       } else {
         const payload: Omit<OtherLore, "id"> = {
           title: editing.title ?? "",
           category: editing.category ?? "World Systems",
           thumbnail: editing.thumbnail ?? "",
+          headerImage: editing.headerImage ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
+          features: editing.features ?? [],
           meta: editing.meta,
         };
 
@@ -772,6 +1136,7 @@ export default function AuthorDashboard() {
           else if (loreSub === "places") await deletePlace(id);
           else if (loreSub === "technology") await deleteTech(id);
           else if (loreSub === "creatures") await deleteCreature(id);
+          else if (loreSub === "events") await deleteEvent(id);
           else await deleteOther(id);
           await loadDashboardItems(true);
         } else if (activeTab === "gallery") { await deleteGalleryItem(id); await loadDashboardItems(true); }
@@ -786,6 +1151,7 @@ export default function AuthorDashboard() {
       if (loreSub === "places") return places;
       if (loreSub === "technology") return tech;
       if (loreSub === "creatures") return creatures;
+      if (loreSub === "events") return events;
       return others;
     }
     if (activeTab === "gallery") {
@@ -891,15 +1257,158 @@ export default function AuthorDashboard() {
     setEditing({ ...editing, patches });
   };
 
+  const beginEdit = (item: DashboardItem) => {
+    if (activeTab === "projects") {
+      const project = item as Project;
+      setEditing({
+        ...project,
+        docs: project.docs ?? [],
+        features: project.features ?? [],
+        patches: project.patches ?? [],
+      });
+      setIsCreating(false);
+      return;
+    }
+
+    if (activeTab === "gallery") {
+      const galleryItem = item as GalleryItem;
+      setEditing({
+        ...galleryItem,
+        comments: galleryItem.comments ?? [],
+        tags: galleryItem.tags ?? [],
+      });
+      setIsCreating(false);
+      return;
+    }
+
+    if (loreSub === "characters") {
+      const character = item as Character;
+      setEditing({
+        ...character,
+        docs: character.docs ?? [],
+        fieldNotes: character.fieldNotes ?? [],
+        observations: character.observations ?? [],
+        contributions: character.contributions ?? [],
+        skills: character.skills ?? [],
+        stats: normalizeCharacterStatsForEditor(character.stats),
+      });
+      setIsCreating(false);
+      return;
+    }
+
+    if (loreSub === "creatures") {
+      const creature = item as Creature;
+      setEditing({
+        ...creature,
+        docs: creature.docs ?? [],
+        fieldNotes: creature.fieldNotes ?? [],
+        observations: creature.observations ?? [],
+        traits: creature.traits ?? [],
+        instincts: creature.instincts ?? [],
+        aversions: creature.aversions ?? [],
+        skills: creature.skills ?? [],
+        stats: normalizeCreatureStatsForEditor(creature.stats),
+      });
+      setIsCreating(false);
+      return;
+    }
+
+    if (loreSub === "events") {
+      const event = item as LoreEvent;
+      setEditing({
+        ...event,
+        docs: event.docs ?? [],
+        fieldNotes: event.fieldNotes ?? [],
+        observations: event.observations ?? [],
+        features: event.features ?? [],
+        consequences: event.consequences ?? [],
+        relatedLinks: event.relatedLinks ?? [],
+      });
+      setIsCreating(false);
+      return;
+    }
+
+    if (loreSub === "places") {
+      const place = item as Place;
+      setEditing({
+        ...place,
+        docs: place.docs ?? [],
+        fieldNotes: place.fieldNotes ?? [],
+        observations: place.observations ?? [],
+        features: place.features ?? [],
+      });
+      setIsCreating(false);
+      return;
+    }
+
+    if (loreSub === "technology") {
+      const technology = item as Technology;
+      setEditing({
+        ...technology,
+        docs: technology.docs ?? [],
+        fieldNotes: technology.fieldNotes ?? [],
+        observations: technology.observations ?? [],
+        features: technology.features ?? [],
+      });
+      setIsCreating(false);
+      return;
+    }
+
+    const other = item as OtherLore;
+    setEditing({
+      ...other,
+      docs: other.docs ?? [],
+      fieldNotes: other.fieldNotes ?? [],
+      observations: other.observations ?? [],
+      features: other.features ?? [],
+    });
+    setIsCreating(false);
+  };
+
+  const updateCharacterStatDetail = (category: string, key: string, value: number) => {
+    if (!editing) return;
+    const current = normalizeCharacterStatsForEditor(editing.stats as Partial<Character["stats"]>);
+    const currentGroup = (current.detail?.[category as keyof NonNullable<Character["stats"]["detail"]>] ?? {}) as Record<string, number>;
+    const nextStats = normalizeCharacterStatsForEditor({
+      ...current,
+      detail: {
+        ...current.detail,
+        [category]: {
+          ...currentGroup,
+          [key]: value,
+        },
+      },
+    });
+    setEditing({ ...editing, stats: nextStats });
+  };
+
+  const updateCreatureStatDetail = (category: string, key: string, value: number) => {
+    if (!editing) return;
+    const current = normalizeCreatureStatsForEditor(editing.stats as Partial<Creature["stats"]>);
+    const currentGroup = (current.detail?.[category as keyof NonNullable<NonNullable<Creature["stats"]>["detail"]>] ?? {}) as Record<string, number>;
+    const nextStats = normalizeCreatureStatsForEditor({
+      ...current,
+      detail: {
+        ...current.detail,
+        [category]: {
+          ...currentGroup,
+          [key]: value,
+        },
+      },
+    });
+    setEditing({ ...editing, stats: nextStats });
+  };
+
   const isCharacter = activeTab === "lore" && loreSub === "characters";
   const isPlace = activeTab === "lore" && loreSub === "places";
   const isTech = activeTab === "lore" && loreSub === "technology";
   const isCreature = activeTab === "lore" && loreSub === "creatures";
+  const isEvent = activeTab === "lore" && loreSub === "events";
   const isOther = activeTab === "lore" && loreSub === "other";
   const isProject = activeTab === "projects";
   const isGallery = activeTab === "gallery";
   const isMap = activeTab === "map";
-  const hasDocs = isProject || isCharacter || isPlace || isTech || isCreature || isOther;
+  const hasDocs = isProject || isCharacter || isPlace || isTech || isCreature || isEvent || isOther;
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -1001,140 +1510,235 @@ export default function AuthorDashboard() {
 
       {/* Command Center settings panel */}
       {activeTab === "homepage" && canAccess("homepage") && (
-        <div className="hud-border bg-card p-4 md:p-6 space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase flex items-center gap-2">
-              <LayoutDashboard className="h-4 w-4" /> Command Center Settings
-            </h3>
-            <button
-              onClick={() => showValidation({
-                variant: "warning",
-                title: "Reset global Command Center",
-                description: "This will overwrite the active global preset for all personnel.",
-                confirmLabel: "Reset defaults",
-                cancelLabel: "Cancel",
-                critical: true,
-                confirmDelaySeconds: 5,
-                onConfirm: resetGlobalCommandCenterSettings,
-              })}
-              disabled={ccSettingsSaving}
-              className="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-1.5 text-[10px] font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors"
-            >
-              <RotateCcw className="h-3 w-3" /> RESET DEFAULTS
-            </button>
+        <div className="hud-border bg-card p-4 md:p-6 space-y-6">
+          {/* Header */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1">
+              <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase flex items-center gap-2">
+                <LayoutDashboard className="h-4 w-4" /> Command Center Settings
+              </h3>
+              <p className="text-[11px] font-body text-muted-foreground italic">
+                Configure the global Home screen shared by all personnel.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={saveGlobalCommandCenterSettings}
+                disabled={ccSettingsSaving}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                title="Save changes to the active preset"
+              >
+                <Save className="h-3 w-3" /> {ccSettingsSaving ? "SAVING" : "SAVE ACTIVE"}
+              </button>
+              <button
+                onClick={promptCreatePreset}
+                disabled={ccSettingsSaving}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-display tracking-wider border border-primary/40 text-primary rounded-sm hover:bg-primary/10 transition-colors disabled:opacity-50"
+                title="Save current configuration as a new preset"
+              >
+                <FilePlus className="h-3 w-3" /> SAVE AS NEW
+              </button>
+              <button
+                onClick={() => showValidation({
+                  variant: "warning",
+                  title: "Reset global Command Center",
+                  description: "This will overwrite the active global preset for all personnel.",
+                  confirmLabel: "Reset defaults",
+                  cancelLabel: "Cancel",
+                  critical: true,
+                  confirmDelaySeconds: 5,
+                  onConfirm: resetGlobalCommandCenterSettings,
+                })}
+                disabled={ccSettingsSaving}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                <RotateCcw className="h-3 w-3" /> RESET
+              </button>
+            </div>
           </div>
-          <div className="mecha-line" />
 
-          <div className="rounded-sm border border-border bg-background/50 p-3 space-y-3">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className={labelClass}>Global System Presets</p>
+          {/* Preset Library */}
+          <div className="rounded-sm border border-border bg-background/40 p-3 md:p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <p className={labelClass}>Preset Library</p>
+                <span className="text-[10px] font-display tracking-wider px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground">
+                  {ccPresets.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => void refreshCommandCenterPresets()}
+                disabled={ccSettingsLoading || ccSettingsSaving}
+                className="inline-flex items-center gap-1 text-[10px] font-display tracking-wider text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3 w-3 ${ccSettingsLoading ? "animate-spin" : ""}`} /> REFRESH
+              </button>
+            </div>
+
+            {ccPresets.length === 0 ? (
+              <div className="rounded-sm border border-dashed border-border bg-card/40 p-6 text-center space-y-2">
+                <p className="text-xs font-heading tracking-wider uppercase text-muted-foreground">No presets yet</p>
                 <p className="text-[11px] font-body text-muted-foreground italic">
-                  Active preset is shared across all personnel Home screens.
+                  Configure the settings below, then click <span className="text-foreground">Save as New</span> to create one.
                 </p>
               </div>
-              {ccSettingsLoading && (
-                <span className="text-[10px] font-display tracking-wider uppercase text-muted-foreground">Loading</span>
-              )}
-            </div>
-            {ccPresets.length === 0 ? (
-              <p className="text-xs font-body text-muted-foreground">No backend presets returned.</p>
             ) : (
               <div className="grid gap-2 md:grid-cols-2">
-                {ccPresets.map((preset) => (
-                  <div key={preset.id} className="flex items-center justify-between gap-3 rounded-sm border border-border bg-card p-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-heading uppercase tracking-wider text-foreground">{preset.presetName}</p>
-                      <p className="truncate text-[10px] font-display uppercase tracking-wider text-muted-foreground">
-                        {preset.presetKey}{preset.isActive ? " | Active" : ""}
-                      </p>
-                    </div>
-                    <div className="flex flex-shrink-0 items-center gap-1">
-                      {!preset.isActive && (
+                {[...ccPresets]
+                  .sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.presetName.localeCompare(b.presetName))
+                  .map((preset) => (
+                    <div
+                      key={preset.id}
+                      className={`group relative rounded-sm border p-3 transition-colors ${
+                        preset.isActive
+                          ? "border-primary/60 bg-primary/5"
+                          : "border-border bg-card hover:border-border/80 hover:bg-card/80"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            {preset.isActive ? (
+                              <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
+                            ) : (
+                              <Star className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground/60" />
+                            )}
+                            <p className="truncate text-sm font-heading uppercase tracking-wider text-foreground">
+                              {preset.presetName}
+                            </p>
+                          </div>
+                          <p className="truncate text-[10px] font-mono text-muted-foreground/80">
+                            {preset.presetKey}
+                          </p>
+                          {preset.isActive && (
+                            <span className="inline-block text-[9px] font-display tracking-wider uppercase px-1.5 py-0.5 rounded-sm bg-primary/15 text-primary">
+                              Active · Live for all
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-border/50 pt-2">
+                        {!preset.isActive && (
+                          <button
+                            type="button"
+                            onClick={() => activatePreset(preset.id)}
+                            disabled={ccSettingsSaving}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary hover:bg-primary/10 rounded-sm disabled:opacity-50"
+                          >
+                            <CheckCircle2 className="h-3 w-3" /> ACTIVATE
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => activatePreset(preset.id)}
+                          onClick={() => overwritePresetWithCurrent(preset)}
                           disabled={ccSettingsSaving}
-                          className="px-2 py-1 text-[10px] font-display tracking-wider text-primary hover:bg-primary/10 rounded-sm"
+                          className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-sm disabled:opacity-50"
+                          title="Overwrite this preset with current settings"
                         >
-                          ACTIVATE
+                          <Save className="h-3 w-3" /> OVERWRITE
                         </button>
-                      )}
-                      {!preset.isActive && (
                         <button
                           type="button"
-                          onClick={() => showValidation({
-                            variant: "warning",
-                            title: "Delete preset",
-                            description: `Delete inactive preset "${preset.presetName}"?`,
-                            confirmLabel: "Delete",
-                            cancelLabel: "Cancel",
-                            dontShowAgainKey: "delete_command_center_preset",
-                            onConfirm: () => removePreset(preset.id),
-                          })}
+                          onClick={() => renamePreset(preset)}
                           disabled={ccSettingsSaving}
-                          className="px-2 py-1 text-[10px] font-display tracking-wider text-destructive hover:bg-destructive/10 rounded-sm"
+                          className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-sm disabled:opacity-50"
                         >
-                          DELETE
+                          <Pencil className="h-3 w-3" /> RENAME
                         </button>
-                      )}
+                        {!preset.isActive && (
+                          <button
+                            type="button"
+                            onClick={() => showValidation({
+                              variant: "warning",
+                              title: "Delete preset",
+                              description: `Delete inactive preset "${preset.presetName}"?`,
+                              confirmLabel: "Delete",
+                              cancelLabel: "Cancel",
+                              dontShowAgainKey: "delete_command_center_preset",
+                              onConfirm: () => removePreset(preset.id),
+                            })}
+                            disabled={ccSettingsSaving}
+                            className="ml-auto inline-flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-destructive hover:bg-destructive/10 rounded-sm disabled:opacity-50"
+                          >
+                            <Trash2 className="h-3 w-3" /> DELETE
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>
 
-          <div>
-            <label className={labelClass}>Welcome Message</label>
-            <input
-              type="text"
-              value={ccSettings.welcomeMessage}
-              onChange={(e) => setCcSettings({ ...ccSettings, welcomeMessage: e.target.value })}
-              className={inputClass}
-              placeholder="Here's your operational overview."
+          <div className="mecha-line" />
+
+          {/* Configuration */}
+          <div className="space-y-5">
+            <p className="text-[10px] font-display tracking-wider uppercase text-muted-foreground">
+              Configuration · edits apply to the active preset on save
+            </p>
+
+            <div>
+              <label className={labelClass}>Welcome Message</label>
+              <input
+                type="text"
+                value={ccSettings.welcomeMessage}
+                onChange={(e) => setCcSettings({ ...ccSettings, welcomeMessage: e.target.value })}
+                className={inputClass}
+                placeholder="Here's your operational overview."
+              />
+            </div>
+
+            <div>
+              <p className={labelClass + " mb-2"}>Visible Sections</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {([
+                  ["showStats", "Stat Cards"],
+                  ["showProjects", "Project Status"],
+                  ["showNews", "News Feed"],
+                  ["showCharacters", "Key Personnel"],
+                  ["showPlaces", "Key Locations"],
+                  ["showTechnology", "Technology"],
+                  ["showGallery", "Recent Gallery"],
+                  ["showQuickActions", "Quick Navigation"],
+                ] as const).map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-2 p-2 rounded-sm bg-background/50 border border-border cursor-pointer hover:bg-background transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={ccSettings[key]}
+                      onChange={(e) => setCcSettings({ ...ccSettings, [key]: e.target.checked })}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span className="text-sm font-body text-foreground">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="mecha-line" />
+            <CommandCenterSelectionPanel
+              settings={ccSettings}
+              onChange={(next) => setCcSettings(next)}
             />
           </div>
 
-          <div>
-            <p className={labelClass + " mb-2"}>Visible Sections</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {([
-                ["showStats", "Stat Cards"],
-                ["showProjects", "Project Status"],
-                ["showNews", "News Feed"],
-                ["showCharacters", "Key Personnel"],
-                ["showPlaces", "Key Locations"],
-                ["showTechnology", "Technology"],
-                ["showGallery", "Recent Gallery"],
-                ["showQuickActions", "Quick Navigation"],
-              ] as const).map(([key, label]) => (
-                <label key={key} className="flex items-center gap-2 p-2 rounded-sm bg-background/50 border border-border cursor-pointer hover:bg-background transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={ccSettings[key]}
-                    onChange={(e) => setCcSettings({ ...ccSettings, [key]: e.target.checked })}
-                    className="h-4 w-4 accent-primary"
-                  />
-                  <span className="text-sm font-body text-foreground">{label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="mecha-line" />
-          <CommandCenterSelectionPanel
-            settings={ccSettings}
-            onChange={(next) => setCcSettings(next)}
-          />
-
-          <div className="flex justify-end">
+          {/* Sticky-feel save bar at bottom */}
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:items-center pt-2 border-t border-border/50">
+            <button
+              onClick={promptCreatePreset}
+              disabled={ccSettingsSaving}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-display tracking-wider border border-primary/40 text-primary rounded-sm hover:bg-primary/10 transition-colors disabled:opacity-50"
+            >
+              <FilePlus className="h-3 w-3" /> SAVE AS NEW PRESET
+            </button>
             <button
               onClick={saveGlobalCommandCenterSettings}
               disabled={ccSettingsSaving}
-              className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity disabled:opacity-50"
             >
-              <Save className="h-3 w-3" /> {ccSettingsSaving ? "SAVING" : "SAVE SETTINGS"}
+              <Save className="h-3 w-3" /> {ccSettingsSaving ? "SAVING" : "SAVE TO ACTIVE"}
             </button>
           </div>
         </div>
@@ -1166,6 +1770,16 @@ export default function AuthorDashboard() {
               accept="image/*"
               folder={isProject ? "projects" : isGallery ? "gallery" : "lore"}
             />
+
+            {!isGallery && editing.fullDesc !== undefined && (
+              <FileUploadField
+                label="Header Image"
+                value={editing.headerImage || ""}
+                onChange={(url) => setEditing({ ...editing, headerImage: url })}
+                accept="image/*"
+                folder={isProject ? "projects" : "lore"}
+              />
+            )}
 
             {/* Project-specific: Status */}
             {isProject && (
@@ -1261,6 +1875,36 @@ export default function AuthorDashboard() {
                     <input type="text" value={editing.accentColor || "#7DD3FC"} onChange={(e) => setEditing({ ...editing, accentColor: e.target.value })} className="flex-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
                   </div>
                 </div>
+                <div>
+                  <label className={labelClass}>Traits (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={(editing.traits || []).join(", ")}
+                    onChange={(e) => setEditing({ ...editing, traits: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                    className={inputClass}
+                    placeholder="e.g. Territorial, Pack-Hunting, Nocturnal"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Instincts (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={(editing.instincts || []).join(", ")}
+                    onChange={(e) => setEditing({ ...editing, instincts: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                    className={inputClass}
+                    placeholder="e.g. Follows heat, Protects nest, Drawn to vibration"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Aversions (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={(editing.aversions || []).join(", ")}
+                    onChange={(e) => setEditing({ ...editing, aversions: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                    className={inputClass}
+                    placeholder="e.g. Bright magnesium light, Salt fog, High-frequency noise"
+                  />
+                </div>
               </>
             )}
 
@@ -1272,16 +1916,169 @@ export default function AuthorDashboard() {
               </div>
             )}
 
-            {isCharacter && editing.stats && (
+            {isEvent && (
               <>
-                {Object.keys(editing.stats).map((stat) => (
-                  <div key={stat}>
-                    <label className={labelClass}>{stat} ({editing.stats[stat]})</label>
-                    <input type="range" min="0" max="100" value={editing.stats[stat]} onChange={(e) => setEditing({ ...editing, stats: { ...editing.stats, [stat]: Number(e.target.value) } })} className="w-full mt-1 accent-primary" />
+                <div>
+                  <label className={labelClass}>Category</label>
+                  <input type="text" value={editing.category || ""} onChange={(e) => setEditing({ ...editing, category: e.target.value })} className={inputClass} placeholder="e.g. Institute Milestone, Incident" />
+                </div>
+                <div>
+                  <label className={labelClass}>Era</label>
+                  <input type="text" value={editing.era || ""} onChange={(e) => setEditing({ ...editing, era: e.target.value })} className={inputClass} placeholder="e.g. Post Fracture Era" />
+                </div>
+                <div>
+                  <label className={labelClass}>Date Label</label>
+                  <input type="text" value={editing.dateLabel || ""} onChange={(e) => setEditing({ ...editing, dateLabel: e.target.value })} className={inputClass} placeholder="e.g. Cycle 04, 2026" />
+                </div>
+                <div>
+                  <label className={labelClass}>Scope</label>
+                  <input type="text" value={editing.scope || ""} onChange={(e) => setEditing({ ...editing, scope: e.target.value })} className={inputClass} placeholder="e.g. Institute-wide, Regional" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Impact Level</label>
+                  <input type="text" value={editing.impactLevel || ""} onChange={(e) => setEditing({ ...editing, impactLevel: e.target.value })} className={inputClass} placeholder="e.g. High, Critical, Contained" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Consequences (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={(editing.consequences || []).join(", ")}
+                    onChange={(e) => setEditing({
+                      ...editing,
+                      consequences: e.target.value.split(",").map((item) => item.trim()).filter(Boolean),
+                    })}
+                    className={inputClass}
+                    placeholder="e.g. Archive lockdown, Team redeployment"
+                  />
+                </div>
+                <div className="md:col-span-2 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className={labelClass}>Related Links</label>
+                    <button
+                      type="button"
+                      onClick={() => setEditing({
+                        ...editing,
+                        relatedLinks: [...(editing.relatedLinks || []), { label: "", url: "" }],
+                      })}
+                      className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors"
+                    >
+                      <Plus className="h-3 w-3" /> ADD LINK
+                    </button>
                   </div>
-                ))}
+                  {(editing.relatedLinks || []).length === 0 && (
+                    <p className="text-[11px] font-body text-muted-foreground italic">No related links yet.</p>
+                  )}
+                  {(editing.relatedLinks || []).map((link, idx) => (
+                    <div key={`event-link-${idx}`} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
+                      <div className="flex-1 grid gap-2 md:grid-cols-2">
+                        <input
+                          type="text"
+                          value={link.label}
+                          onChange={(e) => setEditing({
+                            ...editing,
+                            relatedLinks: (editing.relatedLinks || []).map((item, linkIdx) =>
+                              linkIdx === idx ? { ...item, label: e.target.value } : item,
+                            ),
+                          })}
+                          placeholder="Link label"
+                          className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground"
+                        />
+                        <input
+                          type="text"
+                          value={link.url}
+                          onChange={(e) => setEditing({
+                            ...editing,
+                            relatedLinks: (editing.relatedLinks || []).map((item, linkIdx) =>
+                              linkIdx === idx ? { ...item, url: e.target.value } : item,
+                            ),
+                          })}
+                          placeholder="/lore/characters/char-001 or https://..."
+                          className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditing({
+                          ...editing,
+                          relatedLinks: (editing.relatedLinks || []).filter((_, linkIdx) => linkIdx !== idx),
+                        })}
+                        className="text-muted-foreground hover:text-destructive mt-1"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </>
             )}
+
+            {isCharacter && editing.stats && (() => {
+              const stats = normalizeCharacterStatsForEditor(editing.stats as Partial<Character["stats"]>);
+              const overall = averageScore([
+                stats.combat,
+                stats.intelligence,
+                stats.charisma,
+                stats.stealth,
+                stats.perception,
+              ]);
+
+              return (
+                <div className="md:col-span-2 space-y-3 p-3 border border-border rounded-sm bg-muted/20">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className={labelClass}>Stat Breakdown</label>
+                    <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+                      Overall <span className="text-primary">{overall}</span>
+                    </span>
+                  </div>
+                  <div className="grid gap-3 xl:grid-cols-2">
+                    {characterStatEditorGroups.map((group) => (
+                      <StatEditorCard
+                        key={group.key}
+                        title={group.label}
+                        score={stats[group.key as keyof Character["stats"]] as number}
+                        fields={group.fields}
+                        values={(stats.detail?.[group.key as keyof NonNullable<Character["stats"]["detail"]>] ?? {}) as Record<string, number>}
+                        onChange={(fieldKey, value) => updateCharacterStatDetail(group.key, fieldKey, value)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {isCreature && editing.stats && (() => {
+              const stats = normalizeCreatureStatsForEditor(editing.stats as Partial<Creature["stats"]>);
+              const overall = averageScore([
+                stats.combat,
+                stats.cognition,
+                stats.predation,
+                stats.senses,
+                stats.ferocity,
+              ]);
+
+              return (
+                <div className="md:col-span-2 space-y-3 p-3 border border-border rounded-sm bg-muted/20">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className={labelClass}>Threat Breakdown</label>
+                    <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+                      Overall <span className="text-primary">{overall}</span>
+                    </span>
+                  </div>
+                  <div className="grid gap-3 xl:grid-cols-2">
+                    {creatureStatEditorGroups.map((group) => (
+                      <StatEditorCard
+                        key={group.key}
+                        title={group.label}
+                        score={stats[group.key as keyof Creature["stats"]] as number}
+                        fields={group.fields}
+                        values={(stats.detail?.[group.key as keyof NonNullable<NonNullable<Creature["stats"]>["detail"]>] ?? {}) as Record<string, number>}
+                        onChange={(fieldKey, value) => updateCreatureStatDetail(group.key, fieldKey, value)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Place type */}
             {isPlace && (
@@ -1413,6 +2210,25 @@ export default function AuthorDashboard() {
               />
             </div>
           )}
+
+          {/* Skills (living entities: characters, creatures) */}
+          {(isCharacter || isCreature) && (
+            <SkillFeatureEditor
+              variant="skill"
+              items={editing.skills ?? []}
+              onChange={(skills) => setEditing({ ...editing, skills: skills as Skill[] })}
+            />
+          )}
+
+          {/* Features (non-living entities: places, tech, other, projects) */}
+          {(isPlace || isTech || isEvent || isOther || isProject) && (
+            <SkillFeatureEditor
+              variant="feature"
+              items={editing.features ?? []}
+              onChange={(features) => setEditing({ ...editing, features: features as Feature[] })}
+            />
+          )}
+
 
           {/* Contributions (characters) */}
           {isCharacter && (
@@ -1593,7 +2409,7 @@ export default function AuthorDashboard() {
               <div className="flex items-center gap-2 flex-shrink-0">
                 {canModify ? (
                   <>
-                    <button onClick={() => { setEditing({ ...item } as EditableState); setIsCreating(false); }} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
+                    <button onClick={() => beginEdit(item)} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button onClick={() => handleDelete(item.id, getItemTitle(item))} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">

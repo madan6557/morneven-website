@@ -190,7 +190,7 @@ export const PL_LORE_ID = "other-005";
 // Author Panel section access
 // ────────────────────────────────────────────────────────────────────────────
 export type AuthorSection = "projects" | "lore" | "gallery" | "homepage" | "map" | "news";
-export type LoreSubSection = "characters" | "places" | "technology" | "creatures" | "other";
+export type LoreSubSection = "characters" | "places" | "technology" | "creatures" | "events" | "other";
 
 export interface SectionAccessOpts {
   level: PersonnelLevel;
@@ -246,5 +246,5 @@ export function canModerateDiscussions(level: PersonnelLevel, track: PersonnelTr
 }
 
 export function canManagePersonnel(level: PersonnelLevel): boolean {
-  return level >= 4;
+  return level >= 5;
 }

@@ -11,12 +11,23 @@ import {
 } from "@/services/api";
 import { getProxyUrl } from "@/services/fileProxyService";
 import type { Creature, DiscussionComment, DiscussionMention, LoreFieldNote } from "@/types";
-import { ArrowLeft, ShieldAlert, FileText, MapPin, NotebookPen, ExternalLink, Info } from "lucide-react";
+import { ArrowLeft, ShieldAlert, FileText, MapPin, NotebookPen, ExternalLink, Info, HeartPulse, Siren } from "lucide-react";
+import StatsRadar from "@/components/StatsRadar";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SkillList } from "@/components/SkillCard";
+import {
+  averageScore,
+  CREATURE_STAT_DETAIL_LABELS,
+  getCreatureStatDetailAxes,
+  STAT_AXIS_FULL_NAMES,
+  toCreaturePrimaryStats,
+  type CreatureStatCategoryKey,
+} from "@/lib/statDetails";
+import { accentBorder, accentMuted, accentSurface, accentText } from "@/lib/themeColor";
 
 const dangerLabel: Record<number, string> = {
   1: "DL-1 - Negligible",
@@ -63,6 +74,7 @@ export default function CreatureDetail() {
   const [creature, setCreature] = useState<Creature | null>(null);
   const [loading, setLoading] = useState(true);
   const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
+  const [selectedStatDetail, setSelectedStatDetail] = useState<CreatureStatCategoryKey | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -103,7 +115,16 @@ export default function CreatureDetail() {
   }
 
   const accent = creature.accentColor;
+  const accentReadable = accentText(accent);
+  const accentSoftBorder = accentBorder(accent);
+  const accentSoftSurface = accentSurface(accent);
+  const headerImage = creature.headerImage || creature.thumbnail;
   const doctrine = getDoctrine(creature.classification);
+  const creatureStats = creature.stats;
+  const creatureSkills = creature.skills;
+  const creatureTraits = creature.traits ?? [];
+  const creatureInstincts = creature.instincts ?? [];
+  const creatureAversions = creature.aversions ?? [];
 
   const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
     if (!creature) return;
@@ -165,27 +186,27 @@ export default function CreatureDetail() {
 
   return (
     <div className="space-y-0">
-      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={creature.thumbnail ? { backgroundImage: `url(${getProxyUrl(creature.thumbnail)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
-        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accent}20, transparent 60%)` }} />
+      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={headerImage ? { backgroundImage: `url(${getProxyUrl(headerImage)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accentMuted(accent)} 0%, transparent 62%)` }} />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent z-10" />
         <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: accent }} />
-        {!creature.thumbnail && (
+        {!headerImage && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="font-display text-6xl opacity-5 tracking-[0.3em]" style={{ color: accent }}>{creature.name.split(" ")[0].toUpperCase()}</span>
+            <span className="font-display text-6xl opacity-5 tracking-[0.3em]" style={{ color: accentReadable }}>{creature.name.split(" ")[0].toUpperCase()}</span>
           </div>
         )}
         <div className="relative z-20 p-6 md:p-8 w-full">
           <Link to="/lore/creatures" className="inline-flex items-center gap-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors mb-3">
             <ArrowLeft className="h-3 w-3" /> BACK TO LORE
           </Link>
-          <h1 className="font-display text-2xl md:text-3xl tracking-[0.1em]" style={{ color: accent }}>{creature.name.toUpperCase()}</h1>
+          <h1 className="font-display text-2xl md:text-3xl tracking-[0.1em]" style={{ color: accentReadable }}>{creature.name.toUpperCase()}</h1>
         </div>
       </div>
 
       <div className="p-6 md:p-8 space-y-8">
         {/* Quick-read stat strip */}
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="hud-border bg-card p-4 space-y-2" style={{ borderColor: `${accent}30` }}>
+          <div className="hud-border bg-card p-4 space-y-2" style={{ borderColor: accentSoftBorder }}>
             <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Classification</p>
             <Link
               to={`/lore/other/${GEC_LORE_ID}`}
@@ -195,11 +216,11 @@ export default function CreatureDetail() {
               {creature.classification}
             </Link>
           </div>
-          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: `${accent}30` }}>
+          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: accentSoftBorder }}>
             <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Danger Level</p>
             <p className="text-lg font-heading flex items-center gap-2 text-accent-orange"><ShieldAlert className="h-4 w-4" /> {dangerLabel[creature.dangerLevel]}</p>
           </div>
-          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: `${accent}30` }}>
+          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: accentSoftBorder }}>
             <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Habitat</p>
             <p className="text-sm font-body text-foreground">{creature.habitat}</p>
           </div>
@@ -242,6 +263,116 @@ export default function CreatureDetail() {
           </div>
         </div>
 
+        <div className="grid gap-8 lg:grid-cols-3">
+          <div className="space-y-6">
+        {/* Threat Stats */}
+        {creatureStats && (
+          <div className="hud-border bg-card p-5 space-y-4" style={{ borderColor: accentSoftBorder }}>
+            {(() => {
+              const primaryStats = toCreaturePrimaryStats(creatureStats);
+              const overall = averageScore(Object.values(primaryStats));
+              return (
+                <>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accentReadable }}>Threat Profile</h3>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Overall</span>
+                      <span className="font-display text-lg leading-none" style={{ color: accentReadable }}>{overall}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {Object.entries(primaryStats).map(([key, value]) => (
+                      <div key={key} className="space-y-1">
+                        <div className="flex justify-between items-center gap-2 text-xs font-heading">
+                          <span className="text-muted-foreground uppercase tracking-wider">{key}</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedStatDetail(key as CreatureStatCategoryKey)}
+                              className="text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              Stat Detail
+                            </button>
+                            <span className="text-foreground">{value}</span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${value}%`, backgroundColor: accentReadable }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {selectedStatDetail && (
+                    <div className="pt-2 border-t border-border/70 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-display tracking-wider uppercase text-muted-foreground">
+                          {CREATURE_STAT_DETAIL_LABELS[selectedStatDetail]} Breakdown
+                        </p>
+                        <button type="button" onClick={() => setSelectedStatDetail(null)} className="text-[10px] uppercase text-muted-foreground hover:text-foreground">Close</button>
+                      </div>
+                      <StatsRadar
+                        stats={getCreatureStatDetailAxes(creatureStats, selectedStatDetail)}
+                        color={accentReadable}
+                        labels={STAT_AXIS_FULL_NAMES}
+                      />
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        )}
+
+        <div className="space-y-6">
+          <div className="hud-border bg-card p-5 space-y-3" style={{ borderColor: accentSoftBorder }}>
+            <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accentReadable }}>Traits</h3>
+            {creatureTraits.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {creatureTraits.map((trait) => (
+                  <span key={trait} className="text-[10px] font-display tracking-wider px-2 py-1 rounded-sm border" style={{ color: accentReadable, borderColor: accentSoftBorder, backgroundColor: accentSoftSurface }}>
+                    {trait.toUpperCase()}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm font-body text-muted-foreground italic">No behavior tags catalogued.</p>
+            )}
+          </div>
+
+          <div className="hud-border bg-card p-5 space-y-3" style={{ borderColor: accentSoftBorder }}>
+            <h3 className="font-heading text-xs tracking-wider text-muted-foreground uppercase flex items-center gap-1">
+              <HeartPulse className="h-3.5 w-3.5" style={{ color: accentReadable }} /> Instincts
+            </h3>
+            {creatureInstincts.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {creatureInstincts.map((item) => (
+                  <span key={item} className="text-[10px] font-body text-foreground/70 bg-muted px-2 py-0.5 rounded-sm">{item}</span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm font-body text-muted-foreground italic">No instinct profile recorded.</p>
+            )}
+          </div>
+
+          <div className="hud-border bg-card p-5 space-y-3" style={{ borderColor: accentSoftBorder }}>
+            <h3 className="font-heading text-xs tracking-wider text-muted-foreground uppercase flex items-center gap-1">
+              <Siren className="h-3.5 w-3.5 text-destructive" /> Aversions
+            </h3>
+            {creatureAversions.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {creatureAversions.map((item) => (
+                  <span key={item} className="text-[10px] font-body text-foreground/70 bg-muted px-2 py-0.5 rounded-sm">{item}</span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm font-body text-muted-foreground italic">No deterrent profile recorded.</p>
+            )}
+          </div>
+        </div>
+
+          </div>
+
+          <div className="lg:col-span-2">
         {/* Tabbed sections: Overview / Habitat / Notes */}
           <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:w-auto sm:inline-flex sm:grid-cols-4 sm:gap-0 sm:h-10">
@@ -262,7 +393,7 @@ export default function CreatureDetail() {
           <TabsContent value="overview" className="mt-6 space-y-6">
             <div className="max-w-3xl space-y-4">
               <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Field Report</h2>
-              <p className="text-sm font-body text-foreground/90 italic border-l-2 pl-4" style={{ borderColor: accent }}>
+              <p className="text-sm font-body text-foreground/90 italic border-l-2 pl-4" style={{ borderColor: accentReadable }}>
                 {creature.shortDesc}
               </p>
               <RedactedBlock fullDesc={creature.fullDesc} />
@@ -273,9 +404,9 @@ export default function CreatureDetail() {
           <TabsContent value="habitat" className="mt-6 space-y-6">
             <div className="max-w-3xl space-y-4">
               <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Operational Environment</h2>
-              <div className="hud-border bg-card p-5 space-y-3" style={{ borderColor: `${accent}30` }}>
+              <div className="hud-border bg-card p-5 space-y-3" style={{ borderColor: accentSoftBorder }}>
                 <div className="flex items-start gap-3">
-                  <MapPin className="h-4 w-4 mt-0.5" style={{ color: accent }} />
+                  <MapPin className="h-4 w-4 mt-0.5" style={{ color: accentReadable }} />
                   <div className="space-y-1">
                     <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Primary Range</p>
                     <p className="text-sm font-body text-foreground">{creature.habitat}</p>
@@ -325,6 +456,11 @@ export default function CreatureDetail() {
           </TabsContent>
         </Tabs>
 
+        {/* Skills - living entity */}
+        <div className="pt-6">
+          <SkillList items={creatureSkills} accent={accent} variant="skill" />
+        </div>
+
         {/* Documentation - always visible (outside tabs) */}
         {creature.docs && creature.docs.length > 0 && (
           <div className="space-y-4 pt-4">
@@ -358,8 +494,7 @@ export default function CreatureDetail() {
         )}
 
         {/* Discussion Section - standalone, outside tabs */}
-        <div className="max-w-3xl space-y-4 pt-4">
-          <div className="mecha-line" />
+        <div className="space-y-4 pt-6">
           <DiscussionSection
             comments={discussion}
             onAddComment={handleAddComment}
@@ -370,6 +505,8 @@ export default function CreatureDetail() {
             onDeleteReply={handleDeleteReply}
             accentColor={accent}
           />
+        </div>
+          </div>
         </div>
       </div>
     </div>

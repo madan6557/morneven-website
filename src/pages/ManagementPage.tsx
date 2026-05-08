@@ -1,5 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  ClipboardCheck,
+  ClipboardList,
+  Crown,
+  FileText,
+  GitBranch,
+  Inbox,
+  Layers,
+  Send,
+  ShieldCheck,
+  Target,
+  UserPlus,
+  Users,
+  XCircle,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   listRequests,
@@ -18,6 +36,7 @@ import {
   type MgmtRequest,
   type Team,
   type RequestKind,
+  type RequestStatus,
 } from "@/services/managementApi";
 import { listPersonnel } from "@/services/personnelApi";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -41,8 +60,47 @@ const KIND_LABEL: Record<RequestKind, string> = {
   executive_promotion: "Executive Promotion",
 };
 
+const KIND_ICON: Record<RequestKind, typeof GitBranch> = {
+  transfer: GitBranch,
+  clearance: ShieldCheck,
+  submission_personal: FileText,
+  submission_team: ClipboardCheck,
+  team_change: Users,
+  executive_promotion: Crown,
+};
+
+const STATUS_META: Record<RequestStatus, { label: string; className: string; icon: typeof CheckCircle2 }> = {
+  pending: {
+    label: "Pending",
+    className: "border-amber-500/45 bg-amber-500/10 text-amber-600 dark:text-amber-300",
+    icon: AlertTriangle,
+  },
+  approved: {
+    label: "Approved",
+    className: "border-emerald-500/45 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    icon: CheckCircle2,
+  },
+  rejected: {
+    label: "Rejected",
+    className: "border-destructive/45 bg-destructive/10 text-destructive",
+    icon: XCircle,
+  },
+};
+
 const TAB_VALUES = ["transfer", "clearance", "submission", "team", "executive", "queue", "mine"] as const;
 type MgmtTab = typeof TAB_VALUES[number];
+
+const panelClass = "hud-border bg-card/95 p-4 md:p-5 space-y-4";
+const labelClass = "font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground";
+const selectClass =
+  "w-full rounded-sm border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary";
+
+function formatDate(value?: string) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
 
 export default function ManagementPage() {
   const { username, personnelLevel, track, role } = useAuth();
@@ -68,7 +126,7 @@ export default function ManagementPage() {
     pl4: { met: boolean; count: number; target: number };
   } | null>(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     const [r, t, p, q] = await Promise.all([
       listRequests(),
       listTeams(),
@@ -79,20 +137,19 @@ export default function ManagementPage() {
     setTeams(t);
     setPersonnel(p);
     setQuota({ pl2: pl2Status(q), pl3: pl3Status(q), pl4: pl4Status(q) });
-  };
+  }, [username]);
 
   useEffect(() => {
     refresh();
-  }, [username]);
+  }, [refresh]);
 
   const myRequests = useMemo(() => requests.filter((r) => r.requester === username), [requests, username]);
-
-  // ── Reviewer queue: requests this user can decide on ──────────────────────
   const reviewable = useMemo(() => {
-    return requests.filter((r) =>
-      canDecideRequest(r, { level: personnelLevel, track, username }),
-    );
+    return requests.filter((r) => canDecideRequest(r, { level: personnelLevel, track, username }));
   }, [requests, personnelLevel, track, username]);
+  const pendingRequests = useMemo(() => requests.filter((r) => r.status === "pending"), [requests]);
+  const myPendingRequests = useMemo(() => myRequests.filter((r) => r.status === "pending"), [myRequests]);
+  const myTeams = useMemo(() => teams.filter((t) => t.leader === username), [teams, username]);
 
   const decide = async (id: string, decision: "approved" | "rejected", note: string) => {
     showValidation({
@@ -135,49 +192,85 @@ export default function ManagementPage() {
 
   if (role === "guest") {
     return (
-      <div className="p-8">
-        <h1 className="font-display text-xl">Management</h1>
-        <p className="text-muted-foreground mt-2">Guests cannot access the Management system.</p>
+      <div className="mx-auto flex min-h-[55vh] max-w-3xl items-center justify-center p-6">
+        <Card className={`${panelClass} w-full text-center`}>
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-sm border border-border bg-muted/60 text-muted-foreground">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
+          <h1 className="font-display text-xl uppercase tracking-[0.18em] text-primary">Management Locked</h1>
+          <p className="mx-auto max-w-xl text-sm text-muted-foreground">
+            Guests cannot access the Management system. Use a personnel account to file requests, review team changes, or manage workflow approvals.
+          </p>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <header>
-        <p className="font-display text-[10px] tracking-[0.3em] text-muted-foreground uppercase">
-          Morneven Institute
-        </p>
-        <h1 className="font-display text-2xl tracking-[0.15em] text-primary uppercase">Management</h1>
-        <div className="mecha-line w-32 mt-2" />
+    <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="font-display text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+            Morneven Institute
+          </p>
+          <h1 className="font-display text-2xl uppercase tracking-[0.15em] text-primary md:text-3xl">
+            Management
+          </h1>
+          <div className="mecha-line mt-2 w-32" />
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <Badge variant="outline" className="px-3 py-1 font-display uppercase tracking-wider">
+            {username}
+          </Badge>
+          <Badge variant="secondary" className="px-3 py-1 font-display uppercase tracking-wider">
+            L{personnelLevel}
+          </Badge>
+          <Badge variant="outline" className="px-3 py-1 font-display uppercase tracking-wider">
+            {track}
+          </Badge>
+        </div>
       </header>
 
-      {/* Obligation summary */}
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricTile icon={Inbox} label="Review Queue" value={reviewable.length} hint="Requests waiting for your authority" />
+        <MetricTile icon={AlertTriangle} label="My Pending" value={myPendingRequests.length} hint="Your open submissions" />
+        <MetricTile icon={Users} label="Teams Led" value={myTeams.length} hint="Registered under your command" />
+        <MetricTile icon={ClipboardList} label="Total Requests" value={requests.length} hint={`${pendingRequests.length} pending in system`} />
+      </section>
+
       {quota && (
-        <Card className="p-4">
-          <p className="font-heading text-xs uppercase tracking-wider text-muted-foreground mb-3">
-            Obligation Status - {username} · L{personnelLevel} · {track.toUpperCase()}
-          </p>
+        <Card className={panelClass}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className={labelClass}>Obligation Status</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {username} | L{personnelLevel} | {track.toUpperCase()}
+              </p>
+            </div>
+            <Badge variant={personnelLevel >= 7 ? "default" : "outline"} className="w-fit">
+              {personnelLevel >= 7 ? "Full Authority" : "Tracked Obligation"}
+            </Badge>
+          </div>
           {personnelLevel >= 7 ? (
-            <p className="text-xs text-muted-foreground">
-              PL7 (Full Authority) holds no submission, supervision, or clearance obligations.
+            <p className="text-sm text-muted-foreground">
+              PL7 holds no submission, supervision, or clearance obligations.
             </p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <ObligationCell
-                label={`PL2 Monthly (${monthKey()})`}
+                label={`PL2 Monthly ${monthKey()}`}
                 value={`${quota.pl2.count} / 1`}
                 ok={quota.pl2.met}
                 relevant={personnelLevel === 2}
               />
               <ObligationCell
-                label={`PL3 Yearly (${yearKey()})`}
+                label={`PL3 Yearly ${yearKey()}`}
                 value={`${quota.pl3.count} / 1`}
                 ok={quota.pl3.met}
                 relevant={personnelLevel === 3}
               />
               <ObligationCell
-                label={`PL4 Supervision (${yearKey()})`}
+                label={`PL4 Supervision ${yearKey()}`}
                 value={`${quota.pl4.count} / ${quota.pl4.target}`}
                 ok={quota.pl4.met}
                 relevant={personnelLevel >= 4 && personnelLevel < 7}
@@ -188,31 +281,29 @@ export default function ManagementPage() {
       )}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as MgmtTab)} className="w-full">
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="transfer">Transfer</TabsTrigger>
-          <TabsTrigger value="clearance">Clearance</TabsTrigger>
-          <TabsTrigger value="submission">Report Submission</TabsTrigger>
-          <TabsTrigger value="team">Team</TabsTrigger>
-          <TabsTrigger value="executive">Executive Promotion</TabsTrigger>
-          <TabsTrigger value="queue">
-            Review Queue {reviewable.length > 0 && <Badge className="ml-2">{reviewable.length}</Badge>}
-          </TabsTrigger>
-          <TabsTrigger value="mine">My Requests</TabsTrigger>
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 bg-muted/70 p-1 sm:grid-cols-3 xl:grid-cols-7">
+          <ManagementTab value="transfer" icon={GitBranch} label="Transfer" />
+          <ManagementTab value="clearance" icon={ShieldCheck} label="Clearance" />
+          <ManagementTab value="submission" icon={FileText} label="Submit" />
+          <ManagementTab value="team" icon={Users} label="Team" />
+          <ManagementTab value="executive" icon={Crown} label="Executive" />
+          <ManagementTab value="queue" icon={Inbox} label="Queue" count={reviewable.length} />
+          <ManagementTab value="mine" icon={ClipboardList} label="Mine" count={myRequests.length} />
         </TabsList>
 
-        <TabsContent value="transfer">
+        <TabsContent value="transfer" className="mt-4">
           <TransferForm currentTrack={track} level={personnelLevel} onSubmit={submit} />
         </TabsContent>
 
-        <TabsContent value="clearance">
+        <TabsContent value="clearance" className="mt-4">
           <ClearanceForm level={personnelLevel} onSubmit={submit} />
         </TabsContent>
 
-        <TabsContent value="submission">
+        <TabsContent value="submission" className="mt-4">
           <SubmissionForm level={personnelLevel} teams={teams.filter((t) => t.leader === username)} onSubmit={submit} />
         </TabsContent>
 
-        <TabsContent value="team">
+        <TabsContent value="team" className="mt-4">
           <TeamPanel
             level={personnelLevel}
             track={track}
@@ -228,19 +319,15 @@ export default function ManagementPage() {
           />
         </TabsContent>
 
-        <TabsContent value="executive">
+        <TabsContent value="executive" className="mt-4">
           <ExecutivePromotionForm level={personnelLevel} onSubmit={submit} />
         </TabsContent>
 
-        <TabsContent value="queue">
-          <RequestList
-            list={reviewable}
-            viewer={{ level: personnelLevel, track, username }}
-            onDecide={decide}
-          />
+        <TabsContent value="queue" className="mt-4">
+          <RequestList list={reviewable} viewer={{ level: personnelLevel, track, username }} onDecide={decide} />
         </TabsContent>
 
-        <TabsContent value="mine">
+        <TabsContent value="mine" className="mt-4">
           <RequestList list={myRequests} viewer={{ level: personnelLevel, track, username }} />
         </TabsContent>
       </Tabs>
@@ -248,7 +335,56 @@ export default function ManagementPage() {
   );
 }
 
-// ─── Sub-components ─────────────────────────────────────────────────────────
+function ManagementTab({
+  value,
+  icon: Icon,
+  label,
+  count,
+}: {
+  value: MgmtTab;
+  icon: typeof GitBranch;
+  label: string;
+  count?: number;
+}) {
+  return (
+    <TabsTrigger value={value} className="gap-2 px-2 py-2 text-xs">
+      <Icon className="h-3.5 w-3.5" />
+      <span>{label}</span>
+      {!!count && (
+        <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] leading-none text-primary-foreground">
+          {count}
+        </span>
+      )}
+    </TabsTrigger>
+  );
+}
+
+function MetricTile({
+  icon: Icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: typeof Inbox;
+  label: string;
+  value: number;
+  hint: string;
+}) {
+  return (
+    <Card className="hud-border bg-card/95 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className={labelClass}>{label}</p>
+          <p className="mt-2 font-display text-3xl text-primary">{value}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+        </div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-sm border border-border bg-muted/60 text-muted-foreground">
+          <Icon className="h-4 w-4" />
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 function ObligationCell({
   label,
@@ -261,17 +397,53 @@ function ObligationCell({
   ok: boolean;
   relevant: boolean;
 }) {
+  const Icon = !relevant ? Target : ok ? CheckCircle2 : AlertTriangle;
   const color = !relevant
-    ? "text-muted-foreground border-border/40"
+    ? "border-border bg-muted/30 text-muted-foreground"
     : ok
-      ? "text-green-500 border-green-500/40"
-      : "text-amber-500 border-amber-500/40";
+      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+      : "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300";
   return (
-    <div className={`border rounded-sm p-3 ${color}`}>
-      <p className="text-[10px] uppercase tracking-wider opacity-70">{label}</p>
-      <p className="font-display text-lg mt-1">{value}</p>
-      <p className="text-[10px] mt-0.5">{ok ? "Met" : relevant ? "Pending" : "N/A"}</p>
+    <div className={`rounded-sm border p-3 ${color}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-wider opacity-75">{label}</p>
+          <p className="mt-1 font-display text-xl">{value}</p>
+        </div>
+        <Icon className="h-4 w-4" />
+      </div>
+      <p className="mt-2 text-[10px] uppercase tracking-wider">{ok ? "Met" : relevant ? "Pending" : "Not required"}</p>
     </div>
+  );
+}
+
+function FormHeader({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: typeof GitBranch;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-border bg-muted/60 text-primary">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div>
+        <h2 className="font-display text-base uppercase tracking-[0.16em] text-foreground">{title}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function InfoPanel({ children }: { children: React.ReactNode }) {
+  return (
+    <Card className={`${panelClass} text-sm text-muted-foreground`}>
+      {children}
+    </Card>
   );
 }
 
@@ -289,35 +461,44 @@ function TransferForm({
   );
   const [reason, setReason] = useState("");
 
-  // PL7 (Full Authority) cannot transfer; their authority is global.
   if (level >= 7) {
     return (
-      <Card className="p-4">
-        <p className="text-sm text-muted-foreground">
-          PL7 (Full Authority) operates above tracks and cannot file a transfer request.
-        </p>
-      </Card>
+      <InfoPanel>
+        PL7 Full Authority operates above tracks and cannot file a transfer request.
+      </InfoPanel>
     );
   }
 
   return (
-    <Card className="p-4 space-y-3">
-      <p className="font-heading text-sm">Apply to transfer to a different track. Reviewed by the target track's PL5.</p>
-      <div className="flex gap-3 items-center">
-        <span className="text-xs text-muted-foreground">Current: <b>{currentTrack.toUpperCase()}</b></span>
-        <span className="text-xs">→</span>
-        <select
-          value={target}
-          onChange={(e) => setTarget(e.target.value as PersonnelTrack)}
-          className="bg-card border border-border rounded-sm px-2 py-1 text-sm"
-        >
-          {PERSONNEL_TRACKS.filter((t) => t.key !== currentTrack).map((t) => (
-            <option key={t.key} value={t.key}>{t.short} - {t.label}</option>
-          ))}
-        </select>
+    <Card className={panelClass}>
+      <FormHeader
+        icon={GitBranch}
+        title="Track Transfer"
+        description="Apply to move into a different operating track. The target track reviewer will verify fit and capacity."
+      />
+      <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-end">
+        <div className="space-y-1.5">
+          <p className={labelClass}>Current Track</p>
+          <div className="rounded-sm border border-border bg-muted/40 px-3 py-2 font-display text-sm uppercase">
+            {currentTrack}
+          </div>
+        </div>
+        <ArrowRight className="hidden h-4 w-4 text-muted-foreground md:block" />
+        <div className="space-y-1.5">
+          <p className={labelClass}>Target Track</p>
+          <select value={target} onChange={(e) => setTarget(e.target.value as PersonnelTrack)} className={selectClass}>
+            {PERSONNEL_TRACKS.filter((t) => t.key !== currentTrack).map((t) => (
+              <option key={t.key} value={t.key}>{t.short} - {t.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
-      <Textarea placeholder="Reason for transfer" value={reason} onChange={(e) => setReason(e.target.value)} />
+      <div className="space-y-1.5">
+        <p className={labelClass}>Reason</p>
+        <Textarea placeholder="Explain the transfer reason, expected contribution, and current obligations." value={reason} onChange={(e) => setReason(e.target.value)} />
+      </div>
       <Button onClick={() => { onSubmit("transfer", { targetTrack: target }, reason, target); setReason(""); }}>
+        <Send className="mr-2 h-4 w-4" />
         Submit Transfer
       </Button>
     </Card>
@@ -335,26 +516,43 @@ function ClearanceForm({
   const [agreed, setAgreed] = useState(false);
   const target = (level + 1) as PersonnelLevel;
   const canApply = level >= 1 && level <= 3;
+
   return (
-    <Card className="p-4 space-y-3">
-      <p className="font-heading text-sm">
-        Apply for clearance upgrade. Current: <b>L{level}</b> → Target: <b>L{target}</b>
-      </p>
+    <Card className={panelClass}>
+      <FormHeader
+        icon={ShieldCheck}
+        title="Clearance Upgrade"
+        description="Request a standard clearance step from L1 through L4. Higher movement is handled through executive promotion."
+      />
       {!canApply ? (
-        <p className="text-xs text-muted-foreground">
-          Standard clearance applications are L1→L4 only. Higher tiers use Executive Promotion.
+        <p className="text-sm text-muted-foreground">
+          Standard clearance applications are only available from L1 to L4.
         </p>
       ) : (
         <>
-          <Textarea placeholder="Reason / contributions so far" value={reason} onChange={(e) => setReason(e.target.value)} />
-          <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-            I agree to the L{target} terms and obligations.
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-sm border border-border bg-muted/40 p-3">
+              <p className={labelClass}>Current</p>
+              <p className="mt-2 font-display text-2xl text-muted-foreground">L{level}</p>
+            </div>
+            <div className="rounded-sm border border-primary/40 bg-primary/10 p-3">
+              <p className={labelClass}>Target</p>
+              <p className="mt-2 font-display text-2xl text-primary">L{target}</p>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <p className={labelClass}>Contribution Record</p>
+            <Textarea placeholder="Summarize completed work, reliability, and readiness for the next obligation level." value={reason} onChange={(e) => setReason(e.target.value)} />
+          </div>
+          <label className="flex items-start gap-2 text-sm text-muted-foreground">
+            <input className="mt-1" type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+            <span>I agree to the L{target} responsibilities and review terms.</span>
           </label>
           <Button
             disabled={!agreed}
             onClick={() => { onSubmit("clearance", { targetLevel: target }, reason); setReason(""); setAgreed(false); }}
           >
+            <ShieldCheck className="mr-2 h-4 w-4" />
             Submit Upgrade Request
           </Button>
         </>
@@ -382,37 +580,50 @@ function SubmissionForm({
   const canTeam = level >= 3 && teams.length > 0;
 
   return (
-    <Card className="p-4 space-y-3">
-      <div className="flex gap-2">
-        <Button variant={mode === "personal" ? "default" : "outline"} size="sm" onClick={() => setMode("personal")}>
+    <Card className={panelClass}>
+      <FormHeader
+        icon={FileText}
+        title="Report Submission"
+        description="Submit personal or team work for review. Team projects require PL3 or higher and an owned team."
+      />
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Button variant={mode === "personal" ? "default" : "outline"} onClick={() => setMode("personal")}>
           Personal Project
         </Button>
         <Button
           variant={mode === "team" ? "default" : "outline"}
-          size="sm"
           onClick={() => setMode("team")}
           disabled={!canTeam}
         >
-          Team Project {!canTeam && "(PL3+ team lead)"}
+          Team Project {!canTeam && "(PL3+ lead)"}
         </Button>
       </div>
-
-      <Input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-      <Input
-        placeholder="Thumbnail URL (image)"
-        value={thumbnail}
-        onChange={(e) => setThumbnail(e.target.value)}
-      />
-      <Textarea placeholder="Caption / description" value={caption} onChange={(e) => setCaption(e.target.value)} />
-
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-1.5">
+          <p className={labelClass}>Title</p>
+          <Input placeholder="Submission title" value={title} onChange={(e) => setTitle(e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <p className={labelClass}>Thumbnail URL</p>
+          <Input placeholder="Optional image URL" value={thumbnail} onChange={(e) => setThumbnail(e.target.value)} />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <p className={labelClass}>Caption</p>
+        <Textarea placeholder="Describe the project outcome." value={caption} onChange={(e) => setCaption(e.target.value)} />
+      </div>
       {mode === "team" && (
-        <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className="bg-card border border-border rounded-sm px-2 py-1 text-sm w-full">
-          {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
+        <div className="space-y-1.5">
+          <p className={labelClass}>Team</p>
+          <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className={selectClass}>
+            {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+        </div>
       )}
-
-      <Textarea placeholder="Goals / reasoning" value={reason} onChange={(e) => setReason(e.target.value)} />
-
+      <div className="space-y-1.5">
+        <p className={labelClass}>Goals and Reasoning</p>
+        <Textarea placeholder="Explain why this should count toward obligation or project progress." value={reason} onChange={(e) => setReason(e.target.value)} />
+      </div>
       <Button
         disabled={!title || !caption}
         onClick={() => {
@@ -439,9 +650,13 @@ function SubmissionForm({
             };
             onSubmit("submission_team", { project, teamId }, reason);
           }
-          setTitle(""); setCaption(""); setThumbnail(""); setReason("");
+          setTitle("");
+          setCaption("");
+          setThumbnail("");
+          setReason("");
         }}
       >
+        <Send className="mr-2 h-4 w-4" />
         Submit for Review
       </Button>
     </Card>
@@ -479,84 +694,128 @@ function TeamPanel({
 
   if (level < 3) {
     return (
-      <Card className="p-4">
-        <p className="text-sm text-muted-foreground">
-          Team registration requires PL3 (Senior Personnel / Lead). Apply via the Clearance tab.
-        </p>
-      </Card>
+      <InfoPanel>
+        Team registration requires PL3 or higher. Apply through Clearance before creating a team.
+      </InfoPanel>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <Card className="p-4 space-y-3">
-        <p className="font-heading text-sm">Register a new team (2-5 members including leader)</p>
-        <Input placeholder="Team name" value={name} onChange={(e) => setName(e.target.value)} />
-        <div className="flex gap-2">
-          <select
-            value={memberInput}
-            onChange={(e) => setMemberInput(e.target.value)}
-            className="bg-card border border-border rounded-sm px-2 py-1 text-sm flex-1"
-          >
-            <option value="">Select PL2 member from {track.toUpperCase()}</option>
-            {pl2Pool.map((p) => <option key={p.id} value={p.username}>{p.username}</option>)}
-          </select>
+    <div className="grid gap-4 xl:grid-cols-2">
+      <Card className={panelClass}>
+        <FormHeader
+          icon={UserPlus}
+          title="Register Team"
+          description="Create a track team with 2 to 5 members including the leader."
+        />
+        <div className="space-y-1.5">
+          <p className={labelClass}>Team Name</p>
+          <Input placeholder="Team name" value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+          <div className="space-y-1.5">
+            <p className={labelClass}>Member Pool</p>
+            <select value={memberInput} onChange={(e) => setMemberInput(e.target.value)} className={selectClass}>
+              <option value="">Select PL2 member from {track.toUpperCase()}</option>
+              {pl2Pool.map((p) => <option key={p.id} value={p.username}>{p.username}</option>)}
+            </select>
+          </div>
           <Button
-            size="sm"
+            className="self-end"
             onClick={() => {
               if (memberInput && !members.includes(memberInput) && members.length < 4) {
                 setMembers([...members, memberInput]);
                 setMemberInput("");
               }
             }}
-          >Add</Button>
+          >
+            Add
+          </Button>
         </div>
-        <div className="flex flex-wrap gap-1">
-          {members.map((m) => (
-            <Badge key={m} variant="secondary" className="cursor-pointer" onClick={() => setMembers(members.filter((x) => x !== m))}>
-              {m} ×
-            </Badge>
-          ))}
+        <div className="min-h-9 rounded-sm border border-border bg-muted/30 p-2">
+          {members.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No members selected.</p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {members.map((m) => (
+                <Badge key={m} variant="secondary" className="cursor-pointer" onClick={() => setMembers(members.filter((x) => x !== m))}>
+                  {m} x
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
-        <Button
-          disabled={!name || members.length < 1}
-          onClick={() => { onCreateTeam(name, members); setName(""); setMembers([]); }}
-        >Create Team</Button>
+        <Button disabled={!name || members.length < 1} onClick={() => { onCreateTeam(name, members); setName(""); setMembers([]); }}>
+          <Users className="mr-2 h-4 w-4" />
+          Create Team
+        </Button>
       </Card>
 
-      <Card className="p-4 space-y-2">
-        <p className="font-heading text-sm">My Teams</p>
+      <Card className={panelClass}>
+        <FormHeader
+          icon={Layers}
+          title="My Teams"
+          description="Review your current teams and completed project counters."
+        />
         {myTeams.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No teams yet.</p>
-        ) : myTeams.map((t) => (
-          <div key={t.id} className="border border-border rounded-sm p-2">
-            <p className="font-heading text-sm">{t.name} <Badge variant="outline" className="ml-2">{t.track.toUpperCase()}</Badge></p>
-            <p className="text-xs text-muted-foreground">Leader: {t.leader} · Members: {t.members.join(", ") || "-"} · Completed {t.completed}</p>
+          <p className="rounded-sm border border-border bg-muted/30 p-3 text-sm text-muted-foreground">No teams yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {myTeams.map((t) => (
+              <div key={t.id} className="rounded-sm border border-border bg-muted/25 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-display text-sm uppercase tracking-wider">{t.name}</p>
+                  <Badge variant="outline">{t.track.toUpperCase()}</Badge>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Leader: {t.leader} | Members: {t.members.join(", ") || "-"} | Completed {t.completed}
+                </p>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </Card>
 
-      <Card className="p-4 space-y-3">
-        <p className="font-heading text-sm">Request membership change (reviewed by PL4)</p>
-        <select value={changeTeam} onChange={(e) => setChangeTeam(e.target.value)} className="bg-card border border-border rounded-sm px-2 py-1 text-sm w-full">
-          <option value="">Select team</option>
-          {myTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
-        <div className="flex gap-2">
-          <select value={changeAction} onChange={(e) => setChangeAction(e.target.value as "add" | "remove")} className="bg-card border border-border rounded-sm px-2 py-1 text-sm">
-            <option value="add">Add</option>
-            <option value="remove">Remove</option>
-          </select>
-          <Input placeholder="Member username" value={changeMember} onChange={(e) => setChangeMember(e.target.value)} />
+      <Card className={`${panelClass} xl:col-span-2`}>
+        <FormHeader
+          icon={ClipboardCheck}
+          title="Membership Change"
+          description="Request member add or remove actions. Review is handled by the appropriate PL4 authority."
+        />
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="space-y-1.5 md:col-span-1">
+            <p className={labelClass}>Team</p>
+            <select value={changeTeam} onChange={(e) => setChangeTeam(e.target.value)} className={selectClass}>
+              <option value="">Select team</option>
+              {myTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <p className={labelClass}>Action</p>
+            <select value={changeAction} onChange={(e) => setChangeAction(e.target.value as "add" | "remove")} className={selectClass}>
+              <option value="add">Add</option>
+              <option value="remove">Remove</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <p className={labelClass}>Member Username</p>
+            <Input placeholder="username" value={changeMember} onChange={(e) => setChangeMember(e.target.value)} />
+          </div>
         </div>
-        <Textarea placeholder="Reason + evidence of consent" value={changeReason} onChange={(e) => setChangeReason(e.target.value)} />
+        <div className="space-y-1.5">
+          <p className={labelClass}>Reason</p>
+          <Textarea placeholder="Include reason and evidence of consent where relevant." value={changeReason} onChange={(e) => setChangeReason(e.target.value)} />
+        </div>
         <Button
           disabled={!changeTeam || !changeMember}
           onClick={() => {
             onSubmit("team_change", { teamId: changeTeam, member: changeMember, action: changeAction }, changeReason);
-            setChangeMember(""); setChangeReason("");
+            setChangeMember("");
+            setChangeReason("");
           }}
-        >Submit Change Request</Button>
+        >
+          Submit Change Request
+        </Button>
       </Card>
     </div>
   );
@@ -574,23 +833,31 @@ function ExecutivePromotionForm({
 
   if (level !== 4) {
     return (
-      <Card className="p-4">
-        <p className="text-sm text-muted-foreground">
-          Executive Promotion (PL4 → PL5) requires current PL4 status, ≥3 months tenure, Track Master title, and a strategic plan. Reviewed by PL6 + PL7.
-        </p>
-      </Card>
+      <InfoPanel>
+        Executive Promotion from PL4 to PL5 requires current PL4 status, at least 3 months tenure, Track Master title, and a strategic plan. Reviewed by PL6 and PL7.
+      </InfoPanel>
     );
   }
 
   return (
-    <Card className="p-4 space-y-3">
-      <p className="font-heading text-sm">Operational Test - Strategic Development Plan</p>
-      <Textarea placeholder="Strategic plan for your track unit" rows={6} value={plan} onChange={(e) => setPlan(e.target.value)} />
-      <Textarea placeholder="Justification & dedication record" value={reason} onChange={(e) => setReason(e.target.value)} />
-      <Button
-        disabled={!plan || !reason}
-        onClick={() => { onSubmit("executive_promotion", { plan, targetLevel: 5 }, reason); setPlan(""); setReason(""); }}
-      >Submit for PL6/PL7 Review</Button>
+    <Card className={panelClass}>
+      <FormHeader
+        icon={Crown}
+        title="Executive Promotion"
+        description="Submit the strategic development plan required for PL5 review."
+      />
+      <div className="space-y-1.5">
+        <p className={labelClass}>Strategic Plan</p>
+        <Textarea placeholder="Strategic plan for your track unit" rows={6} value={plan} onChange={(e) => setPlan(e.target.value)} />
+      </div>
+      <div className="space-y-1.5">
+        <p className={labelClass}>Justification</p>
+        <Textarea placeholder="Dedication record, tenure context, and operational justification" value={reason} onChange={(e) => setReason(e.target.value)} />
+      </div>
+      <Button disabled={!plan || !reason} onClick={() => { onSubmit("executive_promotion", { plan, targetLevel: 5 }, reason); setPlan(""); setReason(""); }}>
+        <Crown className="mr-2 h-4 w-4" />
+        Submit for PL6/PL7 Review
+      </Button>
     </Card>
   );
 }
@@ -605,69 +872,91 @@ function RequestList({
   onDecide?: (id: string, d: "approved" | "rejected", note: string) => void;
 }) {
   const [notes, setNotes] = useState<Record<string, string>>({});
-  if (list.length === 0) return <p className="p-4 text-sm text-muted-foreground">No requests.</p>;
+
+  if (list.length === 0) {
+    return (
+      <Card className={`${panelClass} items-center text-center`}>
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-sm border border-border bg-muted/60 text-muted-foreground">
+          <Inbox className="h-5 w-5" />
+        </div>
+        <p className="font-display text-base uppercase tracking-[0.16em]">No Requests</p>
+        <p className="mx-auto max-w-md text-sm text-muted-foreground">
+          Nothing is waiting in this view. New workflow items will appear here when submitted.
+        </p>
+      </Card>
+    );
+  }
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {list.map((r) => {
         const reviewer = reviewerForRequest(r);
         const canDecide = canDecideRequest(r, viewer);
         const isOwn = r.requester === viewer.username;
+        const KindIcon = KIND_ICON[r.kind];
+        const status = STATUS_META[r.status];
+        const StatusIcon = status.icon;
+
         return (
-          <Card key={r.id} className="p-3 space-y-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div>
-                <p className="font-heading text-sm">
-                  {KIND_LABEL[r.kind]} <span className="text-muted-foreground">· {r.requester}</span>
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  L{r.requesterLevel} {r.requesterTrack.toUpperCase()} · {r.createdAt}
-                </p>
+          <Card key={r.id} className={panelClass}>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex min-w-0 gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-border bg-muted/60 text-primary">
+                  <KindIcon className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-display text-sm uppercase tracking-[0.14em] text-foreground">
+                    {KIND_LABEL[r.kind]}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {r.requester} | L{r.requesterLevel} {r.requesterTrack.toUpperCase()} | {formatDate(r.createdAt)}
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <Badge
-                  variant="outline"
-                  className="text-[10px]"
-                  title={reviewer.description}
-                >
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="text-[10px]" title={reviewer.description}>
                   Reviewer: {reviewer.label}
                 </Badge>
-                <Badge
-                  variant={r.status === "approved" ? "default" : r.status === "rejected" ? "destructive" : "outline"}
-                >
-                  {r.status}
+                <Badge variant="outline" className={`gap-1 text-[10px] ${status.className}`}>
+                  <StatusIcon className="h-3 w-3" />
+                  {status.label}
                 </Badge>
               </div>
             </div>
-            <p className="text-xs">{r.reason}</p>
-            {Object.keys(r.payload).length > 0 && (
-              <RequestPayloadPreview req={r} />
-            )}
+
+            <div className="rounded-sm border border-border bg-muted/25 p-3">
+              <p className={labelClass}>Reason</p>
+              <p className="mt-2 text-sm">{r.reason}</p>
+            </div>
+
+            {Object.keys(r.payload).length > 0 && <RequestPayloadPreview req={r} />}
+
             {r.reviewer && (
-              <p className="text-[10px] text-muted-foreground">
-                Reviewed by {r.reviewer} on {r.decidedAt}{r.reviewNote ? ` - ${r.reviewNote}` : ""}
+              <p className="text-xs text-muted-foreground">
+                Reviewed by {r.reviewer} on {formatDate(r.decidedAt)}{r.reviewNote ? ` - ${r.reviewNote}` : ""}
               </p>
             )}
+
             {r.status === "pending" && onDecide && (
               canDecide ? (
-                <div className="flex gap-2 items-center">
+                <div className="grid gap-2 lg:grid-cols-[1fr_auto_auto]">
                   <Input
                     placeholder="Review note (optional)"
                     value={notes[r.id] ?? ""}
                     onChange={(e) => setNotes({ ...notes, [r.id]: e.target.value })}
-                    className="flex-1"
                   />
-                  <Button size="sm" onClick={() => onDecide(r.id, "approved", notes[r.id] ?? "")}>
+                  <Button onClick={() => onDecide(r.id, "approved", notes[r.id] ?? "")}>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
                     Approve
                   </Button>
-                  <Button size="sm" variant="destructive" onClick={() => onDecide(r.id, "rejected", notes[r.id] ?? "")}>
+                  <Button variant="destructive" onClick={() => onDecide(r.id, "rejected", notes[r.id] ?? "")}>
+                    <XCircle className="mr-2 h-4 w-4" />
                     Reject
                   </Button>
                 </div>
               ) : (
-                <p className="text-[10px] text-muted-foreground italic">
-                  {isOwn
-                    ? "You cannot decide on your own request. Awaiting "
-                    : "You lack authority to decide. Awaiting "}
+                <p className="text-xs italic text-muted-foreground">
+                  {isOwn ? "You cannot decide on your own request. Awaiting " : "You lack authority to decide. Awaiting "}
                   {reviewer.label}.
                 </p>
               )

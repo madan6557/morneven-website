@@ -10,18 +10,31 @@ import {
   editCharacterDiscussionReply,
   deleteCharacterDiscussionReply,
 } from "@/services/api";
+import { getProxyUrl } from "@/services/fileProxyService";
 import type { Character, DiscussionComment, DiscussionMention, LoreFieldNote } from "@/types";
 import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SkillList } from "@/components/SkillCard";
+import StatsRadar from "@/components/StatsRadar";
+import {
+  averageScore,
+  getCharacterStatDetailAxes,
+  STAT_DETAIL_LABELS,
+  STAT_AXIS_FULL_NAMES,
+  toCharacterPrimaryStats,
+  type StatCategoryKey,
+} from "@/lib/statDetails";
+import { accentBorder, accentMuted, accentSurface, accentText } from "@/lib/themeColor";
 
 export default function CharacterDetail() {
   const { id } = useParams<{ id: string }>();
   const [char, setChar] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
   const [discussion, setDiscussion] = useState<DiscussionComment[]>([]);
+  const [selectedStatDetail, setSelectedStatDetail] = useState<StatCategoryKey | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -62,7 +75,11 @@ export default function CharacterDetail() {
   }
 
   const accentColor = char.accentColor;
+  const accentReadable = accentText(accentColor);
+  const accentSoftBorder = accentBorder(accentColor);
+  const accentSoftSurface = accentSurface(accentColor);
   const contributions = char.contributions ?? [];
+  const headerImage = char.headerImage || char.thumbnail;
 
   const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
     if (!char) return;
@@ -125,41 +142,41 @@ export default function CharacterDetail() {
   return (
     <div className="space-y-0" style={{ "--char-accent": accentColor } as React.CSSProperties}>
       {/* Parallax header with custom accent and thumbnail */}
-      <div className="relative h-72 md:h-96 overflow-hidden flex items-end" style={char.thumbnail ? { backgroundImage: `url(${getProxyUrl(char.thumbnail)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
-        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accentColor}15, transparent 60%)` }} />
+      <div className="relative h-72 md:h-96 overflow-hidden flex items-end" style={headerImage ? { backgroundImage: `url(${getProxyUrl(headerImage)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accentMuted(accentColor)} 0%, transparent 62%)` }} />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent z-10" />
         <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: accentColor }} />
-        {!char.thumbnail && (
+        {!headerImage && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="font-display text-8xl opacity-5 tracking-[0.3em]" style={{ color: accentColor }}>{char.name.split(" ")[0].toUpperCase()}</span>
+            <span className="font-display text-8xl opacity-5 tracking-[0.3em]" style={{ color: accentReadable }}>{char.name.split(" ")[0].toUpperCase()}</span>
           </div>
         )}
         <div className="relative z-20 p-6 md:p-8 w-full">
           <Link to="/lore" className="inline-flex items-center gap-1 text-xs font-heading text-muted-foreground hover:text-foreground transition-colors mb-3">
             <ArrowLeft className="h-3 w-3" /> BACK TO LORE
           </Link>
-          <h1 className="font-display text-2xl md:text-3xl tracking-[0.1em]" style={{ color: accentColor }}>{char.name.toUpperCase()}</h1>
+          <h1 className="font-display text-2xl md:text-3xl tracking-[0.1em]" style={{ color: accentReadable }}>{char.name.toUpperCase()}</h1>
           <p className="text-sm font-heading tracking-wider text-muted-foreground mt-1">{char.race}</p>
           {char.occupation && (
-            <p className="text-xs font-display tracking-[0.15em] uppercase mt-1" style={{ color: accentColor }}>{char.occupation}</p>
+            <p className="text-xs font-display tracking-[0.15em] uppercase mt-1" style={{ color: accentReadable }}>{char.occupation}</p>
           )}
         </div>
       </div>
 
       <div className="p-6 md:p-8 space-y-8">
-        <div className="h-px w-full" style={{ background: `linear-gradient(to right, transparent, ${accentColor}50, transparent)` }} />
+        <div className="h-px w-full" style={{ background: `linear-gradient(to right, transparent, ${accentSoftBorder}, transparent)` }} />
 
         {/* Quick-read profile strip */}
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: `${accentColor}30` }}>
+          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: accentSoftBorder }}>
             <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Race</p>
             <p className="text-sm font-body text-foreground">{char.race}</p>
           </div>
-          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: `${accentColor}30` }}>
+          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: accentSoftBorder }}>
             <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Height</p>
             <p className="text-sm font-body text-foreground">{char.height}</p>
           </div>
-          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: `${accentColor}30` }}>
+          <div className="hud-border bg-card p-4 space-y-1" style={{ borderColor: accentSoftBorder }}>
             <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Occupation</p>
             <p className="text-sm font-body text-foreground">{char.occupation || " - "}</p>
           </div>
@@ -169,35 +186,73 @@ export default function CharacterDetail() {
           {/* Left: Stats & Info (always visible sidebar) */}
           <div className="space-y-6">
             {/* Stats bars */}
-            <div className="hud-border bg-card p-5 space-y-4" style={{ borderColor: `${accentColor}30` }}>
-              <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accentColor }}>Combat Stats</h3>
-              <div className="space-y-3">
-                {Object.entries(char.stats).map(([key, value]) => (
-                  <div key={key} className="space-y-1">
-                    <div className="flex justify-between text-xs font-heading">
-                      <span className="text-muted-foreground uppercase tracking-wider">{key}</span>
-                      <span className="text-foreground">{value}</span>
+            <div className="hud-border bg-card p-5 space-y-4" style={{ borderColor: accentSoftBorder }}>
+              {(() => {
+                const primaryStats = toCharacterPrimaryStats(char.stats);
+                const overall = averageScore(Object.values(primaryStats));
+                return (
+                  <>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accentReadable }}>Combat Stats</h3>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Overall</span>
+                        <span className="font-display text-lg leading-none" style={{ color: accentReadable }}>{overall}</span>
+                      </div>
                     </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${value}%` }}
-                        transition={{ duration: 0.8, delay: 0.2 }}
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: accentColor }}
-                      />
+                    <div className="space-y-3">
+                      {Object.entries(primaryStats).map(([key, value]) => (
+                        <div key={key} className="space-y-1">
+                          <div className="flex justify-between items-center gap-2 text-xs font-heading">
+                            <span className="text-muted-foreground uppercase tracking-wider">{key}</span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedStatDetail(key as StatCategoryKey)}
+                                className="text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                Stat Detail
+                              </button>
+                              <span className="text-foreground">{value}</span>
+                            </div>
+                          </div>
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${value}%` }}
+                              transition={{ duration: 0.8, delay: 0.2 }}
+                              className="h-full rounded-full"
+                              style={{ backgroundColor: accentReadable }}
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ))}
-              </div>
+                    {selectedStatDetail && (
+                      <div className="pt-2 border-t border-border/70 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] font-display tracking-wider uppercase text-muted-foreground">
+                            {STAT_DETAIL_LABELS[selectedStatDetail]} Breakdown
+                          </p>
+                          <button type="button" onClick={() => setSelectedStatDetail(null)} className="text-[10px] uppercase text-muted-foreground hover:text-foreground">Close</button>
+                        </div>
+                        <StatsRadar
+                          stats={getCharacterStatDetailAxes(char.stats, selectedStatDetail)}
+                          color={accentReadable}
+                          labels={STAT_AXIS_FULL_NAMES}
+                        />
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {/* Traits */}
-            <div className="hud-border bg-card p-5 space-y-3" style={{ borderColor: `${accentColor}30` }}>
-              <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accentColor }}>Traits</h3>
+            <div className="hud-border bg-card p-5 space-y-3" style={{ borderColor: accentSoftBorder }}>
+              <h3 className="font-heading text-sm tracking-[0.15em] uppercase" style={{ color: accentReadable }}>Traits</h3>
               <div className="flex flex-wrap gap-2">
                 {char.traits.map((t) => (
-                  <span key={t} className="text-[10px] font-display tracking-wider px-2 py-1 rounded-sm border" style={{ color: accentColor, borderColor: `${accentColor}40`, backgroundColor: `${accentColor}10` }}>
+                  <span key={t} className="text-[10px] font-display tracking-wider px-2 py-1 rounded-sm border" style={{ color: accentReadable, borderColor: accentSoftBorder, backgroundColor: accentSoftSurface }}>
                     {t.toUpperCase()}
                   </span>
                 ))}
@@ -205,10 +260,10 @@ export default function CharacterDetail() {
             </div>
 
             {/* Likes/Dislikes */}
-            <div className="hud-border bg-card p-5 space-y-3" style={{ borderColor: `${accentColor}30` }}>
+            <div className="hud-border bg-card p-5 space-y-3" style={{ borderColor: accentSoftBorder }}>
               <div className="space-y-3">
                 <div>
-                  <h4 className="font-heading text-xs tracking-wider text-muted-foreground uppercase flex items-center gap-1 mb-2"><Heart className="h-3 w-3" style={{ color: accentColor }} /> Likes</h4>
+                  <h4 className="font-heading text-xs tracking-wider text-muted-foreground uppercase flex items-center gap-1 mb-2"><Heart className="h-3 w-3" style={{ color: accentReadable }} /> Likes</h4>
                   <div className="flex flex-wrap gap-1">
                     {char.likes.map((l) => (
                       <span key={l} className="text-[10px] font-body text-foreground/70 bg-muted px-2 py-0.5 rounded-sm">{l}</span>
@@ -305,6 +360,11 @@ export default function CharacterDetail() {
                 <LoreMetaPanel meta={char.meta} fallbackCreator={char.contributor} accentColor={accentColor} />
               </TabsContent>
             </Tabs>
+
+            {/* Skills - living entity */}
+            <div className="pt-6">
+              <SkillList items={char.skills} accent={accentColor} variant="skill" />
+            </div>
 
             {/* Documentation - always visible (outside tabs) */}
             {char.docs && char.docs.length > 0 && (

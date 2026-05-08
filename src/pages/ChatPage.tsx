@@ -1,40 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { listPersonnel, lookupPersonnelByUsernames } from "@/services/personnelApi";
-import { pushNotification } from "@/services/notificationsApi";
 import {
-  listConversationsFor,
   listConversationsForRemote,
-  listInvitesFor,
   listInvitesForRemote,
-  listMessages,
   listMessagesRemote,
-  sendMessage,
   sendMessageRemote,
-  deleteMessage,
   deleteMessageRemote,
-  createDM,
   createDMRemote,
-  createManualGroup,
   createManualGroupRemote,
-  inviteMembers,
   inviteMembersRemote,
-  acceptInvite,
   acceptInviteRemote,
-  rejectInvite,
   rejectInviteRemote,
-  kickMember,
   kickMemberRemote,
-  leaveConversation,
   leaveConversationRemote,
-  setMemberRole,
   setMemberRoleRemote,
-  renameConversation,
   renameConversationRemote,
-  reconcileAutoMemberships,
   canManage,
   getMemberRole,
   getConversationUnreadCount,
+  getConversationUnreadCountsRemote,
   readChatReadMap,
   subscribeChat,
   buildReplyPreview,
@@ -46,7 +31,7 @@ import {
   type MemberRole,
   type ReplyPreview,
 } from "@/services/chatApi";
-import { apiUpload, isDemoFallbackEnabled } from "@/services/api";
+import { apiUpload } from "@/services/api";
 import { downloadAuthenticatedFile } from "@/services/fileProxyService";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import type { PersonnelUser } from "@/types";
@@ -89,42 +74,23 @@ import { toast } from "@/hooks/use-toast";
 import { PERSONNEL_TRACKS } from "@/lib/pl";
 import type { PersonnelTrack } from "@/lib/pl";
 
-const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB demo cap
-function fileToAttachment(file: File): Promise<ChatAttachment> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () =>
-      resolve({
-        id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        name: file.name,
-        mimeType: file.type || "application/octet-stream",
-        size: file.size,
-        dataUrl: String(reader.result),
-      });
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
 async function fileToAttachmentRemote(file: File): Promise<ChatAttachment> {
-  try {
-    const uploaded = await apiUpload<{
-      url?: string;
-      objectPath?: string;
-      contentType?: string;
-      size?: number;
-    }>(`/files/upload?folder=chat`, file);
+  const uploaded = await apiUpload<{
+    url?: string;
+    objectPath?: string;
+    contentType?: string;
+    size?: number;
+  }>(`/files/upload?folder=chat`, file);
 
-    return {
-      id: uploaded.objectPath ?? `att-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      name: file.name,
-      mimeType: uploaded.contentType ?? file.type ?? "application/octet-stream",
-      size: uploaded.size ?? file.size,
-      dataUrl: uploaded.url ?? "",
-    };
-  } catch {
-    return fileToAttachment(file);
-  }
+  return {
+    id: uploaded.objectPath ?? `att-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    name: file.name,
+    mimeType: uploaded.contentType ?? file.type ?? "application/octet-stream",
+    size: uploaded.size ?? file.size,
+    dataUrl: uploaded.url ?? "",
+    objectPath: uploaded.objectPath,
+  };
 }
 
 function formatBytes(n: number) {
@@ -216,6 +182,7 @@ export default function ChatPage() {
   const [replyTo, setReplyTo] = useState<ReplyPreview | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [readMap, setReadMap] = useState<ChatReadMap>(() => readChatReadMap());
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const nearBottomRef = useRef(true);
   const lastMessagesLenRef = useRef(0);
@@ -270,7 +237,6 @@ export default function ChatPage() {
   useEffect(() => {
     listPersonnel().then((roster) => {
       setPersonnel(roster);
-      reconcileAutoMemberships(roster);
     });
   }, []);
 
@@ -295,22 +261,8 @@ export default function ChatPage() {
   const refresh = () => {
     if (!isAuthenticated) return;
 
-    if (isDemoFallbackEnabled()) {
-      const visibleConvs = listConversationsFor(username);
-      setConvs(visibleConvs);
-      setInvites(listInvitesFor(username));
-      if (active) {
-        setMessages(listMessages(active));
-      } else if (visibleConvs.length > 0) {
-        const firstId = visibleConvs[0].id;
-        setActive((prev) => prev ?? firstId);
-        setMessages(listMessages(firstId));
-      } else {
-        setMessages([]);
-      }
-    }
-
     listInvitesForRemote(username).then(setInvites).catch(() => undefined);
+    getConversationUnreadCountsRemote().then(setUnreadCounts).catch(() => undefined);
     listConversationsForRemote(username)
       .then((remoteConvs) => {
         setConvs(remoteConvs);
@@ -453,21 +405,6 @@ export default function ChatPage() {
   };
   const openAuthorProfile = (author: string) => setProfileUser(getAuthorMeta(author));
 
-  // Demo helper: for institute channel, pre-mark roughly half history as read
-  // on first open so unread auto-scroll behavior is easy to verify.
-  useEffect(() => {
-    if (!activeConv || activeConv.kind !== "institute") return;
-    if (readMap[activeConv.id]) return;
-    const peerMessages = messages.filter((m) => !m.system && m.author !== username);
-    if (peerMessages.length < 2) return;
-    const midpoint = Math.floor(peerMessages.length / 2) - 1;
-    const pivot = peerMessages[Math.max(0, midpoint)];
-    if (!pivot) return;
-    const next = { ...readMap, [activeConv.id]: pivot.createdAt };
-    writeChatReadMap(next);
-    setReadMap(next);
-  }, [activeConv, messages, readMap, username]);
-
   if (!isAuthenticated) {
     return <div className="p-8 text-muted-foreground">Login to use chat.</div>;
   }
@@ -488,31 +425,24 @@ export default function ChatPage() {
     if (!input.trim() && pendingFiles.length === 0) return;
 
     let attachments: ChatAttachment[] | undefined;
-    if (pendingFiles.length) {
-      attachments = await Promise.all(pendingFiles.map(fileToAttachmentRemote));
+    try {
+      if (pendingFiles.length) {
+        attachments = await Promise.all(pendingFiles.map(fileToAttachmentRemote));
+      }
+    } catch (error) {
+      toast({
+        title: "Attachment upload failed",
+        description: error instanceof Error ? error.message : "Backend rejected one of the selected files.",
+        variant: "destructive",
+      });
+      return;
     }
-    const msg = isDemoFallbackEnabled()
-      ? sendMessage(active, username, input.trim(), attachments, replyTo ?? undefined)
-      : await sendMessageRemote(active, input.trim(), attachments, replyTo ?? undefined);
+    await sendMessageRemote(active, input.trim(), attachments, replyTo ?? undefined);
     shouldScrollToLatestRef.current = true;
     setInput("");
     setPendingFiles([]);
     setReplyTo(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
-
-    const conv = activeConv ?? listConversationsFor(username).find((c) => c.id === active);
-    conv?.members
-      .filter((m) => m.username !== username && m.status === "active")
-      .forEach((m) =>
-        pushNotification({
-          kind: "info",
-          title: `New message in ${conv.name}`,
-          body: `${username}: ${msg.text.slice(0, 80) || "[attachment]"}`,
-          recipient: m.username,
-          sender: username,
-          link: "/chat",
-        }),
-      );
     refresh();
   }
 
@@ -521,7 +451,7 @@ export default function ChatPage() {
     const valid: File[] = [];
     Array.from(files).forEach((f) => {
       if (f.size > MAX_FILE_BYTES) {
-        toast({ title: "File too large", description: `${f.name} exceeds 5 MB demo cap.`, variant: "destructive" });
+        toast({ title: "File too large", description: `${f.name} exceeds the 5 MB upload limit.`, variant: "destructive" });
         return;
       }
       valid.push(f);
@@ -531,23 +461,11 @@ export default function ChatPage() {
 
   async function handleCreate() {
     if (dialog === "dm" && dmTarget && dmTarget !== username) {
-      const c = isDemoFallbackEnabled() ? createDM(username, dmTarget) : await createDMRemote(dmTarget);
+      const c = await createDMRemote(dmTarget);
       setActive(c.id);
     } else if (dialog === "group" && newName.trim() && newMembers.length > 0) {
-      const c = isDemoFallbackEnabled()
-        ? createManualGroup(newName.trim(), username, newMembers)
-        : await createManualGroupRemote(newName.trim(), newMembers);
+      const c = await createManualGroupRemote(newName.trim(), newMembers);
       setActive(c.id);
-      newMembers.forEach((m) =>
-        pushNotification({
-          kind: "request",
-          title: `Group invite: ${newName.trim()}`,
-          body: `${username} invited you to a group.`,
-          recipient: m,
-          sender: username,
-          link: "/chat",
-        }),
-      );
     }
     closeDialog();
   }
@@ -563,40 +481,27 @@ export default function ChatPage() {
 
   async function handleInviteMore() {
     if (!activeConv || inviteSelection.length === 0) return;
-    if (isDemoFallbackEnabled()) inviteMembers(activeConv.id, username, inviteSelection);
-    else await inviteMembersRemote(activeConv.id, inviteSelection);
-    inviteSelection.forEach((m) =>
-      pushNotification({
-        kind: "request",
-        title: `Invite: ${activeConv.name}`,
-        body: `${username} invited you to ${activeConv.name}.`,
-        recipient: m,
-        sender: username,
-        link: "/chat",
-      }),
-    );
+    await inviteMembersRemote(activeConv.id, inviteSelection);
     setInviteSelection([]);
     refresh();
   }
 
   async function handleRename() {
     if (!activeConv || !renameValue.trim()) return;
-    if (isDemoFallbackEnabled()) renameConversation(activeConv.id, username, renameValue.trim());
-    else await renameConversationRemote(activeConv.id, renameValue.trim());
+    await renameConversationRemote(activeConv.id, renameValue.trim());
     setRenameValue("");
     refresh();
   }
 
   async function handleAcceptInvite(id: string) {
-    const accepted = isDemoFallbackEnabled() ? acceptInvite(id, username) : await acceptInviteRemote(id);
+    const accepted = await acceptInviteRemote(id);
     if (accepted) {
       setActive(id);
       setDialog(null);
     }
   }
   async function handleRejectInvite(id: string) {
-    if (isDemoFallbackEnabled()) rejectInvite(id, username);
-    else await rejectInviteRemote(id);
+    await rejectInviteRemote(id);
     refresh();
   }
 
@@ -616,6 +521,7 @@ export default function ChatPage() {
   const markConversationRead = (conversationId: string, source: ChatMessage[]) => {
     const latestSeen = source[source.length - 1]?.createdAt;
     if (!latestSeen) return;
+    setUnreadCounts((prev) => ({ ...prev, [conversationId]: 0 }));
     setReadMap((prev) => {
       if (prev[conversationId] === latestSeen) return prev;
       const next = { ...prev, [conversationId]: latestSeen };
@@ -624,12 +530,11 @@ export default function ChatPage() {
     });
   };
   const getUnreadCount = (conversationId: string) => {
-    return getConversationUnreadCount(username, conversationId);
+    return unreadCounts[conversationId] ?? getConversationUnreadCount(username, conversationId);
   };
   const markActiveConversationRead = () => {
     if (!active) return;
-    const currentMessages = messages.length > 0 ? messages : listMessages(active);
-    markConversationRead(active, currentMessages);
+    markConversationRead(active, messages);
   };
 
   return (
@@ -816,8 +721,7 @@ export default function ChatPage() {
                               {canDelete && (
                                 <button
                                   onClick={async () => {
-                                    if (isDemoFallbackEnabled()) deleteMessage(m.id, username);
-                                    else await deleteMessageRemote(m.id);
+                                    await deleteMessageRemote(m.id);
                                     refresh();
                                   }}
                                   className="text-muted-foreground hover:text-destructive"
@@ -1142,8 +1046,7 @@ export default function ChatPage() {
                                       variant="ghost"
                                       className="h-7 px-2 text-[10px]"
                                       onClick={async () => {
-                                        if (isDemoFallbackEnabled()) setMemberRole(activeConv.id, username, m.username, "admin");
-                                        else await setMemberRoleRemote(activeConv.id, m.username, "admin");
+                                        await setMemberRoleRemote(activeConv.id, m.username, "admin");
                                         refresh();
                                       }}
                                     >
@@ -1155,8 +1058,7 @@ export default function ChatPage() {
                                       variant="ghost"
                                       className="h-7 px-2 text-[10px]"
                                       onClick={async () => {
-                                        if (isDemoFallbackEnabled()) setMemberRole(activeConv.id, username, m.username, "member");
-                                        else await setMemberRoleRemote(activeConv.id, m.username, "member");
+                                        await setMemberRoleRemote(activeConv.id, m.username, "member");
                                         refresh();
                                       }}
                                     >
@@ -1171,8 +1073,7 @@ export default function ChatPage() {
                                   variant="ghost"
                                   className="h-7 px-2 text-[10px] text-destructive hover:text-destructive"
                                   onClick={async () => {
-                                    if (isDemoFallbackEnabled()) kickMember(activeConv.id, username, m.username);
-                                    else await kickMemberRemote(activeConv.id, m.username);
+                                    await kickMemberRemote(activeConv.id, m.username);
                                     refresh();
                                   }}
                                 >
@@ -1224,8 +1125,7 @@ export default function ChatPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      if (isDemoFallbackEnabled()) leaveConversation(activeConv.id, username);
-                      else void leaveConversationRemote(activeConv.id);
+                      void leaveConversationRemote(activeConv.id);
                       setActive(null);
                       closeDialog();
                     }}

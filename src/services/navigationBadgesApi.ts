@@ -1,7 +1,4 @@
-import { apiRequest, withDemoFallback } from "@/services/restClient";
-import { getChatUnreadCount } from "@/services/chatApi";
-import { getReviewableRequestCount } from "@/services/managementApi";
-import { unreadCount } from "@/services/notificationsApi";
+import { apiRequest } from "@/services/restClient";
 import type { PersonnelLevel, PersonnelTrack } from "@/lib/pl";
 
 export interface NavigationBadges {
@@ -17,23 +14,34 @@ export interface NavigationBadges {
   };
 }
 
-export async function getNavigationBadges(viewer: {
+type BackendNavigationBadges =
+  | NavigationBadges
+  | {
+      chatUnreadCount?: number;
+      managementPendingCount?: number;
+      notificationUnreadCount?: number;
+    };
+
+export async function getNavigationBadges(_viewer: {
   username: string;
   level: PersonnelLevel;
   track: PersonnelTrack;
 }): Promise<NavigationBadges> {
-  return withDemoFallback(
-    () => apiRequest<NavigationBadges>("/me/navigation-badges"),
-    () => ({
-      chat: {
-        unreadTotal: getChatUnreadCount(viewer.username),
-      },
-      notifications: {
-        unreadTotal: unreadCount(viewer.username),
-      },
-      management: {
-        pendingRequests: getReviewableRequestCount(viewer),
-      },
-    }),
-  );
+  const data = await apiRequest<BackendNavigationBadges>("/me/navigation-badges");
+
+  if ("chat" in data && "notifications" in data && "management" in data) {
+    return data;
+  }
+
+  return {
+    chat: {
+      unreadTotal: Number(data.chatUnreadCount ?? 0),
+    },
+    notifications: {
+      unreadTotal: Number(data.notificationUnreadCount ?? 0),
+    },
+    management: {
+      pendingRequests: Number(data.managementPendingCount ?? 0),
+    },
+  };
 }

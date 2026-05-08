@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PERSONNEL_TRACKS } from "@/lib/pl";
 import { getSystemChatSnapshotRemote, reconcileSystemChatGroupsRemote, type ChatReconciliationReport } from "@/services/chatApi";
 import { getQuota, monthKey, pl2Status, pl3Status, pl4Status, yearKey } from "@/services/managementApi";
-import { canUseLocalExtractionFallback, clearExtractionHistory, downloadExtractionJob, listExtractionHistory, listExtractionHistoryRemote, startExtraction, startExtractionRemote, type ExtractionMode } from "@/services/extractionService";
+import { clearExtractionHistory, downloadExtractionJob, listExtractionHistoryRemote, startExtractionRemote, type ExtractionMode, type ExtractionJob } from "@/services/extractionService";
 import { changePassword, deleteAccount } from "@/services/accountApi";
 
 const emptyChatReport: ChatReconciliationReport = {
@@ -24,7 +24,7 @@ export default function SettingsPage() {
   const { role, username, personnelLevel, track, verifyPassword, logout } = useAuth();
   const { toast } = useToast();
   const [quota, setQuota] = useState<{ pl2: number; pl3: number; pl4: number } | null>(null);
-  const [history, setHistory] = useState(listExtractionHistory());
+  const [history, setHistory] = useState<ExtractionJob[]>([]);
   const [mode, setMode] = useState<ExtractionMode>("all");
   const [autoDownload, setAutoDownload] = useState(true);
   const [password, setPassword] = useState("");
@@ -56,12 +56,6 @@ export default function SettingsPage() {
     }
     const t = window.setInterval(() => {
       listExtractionHistoryRemote().then((nextHistory) => {
-        setHistory(nextHistory);
-        if (!nextHistory.some((job) => job.status === "processing")) {
-          setShouldPollExtraction(false);
-        }
-      }).catch(() => {
-        const nextHistory = listExtractionHistory();
         setHistory(nextHistory);
         if (!nextHistory.some((job) => job.status === "processing")) {
           setShouldPollExtraction(false);
@@ -353,17 +347,11 @@ export default function SettingsPage() {
                   setHistory([job, ...history]);
                   setShouldPollExtraction(job.status === "processing");
                 } catch (error) {
-                  if (!canUseLocalExtractionFallback()) {
-                    toast({
-                      title: "Extraction failed",
-                      description: error instanceof Error ? error.message : "Backend rejected the extraction request.",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                  startExtraction(mode, autoDownload);
-                  setHistory(listExtractionHistory());
-                  setShouldPollExtraction(true);
+                  toast({
+                    title: "Extraction failed",
+                    description: error instanceof Error ? error.message : "Backend rejected the extraction request.",
+                    variant: "destructive",
+                  });
                 }
               },
             })}>
@@ -409,7 +397,11 @@ export default function SettingsPage() {
                 confirmLabel: "Clear selected",
                 cancelLabel: "Cancel",
                 dontShowAgainKey: "clear_selected_extractions",
-                onConfirm: () => { clearExtractionHistory(selected); setSelected([]); setHistory(listExtractionHistory()); },
+                onConfirm: async () => {
+                  await clearExtractionHistory(selected);
+                  setSelected([]);
+                  setHistory((current) => current.filter((job) => !selected.includes(job.id)));
+                },
               })}>Clear selected</Button>
               <Button type="button" variant="outline" size="sm" onClick={() => showValidation({
                 variant: "error",
@@ -419,7 +411,11 @@ export default function SettingsPage() {
                 cancelLabel: "Cancel",
                 critical: true,
                 confirmDelaySeconds: 5,
-                onConfirm: () => { clearExtractionHistory(); setSelected([]); setHistory([]); },
+                onConfirm: async () => {
+                  await clearExtractionHistory();
+                  setSelected([]);
+                  setHistory([]);
+                },
               })}>Clear all</Button>
             </div>
           </section>
