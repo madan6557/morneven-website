@@ -28,6 +28,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useToast } from "@/hooks/use-toast";
 import { showValidation } from "@/components/ui/validation-dialog";
 import SkillFeatureEditor from "@/components/SkillFeatureEditor";
+import {
+  averageScore,
+  createDefaultCharacterStats,
+  createDefaultCreatureStats,
+  normalizeCharacterStatsForEditor,
+  normalizeCreatureStatsForEditor,
+} from "@/lib/statDetails";
 
 const dashTabs = ["projects", "lore", "gallery", "news", "homepage", "map"] as const;
 const loreSubs = ["characters", "places", "technology", "creatures", "other"] as const;
@@ -124,6 +131,164 @@ const isDashboardTab = (value: string | null): value is DashboardTab => {
 
 type AttachmentMode = "url" | "image" | "video" | "file";
 
+type StatSliderField = {
+  key: string;
+  label: string;
+};
+
+type StatEditorGroup = {
+  key: string;
+  label: string;
+  fields: readonly StatSliderField[];
+};
+
+const characterStatEditorGroups: readonly StatEditorGroup[] = [
+  {
+    key: "combat",
+    label: "Combat",
+    fields: [
+      { key: "strength", label: "Strength" },
+      { key: "defense", label: "Defense" },
+      { key: "agility", label: "Agility" },
+      { key: "endurance", label: "Endurance" },
+      { key: "adaptation", label: "Adaptation" },
+    ],
+  },
+  {
+    key: "intelligence",
+    label: "Intelligence",
+    fields: [
+      { key: "iq", label: "IQ" },
+      { key: "eq", label: "EQ" },
+      { key: "sq", label: "SQ" },
+    ],
+  },
+  {
+    key: "charisma",
+    label: "Charisma",
+    fields: [
+      { key: "persuasion", label: "Persuasion" },
+      { key: "intimidation", label: "Intimidation" },
+      { key: "manipulation", label: "Manipulation" },
+    ],
+  },
+  {
+    key: "stealth",
+    label: "Stealth",
+    fields: [
+      { key: "presenceControl", label: "Presence Control" },
+      { key: "silence", label: "Silence" },
+      { key: "environmentControl", label: "Environment Control" },
+      { key: "visualMasking", label: "Visual Masking" },
+    ],
+  },
+  {
+    key: "perception",
+    label: "Perception",
+    fields: [
+      { key: "acuity", label: "Acuity" },
+      { key: "focus", label: "Focus" },
+      { key: "intuition", label: "Intuition" },
+    ],
+  },
+] as const;
+
+const creatureStatEditorGroups: readonly StatEditorGroup[] = [
+  {
+    key: "combat",
+    label: "Combat",
+    fields: [
+      { key: "strength", label: "Strength" },
+      { key: "defense", label: "Defense" },
+      { key: "agility", label: "Agility" },
+      { key: "endurance", label: "Endurance" },
+      { key: "adaptation", label: "Adaptation" },
+    ],
+  },
+  {
+    key: "cognition",
+    label: "Cognition",
+    fields: [
+      { key: "problemSolving", label: "Problem Solving" },
+      { key: "memory", label: "Memory" },
+      { key: "instinct", label: "Instinct" },
+    ],
+  },
+  {
+    key: "predation",
+    label: "Predation",
+    fields: [
+      { key: "ambush", label: "Ambush" },
+      { key: "camouflage", label: "Camouflage" },
+      { key: "quietude", label: "Quietude" },
+      { key: "trapping", label: "Trapping" },
+    ],
+  },
+  {
+    key: "senses",
+    label: "Senses",
+    fields: [
+      { key: "tracking", label: "Tracking" },
+      { key: "detection", label: "Detection" },
+      { key: "awareness", label: "Awareness" },
+    ],
+  },
+  {
+    key: "ferocity",
+    label: "Ferocity",
+    fields: [
+      { key: "intimidation", label: "Intimidation" },
+      { key: "dominance", label: "Dominance" },
+      { key: "hostility", label: "Hostility" },
+    ],
+  },
+] as const;
+
+function StatEditorCard({
+  title,
+  score,
+  fields,
+  values,
+  onChange,
+}: {
+  title: string;
+  score: number;
+  fields: readonly StatSliderField[];
+  values: Record<string, number>;
+  onChange: (key: string, value: number) => void;
+}) {
+  return (
+    <div className="rounded-sm border border-border bg-background/40 p-3 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <label className={labelClass}>{title}</label>
+        <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+          Primary <span className="text-primary">{score}</span>
+        </span>
+      </div>
+      <div className="space-y-2">
+        {fields.map((field) => (
+          <div key={field.key}>
+            <div className="flex items-center justify-between gap-3">
+              <label className={labelClass}>{field.label}</label>
+              <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+                {values[field.key] ?? 0}
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={values[field.key] ?? 0}
+              onChange={(e) => onChange(field.key, Number(e.target.value))}
+              className="w-full mt-1 accent-primary"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FileUploadField({ label, value, onChange, accept = "image/*,video/*", attachmentType = "image", folder = "uploads" }: { label: string; value: string; onChange: (url: string) => void; accept?: string; attachmentType?: Exclude<AttachmentMode, "url">; folder?: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const looksLikeManualUrl = /^https?:\/\//i.test(value) && !/storage|blob:|object|assets/i.test(value);
@@ -136,7 +301,7 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*", a
 
   useEffect(() => {
     if (mode !== "url") setMode(attachmentType);
-  }, [attachmentType]);
+  }, [attachmentType, mode]);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -654,13 +819,45 @@ export default function AuthorDashboard() {
       setEditing({ title: "", status: "Planning", thumbnail: "", shortDesc: "", fullDesc: "", patches: [], docs: [], features: [] });
     } else if (activeTab === "lore") {
       if (loreSub === "characters") {
-        setEditing({ name: "", race: "", occupation: "", height: "", traits: [], likes: [], dislikes: [], accentColor: "#4A90D9", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50, perception: 50 }, docs: [], fieldNotes: [], observations: [], contributions: [], skills: [] });
+        setEditing({
+          name: "",
+          race: "",
+          occupation: "",
+          height: "",
+          traits: [],
+          likes: [],
+          dislikes: [],
+          accentColor: "#4A90D9",
+          thumbnail: "",
+          shortDesc: "",
+          fullDesc: "",
+          stats: createDefaultCharacterStats(),
+          docs: [],
+          fieldNotes: [],
+          observations: [],
+          contributions: [],
+          skills: [],
+        });
       } else if (loreSub === "places") {
         setEditing({ name: "", type: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       } else if (loreSub === "technology") {
         setEditing({ name: "", category: "", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       } else if (loreSub === "creatures") {
-        setEditing({ name: "", classification: "Amorphous", dangerLevel: 1, habitat: "", accentColor: "#7DD3FC", thumbnail: "", shortDesc: "", fullDesc: "", stats: { combat: 50, intelligence: 50, cognition: 50, stealth: 50, predation: 50, ferocity: 50, endurance: 50, senses: 50 }, docs: [], fieldNotes: [], observations: [], skills: [] });
+        setEditing({
+          name: "",
+          classification: "Amorphous",
+          dangerLevel: 1,
+          habitat: "",
+          accentColor: "#7DD3FC",
+          thumbnail: "",
+          shortDesc: "",
+          fullDesc: "",
+          stats: createDefaultCreatureStats(),
+          docs: [],
+          fieldNotes: [],
+          observations: [],
+          skills: [],
+        });
       } else {
         setEditing({ title: "", category: "World Systems", thumbnail: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       }
@@ -731,6 +928,7 @@ export default function AuthorDashboard() {
       await loadDashboardItems(true);
     } else if (activeTab === "lore") {
       if (loreSub === "characters") {
+        const normalizedStats = normalizeCharacterStatsForEditor(editing.stats as Partial<Character["stats"]>);
         const payload: Omit<Character, "id"> = {
           name: editing.name ?? "",
           race: editing.race ?? "",
@@ -743,7 +941,7 @@ export default function AuthorDashboard() {
           thumbnail: editing.thumbnail ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
-          stats: (editing.stats as Character["stats"]) ?? { combat: 50, intelligence: 50, stealth: 50, charisma: 50, endurance: 50, perception: 50 },
+          stats: normalizedStats,
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
@@ -790,6 +988,7 @@ export default function AuthorDashboard() {
         else if (editing.id) await updateTech(editing.id, payload);
         await loadDashboardItems(true);
       } else if (loreSub === "creatures") {
+        const normalizedStats = normalizeCreatureStatsForEditor(editing.stats as Partial<Creature["stats"]>);
         const payload: Omit<Creature, "id"> = {
           name: editing.name ?? "",
           classification: (editing.classification as CreatureClassification) ?? "Amorphous",
@@ -802,7 +1001,7 @@ export default function AuthorDashboard() {
           docs: editing.docs ?? [],
           fieldNotes: editing.fieldNotes ?? [],
           observations: editing.observations ?? [],
-          stats: (editing.stats as Creature["stats"]) ?? { combat: 50, intelligence: 50, cognition: 50, stealth: 50, predation: 50, ferocity: 50, endurance: 50, senses: 50 },
+          stats: normalizedStats,
           skills: editing.skills ?? [],
           meta: editing.meta,
         };
@@ -986,6 +1185,130 @@ export default function AuthorDashboard() {
     if (!editing) return;
     const patches = (editing.patches || []).filter((_, i: number) => i !== idx);
     setEditing({ ...editing, patches });
+  };
+
+  const beginEdit = (item: DashboardItem) => {
+    if (activeTab === "projects") {
+      const project = item as Project;
+      setEditing({
+        ...project,
+        docs: project.docs ?? [],
+        features: project.features ?? [],
+        patches: project.patches ?? [],
+      });
+      setIsCreating(false);
+      return;
+    }
+
+    if (activeTab === "gallery") {
+      const galleryItem = item as GalleryItem;
+      setEditing({
+        ...galleryItem,
+        comments: galleryItem.comments ?? [],
+        tags: galleryItem.tags ?? [],
+      });
+      setIsCreating(false);
+      return;
+    }
+
+    if (loreSub === "characters") {
+      const character = item as Character;
+      setEditing({
+        ...character,
+        docs: character.docs ?? [],
+        fieldNotes: character.fieldNotes ?? [],
+        observations: character.observations ?? [],
+        contributions: character.contributions ?? [],
+        skills: character.skills ?? [],
+        stats: normalizeCharacterStatsForEditor(character.stats),
+      });
+      setIsCreating(false);
+      return;
+    }
+
+    if (loreSub === "creatures") {
+      const creature = item as Creature;
+      setEditing({
+        ...creature,
+        docs: creature.docs ?? [],
+        fieldNotes: creature.fieldNotes ?? [],
+        observations: creature.observations ?? [],
+        skills: creature.skills ?? [],
+        stats: normalizeCreatureStatsForEditor(creature.stats),
+      });
+      setIsCreating(false);
+      return;
+    }
+
+    if (loreSub === "places") {
+      const place = item as Place;
+      setEditing({
+        ...place,
+        docs: place.docs ?? [],
+        fieldNotes: place.fieldNotes ?? [],
+        observations: place.observations ?? [],
+        features: place.features ?? [],
+      });
+      setIsCreating(false);
+      return;
+    }
+
+    if (loreSub === "technology") {
+      const technology = item as Technology;
+      setEditing({
+        ...technology,
+        docs: technology.docs ?? [],
+        fieldNotes: technology.fieldNotes ?? [],
+        observations: technology.observations ?? [],
+        features: technology.features ?? [],
+      });
+      setIsCreating(false);
+      return;
+    }
+
+    const other = item as OtherLore;
+    setEditing({
+      ...other,
+      docs: other.docs ?? [],
+      fieldNotes: other.fieldNotes ?? [],
+      observations: other.observations ?? [],
+      features: other.features ?? [],
+    });
+    setIsCreating(false);
+  };
+
+  const updateCharacterStatDetail = (category: string, key: string, value: number) => {
+    if (!editing) return;
+    const current = normalizeCharacterStatsForEditor(editing.stats as Partial<Character["stats"]>);
+    const currentGroup = (current.detail?.[category as keyof NonNullable<Character["stats"]["detail"]>] ?? {}) as Record<string, number>;
+    const nextStats = normalizeCharacterStatsForEditor({
+      ...current,
+      detail: {
+        ...current.detail,
+        [category]: {
+          ...currentGroup,
+          [key]: value,
+        },
+      },
+    });
+    setEditing({ ...editing, stats: nextStats });
+  };
+
+  const updateCreatureStatDetail = (category: string, key: string, value: number) => {
+    if (!editing) return;
+    const current = normalizeCreatureStatsForEditor(editing.stats as Partial<Creature["stats"]>);
+    const currentGroup = (current.detail?.[category as keyof NonNullable<NonNullable<Creature["stats"]>["detail"]>] ?? {}) as Record<string, number>;
+    const nextStats = normalizeCreatureStatsForEditor({
+      ...current,
+      detail: {
+        ...current.detail,
+        [category]: {
+          ...currentGroup,
+          [key]: value,
+        },
+      },
+    });
+    setEditing({ ...editing, stats: nextStats });
   };
 
   const isCharacter = activeTab === "lore" && loreSub === "characters";
@@ -1464,24 +1787,73 @@ export default function AuthorDashboard() {
               </div>
             )}
 
-            {(isCharacter || isCreature) && editing.stats && (
-              <div className="md:col-span-2 space-y-2 p-3 border border-border rounded-sm bg-muted/20">
-                <div className="flex items-center justify-between">
-                  <label className={labelClass}>{isCharacter ? "Combat Stats" : "Threat Profile"}</label>
-                  {(() => {
-                    const vals = Object.values(editing.stats as unknown as Record<string, number>);
-                    const overall = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
-                    return <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Overall <span className="text-primary">{overall}</span></span>;
-                  })()}
-                </div>
-                {Object.keys(editing.stats).map((stat) => (
-                  <div key={stat}>
-                    <label className={labelClass}>{(isCharacter && stat === "endurance") ? "perception" : stat} ({(editing.stats as unknown as Record<string, number>)[stat]})</label>
-                    <input type="range" min="0" max="100" value={(editing.stats as unknown as Record<string, number>)[stat]} onChange={(e) => setEditing({ ...editing, stats: { ...(editing.stats as unknown as Record<string, number>), [stat]: Number(e.target.value) } as unknown as Character["stats"] })} className="w-full mt-1 accent-primary" />
+            {isCharacter && editing.stats && (() => {
+              const stats = normalizeCharacterStatsForEditor(editing.stats as Partial<Character["stats"]>);
+              const overall = averageScore([
+                stats.combat,
+                stats.intelligence,
+                stats.charisma,
+                stats.stealth,
+                stats.perception,
+              ]);
+
+              return (
+                <div className="md:col-span-2 space-y-3 p-3 border border-border rounded-sm bg-muted/20">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className={labelClass}>Stat Breakdown</label>
+                    <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+                      Overall <span className="text-primary">{overall}</span>
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="grid gap-3 xl:grid-cols-2">
+                    {characterStatEditorGroups.map((group) => (
+                      <StatEditorCard
+                        key={group.key}
+                        title={group.label}
+                        score={stats[group.key as keyof Character["stats"]] as number}
+                        fields={group.fields}
+                        values={(stats.detail?.[group.key as keyof NonNullable<Character["stats"]["detail"]>] ?? {}) as Record<string, number>}
+                        onChange={(fieldKey, value) => updateCharacterStatDetail(group.key, fieldKey, value)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {isCreature && editing.stats && (() => {
+              const stats = normalizeCreatureStatsForEditor(editing.stats as Partial<Creature["stats"]>);
+              const overall = averageScore([
+                stats.combat,
+                stats.cognition,
+                stats.predation,
+                stats.senses,
+                stats.ferocity,
+              ]);
+
+              return (
+                <div className="md:col-span-2 space-y-3 p-3 border border-border rounded-sm bg-muted/20">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className={labelClass}>Threat Breakdown</label>
+                    <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+                      Overall <span className="text-primary">{overall}</span>
+                    </span>
+                  </div>
+                  <div className="grid gap-3 xl:grid-cols-2">
+                    {creatureStatEditorGroups.map((group) => (
+                      <StatEditorCard
+                        key={group.key}
+                        title={group.label}
+                        score={stats[group.key as keyof Creature["stats"]] as number}
+                        fields={group.fields}
+                        values={(stats.detail?.[group.key as keyof NonNullable<NonNullable<Creature["stats"]>["detail"]>] ?? {}) as Record<string, number>}
+                        onChange={(fieldKey, value) => updateCreatureStatDetail(group.key, fieldKey, value)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Place type */}
             {isPlace && (
@@ -1812,7 +2184,7 @@ export default function AuthorDashboard() {
               <div className="flex items-center gap-2 flex-shrink-0">
                 {canModify ? (
                   <>
-                    <button onClick={() => { setEditing({ ...item } as EditableState); setIsCreating(false); }} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
+                    <button onClick={() => beginEdit(item)} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button onClick={() => handleDelete(item.id, getItemTitle(item))} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">

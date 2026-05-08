@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import * as Lucide from "lucide-react";
-import { Zap, Clock, Filter, X, ChevronDown, Tag } from "lucide-react";
-import type { Skill, Feature } from "@/types";
+import { ChevronDown, Filter, Tag, X, Zap } from "lucide-react";
+import type { Feature, Skill } from "@/types";
 import { AttributeBadge, RichDescription } from "./AttributeBadge";
 import {
   SKILL_ATTRIBUTES,
@@ -14,9 +14,9 @@ import { cn } from "@/lib/utils";
 
 function resolveIcon(name?: string) {
   if (!name) return Zap;
-  const Comp = (Lucide as unknown as Record<string, unknown>)[name];
-  if (typeof Comp === "function" || typeof Comp === "object") {
-    return Comp as typeof Zap;
+  const component = (Lucide as unknown as Record<string, unknown>)[name];
+  if (typeof component === "function" || typeof component === "object") {
+    return component as typeof Zap;
   }
   return Zap;
 }
@@ -35,38 +35,36 @@ interface SkillCardProps {
 export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
   const Icon = resolveIcon(item.icon);
   const hasImageIcon = isImageSource(item.icon);
-  const hue = item.accentColor || accent || "hsl(var(--primary))";
+  const hue = item.color || accent || "hsl(var(--primary))";
   const [expanded, setExpanded] = useState(false);
+  const skill = variant === "skill" ? (item as Skill) : null;
+  const feature = variant === "feature" ? (item as Feature) : null;
 
-  // Aggregate every [[attr:..]] tag in the description so the expanded panel
-  // can summarise PHYS / MAG / mental requirements & defences at a glance.
   const attrSummary = useMemo(() => {
-    const tokens = parseDescription(item.description || "");
+    if (!skill) return [];
+    const tokens = parseDescription(skill.description || "");
     const map = new Map<SkillAttribute, string[]>();
-    for (const t of tokens) {
-      if (t.type !== "tag") continue;
-      const arr = map.get(t.attribute) ?? [];
-      if (t.value) arr.push(t.value);
-      map.set(t.attribute, arr);
+    for (const token of tokens) {
+      if (token.type !== "tag") continue;
+      const values = map.get(token.attribute) ?? [];
+      if (token.value) values.push(token.value);
+      map.set(token.attribute, values);
     }
     return Array.from(map.entries()).map(([attribute, values]) => ({ attribute, values }));
-  }, [item.description]);
-
-  const toggle = () => setExpanded((v) => !v);
-  const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      toggle();
-    }
-  };
+  }, [skill]);
 
   return (
     <div
       role="button"
       tabIndex={0}
       aria-expanded={expanded}
-      onClick={toggle}
-      onKeyDown={onKey}
+      onClick={() => setExpanded((value) => !value)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          setExpanded((value) => !value);
+        }
+      }}
       className={cn(
         "group relative hud-border-sm bg-card/70 p-3 sm:p-4 flex flex-col gap-3 transition-all duration-200 hover:bg-card hover:-translate-y-0.5 cursor-pointer focus:outline-none focus-visible:ring-2",
         expanded && "bg-card",
@@ -76,24 +74,22 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
         boxShadow: expanded ? `0 8px 28px -10px ${hue}80, 0 0 0 1px ${hue}66` : `0 0 0 0 ${hue}00`,
         ["--tw-ring-color" as string]: hue,
       }}
-      onMouseEnter={(e) => {
+      onMouseEnter={(event) => {
         if (expanded) return;
-        e.currentTarget.style.boxShadow = `0 6px 24px -8px ${hue}66, 0 0 0 1px ${hue}55`;
+        event.currentTarget.style.boxShadow = `0 6px 24px -8px ${hue}66, 0 0 0 1px ${hue}55`;
       }}
-      onMouseLeave={(e) => {
+      onMouseLeave={(event) => {
         if (expanded) return;
-        e.currentTarget.style.boxShadow = `0 0 0 0 ${hue}00`;
+        event.currentTarget.style.boxShadow = `0 0 0 0 ${hue}00`;
       }}
     >
       <div className="flex gap-3 sm:gap-4 items-start">
-        {/* Accent stripe */}
         <span
           aria-hidden
           className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full opacity-60 group-hover:opacity-100 transition-opacity"
           style={{ background: `linear-gradient(to bottom, ${hue}, transparent)` }}
         />
 
-        {/* Icon frame */}
         <div
           className="relative shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-sm flex items-center justify-center transition-transform group-hover:scale-105"
           style={{
@@ -105,7 +101,7 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
           {hasImageIcon ? (
             <AuthenticatedImage
               src={item.icon as string}
-              alt={item.name || "feature icon"}
+              alt={variant === "skill" ? skill?.name || "skill icon" : feature?.title || "feature icon"}
               className="h-7 w-7 sm:h-8 sm:w-8 object-contain"
             />
           ) : (
@@ -113,28 +109,32 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
           )}
         </div>
 
-        <div className="flex-1 min-w-0 space-y-1.5">
+        <div className="flex-1 min-w-0 space-y-2">
           <div className="flex items-start justify-between gap-2 flex-wrap">
             <h3
               className="font-display text-sm tracking-[0.12em] uppercase text-foreground break-words"
               style={{ color: hue }}
             >
-              {item.name || (variant === "skill" ? "Unnamed Skill" : "Unnamed Feature")}
+              {variant === "skill" ? skill?.name || "Unnamed Skill" : feature?.title || "Unnamed Feature"}
             </h3>
-            <div className="flex items-center gap-1.5 shrink-0">
-              {item.cost && (
-                <span
-                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-display tracking-wider uppercase rounded-sm border"
-                  style={{
-                    color: "hsl(var(--accent-foreground))",
-                    borderColor: "hsl(var(--accent) / 0.6)",
-                    backgroundColor: "hsl(var(--accent) / 0.18)",
-                  }}
-                  title="Limitation / cooldown / cost"
-                >
-                  <Clock className="h-3 w-3" /> {item.cost}
-                </span>
-              )}
+            <div className="flex items-center gap-2 shrink-0">
+              {variant === "skill" && skill ? (
+                <>
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-display tracking-wider uppercase rounded-sm border"
+                    style={{
+                      color: hue,
+                      borderColor: `${hue}66`,
+                      backgroundColor: `${hue}14`,
+                    }}
+                  >
+                    {skill.category || "general"}
+                  </span>
+                  <span className="text-[10px] font-display tracking-wider uppercase text-muted-foreground">
+                    Lv {skill.level}
+                  </span>
+                </>
+              ) : null}
               <ChevronDown
                 className={cn(
                   "h-4 w-4 text-muted-foreground transition-transform duration-200",
@@ -145,77 +145,135 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
               />
             </div>
           </div>
-          {item.tagline && (
-            <p className="text-[11px] font-heading tracking-wider uppercase text-muted-foreground">
-              {item.tagline}
-            </p>
-          )}
-          {!expanded && attrSummary.length > 0 && (
-            <div className="flex flex-wrap gap-1 pt-0.5">
-              {attrSummary.map(({ attribute }) => {
-                const cfg = SKILL_ATTRIBUTES[attribute];
-                const A = cfg.Icon;
-                return (
-                  <span
-                    key={attribute}
-                    className="inline-flex items-center justify-center h-4 w-4 rounded-sm border"
-                    style={{
-                      color: `hsl(${cfg.hsl})`,
-                      borderColor: `hsl(${cfg.hsl} / 0.5)`,
-                      backgroundColor: `hsl(${cfg.hsl} / 0.12)`,
-                    }}
-                    title={cfg.label}
-                  >
-                    <A className="h-2.5 w-2.5" />
-                  </span>
-                );
-              })}
-            </div>
-          )}
-          {!expanded && (
-            <RichDescription text={item.description || ""} className="line-clamp-2" />
-          )}
+
+          {variant === "skill" && skill ? (
+            <>
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{ width: `${skill.level}%`, backgroundColor: hue }}
+                />
+              </div>
+              {!expanded && attrSummary.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {attrSummary.map(({ attribute }) => {
+                    const config = SKILL_ATTRIBUTES[attribute];
+                    const AttrIcon = config.Icon;
+                    return (
+                      <span
+                        key={attribute}
+                        className="inline-flex items-center justify-center h-4 w-4 rounded-sm border"
+                        style={{
+                          color: `hsl(${config.hsl})`,
+                          borderColor: `hsl(${config.hsl} / 0.5)`,
+                          backgroundColor: `hsl(${config.hsl} / 0.12)`,
+                        }}
+                        title={config.label}
+                      >
+                        <AttrIcon className="h-2.5 w-2.5" />
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+              {!expanded && <RichDescription text={skill.description || ""} className="line-clamp-2" />}
+            </>
+          ) : null}
+
+          {variant === "feature" && feature ? (
+            <>
+              {!expanded && (
+                <p className="text-sm font-body text-foreground/80 line-clamp-2">
+                  {feature.summary || "No summary provided."}
+                </p>
+              )}
+              {feature.tags && feature.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {feature.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-display tracking-wider uppercase rounded-sm border"
+                      style={{
+                        color: hue,
+                        borderColor: `${hue}50`,
+                        backgroundColor: `${hue}12`,
+                      }}
+                    >
+                      <Tag className="h-2.5 w-2.5" /> {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : null}
         </div>
       </div>
 
       {expanded && (
         <div
           className="space-y-3 pl-0 sm:pl-[4.5rem] animate-in fade-in slide-in-from-top-1 duration-200"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
         >
-          {attrSummary.length > 0 && (
-            <section className="space-y-1.5">
-              <h4 className="text-[10px] font-display tracking-[0.18em] uppercase text-muted-foreground flex items-center gap-1">
-                <Tag className="h-3 w-3" /> Attribute Details
-              </h4>
-              <div className="flex flex-wrap gap-1.5">
-                {attrSummary.flatMap(({ attribute, values }) =>
-                  values.length === 0
-                    ? [<AttributeBadge key={attribute} attribute={attribute} size="md" />]
-                    : values.map((v, i) => (
-                        <AttributeBadge
-                          key={`${attribute}-${i}`}
-                          attribute={attribute}
-                          value={v}
-                          size="md"
-                        />
-                      )),
-                )}
-              </div>
-            </section>
-          )}
+          {variant === "skill" && skill ? (
+            <>
+              {attrSummary.length > 0 && (
+                <section className="space-y-1.5">
+                  <h4 className="text-[10px] font-display tracking-[0.18em] uppercase text-muted-foreground flex items-center gap-1">
+                    <Tag className="h-3 w-3" /> Attribute Details
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {attrSummary.flatMap(({ attribute, values }) =>
+                      values.length === 0
+                        ? [<AttributeBadge key={attribute} attribute={attribute} size="md" />]
+                        : values.map((value, index) => (
+                            <AttributeBadge
+                              key={`${attribute}-${index}`}
+                              attribute={attribute}
+                              value={value}
+                              size="md"
+                            />
+                          )),
+                    )}
+                  </div>
+                </section>
+              )}
 
-          <section className="space-y-1.5">
-            <h4 className="text-[10px] font-display tracking-[0.18em] uppercase text-muted-foreground">
-              {variant === "skill" ? "Skill Brief" : "Feature Brief"}
-            </h4>
-            <RichDescription text={item.description || "—"} />
-          </section>
+              <section className="space-y-1.5">
+                <h4 className="text-[10px] font-display tracking-[0.18em] uppercase text-muted-foreground">
+                  Skill Brief
+                </h4>
+                <RichDescription text={skill.description || "-"} />
+              </section>
+            </>
+          ) : null}
+
+          {variant === "feature" && feature ? (
+            <>
+              <section className="space-y-1.5">
+                <h4 className="text-[10px] font-display tracking-[0.18em] uppercase text-muted-foreground">
+                  Feature Summary
+                </h4>
+                <p className="text-sm font-body text-foreground/85">
+                  {feature.summary || "No summary provided."}
+                </p>
+              </section>
+              {feature.details ? (
+                <section className="space-y-1.5">
+                  <h4 className="text-[10px] font-display tracking-[0.18em] uppercase text-muted-foreground">
+                    Details
+                  </h4>
+                  <p className="text-sm font-body text-foreground/80 whitespace-pre-line">
+                    {feature.details}
+                  </p>
+                </section>
+              ) : null}
+            </>
+          ) : null}
 
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               setExpanded(false);
             }}
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[10px] font-display tracking-wider uppercase border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
@@ -230,51 +288,28 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
 
 interface SkillListProps {
   title?: string;
-  items: (Skill | Feature)[] | undefined;
+  items: Array<Skill | Feature> | undefined;
   accent?: string;
   variant?: "skill" | "feature";
 }
 
-type RawSkillFeature = Partial<Skill & Feature> & {
-  title?: string;
-  summary?: string;
-  details?: string;
-  color?: string;
-};
-
-function normalizeItem(raw: RawSkillFeature, idx: number, variant: "skill" | "feature"): Skill | Feature {
-  return {
-    id: raw.id || `${variant}-${idx}`,
-    name: raw.name || raw.title || "",
-    icon: raw.icon,
-    accentColor: raw.accentColor || raw.color,
-    tagline: raw.tagline || raw.summary,
-    description: raw.description || raw.details || raw.summary || "",
-    cost: raw.cost,
-  };
-}
-
-function itemHasAttr(item: Skill | Feature, key: SkillAttribute) {
+function itemHasAttr(item: Skill, key: SkillAttribute) {
   return (item.description || "").includes(`[[attr:${key}`);
 }
 
 export function SkillList({ title, items, accent, variant = "skill" }: SkillListProps) {
-  const list = useMemo(
-    () => (items ?? []).map((item, idx) => normalizeItem(item as RawSkillFeature, idx, variant)),
-    [items, variant],
-  );
+  const list = useMemo(() => items ?? [], [items]);
   const [activeAttr, setActiveAttr] = useState<SkillAttribute | null>(null);
 
-  // Only surface the attributes actually used in this list
-  const usedAttributes = useMemo(
-    () => SKILL_ATTRIBUTE_LIST.filter((a) => list.some((it) => itemHasAttr(it, a.key))),
-    [list],
-  );
+  const usedAttributes = useMemo(() => {
+    if (variant !== "skill") return [];
+    return SKILL_ATTRIBUTE_LIST.filter((attr) => list.some((item) => itemHasAttr(item as Skill, attr.key)));
+  }, [list, variant]);
 
-  const filtered = useMemo(
-    () => (activeAttr ? list.filter((it) => itemHasAttr(it, activeAttr)) : list),
-    [list, activeAttr],
-  );
+  const filtered = useMemo(() => {
+    if (variant !== "skill" || !activeAttr) return list;
+    return list.filter((item) => itemHasAttr(item as Skill, activeAttr));
+  }, [activeAttr, list, variant]);
 
   if (list.length === 0) return null;
 
@@ -283,7 +318,10 @@ export function SkillList({ title, items, accent, variant = "skill" }: SkillList
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3 border-b pb-2" style={{ borderColor: `${accentColor}30` }}>
+      <div
+        className="flex items-center justify-between gap-3 border-b pb-2"
+        style={{ borderColor: `${accentColor}30` }}
+      >
         <h2 className="font-heading text-lg tracking-wider text-foreground uppercase flex items-center gap-2">
           {heading}
           <span
@@ -306,30 +344,29 @@ export function SkillList({ title, items, accent, variant = "skill" }: SkillList
         )}
       </div>
 
-      {/* Attribute filter chips — only when multiple attribute types are present */}
       {usedAttributes.length > 1 && (
         <div className="flex flex-wrap gap-1.5">
-          {usedAttributes.map((a) => {
-            const A = a.Icon;
-            const active = activeAttr === a.key;
+          {usedAttributes.map((attr) => {
+            const Icon = attr.Icon;
+            const active = activeAttr === attr.key;
             return (
               <button
-                key={a.key}
+                key={attr.key}
                 type="button"
-                onClick={() => setActiveAttr(active ? null : a.key)}
+                onClick={() => setActiveAttr(active ? null : attr.key)}
                 className={cn(
                   "inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[10px] font-display tracking-wider uppercase border transition-all",
                   active ? "ring-1 ring-offset-0 scale-[1.02]" : "opacity-70 hover:opacity-100",
                 )}
                 style={{
-                  color: `hsl(${a.hsl})`,
-                  borderColor: `hsl(${a.hsl} / ${active ? 0.9 : 0.4})`,
-                  backgroundColor: `hsl(${a.hsl} / ${active ? 0.22 : 0.08})`,
+                  color: `hsl(${attr.hsl})`,
+                  borderColor: `hsl(${attr.hsl} / ${active ? 0.9 : 0.4})`,
+                  backgroundColor: `hsl(${attr.hsl} / ${active ? 0.22 : 0.08})`,
                 }}
-                title={`Filter by ${a.label}`}
+                title={`Filter by ${attr.label}`}
                 aria-pressed={active}
               >
-                <A className="h-2.5 w-2.5" /> {a.shortLabel}
+                <Icon className="h-2.5 w-2.5" /> {attr.shortLabel}
               </button>
             );
           })}
@@ -351,8 +388,8 @@ export function SkillList({ title, items, accent, variant = "skill" }: SkillList
         </p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
-          {filtered.map((s) => (
-            <SkillCard key={s.id} item={s} accent={accent} variant={variant} />
+          {filtered.map((item) => (
+            <SkillCard key={item.id} item={item} accent={accent} variant={variant} />
           ))}
         </div>
       )}

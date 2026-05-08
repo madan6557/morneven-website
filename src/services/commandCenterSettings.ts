@@ -1,5 +1,5 @@
 // Settings for what to display on the Command Center / HomePage
-import { apiRequest, withDemoFallback } from "@/services/restClient";
+import { apiRequest } from "@/services/restClient";
 
 export type CommandCenterSection =
   | "projects"
@@ -98,24 +98,15 @@ export function normalizeCommandCenterSettings(parsed: Partial<CommandCenterSett
 }
 
 export async function getCommandCenterSettingsRemote(): Promise<CommandCenterSettings> {
-  return withDemoFallback(
-    async () => mergeSettings(await apiRequest<Partial<CommandCenterSettings>>("/settings/command-center")),
-    () => getCommandCenterSettings(),
-  );
+  return mergeSettings(await apiRequest<Partial<CommandCenterSettings>>("/settings/command-center"));
 }
 
 export async function getCommandCenterDefaults(): Promise<CommandCenterSettings> {
-  return withDemoFallback(
-    async () => mergeSettings(await apiRequest<Partial<CommandCenterSettings>>("/settings/command-center/defaults")),
-    () => defaultSettings,
-  );
+  return mergeSettings(await apiRequest<Partial<CommandCenterSettings>>("/settings/command-center/defaults"));
 }
 
 export async function getCommandCenterPresets(): Promise<CommandCenterPreset[]> {
-  return withDemoFallback(
-    () => apiRequest<CommandCenterPreset[]>("/settings/command-center/presets"),
-    () => [],
-  );
+  return apiRequest<CommandCenterPreset[]>("/settings/command-center/presets");
 }
 
 export function saveCommandCenterSettings(settings: CommandCenterSettings) {

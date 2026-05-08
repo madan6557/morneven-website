@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DiscussionMention } from "@/types";
 
 type EntityWithDiscussions = {
@@ -130,10 +130,105 @@ const cases: DiscussionCase[] = [
   },
 ];
 
+function jsonResponse(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 describe("discussion persistence", () => {
   beforeEach(() => {
     window.localStorage.clear();
     vi.resetModules();
+
+    const store = new Map<string, EntityWithDiscussions>([
+      ["/lore/places/place-001", { discussions: [] }],
+      ["/lore/technology/tech-001", { discussions: [] }],
+      ["/lore/other/other-001", { discussions: [] }],
+      ["/lore/characters/char-001", { discussions: [] }],
+      ["/lore/creatures/crea-001", { discussions: [] }],
+    ]);
+
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const requestUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      const url = new URL(requestUrl);
+      const path = url.pathname.replace(/^\/api/, "");
+      const method = init?.method ?? "GET";
+      const payload = init?.body ? JSON.parse(String(init.body)) as { text?: string; mentions?: DiscussionMention[] } : {};
+      const segments = path.split("/").filter(Boolean);
+
+      if (segments.length >= 3 && segments[0] === "lore") {
+        const entityPath = `/${segments.slice(0, 3).join("/")}`;
+        const entity = store.get(entityPath);
+        if (!entity) return jsonResponse({ message: "Route not found" }, 404);
+
+        if (segments.length === 3 && method === "GET") {
+          return jsonResponse(structuredClone(entity));
+        }
+
+        if (segments.length === 4 && segments[3] === "comments" && method === "POST") {
+          const nextComment = {
+            id: `comment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            text: payload.text ?? "",
+            mentions: payload.mentions ?? [],
+            replies: [],
+          };
+          entity.discussions = [...(entity.discussions ?? []), nextComment];
+          return jsonResponse(structuredClone(entity));
+        }
+
+        if (segments.length >= 5 && segments[3] === "comments") {
+          const commentId = segments[4];
+          const comment = entity.discussions?.find((entry) => entry.id === commentId);
+          if (!comment) return jsonResponse({ message: "Route not found" }, 404);
+
+          if (segments.length === 5 && method === "PUT") {
+            comment.text = payload.text ?? comment.text;
+            comment.mentions = payload.mentions ?? [];
+            return jsonResponse(structuredClone(entity));
+          }
+
+          if (segments.length === 5 && method === "DELETE") {
+            entity.discussions = (entity.discussions ?? []).filter((entry) => entry.id !== commentId);
+            return jsonResponse(structuredClone(entity));
+          }
+
+          if (segments.length === 6 && segments[5] === "replies" && method === "POST") {
+            const nextReply = {
+              id: `reply-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              text: payload.text ?? "",
+              mentions: payload.mentions ?? [],
+            };
+            comment.replies = [...comment.replies, nextReply];
+            return jsonResponse(structuredClone(entity));
+          }
+
+          if (segments.length === 7 && segments[5] === "replies") {
+            const replyId = segments[6];
+            const reply = comment.replies.find((entry) => entry.id === replyId);
+            if (!reply) return jsonResponse({ message: "Route not found" }, 404);
+
+            if (method === "PUT") {
+              reply.text = payload.text ?? reply.text;
+              reply.mentions = payload.mentions ?? [];
+              return jsonResponse(structuredClone(entity));
+            }
+
+            if (method === "DELETE") {
+              comment.replies = comment.replies.filter((entry) => entry.id !== replyId);
+              return jsonResponse(structuredClone(entity));
+            }
+          }
+        }
+      }
+
+      return jsonResponse({ message: "Route not found" }, 404);
+    }));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it.each(cases)("persists full discussion CRUD for $name", async (entry) => {

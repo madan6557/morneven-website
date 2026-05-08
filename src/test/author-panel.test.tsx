@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -16,10 +16,68 @@ function RegisterProbe() {
   );
 }
 
-describe("author panel auth flow", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
+function jsonResponse(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
   });
+}
+
+let projects: Project[] = [];
+
+function installApiMock() {
+  projects = [];
+
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const requestUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    const url = new URL(requestUrl);
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = init?.method ?? "GET";
+    const payload = init?.body ? JSON.parse(String(init.body)) : {};
+
+    if (path === "/auth/register" && method === "POST") {
+      return jsonResponse({
+        token: "test-token",
+        refreshToken: "test-refresh-token",
+        user: {
+          id: "user-1",
+          email: payload.email,
+          username: payload.username,
+          role: "personel",
+          level: 1,
+          track: "executive",
+        },
+      });
+    }
+
+    if (path === "/projects" && method === "POST") {
+      const created: Project = {
+        id: `project-${projects.length + 1}`,
+        ...payload,
+      };
+      projects.push(created);
+      return jsonResponse(created);
+    }
+
+    if (path === "/projects" && method === "GET") {
+      return jsonResponse(projects);
+    }
+
+    return jsonResponse({ message: "Route not found" }, 404);
+  }));
+}
+
+beforeEach(() => {
+  window.localStorage.clear();
+  vi.resetModules();
+  installApiMock();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("author panel auth flow", () => {
 
   it("uses typed username during register", async () => {
     render(
@@ -91,12 +149,7 @@ describe("author panel auth flow", () => {
 });
 
 describe("author panel data persistence", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-    vi.resetModules();
-  });
-
-  it("persists created projects into localStorage and reloads from it", async () => {
+  it("creates projects through REST and reloads them from the backend", async () => {
     const serviceA = await import("@/services/api");
 
     const payload: Omit<Project, "id"> = {
@@ -110,10 +163,6 @@ describe("author panel data persistence", () => {
     };
 
     const created = await serviceA.createProject(payload);
-    const raw = window.localStorage.getItem("morneven_projects");
-
-    expect(raw).not.toBeNull();
-    expect(raw).toContain("Persistence Test");
 
     vi.resetModules();
     const serviceB = await import("@/services/api");

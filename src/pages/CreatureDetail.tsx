@@ -19,7 +19,14 @@ import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillList } from "@/components/SkillCard";
-import { averageScore, CREATURE_STAT_DETAIL_AXES, CREATURE_STAT_DETAIL_LABELS, STAT_AXIS_FULL_NAMES, toCreaturePrimaryStats, type CreatureStatCategoryKey } from "@/lib/statDetails";
+import {
+  averageScore,
+  CREATURE_STAT_DETAIL_LABELS,
+  getCreatureStatDetailAxes,
+  STAT_AXIS_FULL_NAMES,
+  toCreaturePrimaryStats,
+  type CreatureStatCategoryKey,
+} from "@/lib/statDetails";
 
 const dangerLabel: Record<number, string> = {
   1: "DL-1 - Negligible",
@@ -108,8 +115,8 @@ export default function CreatureDetail() {
 
   const accent = creature.accentColor;
   const doctrine = getDoctrine(creature.classification);
-  const creatureStats = (creature.stats ?? (creature as unknown as { threatStats?: Creature["stats"] }).threatStats) as Creature["stats"] | undefined;
-  const creatureSkills = (creature.skills ?? (creature as unknown as { skillSection?: Creature["skills"] }).skillSection) as Creature["skills"];
+  const creatureStats = creature.stats;
+  const creatureSkills = creature.skills;
 
   const handleAddComment = async (author: string, text: string, mentions: DiscussionMention[] = []) => {
     if (!creature) return;
@@ -293,7 +300,11 @@ export default function CreatureDetail() {
                         </p>
                         <button type="button" onClick={() => setSelectedStatDetail(null)} className="text-[10px] uppercase text-muted-foreground hover:text-foreground">Close</button>
                       </div>
-                      <StatsRadar stats={CREATURE_STAT_DETAIL_AXES[selectedStatDetail]} color={accent} labels={STAT_AXIS_FULL_NAMES} />
+                      <StatsRadar
+                        stats={getCreatureStatDetailAxes(creatureStats, selectedStatDetail)}
+                        color={accent}
+                        labels={STAT_AXIS_FULL_NAMES}
+                      />
                     </div>
                   )}
                 </>
