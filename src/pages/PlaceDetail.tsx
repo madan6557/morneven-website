@@ -15,8 +15,7 @@ import DiscussionSection from "@/components/DiscussionSection";
 import { SkillList } from "@/components/SkillCard";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
-import { AuthenticatedImage } from "@/components/AuthenticatedImage";
-import { getProxyUrl } from "@/services/fileProxyService";
+import { AuthenticatedImage, useResolvedImageUrl } from "@/components/AuthenticatedImage";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function PlaceDetail() {
@@ -50,6 +49,8 @@ export default function PlaceDetail() {
       active = false;
     };
   }, [id]);
+
+  const resolvedHeaderImage = useResolvedImageUrl(place?.headerImage || place?.thumbnail || "");
 
   if (loading) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
 
@@ -126,9 +127,9 @@ export default function PlaceDetail() {
 
   return (
     <div className="space-y-0">
-      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={headerImage ? { backgroundImage: `url(${getProxyUrl(headerImage)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={resolvedHeaderImage ? { backgroundImage: `url(${resolvedHeaderImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent z-10" />
-        {!headerImage && (
+        {!resolvedHeaderImage && (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="font-display text-6xl text-muted-foreground/10 tracking-[0.3em]">GEMORA</span>
           </div>

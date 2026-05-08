@@ -10,12 +10,12 @@ import {
   editCharacterDiscussionReply,
   deleteCharacterDiscussionReply,
 } from "@/services/api";
-import { getProxyUrl } from "@/services/fileProxyService";
 import type { Character, DiscussionComment, DiscussionMention, LoreFieldNote } from "@/types";
 import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
+import { useResolvedImageUrl } from "@/components/AuthenticatedImage";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillList } from "@/components/SkillCard";
 import StatsRadar from "@/components/StatsRadar";
@@ -60,6 +60,8 @@ export default function CharacterDetail() {
       active = false;
     };
   }, [id]);
+
+  const resolvedHeaderImage = useResolvedImageUrl(char?.headerImage || char?.thumbnail || "");
 
   if (loading) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
 
@@ -142,11 +144,11 @@ export default function CharacterDetail() {
   return (
     <div className="space-y-0" style={{ "--char-accent": accentColor } as React.CSSProperties}>
       {/* Parallax header with custom accent and thumbnail */}
-      <div className="relative h-72 md:h-96 overflow-hidden flex items-end" style={headerImage ? { backgroundImage: `url(${getProxyUrl(headerImage)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+      <div className="relative h-72 md:h-96 overflow-hidden flex items-end" style={resolvedHeaderImage ? { backgroundImage: `url(${resolvedHeaderImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
         <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accentMuted(accentColor)} 0%, transparent 62%)` }} />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent z-10" />
         <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: accentColor }} />
-        {!headerImage && (
+        {!resolvedHeaderImage && (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="font-display text-8xl opacity-5 tracking-[0.3em]" style={{ color: accentReadable }}>{char.name.split(" ")[0].toUpperCase()}</span>
           </div>

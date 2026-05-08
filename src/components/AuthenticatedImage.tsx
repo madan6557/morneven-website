@@ -10,6 +10,13 @@ type AuthenticatedImageProps = {
 };
 
 export function AuthenticatedImage({ src, alt, className, loading, decoding }: AuthenticatedImageProps) {
+  const resolvedSrc = useResolvedImageUrl(src);
+
+  if (!resolvedSrc) return null;
+  return <img src={resolvedSrc} alt={alt} className={className} loading={loading} decoding={decoding} />;
+}
+
+export function useResolvedImageUrl(src: string) {
   const [resolvedSrc, setResolvedSrc] = useState("");
 
   useEffect(() => {
@@ -31,12 +38,11 @@ export function AuthenticatedImage({ src, alt, className, loading, decoding }: A
       }
     };
 
-    load();
+    void load();
     return () => {
       cancelled = true;
     };
   }, [src]);
 
-  if (!resolvedSrc) return null;
-  return <img src={resolvedSrc} alt={alt} className={className} loading={loading} decoding={decoding} />;
+  return resolvedSrc;
 }

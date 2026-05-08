@@ -73,6 +73,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { PERSONNEL_TRACKS } from "@/lib/pl";
 import type { PersonnelTrack } from "@/lib/pl";
+import { personnelLevelBadgeStyle, personnelLevelPanelStyle } from "@/lib/personnelTone";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 async function fileToAttachmentRemote(file: File): Promise<ChatAttachment> {
@@ -107,28 +108,6 @@ const KIND_ICON: Record<Conversation["kind"], typeof MessageSquare> = {
   institute: Building2,
 };
 
-const MESSAGE_THEME_BY_LEVEL: Record<number, string> = {
-  0: "bg-zinc-500/10 border-zinc-500/25",
-  1: "bg-sky-500/10 border-sky-500/25",
-  2: "bg-emerald-500/10 border-emerald-500/25",
-  3: "bg-cyan-500/10 border-cyan-500/25",
-  4: "bg-amber-500/10 border-amber-500/30",
-  5: "bg-orange-500/10 border-orange-500/30",
-  6: "bg-rose-500/10 border-rose-500/30",
-  7: "bg-primary/15 border-primary/35",
-};
-
-const MESSAGE_ACCENT_BY_LEVEL: Record<number, string> = {
-  0: "text-zinc-400 border-zinc-500/30 bg-zinc-500/10",
-  1: "text-sky-400 border-sky-500/30 bg-sky-500/10",
-  2: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
-  3: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10",
-  4: "text-amber-400 border-amber-500/30 bg-amber-500/10",
-  5: "text-orange-400 border-orange-500/30 bg-orange-500/10",
-  6: "text-rose-400 border-rose-500/30 bg-rose-500/10",
-  7: "text-primary border-primary/40 bg-primary/10",
-};
-
 function trackShort(track?: PersonnelUser["track"]) {
   if (!track) return "";
   return PERSONNEL_TRACKS.find((item) => item.key === track)?.short ?? track.toUpperCase();
@@ -136,12 +115,12 @@ function trackShort(track?: PersonnelUser["track"]) {
 
 function messageThemeFor(person?: ChatAuthorMeta) {
   const level = person?.level ?? 0;
-  return MESSAGE_THEME_BY_LEVEL[level] ?? MESSAGE_THEME_BY_LEVEL[0];
+  return personnelLevelPanelStyle(level);
 }
 
 function messageBadgeThemeFor(person?: ChatAuthorMeta) {
   const level = person?.level ?? 0;
-  return MESSAGE_ACCENT_BY_LEVEL[level] ?? MESSAGE_ACCENT_BY_LEVEL[0];
+  return personnelLevelBadgeStyle(level);
 }
 
 type ChatAuthorMeta = Pick<PersonnelUser, "username" | "level" | "track" | "note">;
@@ -679,7 +658,8 @@ export default function ChatPage() {
                         className={`flex group ${mine ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`w-fit max-w-[85%] md:max-w-[80%] rounded-md border px-3 py-2 text-sm text-foreground transition-shadow ${bubbleTheme} ${mine ? "shadow-[inset_3px_0_0_hsl(var(--primary)/0.55)]" : ""} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
+                          className={`w-fit max-w-[85%] md:max-w-[80%] rounded-md border px-3 py-2 text-sm text-foreground transition-shadow ${mine ? "shadow-[inset_3px_0_0_hsl(var(--primary)/0.55)]" : ""} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
+                          style={bubbleTheme}
                         >
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <div className="flex min-w-0 flex-wrap items-center gap-1">
@@ -691,12 +671,18 @@ export default function ChatPage() {
                                 {m.author}
                               </button>
                               {authorLevel !== null && authorLevel !== undefined && (
-                                <span className={`rounded-sm border px-1 py-0 text-[8px] leading-4 font-display tracking-wider ${badgeTheme}`}>
+                                <span
+                                  className="rounded-sm border px-1 py-0 text-[8px] leading-4 font-display tracking-wider"
+                                  style={badgeTheme}
+                                >
                                   PL{authorLevel}
                                 </span>
                               )}
                               {authorTrack && (
-                                <span className={`rounded-sm border px-1 py-0 text-[8px] leading-4 font-display tracking-wider ${badgeTheme}`}>
+                                <span
+                                  className="rounded-sm border px-1 py-0 text-[8px] leading-4 font-display tracking-wider"
+                                  style={badgeTheme}
+                                >
                                   {authorTrack}
                                 </span>
                               )}

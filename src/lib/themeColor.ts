@@ -172,3 +172,18 @@ export function themedHslSurface(hsl: string, amount = 0.12) {
   if (!parsed) return `hsl(${hsl} / 0.12)`;
   return rgbToCss(mix(themeColors().card, balanceAgainstCanvas(parsed, 2.2), amount));
 }
+
+export function themedHslStyle(hsl: string, surfaceAmount = 0.12, borderAmount = 0.32) {
+  return {
+    color: themedHslColor(hsl),
+    borderColor: themedHslBorder(hsl, borderAmount),
+    backgroundColor: themedHslSurface(hsl, surfaceAmount),
+  };
+}
+
+export function themedHslPanelStyle(hsl: string, surfaceAmount = 0.1, borderAmount = 0.28) {
+  return {
+    borderColor: themedHslBorder(hsl, borderAmount),
+    backgroundColor: themedHslSurface(hsl, surfaceAmount),
+  };
+}

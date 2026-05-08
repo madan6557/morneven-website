@@ -10,16 +10,10 @@ import {
   type PersonnelLevel,
 } from "@/lib/pl";
 import { useAuth } from "@/contexts/AuthContext";
+import { personnelLevelBadgeStyle } from "@/lib/personnelTone";
 
 const ALL_TRACKS_KEY = "all" as const;
 type TabKey = typeof ALL_TRACKS_KEY | PersonnelTrack;
-
-const levelTone = (level: PersonnelLevel): string => {
-  if (level === 6) return "text-primary border-primary/50 bg-primary/10";
-  if (level >= 4) return "text-accent-orange border-accent-orange/40 bg-accent-orange/10";
-  if (level >= PL_RESTRICTED_THRESHOLD) return "text-accent-yellow border-accent-yellow/40 bg-accent-yellow/10";
-  return "text-muted-foreground border-border bg-muted/40";
-};
 
 export default function PersonnelLevelPage() {
   const { personnelLevel } = useAuth();
@@ -142,9 +136,8 @@ export default function PersonnelLevelPage() {
                     <td className="p-3 align-top">
                       <div className="flex items-center gap-2">
                         <span
-                          className={`inline-flex items-center justify-center text-[11px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border ${levelTone(
-                            lvl
-                          )}`}
+                          className="inline-flex items-center justify-center text-[11px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border"
+                          style={personnelLevelBadgeStyle(lvl)}
                         >
                           L{lvl}
                         </span>
@@ -190,9 +183,8 @@ export default function PersonnelLevelPage() {
                       }`}
                     >
                       <span
-                        className={`inline-flex items-center justify-center text-[10px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border ${levelTone(
-                          lvl
-                        )}`}
+                        className="inline-flex items-center justify-center text-[10px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border"
+                        style={personnelLevelBadgeStyle(lvl)}
                       >
                         L{lvl}
                       </span>

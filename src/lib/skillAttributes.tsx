@@ -83,10 +83,6 @@ export const SKILL_ATTRIBUTES: Record<SkillAttribute, SkillAttributeConfig> = {
     shortLabel: "IMMUNE",
     hsl: "0 0% 100%",
     Icon: ShieldCheck,
-    textColor: "hsl(0 0% 100%)",
-    backgroundColor: "hsl(0 0% 100% / 0.12)",
-    borderColor: "hsl(0 0% 100% / 0.4)",
-    textShadow: "0 0 8px hsl(0 0% 100% / 0.2)",
   },
 };
 

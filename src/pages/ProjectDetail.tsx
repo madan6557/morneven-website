@@ -10,7 +10,6 @@ import {
   editProjectDiscussionReply,
   deleteProjectDiscussionReply,
 } from "@/services/api";
-import { getProxyUrl } from "@/services/fileProxyService";
 import type { DiscussionComment, DiscussionMention, Project } from "@/types";
 import { ArrowLeft, Calendar, Tag, FileText, GitBranch, Image as ImageIcon, Info } from "lucide-react";
 import RedactedBlock from "@/components/RedactedBlock";
@@ -18,6 +17,7 @@ import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillList } from "@/components/SkillCard";
 import DiscussionSection from "@/components/DiscussionSection";
+import { useResolvedImageUrl } from "@/components/AuthenticatedImage";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -48,6 +48,8 @@ export default function ProjectDetail() {
       active = false;
     };
   }, [id]);
+
+  const resolvedHeaderImage = useResolvedImageUrl(project?.headerImage || project?.thumbnail || "");
 
   if (loading) {
     return (
@@ -113,9 +115,9 @@ export default function ProjectDetail() {
   return (
     <div className="space-y-0">
       {/* Parallax-style header */}
-      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={headerImage ? { backgroundImage: `url(${getProxyUrl(headerImage)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={resolvedHeaderImage ? { backgroundImage: `url(${resolvedHeaderImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent z-10" />
-        {!headerImage && (
+        {!resolvedHeaderImage && (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="font-display text-6xl text-muted-foreground/10 tracking-[0.3em]">MORNEVEN</span>
           </div>

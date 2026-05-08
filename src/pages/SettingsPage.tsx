@@ -37,6 +37,7 @@ export default function SettingsPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [chatReport, setChatReport] = useState<ChatReconciliationReport>(emptyChatReport);
   const [isReconciling, setIsReconciling] = useState(false);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
   const [shouldPollExtraction, setShouldPollExtraction] = useState(false);
   const processing = useMemo(() => history.some((h) => h.status === "processing"), [history]);
 
@@ -112,6 +113,28 @@ export default function SettingsPage() {
     }
   };
 
+  const runWithFeedback = async (
+    key: string,
+    action: () => Promise<void>,
+    successTitle: string,
+    failureTitle: string,
+  ) => {
+    if (busyAction) return;
+    setBusyAction(key);
+    try {
+      await action();
+      toast({ title: successTitle });
+    } catch (error) {
+      toast({
+        title: failureTitle,
+        description: error instanceof Error ? error.message : "The request could not be completed.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
   return (
     <div className="p-6 md:p-8 space-y-6">
       <h1 className="font-display text-2xl tracking-[0.1em] text-primary">SETTINGS</h1>
@@ -159,6 +182,8 @@ export default function SettingsPage() {
               type="button"
               size="sm"
               disabled={!currentPassword || newPassword.length < 12}
+              isLoading={busyAction === "password"}
+              loadingText="Changing..."
               onClick={() => showValidation({
                 variant: "warning",
                 title: "Change password",
@@ -166,18 +191,11 @@ export default function SettingsPage() {
                 confirmLabel: "Change password",
                 cancelLabel: "Cancel",
                 onConfirm: async () => {
-                  try {
+                  await runWithFeedback("password", async () => {
                     await changePassword(currentPassword, newPassword);
                     setCurrentPassword("");
                     setNewPassword("");
-                    toast({ title: "Password changed" });
-                  } catch (error) {
-                    toast({
-                      title: "Password change failed",
-                      description: error instanceof Error ? error.message : "Backend rejected the password change.",
-                      variant: "destructive",
-                    });
-                  }
+                  }, "Password changed", "Password change failed");
                 },
               })}
             >
@@ -209,6 +227,8 @@ export default function SettingsPage() {
                 variant="destructive"
                 size="sm"
                 disabled={!deletePassword || deleteConfirm !== "DELETE"}
+                isLoading={busyAction === "delete-account"}
+                loadingText="Deleting..."
                 onClick={() => showValidation({
                   variant: "error",
                   title: "Delete account",
@@ -218,16 +238,10 @@ export default function SettingsPage() {
                   critical: true,
                   confirmDelaySeconds: 5,
                   onConfirm: async () => {
-                    try {
+                    await runWithFeedback("delete-account", async () => {
                       await deleteAccount(deletePassword);
                       logout();
-                    } catch (error) {
-                      toast({
-                        title: "Account deletion failed",
-                        description: error instanceof Error ? error.message : "Backend rejected account deletion.",
-                        variant: "destructive",
-                      });
-                    }
+                    }, "Account deleted", "Account deletion failed");
                   },
                 })}
               >
@@ -268,6 +282,8 @@ export default function SettingsPage() {
               type="button"
               size="sm"
               disabled={isReconciling}
+              isLoading={isReconciling}
+              loadingText="Syncing..."
               onClick={() => showValidation({
                 variant: "warning",
                 title: "Sync system chat groups",
@@ -280,7 +296,7 @@ export default function SettingsPage() {
               })}
               className="gap-2 sm:min-w-36"
             >
-              <RefreshCw className={`h-4 w-4 ${isReconciling ? "animate-spin" : ""}`} />
+              {!isReconciling && <RefreshCw className="h-4 w-4" />}
               Sync Groups
             </Button>
           </div>
@@ -333,7 +349,12 @@ export default function SettingsPage() {
                 </button>
               </div>
               <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder='Type "CONFIRM"' className="w-full bg-background border rounded px-2 py-2 text-sm" />
-            <Button type="button" disabled={!canRun} onClick={() => showValidation({
+            <Button
+              type="button"
+              disabled={!canRun}
+              isLoading={busyAction === "start-extraction"}
+              loadingText="Starting..."
+              onClick={() => showValidation({
               variant: "warning",
               title: "Start data extraction",
               description: "This creates a backend extraction job and prepares downloadable archive data.",
@@ -342,19 +363,14 @@ export default function SettingsPage() {
               critical: true,
               confirmDelaySeconds: 5,
               onConfirm: async () => {
-                try {
+                await runWithFeedback("start-extraction", async () => {
                   const job = await startExtractionRemote(mode, autoDownload, { confirmText, password });
                   setHistory([job, ...history]);
                   setShouldPollExtraction(job.status === "processing");
-                } catch (error) {
-                  toast({
-                    title: "Extraction failed",
-                    description: error instanceof Error ? error.message : "Backend rejected the extraction request.",
-                    variant: "destructive",
-                  });
-                }
+                }, "Extraction started", "Extraction failed");
               },
-            })}>
+            })}
+            >
               Start Extraction
             </Button>
             {processing && <p className="text-xs text-muted-foreground">Extraction in progress...</p>}
@@ -371,18 +387,16 @@ export default function SettingsPage() {
                     {h.status === "completed" && (
                       <button
                         type="button"
-                        className="underline text-primary"
-                        onClick={() => {
-                          downloadExtractionJob(h).catch((error) => {
-                            toast({
-                              title: "Download failed",
-                              description: error instanceof Error ? error.message : "Could not download extraction archive.",
-                              variant: "destructive",
-                            });
-                          });
-                        }}
+                        className="underline text-primary disabled:cursor-wait disabled:opacity-60"
+                        disabled={busyAction === `download-${h.id}`}
+                        onClick={() => runWithFeedback(
+                          `download-${h.id}`,
+                          () => downloadExtractionJob(h),
+                          "Download started",
+                          "Download failed",
+                        )}
                       >
-                        Download ZIP
+                        {busyAction === `download-${h.id}` ? "Downloading..." : "Download ZIP"}
                       </button>
                     )}
                   </div>
@@ -390,7 +404,14 @@ export default function SettingsPage() {
               ))}
             </div>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" disabled={selected.length === 0} onClick={() => showValidation({
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={selected.length === 0}
+                isLoading={busyAction === "clear-selected"}
+                loadingText="Clearing..."
+                onClick={() => showValidation({
                 variant: "warning",
                 title: "Clear selected extraction jobs",
                 description: `Clear ${selected.length} selected history item(s)?`,
@@ -398,12 +419,23 @@ export default function SettingsPage() {
                 cancelLabel: "Cancel",
                 dontShowAgainKey: "clear_selected_extractions",
                 onConfirm: async () => {
+                  await runWithFeedback("clear-selected", async () => {
                   await clearExtractionHistory(selected);
                   setSelected([]);
                   setHistory((current) => current.filter((job) => !selected.includes(job.id)));
+                  }, "Selected extraction history cleared", "Clear selected failed");
                 },
-              })}>Clear selected</Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => showValidation({
+              })}
+              >
+                Clear selected
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                isLoading={busyAction === "clear-all"}
+                loadingText="Clearing..."
+                onClick={() => showValidation({
                 variant: "error",
                 title: "Clear all extraction history",
                 description: "This clears all extraction history visible to this account.",
@@ -412,11 +444,16 @@ export default function SettingsPage() {
                 critical: true,
                 confirmDelaySeconds: 5,
                 onConfirm: async () => {
+                  await runWithFeedback("clear-all", async () => {
                   await clearExtractionHistory();
                   setSelected([]);
                   setHistory([]);
+                  }, "Extraction history cleared", "Clear all failed");
                 },
-              })}>Clear all</Button>
+              })}
+              >
+                Clear all
+              </Button>
             </div>
           </section>
         )}

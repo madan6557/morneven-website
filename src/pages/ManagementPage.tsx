@@ -47,6 +47,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { PERSONNEL_TRACKS, type PersonnelTrack, type PersonnelLevel } from "@/lib/pl";
+import { themedHslStyle } from "@/lib/themeColor";
 import type { PersonnelUser } from "@/types";
 import RequestPayloadPreview from "@/components/RequestPayloadPreview";
 import { showValidation } from "@/components/ui/validation-dialog";
@@ -69,20 +70,20 @@ const KIND_ICON: Record<RequestKind, typeof GitBranch> = {
   executive_promotion: Crown,
 };
 
-const STATUS_META: Record<RequestStatus, { label: string; className: string; icon: typeof CheckCircle2 }> = {
+const STATUS_META: Record<RequestStatus, { label: string; hsl: string; icon: typeof CheckCircle2 }> = {
   pending: {
     label: "Pending",
-    className: "border-amber-500/45 bg-amber-500/10 text-amber-600 dark:text-amber-300",
+    hsl: "38 92% 45%",
     icon: AlertTriangle,
   },
   approved: {
     label: "Approved",
-    className: "border-emerald-500/45 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    hsl: "150 72% 36%",
     icon: CheckCircle2,
   },
   rejected: {
     label: "Rejected",
-    className: "border-destructive/45 bg-destructive/10 text-destructive",
+    hsl: "0 72% 52%",
     icon: XCircle,
   },
 };
@@ -120,6 +121,7 @@ export default function ManagementPage() {
   const [requests, setRequests] = useState<MgmtRequest[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [personnel, setPersonnel] = useState<PersonnelUser[]>([]);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
   const [quota, setQuota] = useState<{
     pl2: { met: boolean; count: number };
     pl3: { met: boolean; count: number };
@@ -161,9 +163,20 @@ export default function ManagementPage() {
       critical: true,
       confirmDelaySeconds: 5,
       onConfirm: async () => {
-        await decideRequest(id, decision, username, note);
-        toast({ title: `Request ${decision}` });
-        refresh();
+        setBusyAction(`decide-${id}`);
+        try {
+          await decideRequest(id, decision, username, note);
+          toast({ title: `Request ${decision}` });
+          refresh();
+        } catch (error) {
+          toast({
+            title: `Request ${decision} failed`,
+            description: error instanceof Error ? error.message : "Backend rejected the decision.",
+            variant: "destructive",
+          });
+        } finally {
+          setBusyAction(null);
+        }
       },
     });
   };
@@ -176,18 +189,31 @@ export default function ManagementPage() {
   ) => {
     if (!reason.trim()) {
       toast({ title: "Reason required", variant: "destructive" });
-      return;
+      return false;
     }
-    await createRequest({
-      kind,
-      requester: username,
-      requesterTrack: targetTrack ?? track,
-      requesterLevel: personnelLevel,
-      payload,
-      reason,
-    });
-    toast({ title: "Request submitted" });
-    refresh();
+    setBusyAction(`submit-${kind}`);
+    try {
+      await createRequest({
+        kind,
+        requester: username,
+        requesterTrack: targetTrack ?? track,
+        requesterLevel: personnelLevel,
+        payload,
+        reason,
+      });
+      toast({ title: "Request submitted" });
+      refresh();
+      return true;
+    } catch (error) {
+      toast({
+        title: "Request submit failed",
+        description: error instanceof Error ? error.message : "Backend rejected the request.",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setBusyAction(null);
+    }
   };
 
   if (role === "guest") {
@@ -292,15 +318,20 @@ export default function ManagementPage() {
         </TabsList>
 
         <TabsContent value="transfer" className="mt-4">
-          <TransferForm currentTrack={track} level={personnelLevel} onSubmit={submit} />
+          <TransferForm currentTrack={track} level={personnelLevel} isSubmitting={busyAction === "submit-transfer"} onSubmit={submit} />
         </TabsContent>
 
         <TabsContent value="clearance" className="mt-4">
-          <ClearanceForm level={personnelLevel} onSubmit={submit} />
+          <ClearanceForm level={personnelLevel} isSubmitting={busyAction === "submit-clearance"} onSubmit={submit} />
         </TabsContent>
 
         <TabsContent value="submission" className="mt-4">
-          <SubmissionForm level={personnelLevel} teams={teams.filter((t) => t.leader === username)} onSubmit={submit} />
+          <SubmissionForm
+            level={personnelLevel}
+            teams={teams.filter((t) => t.leader === username)}
+            isSubmitting={busyAction === "submit-submission_personal" || busyAction === "submit-submission_team"}
+            onSubmit={submit}
+          />
         </TabsContent>
 
         <TabsContent value="team" className="mt-4">
@@ -311,20 +342,35 @@ export default function ManagementPage() {
             teams={teams}
             personnel={personnel}
             onCreateTeam={async (name, members) => {
-              await createTeam({ name, leader: username, members, track });
-              toast({ title: "Team created" });
-              refresh();
+              setBusyAction("create-team");
+              try {
+                await createTeam({ name, leader: username, members, track });
+                toast({ title: "Team created" });
+                refresh();
+                return true;
+              } catch (error) {
+                toast({
+                  title: "Team create failed",
+                  description: error instanceof Error ? error.message : "Backend rejected team creation.",
+                  variant: "destructive",
+                });
+                return false;
+              } finally {
+                setBusyAction(null);
+              }
             }}
+            isCreatingTeam={busyAction === "create-team"}
+            isSubmittingChange={busyAction === "submit-team_change"}
             onSubmit={submit}
           />
         </TabsContent>
 
         <TabsContent value="executive" className="mt-4">
-          <ExecutivePromotionForm level={personnelLevel} onSubmit={submit} />
+          <ExecutivePromotionForm level={personnelLevel} isSubmitting={busyAction === "submit-executive_promotion"} onSubmit={submit} />
         </TabsContent>
 
         <TabsContent value="queue" className="mt-4">
-          <RequestList list={reviewable} viewer={{ level: personnelLevel, track, username }} onDecide={decide} />
+          <RequestList list={reviewable} viewer={{ level: personnelLevel, track, username }} busyAction={busyAction} onDecide={decide} />
         </TabsContent>
 
         <TabsContent value="mine" className="mt-4">
@@ -398,13 +444,16 @@ function ObligationCell({
   relevant: boolean;
 }) {
   const Icon = !relevant ? Target : ok ? CheckCircle2 : AlertTriangle;
-  const color = !relevant
-    ? "border-border bg-muted/30 text-muted-foreground"
+  const style = !relevant
+    ? undefined
     : ok
-      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-      : "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+      ? themedHslStyle("150 72% 36%", 0.1, 0.34)
+      : themedHslStyle("38 92% 45%", 0.1, 0.34);
   return (
-    <div className={`rounded-sm border p-3 ${color}`}>
+    <div
+      className={`rounded-sm border p-3 ${!relevant ? "border-border bg-muted/30 text-muted-foreground" : ""}`}
+      style={style}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[10px] uppercase tracking-wider opacity-75">{label}</p>
@@ -450,11 +499,13 @@ function InfoPanel({ children }: { children: React.ReactNode }) {
 function TransferForm({
   currentTrack,
   level,
+  isSubmitting,
   onSubmit,
 }: {
   currentTrack: PersonnelTrack;
   level: PersonnelLevel;
-  onSubmit: (k: RequestKind, p: Record<string, unknown>, r: string, t?: PersonnelTrack) => void;
+  isSubmitting: boolean;
+  onSubmit: (k: RequestKind, p: Record<string, unknown>, r: string, t?: PersonnelTrack) => Promise<boolean>;
 }) {
   const [target, setTarget] = useState<PersonnelTrack>(
     PERSONNEL_TRACKS.find((t) => t.key !== currentTrack)!.key,
@@ -497,7 +548,7 @@ function TransferForm({
         <p className={labelClass}>Reason</p>
         <Textarea placeholder="Explain the transfer reason, expected contribution, and current obligations." value={reason} onChange={(e) => setReason(e.target.value)} />
       </div>
-      <Button onClick={() => { onSubmit("transfer", { targetTrack: target }, reason, target); setReason(""); }}>
+      <Button isLoading={isSubmitting} loadingText="Submitting..." onClick={async () => { if (await onSubmit("transfer", { targetTrack: target }, reason, target)) setReason(""); }}>
         <Send className="mr-2 h-4 w-4" />
         Submit Transfer
       </Button>
@@ -507,10 +558,12 @@ function TransferForm({
 
 function ClearanceForm({
   level,
+  isSubmitting,
   onSubmit,
 }: {
   level: PersonnelLevel;
-  onSubmit: (k: RequestKind, p: Record<string, unknown>, r: string) => void;
+  isSubmitting: boolean;
+  onSubmit: (k: RequestKind, p: Record<string, unknown>, r: string) => Promise<boolean>;
 }) {
   const [reason, setReason] = useState("");
   const [agreed, setAgreed] = useState(false);
@@ -550,7 +603,14 @@ function ClearanceForm({
           </label>
           <Button
             disabled={!agreed}
-            onClick={() => { onSubmit("clearance", { targetLevel: target }, reason); setReason(""); setAgreed(false); }}
+            isLoading={isSubmitting}
+            loadingText="Submitting..."
+            onClick={async () => {
+              if (await onSubmit("clearance", { targetLevel: target }, reason)) {
+                setReason("");
+                setAgreed(false);
+              }
+            }}
           >
             <ShieldCheck className="mr-2 h-4 w-4" />
             Submit Upgrade Request
@@ -564,11 +624,13 @@ function ClearanceForm({
 function SubmissionForm({
   level,
   teams,
+  isSubmitting,
   onSubmit,
 }: {
   level: PersonnelLevel;
   teams: Team[];
-  onSubmit: (k: RequestKind, p: Record<string, unknown>, r: string) => void;
+  isSubmitting: boolean;
+  onSubmit: (k: RequestKind, p: Record<string, unknown>, r: string) => Promise<boolean>;
 }) {
   const [mode, setMode] = useState<"personal" | "team">("personal");
   const [title, setTitle] = useState("");
@@ -626,7 +688,9 @@ function SubmissionForm({
       </div>
       <Button
         disabled={!title || !caption}
-        onClick={() => {
+        isLoading={isSubmitting}
+        loadingText="Submitting..."
+        onClick={async () => {
           if (mode === "personal") {
             const item = {
               type: "image" as const,
@@ -637,7 +701,7 @@ function SubmissionForm({
               date: new Date().toISOString().split("T")[0],
               comments: [],
             };
-            onSubmit("submission_personal", { item }, reason);
+            if (!(await onSubmit("submission_personal", { item }, reason))) return;
           } else {
             const project = {
               title,
@@ -648,7 +712,7 @@ function SubmissionForm({
               patches: [],
               docs: [],
             };
-            onSubmit("submission_team", { project, teamId }, reason);
+            if (!(await onSubmit("submission_team", { project, teamId }, reason))) return;
           }
           setTitle("");
           setCaption("");
@@ -670,6 +734,8 @@ function TeamPanel({
   teams,
   personnel,
   onCreateTeam,
+  isCreatingTeam,
+  isSubmittingChange,
   onSubmit,
 }: {
   level: PersonnelLevel;
@@ -677,8 +743,10 @@ function TeamPanel({
   username: string;
   teams: Team[];
   personnel: PersonnelUser[];
-  onCreateTeam: (name: string, members: string[]) => void;
-  onSubmit: (k: RequestKind, p: Record<string, unknown>, r: string) => void;
+  onCreateTeam: (name: string, members: string[]) => Promise<boolean>;
+  isCreatingTeam: boolean;
+  isSubmittingChange: boolean;
+  onSubmit: (k: RequestKind, p: Record<string, unknown>, r: string) => Promise<boolean>;
 }) {
   const [name, setName] = useState("");
   const [memberInput, setMemberInput] = useState("");
@@ -745,7 +813,17 @@ function TeamPanel({
             </div>
           )}
         </div>
-        <Button disabled={!name || members.length < 1} onClick={() => { onCreateTeam(name, members); setName(""); setMembers([]); }}>
+        <Button
+          disabled={!name || members.length < 1}
+          isLoading={isCreatingTeam}
+          loadingText="Creating..."
+          onClick={async () => {
+            if (await onCreateTeam(name, members)) {
+              setName("");
+              setMembers([]);
+            }
+          }}
+        >
           <Users className="mr-2 h-4 w-4" />
           Create Team
         </Button>
@@ -808,10 +886,13 @@ function TeamPanel({
         </div>
         <Button
           disabled={!changeTeam || !changeMember}
-          onClick={() => {
-            onSubmit("team_change", { teamId: changeTeam, member: changeMember, action: changeAction }, changeReason);
-            setChangeMember("");
-            setChangeReason("");
+          isLoading={isSubmittingChange}
+          loadingText="Submitting..."
+          onClick={async () => {
+            if (await onSubmit("team_change", { teamId: changeTeam, member: changeMember, action: changeAction }, changeReason)) {
+              setChangeMember("");
+              setChangeReason("");
+            }
           }}
         >
           Submit Change Request
@@ -823,10 +904,12 @@ function TeamPanel({
 
 function ExecutivePromotionForm({
   level,
+  isSubmitting,
   onSubmit,
 }: {
   level: PersonnelLevel;
-  onSubmit: (k: RequestKind, p: Record<string, unknown>, r: string) => void;
+  isSubmitting: boolean;
+  onSubmit: (k: RequestKind, p: Record<string, unknown>, r: string) => Promise<boolean>;
 }) {
   const [plan, setPlan] = useState("");
   const [reason, setReason] = useState("");
@@ -854,7 +937,17 @@ function ExecutivePromotionForm({
         <p className={labelClass}>Justification</p>
         <Textarea placeholder="Dedication record, tenure context, and operational justification" value={reason} onChange={(e) => setReason(e.target.value)} />
       </div>
-      <Button disabled={!plan || !reason} onClick={() => { onSubmit("executive_promotion", { plan, targetLevel: 5 }, reason); setPlan(""); setReason(""); }}>
+      <Button
+        disabled={!plan || !reason}
+        isLoading={isSubmitting}
+        loadingText="Submitting..."
+        onClick={async () => {
+          if (await onSubmit("executive_promotion", { plan, targetLevel: 5 }, reason)) {
+            setPlan("");
+            setReason("");
+          }
+        }}
+      >
         <Crown className="mr-2 h-4 w-4" />
         Submit for PL6/PL7 Review
       </Button>
@@ -865,10 +958,12 @@ function ExecutivePromotionForm({
 function RequestList({
   list,
   viewer,
+  busyAction,
   onDecide,
 }: {
   list: MgmtRequest[];
   viewer: { level: PersonnelLevel; track: PersonnelTrack; username: string };
+  busyAction?: string | null;
   onDecide?: (id: string, d: "approved" | "rejected", note: string) => void;
 }) {
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -917,7 +1012,7 @@ function RequestList({
                 <Badge variant="outline" className="text-[10px]" title={reviewer.description}>
                   Reviewer: {reviewer.label}
                 </Badge>
-                <Badge variant="outline" className={`gap-1 text-[10px] ${status.className}`}>
+                <Badge variant="outline" className="gap-1 text-[10px]" style={themedHslStyle(status.hsl, 0.1, 0.34)}>
                   <StatusIcon className="h-3 w-3" />
                   {status.label}
                 </Badge>
@@ -945,11 +1040,20 @@ function RequestList({
                     value={notes[r.id] ?? ""}
                     onChange={(e) => setNotes({ ...notes, [r.id]: e.target.value })}
                   />
-                  <Button onClick={() => onDecide(r.id, "approved", notes[r.id] ?? "")}>
+                  <Button
+                    isLoading={busyAction === `decide-${r.id}`}
+                    loadingText="Approving..."
+                    onClick={() => onDecide(r.id, "approved", notes[r.id] ?? "")}
+                  >
                     <CheckCircle2 className="mr-2 h-4 w-4" />
                     Approve
                   </Button>
-                  <Button variant="destructive" onClick={() => onDecide(r.id, "rejected", notes[r.id] ?? "")}>
+                  <Button
+                    variant="destructive"
+                    isLoading={busyAction === `decide-${r.id}`}
+                    loadingText="Rejecting..."
+                    onClick={() => onDecide(r.id, "rejected", notes[r.id] ?? "")}
+                  >
                     <XCircle className="mr-2 h-4 w-4" />
                     Reject
                   </Button>

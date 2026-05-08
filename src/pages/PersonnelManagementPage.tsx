@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { ArrowLeft, Save, X, Pencil, Search, ShieldCheck, Plus, Trash2, UserPlus, Layers } from "lucide-react";
+import { ArrowLeft, Save, X, Pencil, Search, ShieldCheck, Plus, Trash2, UserPlus, Layers, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   PERSONNEL_LEVELS,
@@ -18,24 +18,11 @@ import {
   deletePersonnel,
 } from "@/services/personnelApi";
 import type { PersonnelUser } from "@/types";
+import { personnelLevelBadgeStyle, personnelTrackBadgeStyle } from "@/lib/personnelTone";
+import { useToast } from "@/hooks/use-toast";
 
 const inputClass =
   "w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
-
-const trackTone: Record<PersonnelTrack, string> = {
-  executive: "text-primary border-primary/40 bg-primary/10",
-  field: "text-accent-orange border-accent-orange/40 bg-accent-orange/10",
-  mechanic: "text-accent-yellow border-accent-yellow/40 bg-accent-yellow/10",
-  logistics: "text-muted-foreground border-secondary/40 bg-secondary/10",
-};
-
-const levelTone = (level: PersonnelLevel) => {
-  if (level === 7) return "text-destructive border-destructive/50 bg-destructive/10";
-  if (level === 6) return "text-primary border-primary/50 bg-primary/10";
-  if (level >= 4) return "text-accent-orange border-accent-orange/40 bg-accent-orange/10";
-  if (level >= 3) return "text-accent-yellow border-accent-yellow/40 bg-accent-yellow/10";
-  return "text-muted-foreground border-border bg-muted/40";
-};
 
 interface DraftState {
   level: PersonnelLevel;
@@ -45,12 +32,14 @@ interface DraftState {
 
 export default function PersonnelManagementPage() {
   const { personnelLevel, username, track } = useAuth();
+  const { toast } = useToast();
   const [people, setPeople] = useState<PersonnelUser[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [filter, setFilter] = useState("");
   const [trackFilter, setTrackFilter] = useState<"all" | PersonnelTrack>("all");
   const [creating, setCreating] = useState(false);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
   const [newUser, setNewUser] = useState<Omit<PersonnelUser, "id" | "updatedAt">>({
     username: "",
     email: "",
@@ -114,11 +103,23 @@ export default function PersonnelManagementPage() {
 
   const saveEdit = async (id: string) => {
     if (!draft) return;
-    const updated = await updatePersonnel(id, draft);
-    if (updated) {
-      setPeople((prev) => prev.map((p) => (p.id === id ? updated : p)));
+    setBusyAction(`save-${id}`);
+    try {
+      const updated = await updatePersonnel(id, draft);
+      if (updated) {
+        setPeople((prev) => prev.map((p) => (p.id === id ? updated : p)));
+        toast({ title: "Personnel updated" });
+      }
+      cancelEdit();
+    } catch (error) {
+      toast({
+        title: "Personnel update failed",
+        description: error instanceof Error ? error.message : "Backend rejected the personnel update.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusyAction(null);
     }
-    cancelEdit();
   };
 
   const handleDelete = async (p: PersonnelUser) => {
@@ -131,8 +132,22 @@ export default function PersonnelManagementPage() {
       return;
     }
     if (!window.confirm(`Remove ${p.username} (${p.email})?`)) return;
-    const ok = await deletePersonnel(p.id);
-    if (ok) setPeople((prev) => prev.filter((x) => x.id !== p.id));
+    setBusyAction(`delete-${p.id}`);
+    try {
+      const ok = await deletePersonnel(p.id);
+      if (ok) {
+        setPeople((prev) => prev.filter((x) => x.id !== p.id));
+        toast({ title: "Personnel removed" });
+      }
+    } catch (error) {
+      toast({
+        title: "Personnel delete failed",
+        description: error instanceof Error ? error.message : "Backend rejected the delete request.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusyAction(null);
+    }
   };
 
   const handleCreate = async () => {
@@ -144,10 +159,22 @@ export default function PersonnelManagementPage() {
       window.alert("Username and email are required.");
       return;
     }
-    const created = await createPersonnel(newUser);
-    setPeople((prev) => [created, ...prev]);
-    setCreating(false);
-    setNewUser({ username: "", email: "", role: "personel", level: 2, track: "executive", note: "" });
+    setBusyAction("create");
+    try {
+      const created = await createPersonnel(newUser);
+      setPeople((prev) => [created, ...prev]);
+      setCreating(false);
+      setNewUser({ username: "", email: "", role: "personel", level: 2, track: "executive", note: "" });
+      toast({ title: "Personnel created" });
+    } catch (error) {
+      toast({
+        title: "Personnel create failed",
+        description: error instanceof Error ? error.message : "Backend rejected the create request.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusyAction(null);
+    }
   };
 
   // ─── Bulk selection helpers ────────────────────────────────────────────
@@ -208,6 +235,13 @@ export default function PersonnelManagementPage() {
       clearSelection();
       setBulkLevel("");
       setBulkTrack("");
+      toast({ title: "Bulk update applied" });
+    } catch (error) {
+      toast({
+        title: "Bulk update failed",
+        description: error instanceof Error ? error.message : "Backend rejected the bulk update.",
+        variant: "destructive",
+      });
     } finally {
       setBulkSaving(false);
     }
@@ -303,8 +337,13 @@ export default function PersonnelManagementPage() {
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setCreating(false)} className="px-3 py-2 text-xs font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors">CANCEL</button>
-              <button onClick={handleCreate} className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity">
-                <Plus className="h-3 w-3" /> CREATE
+              <button
+                onClick={handleCreate}
+                disabled={busyAction === "create"}
+                className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity disabled:cursor-wait disabled:opacity-60"
+              >
+                {busyAction === "create" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                {busyAction === "create" ? "CREATING" : "CREATE"}
               </button>
             </div>
           </div>
@@ -390,7 +429,8 @@ export default function PersonnelManagementPage() {
               className="flex items-center gap-1 px-3 py-1.5 text-[10px] font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
               title={canBulkUpdatePersonnel ? "Apply to selected" : "PL6 or higher required"}
             >
-              <Save className="h-3 w-3" /> {bulkSaving ? "APPLYING…" : "APPLY TO SELECTED"}
+              {bulkSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              {bulkSaving ? "APPLYING..." : "APPLY TO SELECTED"}
             </button>
           </div>
         )}
@@ -456,7 +496,10 @@ export default function PersonnelManagementPage() {
                           {/* Tidak ada opsi L7 di edit kecuali user sendiri, tapi untuk keamanan, LV7 tidak bisa diedit sama sekali */}
                         </select>
                       ) : (
-                        <span className={`inline-flex items-center justify-center text-[11px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border ${levelTone(p.level)}`}>
+                        <span
+                          className="inline-flex items-center justify-center text-[11px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border"
+                          style={personnelLevelBadgeStyle(p.level)}
+                        >
                           L{p.level}
                         </span>
                       )}
@@ -473,7 +516,10 @@ export default function PersonnelManagementPage() {
                           ))}
                         </select>
                       ) : (
-                        <span className={`inline-flex items-center text-[10px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border ${trackTone[p.track]}`}>
+                        <span
+                          className="inline-flex items-center text-[10px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border"
+                          style={personnelTrackBadgeStyle(p.track)}
+                        >
                           {PERSONNEL_TRACKS.find((t) => t.key === p.track)?.label}
                         </span>
                       )}
@@ -488,8 +534,13 @@ export default function PersonnelManagementPage() {
                     <td className="p-3 align-top text-right">
                       {isEditing ? (
                         <div className="flex items-center gap-1 justify-end">
-                          <button onClick={() => saveEdit(p.id)} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90">
-                            <Save className="h-3 w-3" /> SAVE
+                          <button
+                            onClick={() => saveEdit(p.id)}
+                            disabled={busyAction === `save-${p.id}`}
+                            className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+                          >
+                            {busyAction === `save-${p.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                            {busyAction === `save-${p.id}` ? "SAVING" : "SAVE"}
                           </button>
                           <button onClick={cancelEdit} className="text-muted-foreground hover:text-foreground p-1">
                             <X className="h-3.5 w-3.5" />
@@ -507,11 +558,11 @@ export default function PersonnelManagementPage() {
                           </button>
                           <button
                             onClick={() => handleDelete(p)}
-                            disabled={!canDeletePersonnelRecord || p.level >= PL_FULL_AUTHORITY}
+                            disabled={!canDeletePersonnelRecord || p.level >= PL_FULL_AUTHORITY || busyAction === `delete-${p.id}`}
                             className="text-muted-foreground hover:text-destructive p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
                             title={!canDeletePersonnelRecord ? "PL7 required" : p.level >= PL_FULL_AUTHORITY ? "L7 cannot be deleted" : "Delete"}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            {busyAction === `delete-${p.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                           </button>
                         </div>
                       )}
@@ -562,10 +613,10 @@ export default function PersonnelManagementPage() {
                         </button>
                         <button
                           onClick={() => handleDelete(p)}
-                          disabled={!canDeletePersonnelRecord || p.level >= PL_FULL_AUTHORITY}
+                          disabled={!canDeletePersonnelRecord || p.level >= PL_FULL_AUTHORITY || busyAction === `delete-${p.id}`}
                           className="text-muted-foreground hover:text-destructive p-1.5 disabled:opacity-30"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          {busyAction === `delete-${p.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                         </button>
                       </>
                     )}
@@ -589,17 +640,28 @@ export default function PersonnelManagementPage() {
                     <input value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} placeholder="Note" className={inputClass} />
                     <div className="flex justify-end gap-2">
                       <button onClick={cancelEdit} className="px-2 py-1 text-[10px] font-display tracking-wider border border-border rounded-sm text-muted-foreground">CANCEL</button>
-                      <button onClick={() => saveEdit(p.id)} className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider bg-primary text-primary-foreground rounded-sm">
-                        <Save className="h-3 w-3" /> SAVE
+                      <button
+                        onClick={() => saveEdit(p.id)}
+                        disabled={busyAction === `save-${p.id}`}
+                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider bg-primary text-primary-foreground rounded-sm disabled:cursor-wait disabled:opacity-60"
+                      >
+                        {busyAction === `save-${p.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                        {busyAction === `save-${p.id}` ? "SAVING" : "SAVE"}
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    <span className={`inline-flex items-center text-[10px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border ${levelTone(p.level)}`}>
+                    <span
+                      className="inline-flex items-center text-[10px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border"
+                      style={personnelLevelBadgeStyle(p.level)}
+                    >
                       L{p.level}
                     </span>
-                    <span className={`inline-flex items-center text-[10px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border ${trackTone[p.track]}`}>
+                    <span
+                      className="inline-flex items-center text-[10px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border"
+                      style={personnelTrackBadgeStyle(p.track)}
+                    >
                       {PERSONNEL_TRACKS.find((t) => t.key === p.track)?.label}
                     </span>
                     {p.note && <p className="w-full text-xs text-foreground/80 font-body">{p.note}</p>}
@@ -618,3 +680,4 @@ export default function PersonnelManagementPage() {
     </div>
   );
 }
+

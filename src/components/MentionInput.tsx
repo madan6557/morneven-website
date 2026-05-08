@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { listPersonnel } from "@/services/personnelApi";
 import type { DiscussionMention } from "@/types";
+import { accentSurface, accentText } from "@/lib/themeColor";
 
 interface Props {
   value: string;
@@ -145,6 +146,8 @@ export default function MentionInput({
 
   const accent = accentColor || "hsl(var(--primary))";
   const textSize = size === "sm" ? "text-xs" : "text-sm";
+  const readableAccent = accentText(accent);
+  const softAccentSurface = accentSurface(accent);
 
   return (
     <div className={`relative ${className}`}>
@@ -172,11 +175,11 @@ export default function MentionInput({
               onMouseEnter={() => setActiveIdx(i)}
               className="w-full text-left px-3 py-1.5 text-xs font-body flex items-center gap-2 transition-colors"
               style={{
-                backgroundColor: i === activeIdx ? `${accent}20` : "transparent",
-                color: i === activeIdx ? accent : "hsl(var(--foreground))",
+                backgroundColor: i === activeIdx ? softAccentSurface : "transparent",
+                color: i === activeIdx ? readableAccent : "hsl(var(--foreground))",
               }}
             >
-              <span className="font-heading tracking-wider" style={{ color: accent }}>@{p.username}</span>
+              <span className="font-heading tracking-wider" style={{ color: readableAccent }}>@{p.username}</span>
               {p.label !== p.username && (
                 <span className="text-muted-foreground truncate">{p.label.replace(`${p.username} · `, "")}</span>
               )}
@@ -194,6 +197,8 @@ export function renderWithMentions(
   accent: string,
   className = "",
 ): React.ReactNode {
+  const readableAccent = accentText(accent);
+  const softAccentSurface = accentSurface(accent);
   // Split on @username tokens (word chars, dots, dashes). Preserve surrounding
   // whitespace so the rendered output reads identically to the source.
   const parts = text.split(/(@[\w.-]+)/g);
@@ -203,7 +208,7 @@ export function renderWithMentions(
         <span
           key={i}
           className={`font-heading tracking-wider px-1 rounded-sm ${className}`}
-          style={{ color: accent, backgroundColor: `${accent}15` }}
+          style={{ color: readableAccent, backgroundColor: softAccentSurface }}
         >
           {part}
         </span>
