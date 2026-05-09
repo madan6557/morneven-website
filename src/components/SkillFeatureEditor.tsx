@@ -63,6 +63,7 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
       title: "",
       summary: "",
       details: "",
+      restriction: { key: "Condition", value: "" },
       icon: "Zap",
       tags: [],
     };
@@ -92,6 +93,20 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
   const updateFeature = (idx: number, key: keyof Feature, value: string | string[] | undefined) => {
     const next = [...items] as Feature[];
     next[idx] = { ...next[idx], [key]: value } as Feature;
+    onChange(next);
+  };
+
+  const updateFeatureRestriction = (idx: number, field: "key" | "value", value: string) => {
+    const next = [...items] as Feature[];
+    const current = next[idx] as Feature;
+    next[idx] = {
+      ...current,
+      restriction: {
+        key: current.restriction?.key ?? "Condition",
+        value: current.restriction?.value ?? "",
+        [field]: value,
+      },
+    };
     onChange(next);
   };
 
@@ -125,13 +140,17 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
   const addLabel = variant === "skill" ? "ADD SKILL" : "ADD FEATURE";
 
   const uploadSkillIcon = async (skillId: string, idx: number, file?: File | null) => {
-    if (!file || variant !== "skill") return;
+    if (!file) return;
     setUploadingId(skillId);
     setUploadError((current) => ({ ...current, [skillId]: "" }));
     try {
       const uploaded = await apiUpload<{ url?: string }>("/files/upload?folder=lore", file);
       if (!uploaded.url) throw new Error("Upload response did not include a file URL");
-      updateSkill(idx, "icon", uploaded.url);
+      if (variant === "skill") {
+        updateSkill(idx, "icon", uploaded.url);
+      } else {
+        updateFeature(idx, "icon", uploaded.url);
+      }
     } catch (error) {
       setUploadError((current) => ({
         ...current,
@@ -252,6 +271,26 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                       className={inputClass}
                     />
                   </div>
+                  <div>
+                    <label className={labelClass}>Restriction Key</label>
+                    <input
+                      type="text"
+                      value={(item as Feature).restriction?.key || "Condition"}
+                      onChange={(e) => updateFeatureRestriction(idx, "key", e.target.value)}
+                      placeholder="e.g. Condition, Usage, Cooldown"
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Restriction Value</label>
+                    <input
+                      type="text"
+                      value={(item as Feature).restriction?.value || ""}
+                      onChange={(e) => updateFeatureRestriction(idx, "value", e.target.value)}
+                      placeholder="e.g. Light is present, 3/day, 30s"
+                      className={inputClass}
+                    />
+                  </div>
                 </>
               )}
 
@@ -269,51 +308,49 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                     placeholder="Zap or https://..."
                     className={inputClass}
                   />
-                  {variant === "skill" ? (
-                    <div className="space-y-2">
-                      <input
-                        ref={(el) => {
-                          fileRefs.current[item.id] = el;
+                  <div className="space-y-2">
+                    <input
+                      ref={(el) => {
+                        fileRefs.current[item.id] = el;
+                      }}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => uploadSkillIcon(item.id, idx, e.target.files?.[0])}
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIconPickerTarget({ id: item.id, idx });
+                          setIconQuery("");
                         }}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => uploadSkillIcon(item.id, idx, e.target.files?.[0])}
-                      />
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIconPickerTarget({ id: item.id, idx });
-                            setIconQuery("");
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-sm border border-border px-3 py-2 text-[10px] font-display tracking-wider text-foreground hover:bg-muted transition-colors"
-                        >
-                          <Search className="h-3.5 w-3.5" />
-                          {item.icon && !/^https?:\/\//i.test(item.icon) ? "ICON READY" : "PICK LUCIDE"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => fileRefs.current[item.id]?.click()}
-                          className="inline-flex items-center gap-1.5 rounded-sm border border-dashed border-primary/40 px-3 py-2 text-[10px] font-display tracking-wider text-primary hover:bg-primary/10 transition-colors"
-                        >
-                          <Upload className="h-3.5 w-3.5" />
-                          {uploadingId === item.id ? "UPLOADING" : "UPLOAD ICON"}
-                        </button>
-                        {(item as Skill).icon ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-muted px-2 py-1 text-[10px] font-display uppercase tracking-wider text-foreground">
-                            <Image className="h-3 w-3" /> icon ready
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="text-[10px] font-body text-muted-foreground">
-                        Icon requirement: 1:1 ratio. Recommended resolution 512x512 or higher.
-                      </p>
-                      {uploadError[item.id] ? (
-                        <p className="text-[10px] font-body text-destructive">{uploadError[item.id]}</p>
+                        className="inline-flex items-center gap-1.5 rounded-sm border border-border px-3 py-2 text-[10px] font-display tracking-wider text-foreground hover:bg-muted transition-colors"
+                      >
+                        <Search className="h-3.5 w-3.5" />
+                        {item.icon && !/^https?:\/\//i.test(item.icon) ? "ICON READY" : "PICK LUCIDE"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => fileRefs.current[item.id]?.click()}
+                        className="inline-flex items-center gap-1.5 rounded-sm border border-dashed border-primary/40 px-3 py-2 text-[10px] font-display tracking-wider text-primary hover:bg-primary/10 transition-colors"
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        {uploadingId === item.id ? "UPLOADING" : "UPLOAD ICON"}
+                      </button>
+                      {item.icon ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-muted px-2 py-1 text-[10px] font-display uppercase tracking-wider text-foreground">
+                          <Image className="h-3 w-3" /> icon ready
+                        </span>
                       ) : null}
                     </div>
-                  ) : null}
+                    <p className="text-[10px] font-body text-muted-foreground">
+                      Icon requirement: 1:1 ratio. Recommended resolution 512x512 or higher.
+                    </p>
+                    {uploadError[item.id] ? (
+                      <p className="text-[10px] font-body text-destructive">{uploadError[item.id]}</p>
+                    ) : null}
+                  </div>
                 </div>
               </div>
               <div>

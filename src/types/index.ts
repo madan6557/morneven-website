@@ -18,6 +18,7 @@ export interface Feature {
   title: string;
   summary: string;
   details?: string;
+  restriction?: SkillRestriction;
   icon?: string;
   color?: string;
   tags?: string[];

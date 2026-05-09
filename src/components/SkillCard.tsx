@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import * as Lucide from "lucide-react";
 import { Filter, Tag, X, Zap } from "lucide-react";
-import type { Feature, Skill } from "@/types";
+import type { Feature, Skill, SkillRestriction } from "@/types";
 import { AttributeBadge, RichDescription } from "./AttributeBadge";
 import {
   SKILL_ATTRIBUTES,
@@ -27,10 +27,10 @@ function isImageSource(value?: string) {
   return /^(https?:\/\/|\/api\/files\/|\/uploads\/|\/storage\/|data:image\/)/i.test(value);
 }
 
-function restrictionLabel(skill: Skill) {
-  if (!skill.restriction?.key && !skill.restriction?.value) return "";
-  const key = skill.restriction?.key?.trim() || "Restriction";
-  const value = skill.restriction?.value?.trim() || "-";
+function restrictionLabel(restriction?: SkillRestriction) {
+  if (!restriction?.key && !restriction?.value) return "";
+  const key = restriction?.key?.trim() || "Restriction";
+  const value = restriction?.value?.trim() || "-";
   return `${key}: ${value}`;
 }
 
@@ -235,9 +235,9 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
                 <h4 className="text-[10px] font-display tracking-[0.18em] uppercase text-muted-foreground">
                   Skill Brief
                 </h4>
-                {restrictionLabel(skill) ? (
+                {restrictionLabel(skill.restriction) ? (
                   <p className="text-[11px] font-display tracking-wider uppercase text-muted-foreground">
-                    {restrictionLabel(skill)}
+                    {restrictionLabel(skill.restriction)}
                   </p>
                 ) : null}
                 <RichDescription text={skill.description || "-"} />
@@ -251,6 +251,11 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
                 <h4 className="text-[10px] font-display tracking-[0.18em] uppercase text-muted-foreground">
                   Feature Summary
                 </h4>
+                {restrictionLabel(feature.restriction) ? (
+                  <p className="text-[11px] font-display tracking-wider uppercase text-muted-foreground">
+                    {restrictionLabel(feature.restriction)}
+                  </p>
+                ) : null}
                 <p className="text-sm font-body text-foreground/85">
                   {feature.summary || "No summary provided."}
                 </p>
@@ -295,8 +300,31 @@ function itemHasAttr(item: Skill, key: SkillAttribute) {
   return (item.description || "").includes(`[[attr:${key}`);
 }
 
+function compareDisplayItems(a: Skill | Feature, b: Skill | Feature, variant: "skill" | "feature") {
+  if (variant === "skill") {
+    const left = a as Skill;
+    const right = b as Skill;
+    const leftCategory = (left.category || "general").trim().toLowerCase();
+    const rightCategory = (right.category || "general").trim().toLowerCase();
+    const categoryCompare = leftCategory.localeCompare(rightCategory);
+    if (categoryCompare !== 0) return categoryCompare;
+    return (left.name || "").trim().toLowerCase().localeCompare((right.name || "").trim().toLowerCase());
+  }
+
+  const left = a as Feature;
+  const right = b as Feature;
+  const leftGroup = (left.tags?.[0] || "").trim().toLowerCase();
+  const rightGroup = (right.tags?.[0] || "").trim().toLowerCase();
+  const groupCompare = leftGroup.localeCompare(rightGroup);
+  if (groupCompare !== 0) return groupCompare;
+  return (left.title || "").trim().toLowerCase().localeCompare((right.title || "").trim().toLowerCase());
+}
+
 export function SkillList({ title, items, accent, variant = "skill" }: SkillListProps) {
-  const list = useMemo(() => items ?? [], [items]);
+  const list = useMemo(
+    () => [...(items ?? [])].sort((left, right) => compareDisplayItems(left, right, variant)),
+    [items, variant],
+  );
   const [activeAttr, setActiveAttr] = useState<SkillAttribute | null>(null);
 
   const usedAttributes = useMemo(() => {
