@@ -1058,58 +1058,46 @@ export default function ChatPage() {
                           )}
                           {m.text && <p className="font-body whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word]">{m.text}</p>}
                           {m.attachments && m.attachments.length > 0 && (
-                            <div className="mt-2 space-y-2">
-                              {m.attachments.map((a) => {
+                            <div className={`mt-2 ${m.attachments.length > 1 ? "grid grid-cols-2 gap-2" : "space-y-2"}`}>
+                              {m.attachments.slice(0, 2).map((a, index) => {
                                 const isImg = a.mimeType.startsWith("image/");
                                 const isVideo = a.mimeType.startsWith("video/");
+                                const isCompact = m.attachments!.length > 1;
+                                const moreCount = index === 1 ? m.attachments!.length - 2 : 0;
                                 const visualLabel = `${a.name} attachment`;
                                 return (
-                                  <div
+                                  <button
                                     key={a.id}
-                                    className="overflow-hidden rounded-sm border border-border/60 bg-background/45"
+                                    type="button"
+                                    onClick={() => openAttachmentViewer(m.id, a.id)}
+                                    className="relative overflow-hidden rounded-sm border border-border/60 bg-background/45 text-left transition-colors hover:bg-background/30"
                                   >
                                     {isImg ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => openAttachmentViewer(m.id, a.id)}
-                                        className="block w-full bg-background/15 p-2 text-left transition-colors hover:bg-background/30"
-                                      >
-                                        <div className="flex min-h-[180px] items-center justify-center rounded-sm border border-border/50 bg-black/20 p-2">
-                                          <AuthenticatedImage
-                                            src={a.dataUrl}
-                                            alt={visualLabel}
-                                            className="mx-auto max-h-64 w-auto max-w-full rounded-sm object-contain"
-                                          />
-                                        </div>
-                                      </button>
+                                      <div className={`${isCompact ? "min-h-[96px]" : "min-h-[180px]"} flex items-center justify-center bg-background/15 p-2`}>
+                                        <AuthenticatedImage
+                                          src={a.dataUrl}
+                                          alt={visualLabel}
+                                          className={`${isCompact ? "max-h-24" : "max-h-64"} mx-auto w-auto max-w-full rounded-sm object-contain`}
+                                        />
+                                      </div>
                                     ) : null}
                                     {isVideo ? (
-                                      <div className="bg-background/15 p-2">
-                                        <div className="relative flex min-h-[180px] items-center justify-center rounded-sm border border-border/50 bg-black/35 p-2">
-                                          <video
-                                            src={a.dataUrl}
-                                            controls
-                                            preload="metadata"
-                                            className="mx-auto max-h-72 w-full rounded-sm bg-black object-contain"
-                                          />
-                                          <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => openAttachmentViewer(m.id, a.id)}
-                                            className="absolute right-3 top-3 h-8 px-2 text-[10px] font-display tracking-wider"
-                                          >
-                                            Inspect
-                                          </Button>
+                                      <div className={`${isCompact ? "min-h-[96px]" : "min-h-[180px]"} relative flex items-center justify-center bg-black/35 p-2`}>
+                                        <video
+                                          src={a.dataUrl}
+                                          preload="metadata"
+                                          muted
+                                          className={`${isCompact ? "max-h-24" : "max-h-72"} mx-auto w-full rounded-sm bg-black object-contain`}
+                                        />
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm">
+                                            <Play className="h-3.5 w-3.5" />
+                                          </span>
                                         </div>
                                       </div>
                                     ) : null}
                                     {!isImg && !isVideo ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => openAttachmentViewer(m.id, a.id)}
-                                        className="flex w-full items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-background/25"
-                                      >
+                                      <div className={`${isCompact ? "min-h-[96px]" : ""} flex h-full items-center justify-between gap-3 p-3`}>
                                         <div className="flex min-w-0 items-center gap-3">
                                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-border/60 bg-background/55">
                                             <FileText className="h-4 w-4 text-muted-foreground" />
@@ -1122,9 +1110,14 @@ export default function ChatPage() {
                                           </div>
                                         </div>
                                         <ExternalLink className="h-3.5 w-3.5 shrink-0 text-primary" />
-                                      </button>
+                                      </div>
                                     ) : null}
-                                  </div>
+                                    {moreCount > 0 && (
+                                      <span className="absolute right-2 top-2 rounded-full bg-background/85 px-2 py-0.5 text-[10px] font-display tracking-wider text-foreground">
+                                        +{moreCount}
+                                      </span>
+                                    )}
+                                  </button>
                                 );
                               })}
                             </div>
@@ -1235,22 +1228,52 @@ export default function ChatPage() {
                   onChange={(e) => handleFiles(e.target.files)}
                 />
                 <div className="space-y-3 rounded-sm border border-border/70 bg-card/80 p-3">
-                  <div className={composerExpanded ? "space-y-2" : "flex items-end gap-2"}>
-                    <textarea
-                      ref={composerRef}
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          void handleSend();
-                        }
-                      }}
-                      placeholder={editingMessageId ? "Edit message..." : "Type a message..."}
-                      rows={1}
-                      className="min-h-10 w-full resize-none rounded-sm border border-border bg-background px-3 py-2.5 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground/75 focus:border-primary overflow-y-hidden"
-                    />
-                    <div className={composerExpanded ? "flex items-end justify-between gap-2" : "flex items-end gap-2"}>
+                  {composerExpanded ? (
+                    <div className="space-y-2">
+                      <textarea
+                        ref={composerRef}
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            void handleSend();
+                          }
+                        }}
+                        placeholder={editingMessageId ? "Edit message..." : "Type a message..."}
+                        rows={1}
+                        className="min-h-10 w-full resize-none rounded-sm border border-border bg-background px-3 py-2.5 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground/75 focus:border-primary overflow-y-hidden"
+                      />
+                      <div className="flex items-center justify-between gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={editingMessageId !== null}
+                          onClick={() => fileInputRef.current?.click()}
+                          className="h-10 shrink-0 border border-border/70 px-2.5"
+                          aria-label="Attach files"
+                        >
+                          <Paperclip className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          onClick={() => void handleSend()}
+                          className="h-10 shrink-0 px-3 sm:px-4"
+                          aria-label={editingMessageId ? "Save edit" : "Send"}
+                          disabled={!editingMessageId && (!hasDraft || showSending)}
+                        >
+                          {editingMessageId ? (
+                            <Pencil className="h-3.5 w-3.5" />
+                          ) : (
+                            <Send className={showSending ? "h-3.5 w-3.5 animate-pulse" : "h-3.5 w-3.5"} />
+                          )}
+                          <span className="hidden sm:inline">
+                            {editingMessageId ? "Save" : showSending ? "Sending" : "Send"}
+                          </span>
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -1261,6 +1284,20 @@ export default function ChatPage() {
                       >
                         <Paperclip className="h-4 w-4" />
                       </Button>
+                      <textarea
+                        ref={composerRef}
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            void handleSend();
+                          }
+                        }}
+                        placeholder={editingMessageId ? "Edit message..." : "Type a message..."}
+                        rows={1}
+                        className="min-h-10 w-full resize-none rounded-sm border border-border bg-background px-3 py-2.5 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground/75 focus:border-primary overflow-y-hidden"
+                      />
                       <Button
                         onClick={() => void handleSend()}
                         className="h-10 shrink-0 px-3 sm:px-4"
@@ -1277,7 +1314,7 @@ export default function ChatPage() {
                         </span>
                       </Button>
                     </div>
-                  </div>
+                  )}
                 </div>
                     </>
                   );
