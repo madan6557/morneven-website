@@ -866,30 +866,32 @@ export default function ChatPage() {
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="min-w-0 flex-1 space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <p className="truncate font-heading text-base text-foreground">{activeConv.name}</p>
-                      <Badge variant="outline" className="border-primary/30 bg-background/50 text-[9px] font-display tracking-wider text-muted-foreground">
-                        {conversationKindLabel(activeConv.kind).toUpperCase()}
-                      </Badge>
-                      <Badge variant="outline" className="text-[9px] font-display tracking-wider">
-                        {activeMemberCount} ACTIVE
-                      </Badge>
-                    {activeConv.systemManaged && (
-                        <Badge variant="outline" className="text-[9px] font-display tracking-wider">AUTO</Badge>
-                    )}
-                    {myRole && (
-                        <Badge className="gap-1 text-[9px] font-display tracking-wider">
-                        {myRole === "owner" ? <Crown className="h-2.5 w-2.5" /> : myRole === "admin" ? <Shield className="h-2.5 w-2.5" /> : null}
-                        {myRole.toUpperCase()}
-                      </Badge>
-                    )}
-                  </div>
-                    <p className="truncate text-sm text-muted-foreground">
-                    {activeConv.members
-                      .filter((m) => m.status === "active")
-                      .map((m) => m.username)
-                      .join(", ")}
-                  </p>
+                      <div className="hidden sm:flex flex-wrap items-center gap-2">
+                        <Badge variant="outline" className="border-primary/30 bg-background/50 text-[9px] font-display tracking-wider text-muted-foreground">
+                          {conversationKindLabel(activeConv.kind).toUpperCase()}
+                        </Badge>
+                        <Badge variant="outline" className="text-[9px] font-display tracking-wider">
+                          {activeMemberCount} ACTIVE
+                        </Badge>
+                        {activeConv.systemManaged && (
+                          <Badge variant="outline" className="text-[9px] font-display tracking-wider">AUTO</Badge>
+                        )}
+                        {myRole && (
+                          <Badge className="gap-1 text-[9px] font-display tracking-wider">
+                            {myRole === "owner" ? <Crown className="h-2.5 w-2.5" /> : myRole === "admin" ? <Shield className="h-2.5 w-2.5" /> : null}
+                            {myRole.toUpperCase()}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <p className="hidden sm:block truncate text-sm text-muted-foreground">
+                      {activeConv.members
+                        .filter((m) => m.status === "active")
+                        .map((m) => m.username)
+                        .join(", ")}
+                    </p>
                 </div>
                   <Button variant="ghost" size="sm" onClick={() => setDialog("settings")} className="mt-0.5 hidden h-9 shrink-0 px-2.5 xl:inline-flex">
                   <Settings className="h-3.5 w-3.5" />
@@ -1196,10 +1198,6 @@ export default function ChatPage() {
                   onChange={(e) => handleFiles(e.target.files)}
                 />
                 <div className="space-y-3 rounded-sm border border-border/70 bg-card/80 p-3">
-                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Message Composer</p>
-                    <p className="text-[10px] text-muted-foreground">Enter to send, Shift+Enter for a new line</p>
-                  </div>
                   <div className="flex gap-2">
                     <Button
                       variant="ghost"
