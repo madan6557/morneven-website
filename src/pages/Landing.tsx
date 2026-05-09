@@ -126,7 +126,7 @@ export default function Landing() {
           <motion.div variants={fadeUp} custom={3} className="relative z-20 flex flex-col gap-3 justify-center sm:flex-row sm:gap-4">
             <Link
               to="/auth"
-              className="inline-flex items-center justify-center gap-2 hud-border px-8 py-3 bg-primary/25 hover:bg-primary/35 transition-colors font-display text-xs tracking-[0.25em] text-primary-foreground uppercase glow-primary"
+              className="inline-flex items-center justify-center gap-2 hud-border px-8 py-3 bg-primary hover:bg-primary/90 transition-colors font-display text-xs tracking-[0.25em] text-primary-foreground uppercase glow-primary"
             >
               Enter the Archive
               <ArrowRight className="h-3.5 w-3.5" />
