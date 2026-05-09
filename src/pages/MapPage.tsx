@@ -24,6 +24,7 @@ export default function MapPage() {
   const [mapError, setMapError] = useState("");
   const dragRef = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(null);
   const activePointerRef = useRef<number | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
 
   const refresh = async () => {
     setMapStatus("loading");
@@ -60,8 +61,28 @@ export default function MapPage() {
 
   const visible = filter === "all" ? markers : markers.filter((m) => m.status === filter);
 
-  const zoomIn = () => setScale((s) => Math.min(4, s * 1.25));
-  const zoomOut = () => setScale((s) => Math.max(0.5, s / 1.25));
+  const applyZoom = (nextScale: number, anchor?: { clientX: number; clientY: number }) => {
+    const clampedScale = Math.max(0.5, Math.min(4, nextScale));
+    if (clampedScale === scale) return;
+
+    if (!anchor || !viewportRef.current) {
+      setScale(clampedScale);
+      return;
+    }
+
+    const rect = viewportRef.current.getBoundingClientRect();
+    const offsetX = anchor.clientX - rect.left - rect.width / 2;
+    const offsetY = anchor.clientY - rect.top - rect.height / 2;
+
+    setPan((currentPan) => ({
+      x: offsetX - ((offsetX - currentPan.x) / scale) * clampedScale,
+      y: offsetY - ((offsetY - currentPan.y) / scale) * clampedScale,
+    }));
+    setScale(clampedScale);
+  };
+
+  const zoomIn = () => applyZoom(scale * 1.25);
+  const zoomOut = () => applyZoom(scale / 1.25);
   const reset = () => { setScale(1); setPan({ x: 0, y: 0 }); };
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -88,6 +109,11 @@ export default function MapPage() {
         e.currentTarget.releasePointerCapture(e.pointerId);
       }
     }
+  };
+  const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+    applyZoom(scale * factor, { clientX: e.clientX, clientY: e.clientY });
   };
 
   return (
@@ -132,12 +158,14 @@ export default function MapPage() {
         </div>
 
         <div
+          ref={viewportRef}
           className="absolute inset-0 cursor-grab active:cursor-grabbing select-none touch-none"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
           onPointerLeave={onPointerUp}
+          onWheel={onWheel}
         >
           <div
             className="absolute inset-0 origin-center transition-transform duration-100 ease-out"
@@ -172,7 +200,7 @@ export default function MapPage() {
               </svg>
             )}
 
-            {/* Markers (rendered inside transformed layer so they pan/zoom with map) */}
+            {/* Markers pan and zoom with map position, but counter-scale so their UI size stays stable. */}
             {visible.map((m) => {
               const style = STATUS_STYLES[m.status];
               return (
@@ -180,13 +208,20 @@ export default function MapPage() {
                   key={m.id}
                   data-map-control="true"
                   onClick={(e) => { e.stopPropagation(); setActiveMarker(m); }}
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 group flex flex-col items-center gap-1 ${style.ring} hover:scale-110 transition-transform`}
+                  className="absolute"
                   style={{ left: `${m.x * 100}%`, top: `${m.y * 100}%` }}
                   aria-label={m.name}
                 >
-                  <span className={`h-3 w-3 rounded-full ${style.color} ring-4 ${style.ring} animate-pulse`} />
-                  <span className="text-[10px] font-display tracking-wider uppercase bg-background/80 backdrop-blur px-1.5 py-0.5 rounded-sm text-foreground whitespace-nowrap">
-                    {m.name}
+                  <span
+                    className="-translate-x-1/2 -translate-y-1/2"
+                    style={{ transform: `translate(-50%, -50%) scale(${1 / scale})` }}
+                  >
+                    <span className={`group flex flex-col items-center gap-1 transition-transform hover:scale-110 ${style.ring}`}>
+                      <span className={`h-3 w-3 rounded-full ${style.color} ring-4 ${style.ring} animate-pulse`} />
+                      <span className="whitespace-nowrap rounded-sm bg-background/80 px-1.5 py-0.5 text-[10px] font-display tracking-wider uppercase text-foreground backdrop-blur">
+                        {m.name}
+                      </span>
+                    </span>
                   </span>
                 </button>
               );

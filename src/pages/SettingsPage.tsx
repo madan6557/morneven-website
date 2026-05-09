@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
+ï»¿import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -407,7 +407,7 @@ export default function SettingsPage() {
                     <p className="font-heading text-sm tracking-[0.12em] text-foreground uppercase">Change Password</p>
                     <p className="text-sm text-muted-foreground">Use a minimum of 12 characters for the replacement password.</p>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 md:grid-cols-2">
                     <PasswordField
                       label="Current password"
                       value={currentPassword}
@@ -427,29 +427,32 @@ export default function SettingsPage() {
                       className={inputClass}
                     />
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={!currentPassword || newPassword.length < 12}
-                    isLoading={busyAction === "password"}
-                    loadingText="Changing..."
-                    onClick={() => showValidation({
-                      variant: "warning",
-                      title: "Change password",
-                      description: "Your current session may be refreshed after the password changes.",
-                      confirmLabel: "Change password",
-                      cancelLabel: "Cancel",
-                      onConfirm: async () => {
-                        await runWithFeedback("password", async () => {
-                          await changePassword(currentPassword, newPassword);
-                          setCurrentPassword("");
-                          setNewPassword("");
-                        }, "Password changed", "Password change failed");
-                      },
-                    })}
-                  >
-                    Change Password
-                  </Button>
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="w-full sm:w-auto sm:min-w-48"
+                      disabled={!currentPassword || newPassword.length < 12}
+                      isLoading={busyAction === "password"}
+                      loadingText="Changing..."
+                      onClick={() => showValidation({
+                        variant: "warning",
+                        title: "Change password",
+                        description: "Your current session may be refreshed after the password changes.",
+                        confirmLabel: "Change password",
+                        cancelLabel: "Cancel",
+                        onConfirm: async () => {
+                          await runWithFeedback("password", async () => {
+                            await changePassword(currentPassword, newPassword);
+                            setCurrentPassword("");
+                            setNewPassword("");
+                          }, "Password changed", "Password change failed");
+                        },
+                      })}
+                    >
+                      Change Password
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-3 rounded-sm border border-destructive/30 bg-destructive/5 p-4">
@@ -459,7 +462,7 @@ export default function SettingsPage() {
                       This action is irreversible and should only be used when backend cleanup policy has been confirmed.
                     </p>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 md:grid-cols-2">
                     <PasswordField
                       label="Account password"
                       value={deletePassword}
@@ -477,31 +480,34 @@ export default function SettingsPage() {
                       className={inputClass}
                     />
                   </div>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    disabled={!deletePassword || deleteConfirm !== "DELETE"}
-                    isLoading={busyAction === "delete-account"}
-                    loadingText="Deleting..."
-                    onClick={() => showValidation({
-                      variant: "error",
-                      title: "Delete account",
-                      description: "This action is irreversible. Your account access will be removed.",
-                      confirmLabel: "Delete account",
-                      cancelLabel: "Cancel",
-                      critical: true,
-                      confirmDelaySeconds: 5,
-                      onConfirm: async () => {
-                        await runWithFeedback("delete-account", async () => {
-                          await deleteAccount(deletePassword);
-                          logout();
-                        }, "Account deleted", "Account deletion failed");
-                      },
-                    })}
-                  >
-                    Delete Account
-                  </Button>
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="w-full sm:w-auto sm:min-w-48"
+                      disabled={!deletePassword || deleteConfirm !== "DELETE"}
+                      isLoading={busyAction === "delete-account"}
+                      loadingText="Deleting..."
+                      onClick={() => showValidation({
+                        variant: "error",
+                        title: "Delete account",
+                        description: "This action is irreversible. Your account access will be removed.",
+                        confirmLabel: "Delete account",
+                        cancelLabel: "Cancel",
+                        critical: true,
+                        confirmDelaySeconds: 5,
+                        onConfirm: async () => {
+                          await runWithFeedback("delete-account", async () => {
+                            await deleteAccount(deletePassword);
+                            logout();
+                          }, "Account deleted", "Account deletion failed");
+                        },
+                      })}
+                    >
+                      Delete Account
+                    </Button>
+                  </div>
                 </div>
               </div>
             </SectionCard>
@@ -620,11 +626,12 @@ export default function SettingsPage() {
                     </p>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-2 sm:justify-end">
+                <div className="flex w-full shrink-0 flex-col gap-2 sm:w-44">
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
+                    className="w-full justify-center"
                     isLoading={busyAction === "storage-report"}
                     loadingText="Scanning..."
                     onClick={() => runWithFeedback("storage-report", refreshStorageCleanupReport, "Storage scan completed", "Storage scan failed")}
@@ -635,6 +642,7 @@ export default function SettingsPage() {
                     type="button"
                     size="sm"
                     variant="destructive"
+                    className="w-full justify-center"
                     disabled={!storageCleanupReport || storageCleanupReport.orphanedObjects === 0}
                     isLoading={busyAction === "storage-run"}
                     loadingText="Cleaning..."
@@ -656,7 +664,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
                 <Metric icon={HardDrive} label="Scanned objects" value={storageCleanupReport?.totalObjects ?? 0} />
                 <Metric icon={CheckCircle2} label="Referenced" value={storageCleanupReport?.referencedObjects ?? 0} />
                 <Metric icon={AlertTriangle} label="Orphaned" value={storageCleanupReport?.orphanedObjects ?? 0} />
@@ -684,25 +692,34 @@ export default function SettingsPage() {
                             {folder.referencedObjects} referenced / {folder.totalObjects} total
                           </div>
                           <div className={folder.orphanedObjects > 0 ? "text-amber-500" : "text-muted-foreground"}>
-                            {folder.orphanedObjects} orphaned · {formatBytes(folder.orphanedBytes)}
+                            {folder.orphanedObjects} orphaned Â· {formatBytes(folder.orphanedBytes)}
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <p className="text-xs font-heading tracking-[0.12em] text-foreground uppercase">Orphan Sample</p>
-                    {storageCleanupReport.sampleOrphans.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No orphaned storage object detected.</p>
-                    ) : (
                       <div className="space-y-2">
-                        {storageCleanupReport.sampleOrphans.map((entry) => (
-                          <div key={entry.objectPath} className="rounded-sm border border-border bg-background/45 p-3 text-sm">
-                            <div className="font-mono break-all text-foreground">{entry.objectPath}</div>
-                            <div className="mt-1 text-muted-foreground">
-                              {formatBytes(entry.size ?? 0)}
-                              {entry.lastModified ? ` · ${new Date(entry.lastModified).toLocaleString()}` : ""}
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-xs font-heading tracking-[0.12em] text-foreground uppercase">Orphan Sample</p>
+                          <p className="text-xs text-muted-foreground">
+                            {storageCleanupReport.sampleOrphans.length} item{storageCleanupReport.sampleOrphans.length === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        {storageCleanupReport.sampleOrphans.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No orphaned storage object detected.</p>
+                        ) : (
+                          <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
+                            {storageCleanupReport.sampleOrphans.map((entry) => (
+                              <div key={entry.objectPath} className="rounded-sm border border-border bg-background/45 p-3 text-sm">
+                                <div className="font-mono break-all leading-6 text-foreground">{entry.objectPath}</div>
+                            <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                              <span className="rounded-sm border border-border/70 bg-background/60 px-2 py-1">{formatBytes(entry.size ?? 0)}</span>
+                              {entry.lastModified ? (
+                                <span className="rounded-sm border border-border/70 bg-background/60 px-2 py-1">
+                                  {new Date(entry.lastModified).toLocaleString()}
+                                </span>
+                              ) : null}
                             </div>
                           </div>
                         ))}
@@ -729,8 +746,8 @@ export default function SettingsPage() {
                 {processing && <p className="text-sm text-muted-foreground">Extraction in progress...</p>}
               </div>
 
-              <div className="grid gap-3 xl:grid-cols-[1.2fr_1fr_1fr_auto] xl:items-end">
-                <div className="space-y-3">
+              <div className="grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1fr)_12rem] xl:items-end">
+                <div className="space-y-2">
                   <div className="space-y-2">
                     <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Extraction Mode</label>
                     <select className={inputClass} value={mode} onChange={(e) => setMode(e.target.value as ExtractionMode)}>
@@ -739,10 +756,6 @@ export default function SettingsPage() {
                       <option value="images">Images category manifest</option>
                     </select>
                   </div>
-                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <input type="checkbox" checked={autoDownload} onChange={(e) => setAutoDownload(e.target.checked)} />
-                    Auto download when completed
-                  </label>
                 </div>
 
                 <PasswordField
@@ -762,9 +775,9 @@ export default function SettingsPage() {
                   placeholder='Type "CONFIRM"'
                   className={inputClass}
                 />
-
                 <Button
                   type="button"
+                  className="w-full xl:self-end"
                   disabled={!canRun}
                   isLoading={busyAction === "start-extraction"}
                   loadingText="Starting..."
@@ -788,6 +801,16 @@ export default function SettingsPage() {
                   Start Extraction
                 </Button>
               </div>
+
+              <label className="flex items-start gap-2 rounded-sm border border-border/70 bg-background/35 px-3 py-2.5 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={autoDownload}
+                  onChange={(e) => setAutoDownload(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>Auto download when completed</span>
+              </label>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
@@ -860,11 +883,12 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="w-full sm:min-w-40 sm:w-auto"
                   disabled={selected.length === 0}
                   isLoading={busyAction === "clear-selected"}
                   loadingText="Clearing..."
@@ -890,6 +914,7 @@ export default function SettingsPage() {
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="w-full sm:min-w-40 sm:w-auto"
                   isLoading={busyAction === "clear-all"}
                   loadingText="Clearing..."
                   onClick={() => showValidation({
@@ -1070,13 +1095,14 @@ function formatBytes(value: number) {
 
 function Metric({ icon: Icon, label, value }: { icon: typeof DatabaseZap; label: string; value: number }) {
   return (
-    <div className="hud-border-sm bg-background/50 p-3">
+    <div className="hud-border-sm flex min-h-[108px] flex-col justify-between bg-background/50 p-3">
       <div className="flex items-center gap-2 text-muted-foreground">
         <Icon className="h-4 w-4 text-accent-orange" />
         <span className="text-xs uppercase tracking-[0.12em]">{label}</span>
       </div>
-      <div className="mt-2 font-display text-xl text-primary">{value}</div>
+      <div className="mt-3 break-all font-display text-xl leading-tight text-primary">{value.toLocaleString()}</div>
     </div>
   );
 }
+
 
