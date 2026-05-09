@@ -864,7 +864,8 @@ export default function ChatPage() {
                 </div>
               </div>
 
-              <ScrollArea ref={conversationScrollRootRef} className="flex-1 min-h-0">
+              <div className="relative flex-1 min-h-0">
+              <ScrollArea ref={conversationScrollRootRef} className="h-full">
                 <div className="space-y-4 p-4 md:p-5">
                   {messages.length === 0 ? (
                     <div className="flex min-h-[220px] items-center justify-center rounded-sm border border-dashed border-border bg-background/35 px-4 text-center">
@@ -1065,7 +1066,7 @@ export default function ChatPage() {
                       </div>
                     );
                     })
-                  )}
+                  )} 
                 </div>
               </ScrollArea>
 
@@ -1076,13 +1077,14 @@ export default function ChatPage() {
                     scrollConversationToBottom("smooth");
                     if (active) markConversationRead(active, messages);
                   }}
-                  className="absolute right-4 bottom-24 z-10 h-9 w-9 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:opacity-90"
+                  className="absolute bottom-3 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg ring-2 ring-background/80 transition-opacity hover:opacity-90"
                   aria-label="Scroll to latest message"
                   title="Jump to latest"
                 >
                   <ChevronDown className="h-4 w-4" />
                 </button>
               )}
+              </div>
 
               {/* Pending attachments preview */}
               {pendingFiles.length > 0 && (
