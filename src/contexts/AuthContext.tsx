@@ -189,15 +189,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isAuthenticated || role === "guest") return;
 
     let cancelled = false;
-    let intervalId: number | undefined;
-
     const beat = () =>
       sendPresenceHeartbeat().catch(() => {
         if (cancelled) return;
       });
 
     void beat();
-    intervalId = window.setInterval(() => {
+    const intervalId = window.setInterval(() => {
       void beat();
     }, 30000);
 

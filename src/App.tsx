@@ -90,7 +90,7 @@ function App() {
                   <Route path="/lore/personnel" element={<PersonnelLevelPage />} />
                   <Route path="/maps" element={<MapPage />} />
                   <Route path="/author" element={<AuthorRoute><AuthorDashboard /></AuthorRoute>} />
-                  <Route path="/personnel" element={<AuthorRoute><PersonnelManagementPage /></AuthorRoute>} />
+                  <Route path="/personnel" element={<PersonnelManagementPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/news/:id" element={<NewsDetail />} />
                   <Route path="/management" element={<ManagementPage />} />
