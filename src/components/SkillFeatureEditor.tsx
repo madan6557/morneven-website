@@ -1,10 +1,12 @@
-import { useRef, useState } from "react";
-import { Image, Plus, Upload, X, Zap } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import * as Lucide from "lucide-react";
+import { Image, Plus, Search, Upload, X, Zap } from "lucide-react";
 import type { Feature, Skill } from "@/types";
 import { SKILL_ATTRIBUTE_LIST, buildAttributeTag } from "@/lib/skillAttributes";
 import { themedHslBorder, themedHslColor, themedHslSurface } from "@/lib/themeColor";
 import { apiUpload } from "@/services/restClient";
 import { AttributeBadge } from "./AttributeBadge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const inputClass =
   "w-full px-2 py-1.5 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
@@ -21,6 +23,26 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<Record<string, string>>({});
+  const [iconPickerTarget, setIconPickerTarget] = useState<{ id: string; idx: number } | null>(null);
+  const [iconQuery, setIconQuery] = useState("");
+
+  const lucideNames = useMemo(
+    () =>
+      Object.keys(Lucide)
+        .filter((key) => /^[A-Z]/.test(key) && !key.endsWith("Icon"))
+        .filter((key) => {
+          const exported = (Lucide as unknown as Record<string, unknown>)[key];
+          return typeof exported === "function" || typeof exported === "object";
+        })
+        .sort((a, b) => a.localeCompare(b)),
+    [],
+  );
+
+  const filteredLucideNames = useMemo(() => {
+    const query = iconQuery.trim().toLowerCase();
+    if (!query) return lucideNames.slice(0, 180);
+    return lucideNames.filter((name) => name.toLowerCase().includes(query)).slice(0, 180);
+  }, [iconQuery, lucideNames]);
 
   const add = () => {
     if (variant === "skill") {
@@ -28,7 +50,7 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
         id: `skill-${Date.now()}`,
         name: "",
         category: "general",
-        cooldown: "",
+        restriction: { key: "Cooldown", value: "" },
         description: "",
         icon: "Zap",
       };
@@ -50,6 +72,20 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
   const updateSkill = (idx: number, key: keyof Skill, value: string | number) => {
     const next = [...items] as Skill[];
     next[idx] = { ...next[idx], [key]: value } as Skill;
+    onChange(next);
+  };
+
+  const updateSkillRestriction = (idx: number, field: "key" | "value", value: string) => {
+    const next = [...items] as Skill[];
+    const current = next[idx] as Skill;
+    next[idx] = {
+      ...current,
+      restriction: {
+        key: current.restriction?.key ?? "Cooldown",
+        value: current.restriction?.value ?? "",
+        [field]: value,
+      },
+    };
     onChange(next);
   };
 
@@ -107,6 +143,16 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
     }
   };
 
+  const applyLucideIcon = (idx: number, iconName: string) => {
+    if (variant === "skill") {
+      updateSkill(idx, "icon", iconName);
+    } else {
+      updateFeature(idx, "icon", iconName);
+    }
+    setIconPickerTarget(null);
+    setIconQuery("");
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -155,12 +201,22 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Cooldown</label>
+                    <label className={labelClass}>Restriction Key</label>
                     <input
                       type="text"
-                      value={(item as Skill).cooldown}
-                      onChange={(e) => updateSkill(idx, "cooldown", e.target.value)}
-                      placeholder="e.g. 12s, 2 turns, passive"
+                      value={(item as Skill).restriction?.key || "Cooldown"}
+                      onChange={(e) => updateSkillRestriction(idx, "key", e.target.value)}
+                      placeholder="e.g. Cooldown, Usage, Condition"
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Restriction Value</label>
+                    <input
+                      type="text"
+                      value={(item as Skill).restriction?.value || ""}
+                      onChange={(e) => updateSkillRestriction(idx, "value", e.target.value)}
+                      placeholder="e.g. 30s, 3/day, Light is present"
                       className={inputClass}
                     />
                   </div>
@@ -225,6 +281,17 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                         onChange={(e) => uploadSkillIcon(item.id, idx, e.target.files?.[0])}
                       />
                       <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIconPickerTarget({ id: item.id, idx });
+                            setIconQuery("");
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-sm border border-border px-3 py-2 text-[10px] font-display tracking-wider text-foreground hover:bg-muted transition-colors"
+                        >
+                          <Search className="h-3.5 w-3.5" />
+                          {item.icon && !/^https?:\/\//i.test(item.icon) ? "ICON READY" : "PICK LUCIDE"}
+                        </button>
                         <button
                           type="button"
                           onClick={() => fileRefs.current[item.id]?.click()}
@@ -355,6 +422,57 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
           )}
         </div>
       ))}
+
+      <Dialog
+        open={Boolean(iconPickerTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIconPickerTarget(null);
+            setIconQuery("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="font-display tracking-wider">LUCIDE ICON LIBRARY</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className={labelClass}>Search Icon</label>
+              <input
+                value={iconQuery}
+                onChange={(e) => setIconQuery(e.target.value)}
+                placeholder="Search Lucide icon name..."
+                className={inputClass}
+              />
+              <p className="text-[10px] font-body text-muted-foreground">
+                Use these as placeholder icons until the final uploaded icon is available.
+              </p>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto rounded-sm border border-border bg-background/40 p-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {filteredLucideNames.map((name) => {
+                  const Icon = (Lucide as unknown as Record<string, React.ComponentType<{ className?: string }>>)[name] || Zap;
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => iconPickerTarget && applyLucideIcon(iconPickerTarget.idx, name)}
+                      className="flex items-center gap-2 rounded-sm border border-border bg-card px-3 py-2 text-left text-xs font-body text-foreground hover:border-primary hover:bg-primary/10 transition-colors"
+                    >
+                      <Icon className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span className="truncate">{name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {filteredLucideNames.length === 0 ? (
+                <p className="py-6 text-center text-xs text-muted-foreground">No Lucide icon matched this search.</p>
+              ) : null}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

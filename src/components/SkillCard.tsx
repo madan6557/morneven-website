@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import * as Lucide from "lucide-react";
-import { ChevronDown, Filter, Tag, X, Zap } from "lucide-react";
+import { Filter, Tag, X, Zap } from "lucide-react";
 import type { Feature, Skill } from "@/types";
 import { AttributeBadge, RichDescription } from "./AttributeBadge";
 import {
@@ -25,6 +25,13 @@ function resolveIcon(name?: string) {
 function isImageSource(value?: string) {
   if (!value) return false;
   return /^(https?:\/\/|\/api\/files\/|\/uploads\/|\/storage\/|data:image\/)/i.test(value);
+}
+
+function restrictionLabel(skill: Skill) {
+  if (!skill.restriction?.key && !skill.restriction?.value) return "";
+  const key = skill.restriction?.key?.trim() || "Restriction";
+  const value = skill.restriction?.value?.trim() || "-";
+  return `${key}: ${value}`;
 }
 
 interface SkillCardProps {
@@ -122,34 +129,19 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
             >
               {variant === "skill" ? skill?.name || "Unnamed Skill" : feature?.title || "Unnamed Feature"}
             </h3>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 ml-auto">
               {variant === "skill" && skill ? (
-                <>
-                  <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-display tracking-wider uppercase rounded-sm border"
-                    style={{
-                      color: readableHue,
-                      borderColor: softBorder,
-                      backgroundColor: softSurface,
-                    }}
-                  >
-                    {skill.category || "general"}
-                  </span>
-                  {skill.cooldown ? (
-                    <span className="text-[10px] font-display tracking-wider uppercase text-muted-foreground">
-                      CD {skill.cooldown}
-                    </span>
-                  ) : null}
-                </>
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-display tracking-wider uppercase rounded-sm border"
+                  style={{
+                    color: readableHue,
+                    borderColor: softBorder,
+                    backgroundColor: softSurface,
+                  }}
+                >
+                  {skill.category || "general"}
+                </span>
               ) : null}
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                  expanded && "rotate-180",
-                )}
-                style={{ color: expanded ? readableHue : undefined }}
-                aria-hidden
-              />
             </div>
           </div>
 
@@ -243,9 +235,9 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
                 <h4 className="text-[10px] font-display tracking-[0.18em] uppercase text-muted-foreground">
                   Skill Brief
                 </h4>
-                {skill.cooldown ? (
+                {restrictionLabel(skill) ? (
                   <p className="text-[11px] font-display tracking-wider uppercase text-muted-foreground">
-                    Cooldown {skill.cooldown}
+                    {restrictionLabel(skill)}
                   </p>
                 ) : null}
                 <RichDescription text={skill.description || "-"} />
