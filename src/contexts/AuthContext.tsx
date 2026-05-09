@@ -13,6 +13,7 @@ import {
   getRefreshToken,
   setAuthTokens,
 } from "@/services/restClient";
+import { sendPresenceHeartbeat } from "@/services/personnelApi";
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -183,6 +184,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthTokens(saved.token ?? getAccessToken(), saved.refreshToken ?? getRefreshToken());
     }
   }, [hasDemoToken, saved?.refreshToken, saved?.token]);
+
+  useEffect(() => {
+    if (!isAuthenticated || role === "guest") return;
+
+    let cancelled = false;
+    let intervalId: number | undefined;
+
+    const beat = () =>
+      sendPresenceHeartbeat().catch(() => {
+        if (cancelled) return;
+      });
+
+    void beat();
+    intervalId = window.setInterval(() => {
+      void beat();
+    }, 30000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void beat();
+      }
+    };
+
+    window.addEventListener("focus", handleVisibility);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      cancelled = true;
+      if (intervalId) window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleVisibility);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [isAuthenticated, role, username]);
 
   const applyAuthResponse = (data: AuthResponse, password: string) => {
     if (!data.token) throw new Error("Authentication token missing");

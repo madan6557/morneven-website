@@ -7,7 +7,8 @@ import {
 } from "@/services/newsApi";
 import type { PageInfo } from "@/services/pagination";
 import type { NewsItem, NewsAttachment } from "@/types";
-import { Pencil, Trash2, Plus, X, Save, Calendar, Image, Video, Link as LinkIcon, FileText } from "lucide-react";
+import { Pencil, Trash2, Plus, X, Save, Calendar, Image, Video, Link as LinkIcon, FileText, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const inputClass =
   "w-full mt-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
@@ -36,9 +37,12 @@ const blank = (): EditState => ({
 });
 
 export default function NewsManagementSection() {
+  const { toast } = useToast();
   const [items, setItems] = useState<NewsItem[]>([]);
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editing, setEditing] = useState<EditState | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const editFormRef = useRef<HTMLDivElement>(null);
@@ -63,6 +67,12 @@ export default function NewsManagementSection() {
       const response = await getNewsPage({ page, pageSize: NEWS_PAGE_SIZE });
       setItems((current) => reset ? response.items : [...current, ...response.items]);
       setPageInfo(response.pageInfo);
+    } catch (error) {
+      toast({
+        title: "Load news failed",
+        description: error instanceof Error ? error.message : "Could not load news entries.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -88,6 +98,7 @@ export default function NewsManagementSection() {
 
   async function save() {
     if (!editing) return;
+    setSaving(true);
     const payload: Omit<NewsItem, "id"> = {
       text: editing.text,
       date: editing.date,
@@ -96,17 +107,40 @@ export default function NewsManagementSection() {
       body: editing.hasDetail ? editing.body : undefined,
       attachments: editing.hasDetail && editing.attachments.length > 0 ? editing.attachments : undefined,
     };
-    if (isCreating) await createNews(payload);
-    else if (editing.id) await updateNews(editing.id, payload);
-    setEditing(null);
-    setIsCreating(false);
-    await load(true);
+    try {
+      if (isCreating) await createNews(payload);
+      else if (editing.id) await updateNews(editing.id, payload);
+      toast({ title: isCreating ? "News created" : "News updated" });
+      setEditing(null);
+      setIsCreating(false);
+      await load(true);
+    } catch (error) {
+      toast({
+        title: "Save news failed",
+        description: error instanceof Error ? error.message : "Backend rejected the news update.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function remove(id: string, title: string) {
     if (!window.confirm(`Delete news "${title}"? This cannot be undone.`)) return;
-    await deleteNews(id);
-    await load(true);
+    setDeletingId(id);
+    try {
+      await deleteNews(id);
+      toast({ title: "News deleted" });
+      await load(true);
+    } catch (error) {
+      toast({
+        title: "Delete news failed",
+        description: error instanceof Error ? error.message : "Backend rejected the delete request.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   function addAttachment(type: NewsAttachment["type"]) {
@@ -302,9 +336,11 @@ export default function NewsManagementSection() {
             </button>
             <button
               onClick={save}
-              className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity"
+              disabled={saving}
+              className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity disabled:cursor-wait disabled:opacity-60"
             >
-              <Save className="h-3 w-3" /> SAVE
+              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              {saving ? "SAVING" : "SAVE"}
             </button>
           </div>
         </div>
@@ -330,8 +366,13 @@ export default function NewsManagementSection() {
             <button onClick={() => startEdit(n)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors" title="Edit">
               <Pencil className="h-3.5 w-3.5" />
             </button>
-            <button onClick={() => remove(n.id, n.text)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors" title="Delete">
-              <Trash2 className="h-3.5 w-3.5" />
+            <button
+              onClick={() => remove(n.id, n.text)}
+              disabled={deletingId === n.id}
+              className="p-1.5 text-muted-foreground hover:text-destructive transition-colors disabled:cursor-wait disabled:opacity-50"
+              title="Delete"
+            >
+              {deletingId === n.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
             </button>
           </div>
         ))}

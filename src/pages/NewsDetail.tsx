@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, ExternalLink } from "lucide-react";
 import { getNewsItem } from "@/services/newsApi";
-import { AuthenticatedImage } from "@/components/AuthenticatedImage";
-import { getProxyUrl } from "@/services/fileProxyService";
+import { AuthenticatedImage, useResolvedImageUrl } from "@/components/AuthenticatedImage";
 import type { NewsItem } from "@/types";
 
 export default function NewsDetail() {
@@ -22,6 +21,8 @@ export default function NewsDetail() {
     });
   }, [id, navigate]);
 
+  const resolvedHeaderImage = useResolvedImageUrl(item?.thumbnail || "");
+
   if (loading) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
   if (!item) return <div className="p-8 text-muted-foreground font-body">News entry not found.</div>;
 
@@ -30,8 +31,8 @@ export default function NewsDetail() {
       <div
         className="relative h-48 md:h-64 overflow-hidden flex items-end"
         style={
-          item.thumbnail
-            ? { backgroundImage: `url(${getProxyUrl(item.thumbnail)})`, backgroundSize: "cover", backgroundPosition: "center" }
+          resolvedHeaderImage
+            ? { backgroundImage: `url(${resolvedHeaderImage})`, backgroundSize: "cover", backgroundPosition: "center" }
             : { backgroundColor: "var(--color-muted)" }
         }
       >

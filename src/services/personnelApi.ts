@@ -66,6 +66,10 @@ export async function deletePersonnel(id: string): Promise<boolean> {
   return true;
 }
 
+export async function sendPresenceHeartbeat(): Promise<void> {
+  await apiRequest("/personnel/presence/heartbeat", { method: "POST" });
+}
+
 export function subscribePersonnel(cb: () => void): () => void {
   if (typeof window === "undefined") return () => undefined;
   const handler = () => cb();

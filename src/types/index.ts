@@ -398,4 +398,6 @@ export interface PersonnelUser {
   track: "executive" | "field" | "mechanic" | "logistics";
   note?: string;
   updatedAt?: string;
+  online?: boolean;
+  lastSeenAt?: string;
 }

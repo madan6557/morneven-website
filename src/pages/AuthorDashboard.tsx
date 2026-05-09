@@ -18,7 +18,7 @@ import {
   type CommandCenterSettings,
 } from "@/services/commandCenterSettings";
 import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, LoreEvent, EventRelatedLink, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel, LoreMeta, LoreFieldNote, Skill, Feature } from "@/types";
-import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, File as FileIcon, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon, Star, CheckCircle2, FilePlus, RefreshCw } from "lucide-react";
+import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, File as FileIcon, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon, Star, CheckCircle2, FilePlus, RefreshCw, Loader2 } from "lucide-react";
 import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
 import NewsManagementSection from "@/components/NewsManagementSection";
 import CommandCenterSelectionPanel from "@/components/CommandCenterSelectionPanel";
@@ -478,6 +478,10 @@ export default function AuthorDashboard() {
 
   const [editing, setEditing] = useState<EditableState | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [contentSaving, setContentSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [mapSaving, setMapSaving] = useState(false);
+  const [mapImageSaving, setMapImageSaving] = useState(false);
   const [ccSettings, setCcSettings] = useState<CommandCenterSettings>(() => getCommandCenterSettings());
   const [ccPresets, setCcPresets] = useState<CommandCenterPreset[]>([]);
   const [ccSettingsLoading, setCcSettingsLoading] = useState(false);
@@ -945,179 +949,191 @@ export default function AuthorDashboard() {
     if (!editing) return;
     if (!validateEditing()) return;
 
-    if (activeTab === "projects") {
-      const payload: Omit<Project, "id"> = {
-        title: editing.title ?? "",
-        status: (editing.status as Project["status"]) ?? "Planning",
-        thumbnail: editing.thumbnail ?? "",
-        headerImage: editing.headerImage ?? "",
-        shortDesc: editing.shortDesc ?? "",
-        fullDesc: editing.fullDesc ?? "",
-        patches: editing.patches ?? [],
-        docs: editing.docs ?? [],
-        features: editing.features ?? [],
-        meta: editing.meta,
-      };
-
-      if (isCreating) await createProject(payload);
-      else if (editing.id) await updateProject(editing.id, payload);
-      await loadDashboardItems(true);
-    } else if (activeTab === "lore") {
-      if (loreSub === "characters") {
-        const normalizedStats = normalizeCharacterStatsForEditor(editing.stats as Partial<Character["stats"]>);
-        const payload: Omit<Character, "id"> = {
-          name: editing.name ?? "",
-          race: editing.race ?? "",
-          occupation: editing.occupation ?? "",
-          height: editing.height ?? "",
-          traits: editing.traits ?? [],
-          likes: editing.likes ?? [],
-          dislikes: editing.dislikes ?? [],
-          accentColor: editing.accentColor ?? "#4A90D9",
-          thumbnail: editing.thumbnail ?? "",
-          headerImage: editing.headerImage ?? "",
-          shortDesc: editing.shortDesc ?? "",
-          fullDesc: editing.fullDesc ?? "",
-          stats: normalizedStats,
-          docs: editing.docs ?? [],
-          fieldNotes: editing.fieldNotes ?? [],
-          observations: editing.observations ?? [],
-          contributions: editing.contributions ?? [],
-          skills: editing.skills ?? [],
-          meta: editing.meta,
-        };
-
-        if (isCreating) await createCharacter(payload);
-        else if (editing.id) await updateCharacter(editing.id, payload);
-        await loadDashboardItems(true);
-      } else if (loreSub === "places") {
-        const payload: Omit<Place, "id"> = {
-          name: editing.name ?? "",
-          type: editing.type ?? "",
-          thumbnail: editing.thumbnail ?? "",
-          headerImage: editing.headerImage ?? "",
-          shortDesc: editing.shortDesc ?? "",
-          fullDesc: editing.fullDesc ?? "",
-          docs: editing.docs ?? [],
-          fieldNotes: editing.fieldNotes ?? [],
-          observations: editing.observations ?? [],
-          features: editing.features ?? [],
-          meta: editing.meta,
-        };
-
-        if (isCreating) await createPlace(payload);
-        else if (editing.id) await updatePlace(editing.id, payload);
-        await loadDashboardItems(true);
-      } else if (loreSub === "technology") {
-        const payload: Omit<Technology, "id"> = {
-          name: editing.name ?? "",
-          category: editing.category ?? "",
-          thumbnail: editing.thumbnail ?? "",
-          headerImage: editing.headerImage ?? "",
-          shortDesc: editing.shortDesc ?? "",
-          fullDesc: editing.fullDesc ?? "",
-          docs: editing.docs ?? [],
-          fieldNotes: editing.fieldNotes ?? [],
-          observations: editing.observations ?? [],
-          features: editing.features ?? [],
-          meta: editing.meta,
-        };
-
-        if (isCreating) await createTech(payload);
-        else if (editing.id) await updateTech(editing.id, payload);
-        await loadDashboardItems(true);
-      } else if (loreSub === "creatures") {
-        const normalizedStats = normalizeCreatureStatsForEditor(editing.stats as Partial<Creature["stats"]>);
-        const payload: Omit<Creature, "id"> = {
-          name: editing.name ?? "",
-          classification: (editing.classification as CreatureClassification) ?? "Amorphous",
-          dangerLevel: (editing.dangerLevel as CreatureDangerLevel) ?? 1,
-          habitat: editing.habitat ?? "",
-          traits: editing.traits ?? [],
-          instincts: editing.instincts ?? [],
-          aversions: editing.aversions ?? [],
-          accentColor: editing.accentColor ?? "#7DD3FC",
-          thumbnail: editing.thumbnail ?? "",
-          headerImage: editing.headerImage ?? "",
-          shortDesc: editing.shortDesc ?? "",
-          fullDesc: editing.fullDesc ?? "",
-          docs: editing.docs ?? [],
-          fieldNotes: editing.fieldNotes ?? [],
-          observations: editing.observations ?? [],
-          stats: normalizedStats,
-          skills: editing.skills ?? [],
-          meta: editing.meta,
-        };
-
-        if (isCreating) await createCreature(payload);
-        else if (editing.id) await updateCreature(editing.id, payload);
-        await loadDashboardItems(true);
-      } else if (loreSub === "events") {
-        const payload: Omit<LoreEvent, "id"> = {
+    setContentSaving(true);
+    try {
+      if (activeTab === "projects") {
+        const payload: Omit<Project, "id"> = {
           title: editing.title ?? "",
-          category: editing.category ?? "Institute Milestone",
-          era: editing.era,
-          dateLabel: editing.dateLabel,
-          scope: editing.scope,
-          impactLevel: editing.impactLevel,
+          status: (editing.status as Project["status"]) ?? "Planning",
           thumbnail: editing.thumbnail ?? "",
           headerImage: editing.headerImage ?? "",
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
-          consequences: editing.consequences ?? [],
-          relatedLinks: editing.relatedLinks ?? [],
+          patches: editing.patches ?? [],
           docs: editing.docs ?? [],
-          fieldNotes: editing.fieldNotes ?? [],
-          observations: editing.observations ?? [],
           features: editing.features ?? [],
           meta: editing.meta,
         };
 
-        if (isCreating) await createEvent(payload);
-        else if (editing.id) await updateEvent(editing.id, payload);
+        if (isCreating) await createProject(payload);
+        else if (editing.id) await updateProject(editing.id, payload);
         await loadDashboardItems(true);
+      } else if (activeTab === "lore") {
+        if (loreSub === "characters") {
+          const normalizedStats = normalizeCharacterStatsForEditor(editing.stats as Partial<Character["stats"]>);
+          const payload: Omit<Character, "id"> = {
+            name: editing.name ?? "",
+            race: editing.race ?? "",
+            occupation: editing.occupation ?? "",
+            height: editing.height ?? "",
+            traits: editing.traits ?? [],
+            likes: editing.likes ?? [],
+            dislikes: editing.dislikes ?? [],
+            accentColor: editing.accentColor ?? "#4A90D9",
+            thumbnail: editing.thumbnail ?? "",
+            headerImage: editing.headerImage ?? "",
+            shortDesc: editing.shortDesc ?? "",
+            fullDesc: editing.fullDesc ?? "",
+            stats: normalizedStats,
+            docs: editing.docs ?? [],
+            fieldNotes: editing.fieldNotes ?? [],
+            observations: editing.observations ?? [],
+            contributions: editing.contributions ?? [],
+            skills: editing.skills ?? [],
+            meta: editing.meta,
+          };
+
+          if (isCreating) await createCharacter(payload);
+          else if (editing.id) await updateCharacter(editing.id, payload);
+          await loadDashboardItems(true);
+        } else if (loreSub === "places") {
+          const payload: Omit<Place, "id"> = {
+            name: editing.name ?? "",
+            type: editing.type ?? "",
+            thumbnail: editing.thumbnail ?? "",
+            headerImage: editing.headerImage ?? "",
+            shortDesc: editing.shortDesc ?? "",
+            fullDesc: editing.fullDesc ?? "",
+            docs: editing.docs ?? [],
+            fieldNotes: editing.fieldNotes ?? [],
+            observations: editing.observations ?? [],
+            features: editing.features ?? [],
+            meta: editing.meta,
+          };
+
+          if (isCreating) await createPlace(payload);
+          else if (editing.id) await updatePlace(editing.id, payload);
+          await loadDashboardItems(true);
+        } else if (loreSub === "technology") {
+          const payload: Omit<Technology, "id"> = {
+            name: editing.name ?? "",
+            category: editing.category ?? "",
+            thumbnail: editing.thumbnail ?? "",
+            headerImage: editing.headerImage ?? "",
+            shortDesc: editing.shortDesc ?? "",
+            fullDesc: editing.fullDesc ?? "",
+            docs: editing.docs ?? [],
+            fieldNotes: editing.fieldNotes ?? [],
+            observations: editing.observations ?? [],
+            features: editing.features ?? [],
+            meta: editing.meta,
+          };
+
+          if (isCreating) await createTech(payload);
+          else if (editing.id) await updateTech(editing.id, payload);
+          await loadDashboardItems(true);
+        } else if (loreSub === "creatures") {
+          const normalizedStats = normalizeCreatureStatsForEditor(editing.stats as Partial<Creature["stats"]>);
+          const payload: Omit<Creature, "id"> = {
+            name: editing.name ?? "",
+            classification: (editing.classification as CreatureClassification) ?? "Amorphous",
+            dangerLevel: (editing.dangerLevel as CreatureDangerLevel) ?? 1,
+            habitat: editing.habitat ?? "",
+            traits: editing.traits ?? [],
+            instincts: editing.instincts ?? [],
+            aversions: editing.aversions ?? [],
+            accentColor: editing.accentColor ?? "#7DD3FC",
+            thumbnail: editing.thumbnail ?? "",
+            headerImage: editing.headerImage ?? "",
+            shortDesc: editing.shortDesc ?? "",
+            fullDesc: editing.fullDesc ?? "",
+            docs: editing.docs ?? [],
+            fieldNotes: editing.fieldNotes ?? [],
+            observations: editing.observations ?? [],
+            stats: normalizedStats,
+            skills: editing.skills ?? [],
+            meta: editing.meta,
+          };
+
+          if (isCreating) await createCreature(payload);
+          else if (editing.id) await updateCreature(editing.id, payload);
+          await loadDashboardItems(true);
+        } else if (loreSub === "events") {
+          const payload: Omit<LoreEvent, "id"> = {
+            title: editing.title ?? "",
+            category: editing.category ?? "Institute Milestone",
+            era: editing.era,
+            dateLabel: editing.dateLabel,
+            scope: editing.scope,
+            impactLevel: editing.impactLevel,
+            thumbnail: editing.thumbnail ?? "",
+            headerImage: editing.headerImage ?? "",
+            shortDesc: editing.shortDesc ?? "",
+            fullDesc: editing.fullDesc ?? "",
+            consequences: editing.consequences ?? [],
+            relatedLinks: editing.relatedLinks ?? [],
+            docs: editing.docs ?? [],
+            fieldNotes: editing.fieldNotes ?? [],
+            observations: editing.observations ?? [],
+            features: editing.features ?? [],
+            meta: editing.meta,
+          };
+
+          if (isCreating) await createEvent(payload);
+          else if (editing.id) await updateEvent(editing.id, payload);
+          await loadDashboardItems(true);
+        } else {
+          const payload: Omit<OtherLore, "id"> = {
+            title: editing.title ?? "",
+            category: editing.category ?? "World Systems",
+            thumbnail: editing.thumbnail ?? "",
+            headerImage: editing.headerImage ?? "",
+            shortDesc: editing.shortDesc ?? "",
+            fullDesc: editing.fullDesc ?? "",
+            docs: editing.docs ?? [],
+            fieldNotes: editing.fieldNotes ?? [],
+            observations: editing.observations ?? [],
+            features: editing.features ?? [],
+            meta: editing.meta,
+          };
+
+          if (isCreating) await createOther(payload);
+          else if (editing.id) await updateOther(editing.id, payload);
+          await loadDashboardItems(true);
+        }
       } else {
-        const payload: Omit<OtherLore, "id"> = {
+        const payload: Omit<GalleryItem, "id"> = {
+          type: (editing.type as GalleryItem["type"]) ?? "image",
           title: editing.title ?? "",
-          category: editing.category ?? "World Systems",
           thumbnail: editing.thumbnail ?? "",
-          headerImage: editing.headerImage ?? "",
-          shortDesc: editing.shortDesc ?? "",
-          fullDesc: editing.fullDesc ?? "",
-          docs: editing.docs ?? [],
-          fieldNotes: editing.fieldNotes ?? [],
-          observations: editing.observations ?? [],
-          features: editing.features ?? [],
-          meta: editing.meta,
+          videoUrl: editing.videoUrl,
+          caption: editing.caption ?? "",
+          tags: editing.tags ?? [],
+          date: editing.date ?? new Date().toISOString().split("T")[0],
+          comments: editing.comments ?? [],
+          // Stamp the uploader on creation; preserve on edit so ownership
+          // doesn't transfer when an author edits someone else's upload.
+          uploadedBy: isCreating
+            ? username
+            : ((editing as EditableState & { uploadedBy?: string }).uploadedBy ?? username),
         };
 
-        if (isCreating) await createOther(payload);
-        else if (editing.id) await updateOther(editing.id, payload);
+        if (isCreating) await createGalleryItem(payload);
+        else if (editing.id) await updateGalleryItem(editing.id, payload);
         await loadDashboardItems(true);
       }
-    } else {
-      const payload: Omit<GalleryItem, "id"> = {
-        type: (editing.type as GalleryItem["type"]) ?? "image",
-        title: editing.title ?? "",
-        thumbnail: editing.thumbnail ?? "",
-        videoUrl: editing.videoUrl,
-        caption: editing.caption ?? "",
-        tags: editing.tags ?? [],
-        date: editing.date ?? new Date().toISOString().split("T")[0],
-        comments: editing.comments ?? [],
-        // Stamp the uploader on creation; preserve on edit so ownership
-        // doesn't transfer when an author edits someone else's upload.
-        uploadedBy: isCreating
-          ? username
-          : ((editing as EditableState & { uploadedBy?: string }).uploadedBy ?? username),
-      };
-
-      if (isCreating) await createGalleryItem(payload);
-      else if (editing.id) await updateGalleryItem(editing.id, payload);
-      await loadDashboardItems(true);
+      toast({ title: isCreating ? "Content created" : "Content updated" });
+      setEditing(null);
+      setIsCreating(false);
+    } catch (error) {
+      toast({
+        title: "Save failed",
+        description: error instanceof Error ? error.message : "Backend rejected the content update.",
+        variant: "destructive",
+      });
+    } finally {
+      setContentSaving(false);
     }
-    setEditing(null);
-    setIsCreating(false);
   };
 
   const handleDelete = async (id: string, title: string) => {
@@ -1130,18 +1146,47 @@ export default function AuthorDashboard() {
       critical: true,
       confirmDelaySeconds: 5,
       onConfirm: async () => {
-        if (activeTab === "projects") { await deleteProject(id); await loadDashboardItems(true); }
-        else if (activeTab === "lore") {
-          if (loreSub === "characters") await deleteCharacter(id);
-          else if (loreSub === "places") await deletePlace(id);
-          else if (loreSub === "technology") await deleteTech(id);
-          else if (loreSub === "creatures") await deleteCreature(id);
-          else if (loreSub === "events") await deleteEvent(id);
-          else await deleteOther(id);
-          await loadDashboardItems(true);
-        } else if (activeTab === "gallery") { await deleteGalleryItem(id); await loadDashboardItems(true); }
+        setDeletingId(id);
+        try {
+          if (activeTab === "projects") { await deleteProject(id); await loadDashboardItems(true); }
+          else if (activeTab === "lore") {
+            if (loreSub === "characters") await deleteCharacter(id);
+            else if (loreSub === "places") await deletePlace(id);
+            else if (loreSub === "technology") await deleteTech(id);
+            else if (loreSub === "creatures") await deleteCreature(id);
+            else if (loreSub === "events") await deleteEvent(id);
+            else await deleteOther(id);
+            await loadDashboardItems(true);
+          } else if (activeTab === "gallery") { await deleteGalleryItem(id); await loadDashboardItems(true); }
+          toast({ title: "Content deleted" });
+        } catch (error) {
+          toast({
+            title: "Delete failed",
+            description: error instanceof Error ? error.message : "Backend rejected the delete request.",
+            variant: "destructive",
+          });
+        } finally {
+          setDeletingId(null);
+        }
       },
     });
+  };
+
+  const persistMapMarkers = async (markers: MapMarker[], successTitle = "Map markers saved") => {
+    setMapSaving(true);
+    try {
+      await saveMapMarkers(markers);
+      window.dispatchEvent(new CustomEvent("morneven:map-changed"));
+      toast({ title: successTitle });
+    } catch (error) {
+      toast({
+        title: "Map marker save failed",
+        description: error instanceof Error ? error.message : "Backend rejected the marker update.",
+        variant: "destructive",
+      });
+    } finally {
+      setMapSaving(false);
+    }
   };
 
   const getItems = (): DashboardItem[] => {
@@ -2299,9 +2344,10 @@ export default function AuthorDashboard() {
           )}
 
           <div className="flex justify-end gap-2">
-            <button onClick={() => { setEditing(null); setIsCreating(false); }} className="px-4 py-2 text-xs font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors">CANCEL</button>
-            <button onClick={handleSave} className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity">
-              <Save className="h-3 w-3" /> SAVE
+            <button onClick={() => { setEditing(null); setIsCreating(false); }} disabled={contentSaving} className="px-4 py-2 text-xs font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors disabled:cursor-wait disabled:opacity-60">CANCEL</button>
+            <button onClick={handleSave} disabled={contentSaving} className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity disabled:cursor-wait disabled:opacity-60">
+              {contentSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              {contentSaving ? "SAVING..." : "SAVE"}
             </button>
           </div>
         </div>
@@ -2321,13 +2367,31 @@ export default function AuthorDashboard() {
             value={mapImageUrl}
             onChange={(url) => {
               setMapImageUrl(url);
-              void setMapImageRemote(url).finally(() => {
-                window.dispatchEvent(new CustomEvent("morneven:map-changed"));
-              });
+              setMapImageSaving(true);
+              void setMapImageRemote(url)
+                .then(() => {
+                  toast({ title: "Map image updated" });
+                })
+                .catch((error) => {
+                  toast({
+                    title: "Map image update failed",
+                    description: error instanceof Error ? error.message : "Backend rejected the map image update.",
+                    variant: "destructive",
+                  });
+                })
+                .finally(() => {
+                  setMapImageSaving(false);
+                  window.dispatchEvent(new CustomEvent("morneven:map-changed"));
+                });
             }}
             accept="image/*"
             folder="map"
           />
+          {mapImageSaving && (
+            <p className="flex items-center gap-2 text-xs text-muted-foreground font-body">
+              <Loader2 className="h-3 w-3 animate-spin" /> Saving map image...
+            </p>
+          )}
 
           <div className="flex items-center justify-between">
             <p className={labelClass}>Markers ({mapMarkers.length})</p>
@@ -2335,12 +2399,13 @@ export default function AuthorDashboard() {
               onClick={() => {
                 const next = [...mapMarkers, { id: `mk-${Date.now()}`, name: "New Marker", status: "safe" as MapZoneStatus, x: 0.5, y: 0.5, description: "", loreLink: "" }];
                 setMapMarkers(next);
-                saveMapMarkers(next);
-                window.dispatchEvent(new CustomEvent("morneven:map-changed"));
+                void persistMapMarkers(next, "Map marker added");
               }}
-              className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors"
+              disabled={mapSaving}
+              className="flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider text-primary border border-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors disabled:cursor-wait disabled:opacity-60"
             >
-              <Plus className="h-3 w-3" /> ADD MARKER
+              {mapSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+              ADD MARKER
             </button>
           </div>
 
@@ -2366,8 +2431,8 @@ export default function AuthorDashboard() {
                 <input type="text" value={m.description} onChange={(e) => { const next = [...mapMarkers]; next[idx] = { ...m, description: e.target.value }; setMapMarkers(next); }} placeholder="Description" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                 <input type="text" value={m.loreLink || ""} onChange={(e) => { const next = [...mapMarkers]; next[idx] = { ...m, loreLink: e.target.value }; setMapMarkers(next); }} placeholder="Lore link (e.g. /lore/places/place-001)" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                 <div className="flex justify-end">
-                  <button onClick={() => { const next = mapMarkers.filter((_, i) => i !== idx); setMapMarkers(next); saveMapMarkers(next); window.dispatchEvent(new CustomEvent("morneven:map-changed")); }} className="text-muted-foreground hover:text-destructive">
-                    <Trash2 className="h-3.5 w-3.5" />
+                  <button onClick={() => { const next = mapMarkers.filter((_, i) => i !== idx); setMapMarkers(next); void persistMapMarkers(next, "Map marker removed"); }} disabled={mapSaving} className="text-muted-foreground hover:text-destructive disabled:cursor-wait disabled:opacity-60">
+                    {mapSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                   </button>
                 </div>
               </div>
@@ -2375,8 +2440,9 @@ export default function AuthorDashboard() {
           </div>
 
           <div className="flex justify-end">
-            <button onClick={() => { saveMapMarkers(mapMarkers); window.dispatchEvent(new CustomEvent("morneven:map-changed")); }} className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity">
-              <Save className="h-3 w-3" /> SAVE MARKERS
+            <button onClick={() => { void persistMapMarkers(mapMarkers); }} disabled={mapSaving} className="flex items-center gap-1 px-4 py-2 text-xs font-display tracking-wider bg-primary text-primary-foreground rounded-sm hover:opacity-90 transition-opacity disabled:cursor-wait disabled:opacity-60">
+              {mapSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              {mapSaving ? "SAVING..." : "SAVE MARKERS"}
             </button>
           </div>
         </div>
@@ -2412,8 +2478,8 @@ export default function AuthorDashboard() {
                     <button onClick={() => beginEdit(item)} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
-                    <button onClick={() => handleDelete(item.id, getItemTitle(item))} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
-                      <Trash2 className="h-3.5 w-3.5" />
+                    <button onClick={() => handleDelete(item.id, getItemTitle(item))} disabled={deletingId === item.id} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors disabled:cursor-wait disabled:opacity-60">
+                      {deletingId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                     </button>
                   </>
                 ) : (

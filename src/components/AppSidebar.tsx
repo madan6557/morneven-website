@@ -98,6 +98,9 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
   const { role, username, logout, personnelLevel, track, setPersonnelLevel, setTrack } = useAuth();
   const [chatBadgeCount, setChatBadgeCount] = useState(0);
   const [managementBadgeCount, setManagementBadgeCount] = useState(0);
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   const filteredNav = navItems.filter((item) =>
@@ -113,6 +116,19 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
     logout();
     navigate("/");
   };
+
+  useEffect(() => {
+    const updateOnlineStatus = () => setIsOnline(navigator.onLine);
+
+    updateOnlineStatus();
+    window.addEventListener("online", updateOnlineStatus);
+    window.addEventListener("offline", updateOnlineStatus);
+
+    return () => {
+      window.removeEventListener("online", updateOnlineStatus);
+      window.removeEventListener("offline", updateOnlineStatus);
+    };
+  }, []);
 
   useEffect(() => {
     const refreshBadges = () => {
@@ -141,6 +157,11 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
       unsubscribeManagement();
     };
   }, [personnelLevel, role, track, username]);
+
+  const systemStatusLabel = isOnline ? "SYSTEM ONLINE" : "SYSTEM OFFLINE";
+  const systemStatusDotClass = isOnline
+    ? "bg-accent-yellow animate-pulse-glow"
+    : "bg-destructive";
 
   const badgeCountFor = (item: NavItem) => {
     if (item.badge === "chat") return chatBadgeCount;
@@ -328,8 +349,8 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
               <span className="font-heading text-sm tracking-wide">Logout</span>
             </button>
             <div className="flex items-center gap-2 px-3 py-2 text-xs text-sidebar-foreground/60 font-heading tracking-wide">
-              <div className="h-1.5 w-1.5 rounded-full bg-accent-yellow animate-pulse-glow" />
-              SYSTEM ONLINE
+              <div className={`h-1.5 w-1.5 rounded-full ${systemStatusDotClass}`} />
+              {systemStatusLabel}
             </div>
           </>
         ) : (
@@ -343,7 +364,12 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
               <TooltipContent side="right" className="font-heading">Logout</TooltipContent>
             </Tooltip>
             <div className="flex justify-center py-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-accent-yellow animate-pulse-glow" />
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <div className={`h-1.5 w-1.5 rounded-full ${systemStatusDotClass}`} />
+                </TooltipTrigger>
+                <TooltipContent side="right" className="font-heading">{systemStatusLabel}</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         )}
@@ -365,6 +391,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
               className="fixed inset-0 bg-black/50 z-40"
             />
             <motion.aside
+              id="morneven-mobile-sidebar"
               ref={mobileSidebarRef}
               initial={{ x: -256 }}
               animate={{ x: 0 }}

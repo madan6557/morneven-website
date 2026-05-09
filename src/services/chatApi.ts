@@ -293,6 +293,31 @@ export async function sendMessageRemote(
   return message;
 }
 
+export function updateMessage(
+  messageId: string,
+  updater: (message: ChatMessage) => ChatMessage,
+): ChatMessage | null {
+  for (const [conversationId, messages] of messageCache.entries()) {
+    const index = messages.findIndex((message) => message.id === messageId);
+    if (index === -1) continue;
+    const next = [...messages];
+    next[index] = updater(next[index]);
+    messageCache.set(conversationId, next);
+    emitChatChanged();
+    return next[index];
+  }
+  return null;
+}
+
+export async function editMessageRemote(messageId: string, text: string): Promise<ChatMessage> {
+  const message = await apiRequest<ChatMessage>(`/chat/messages/${messageId}`, {
+    method: "PUT",
+    body: { text },
+  });
+  updateMessage(messageId, () => message);
+  return message;
+}
+
 export function buildReplyPreview(message: ChatMessage): ReplyPreview {
   return {
     messageId: message.id,

@@ -15,8 +15,9 @@ import DiscussionSection from "@/components/DiscussionSection";
 import { SkillList } from "@/components/SkillCard";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
+import { AuthenticatedImage, useResolvedImageUrl } from "@/components/AuthenticatedImage";
+import DocumentationViewer from "@/components/DocumentationViewer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getProxyUrl } from "@/services/fileProxyService";
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
@@ -37,17 +38,26 @@ export default function EventDetail() {
       };
     }
 
-    getEvent(id).then((e) => {
-      if (!active) return;
-      setItem(e ?? null);
-      setDiscussion(e?.discussions ?? []);
-      setLoading(false);
-    });
+    getEvent(id)
+      .then((e) => {
+        if (!active) return;
+        setItem(e ?? null);
+        setDiscussion(e?.discussions ?? []);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setItem(null);
+        setDiscussion([]);
+        setLoading(false);
+      });
 
     return () => {
       active = false;
     };
   }, [id]);
+
+  const resolvedHeaderImage = useResolvedImageUrl(item?.headerImage || item?.thumbnail || "");
 
   if (loading) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
 
@@ -105,7 +115,7 @@ export default function EventDetail() {
     <div className="space-y-0">
       <div
         className="relative h-48 md:h-64 overflow-hidden flex items-end"
-        style={headerImage ? { backgroundImage: `url(${getProxyUrl(headerImage)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}
+        style={resolvedHeaderImage ? { backgroundImage: `url(${resolvedHeaderImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent z-10" />
         <div className="relative z-20 p-6 md:p-8 w-full">
@@ -189,36 +199,7 @@ export default function EventDetail() {
           </div>
         )}
 
-        {item.docs && item.docs.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Documentation</h2>
-            <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-              {item.docs.map((doc, i) => (
-                <div key={i} className="hud-border-sm bg-card overflow-hidden">
-                  {doc.type === "video" && doc.url ? (
-                    <div className="aspect-video bg-muted">
-                      <iframe src={doc.url} className="w-full h-full" allowFullScreen title={`${item.title} doc`} />
-                    </div>
-                  ) : doc.type === "file" && doc.url ? (
-                    <a href={doc.url} target="_blank" rel="noreferrer" className="aspect-video bg-muted flex flex-col items-center justify-center gap-2 hover:bg-muted/80 transition-colors">
-                      <FileText className="h-6 w-6 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground font-heading tracking-wider">FILE</span>
-                    </a>
-                  ) : doc.type === "image" && doc.url ? (
-                    <div className="aspect-video bg-muted overflow-hidden">
-                      <img src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="aspect-video bg-muted flex items-center justify-center">
-                      <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : doc.type === "file" ? "FILE" : "IMAGE"}</span>
-                    </div>
-                  )}
-                  <div className="p-3"><p className="text-xs font-body text-muted-foreground">{doc.caption}</p></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <DocumentationViewer docs={item.docs} itemLabel={item.title} />
 
         <div className="mecha-line" />
         <DiscussionSection
@@ -246,3 +227,4 @@ function MetaTile({ icon, label, value }: { icon: React.ReactNode; label: string
     </div>
   );
 }
+

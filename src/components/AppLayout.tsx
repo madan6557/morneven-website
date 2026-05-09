@@ -34,6 +34,9 @@ export function AppLayout() {
               <button
                 onClick={() => setMobileOpen(true)}
                 className="p-2 rounded-md hover:bg-muted transition-colors"
+                aria-label="Open navigation"
+                aria-expanded={mobileOpen}
+                aria-controls="morneven-mobile-sidebar"
               >
                 <Menu className="h-5 w-5 text-foreground" />
               </button>

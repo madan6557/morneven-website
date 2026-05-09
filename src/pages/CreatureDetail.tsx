@@ -9,13 +9,14 @@ import {
   editCreatureDiscussionReply,
   deleteCreatureDiscussionReply,
 } from "@/services/api";
-import { getProxyUrl } from "@/services/fileProxyService";
 import type { Creature, DiscussionComment, DiscussionMention, LoreFieldNote } from "@/types";
 import { ArrowLeft, ShieldAlert, FileText, MapPin, NotebookPen, ExternalLink, Info, HeartPulse, Siren } from "lucide-react";
 import StatsRadar from "@/components/StatsRadar";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
+import { AuthenticatedImage, useResolvedImageUrl } from "@/components/AuthenticatedImage";
+import DocumentationViewer from "@/components/DocumentationViewer";
 import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillList } from "@/components/SkillCard";
@@ -89,17 +90,26 @@ export default function CreatureDetail() {
       };
     }
 
-    getCreature(id).then((c) => {
-      if (!active) return;
-      setCreature(c ?? null);
-      setDiscussion(c?.discussions ?? []);
-      setLoading(false);
-    });
+    getCreature(id)
+      .then((c) => {
+        if (!active) return;
+        setCreature(c ?? null);
+        setDiscussion(c?.discussions ?? []);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setCreature(null);
+        setDiscussion([]);
+        setLoading(false);
+      });
 
     return () => {
       active = false;
     };
   }, [id]);
+
+  const resolvedHeaderImage = useResolvedImageUrl(creature?.headerImage || creature?.thumbnail || "");
 
   if (loading) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
 
@@ -186,11 +196,11 @@ export default function CreatureDetail() {
 
   return (
     <div className="space-y-0">
-      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={headerImage ? { backgroundImage: `url(${getProxyUrl(headerImage)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+      <div className="relative h-64 md:h-80 overflow-hidden flex items-end" style={resolvedHeaderImage ? { backgroundImage: `url(${resolvedHeaderImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
         <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accentMuted(accent)} 0%, transparent 62%)` }} />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent z-10" />
         <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: accent }} />
-        {!headerImage && (
+        {!resolvedHeaderImage && (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="font-display text-6xl opacity-5 tracking-[0.3em]" style={{ color: accentReadable }}>{creature.name.split(" ")[0].toUpperCase()}</span>
           </div>
@@ -418,7 +428,7 @@ export default function CreatureDetail() {
                 {doctrine && <> Morneven standing protocol for {creature.classification}-class entities is <span className="text-foreground font-semibold">{doctrine.protocol}</span>.</>}
               </p>
               <Link
-                to="/map"
+                to="/maps"
                 className="inline-flex items-center gap-1.5 text-xs font-heading tracking-wider uppercase text-muted-foreground hover:text-foreground transition-colors"
               >
                 View on Tactical Map <ExternalLink className="h-3 w-3" />
@@ -460,38 +470,7 @@ export default function CreatureDetail() {
         <div className="pt-6">
           <SkillList items={creatureSkills} accent={accent} variant="skill" />
         </div>
-
-        {/* Documentation - always visible (outside tabs) */}
-        {creature.docs && creature.docs.length > 0 && (
-          <div className="space-y-4 pt-4">
-            <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Documentation</h2>
-            <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-              {creature.docs.map((doc, i) => (
-                <div key={i} className="hud-border-sm bg-card overflow-hidden" style={{ borderColor: `${accent}20` }}>
-                  {doc.type === "video" && doc.url ? (
-                    <div className="aspect-video bg-muted">
-                      <iframe src={doc.url} className="w-full h-full" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title={`${creature.name} doc`} />
-                    </div>
-                  ) : doc.type === "file" && doc.url ? (
-                    <a href={doc.url} target="_blank" rel="noreferrer" className="aspect-video bg-muted flex flex-col items-center justify-center gap-2 hover:bg-muted/80 transition-colors">
-                      <FileText className="h-6 w-6 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground font-heading tracking-wider">FILE</span>
-                    </a>
-                  ) : doc.type === "image" && doc.url ? (
-                    <div className="aspect-video bg-muted overflow-hidden">
-                      <img src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="aspect-video bg-muted flex items-center justify-center">
-                      <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : doc.type === "file" ? "FILE" : "IMAGE"}</span>
-                    </div>
-                  )}
-                  <div className="p-3"><p className="text-xs font-body text-muted-foreground">{doc.caption}</p></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <DocumentationViewer docs={creature.docs} itemLabel={creature.name} accentColor={accent} className="pt-4" />
 
         {/* Discussion Section - standalone, outside tabs */}
         <div className="space-y-4 pt-6">
@@ -538,3 +517,4 @@ function FieldNoteList({ title, items, accent }: { title: string; items: LoreFie
     </div>
   );
 }
+

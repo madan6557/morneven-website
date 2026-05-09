@@ -148,6 +148,12 @@ export async function downloadAuthenticatedFile(url: string, filename?: string):
   document.body.removeChild(link);
 }
 
+export async function openAuthenticatedFile(url: string): Promise<void> {
+  const fileUrl = await getAuthenticatedFileUrl(url, "*/*");
+  if (!fileUrl) return;
+  window.open(fileUrl, "_blank", "noopener,noreferrer");
+}
+
 /**
  * Clear blob URL cache - useful for memory management
  */

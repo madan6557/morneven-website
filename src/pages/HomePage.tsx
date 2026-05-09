@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -24,10 +24,12 @@ import {
   BookOpen,
   ArrowRight,
   Sparkles,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import { averageScore, toCharacterPrimaryStats } from "@/lib/statDetails";
+import { ContentState } from "@/components/ContentState";
 
 const fadeUp = (delay: number) => ({
   initial: { opacity: 0, y: 20 },
@@ -41,6 +43,8 @@ const emptyStats: ContentStats = {
   totalLore: 0,
   totalGallery: 0,
 };
+
+type SnapshotStatus = "loading" | "ready" | "error";
 
 function StatCard({ icon: Icon, label, value, color, delay }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number; color: string; delay: number }) {
   return (
@@ -58,6 +62,7 @@ function StatCard({ icon: Icon, label, value, color, delay }: { icon: React.Comp
 
 export default function HomePage() {
   const { username, role } = useAuth();
+  const isMountedRef = useRef(true);
   const [projects, setProjects] = useState<Project[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -66,47 +71,64 @@ export default function HomePage() {
   const [tech, setTech] = useState<Technology[]>([]);
   const [stats, setStats] = useState<ContentStats>(emptyStats);
   const [settings, setSettings] = useState<CommandCenterSettings>(() => getCommandCenterSettings());
+  const [snapshotStatus, setSnapshotStatus] = useState<SnapshotStatus>("loading");
+  const [snapshotError, setSnapshotError] = useState("");
+
+  const refresh = useCallback(async (preserveContent = false) => {
+    if (!preserveContent) {
+      setSnapshotStatus("loading");
+    }
+    setSnapshotError("");
+
+    try {
+      const snapshot = await getCommandCenterSnapshot();
+      if (!isMountedRef.current) return;
+
+      setSettings(snapshot.settings);
+      setStats(snapshot.stats);
+      setProjects(snapshot.sections.projects);
+      setNews(snapshot.sections.news);
+      setCharacters(snapshot.sections.characters);
+      setPlaces(snapshot.sections.places);
+      setTech(snapshot.sections.technology);
+      setGallery(snapshot.sections.gallery);
+      setSnapshotStatus("ready");
+    } catch (error) {
+      if (!isMountedRef.current) return;
+      const message = error instanceof Error
+        ? error.message === "Failed to fetch"
+          ? "Network request failed."
+          : error.message
+        : "The command center feed could not be loaded.";
+      if (!preserveContent) {
+        setStats(emptyStats);
+        setProjects([]);
+        setNews([]);
+        setCharacters([]);
+        setPlaces([]);
+        setTech([]);
+        setGallery([]);
+      }
+      setSnapshotStatus("error");
+      setSnapshotError(message);
+    }
+  }, []);
 
   useEffect(() => {
-    let isActive = true;
+    isMountedRef.current = true;
 
-    const refresh = () => {
-      getCommandCenterSnapshot()
-        .then((snapshot) => {
-          if (!isActive) return;
-
-          setSettings(snapshot.settings);
-          setStats(snapshot.stats);
-          setProjects(snapshot.sections.projects);
-          setNews(snapshot.sections.news);
-          setCharacters(snapshot.sections.characters);
-          setPlaces(snapshot.sections.places);
-          setTech(snapshot.sections.technology);
-          setGallery(snapshot.sections.gallery);
-        })
-        .catch(() => {
-          if (!isActive) return;
-          setStats(emptyStats);
-          setProjects([]);
-          setNews([]);
-          setCharacters([]);
-          setPlaces([]);
-          setTech([]);
-          setGallery([]);
-        });
-    };
-
-    refresh();
-    window.addEventListener("morneven:cc-settings-changed", refresh);
-    window.addEventListener("focus", refresh);
-    window.addEventListener("storage", refresh);
+    void refresh();
+    const handleSoftRefresh = () => { void refresh(true); };
+    window.addEventListener("morneven:cc-settings-changed", handleSoftRefresh);
+    window.addEventListener("focus", handleSoftRefresh);
+    window.addEventListener("storage", handleSoftRefresh);
     return () => {
-      window.removeEventListener("morneven:cc-settings-changed", refresh);
-      window.removeEventListener("focus", refresh);
-      window.removeEventListener("storage", refresh);
-      isActive = false;
+      isMountedRef.current = false;
+      window.removeEventListener("morneven:cc-settings-changed", handleSoftRefresh);
+      window.removeEventListener("focus", handleSoftRefresh);
+      window.removeEventListener("storage", handleSoftRefresh);
     };
-  }, []);
+  }, [refresh]);
 
   const statusColor: Record<string, string> = {
     "On Progress": "text-accent-yellow",
@@ -115,6 +137,11 @@ export default function HomePage() {
     "Completed": "text-emerald-600 dark:text-emerald-400",
     "Canceled": "text-destructive",
   };
+
+  const showBlockingStatus = snapshotStatus !== "ready";
+  const statusDescription = snapshotStatus === "loading"
+    ? "Live dashboard data is loading. Existing layout settings will appear first, then content blocks will populate."
+    : `Live dashboard data could not be loaded. ${snapshotError || "The API request failed."}`;
 
   return (
     <div className="p-4 sm:p-6 md:p-8 space-y-6 md:space-y-8 max-w-7xl mx-auto">
@@ -132,13 +159,24 @@ export default function HomePage() {
         <ThemeToggle />
       </div>
 
+      {showBlockingStatus && (
+        <ContentState
+          kind={snapshotStatus}
+          title={snapshotStatus === "loading" ? "Preparing command center" : "Command center unavailable"}
+          description={statusDescription}
+          actionLabel={snapshotStatus === "error" ? "Retry" : undefined}
+          onAction={snapshotStatus === "error" ? (() => { void refresh(); }) : undefined}
+          className="bg-card/65"
+        />
+      )}
+
       {/* Stat Cards */}
       {settings.showStats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <StatCard icon={FolderKanban} label="Total Projects" value={stats.totalProjects} color="bg-primary/20 text-primary" delay={0.05} />
-          <StatCard icon={Activity} label="In Progress" value={stats.activeProjects} color="bg-green-500/20 text-green-400" delay={0.1} />
-          <StatCard icon={BookOpen} label="Lore Entries" value={stats.totalLore} color="bg-secondary/20 text-secondary" delay={0.15} />
-          <StatCard icon={Image} label="Gallery Items" value={stats.totalGallery} color="bg-accent/20 text-accent-foreground" delay={0.2} />
+          <StatCard icon={FolderKanban} label="Total Projects" value={snapshotStatus === "loading" ? "..." : snapshotStatus === "error" ? "--" : stats.totalProjects} color="bg-primary/20 text-primary" delay={0.05} />
+          <StatCard icon={Activity} label="In Progress" value={snapshotStatus === "loading" ? "..." : snapshotStatus === "error" ? "--" : stats.activeProjects} color="bg-green-500/20 text-green-400" delay={0.1} />
+          <StatCard icon={BookOpen} label="Lore Entries" value={snapshotStatus === "loading" ? "..." : snapshotStatus === "error" ? "--" : stats.totalLore} color="bg-secondary/20 text-secondary" delay={0.15} />
+          <StatCard icon={Image} label="Gallery Items" value={snapshotStatus === "loading" ? "..." : snapshotStatus === "error" ? "--" : stats.totalGallery} color="bg-accent/20 text-accent-foreground" delay={0.2} />
         </div>
       )}
 
@@ -157,7 +195,30 @@ export default function HomePage() {
               </div>
               <div className="mecha-line" />
               <div className="space-y-3">
-                {projects.map((p) => (
+                {snapshotStatus === "loading" ? (
+                  <ContentState
+                    kind="loading"
+                    title="Loading project feed"
+                    description="Project status cards are being requested from the live dashboard snapshot."
+                    compact
+                  />
+                ) : snapshotStatus === "error" && projects.length === 0 ? (
+                  <ContentState
+                    kind="error"
+                    title="Project feed unavailable"
+                    description="The project status feed could not be loaded from the backend."
+                    actionLabel="Retry"
+                    onAction={() => { void refresh(); }}
+                    compact
+                  />
+                ) : projects.length === 0 ? (
+                  <ContentState
+                    kind="empty"
+                    title="No project highlights"
+                    description="No project has been pinned into the command center snapshot yet."
+                    compact
+                  />
+                ) : projects.map((p) => (
                   <Link
                     key={p.id}
                     to={`/projects/${p.id}`}
@@ -185,7 +246,36 @@ export default function HomePage() {
               </h3>
               <div className="mecha-line" />
               <ul className="space-y-3">
-                {news.map((n) => {
+                {snapshotStatus === "loading" ? (
+                  <li>
+                    <ContentState
+                      kind="loading"
+                      title="Loading news feed"
+                      description="Recent briefings are being requested from the live dashboard snapshot."
+                      compact
+                    />
+                  </li>
+                ) : snapshotStatus === "error" && news.length === 0 ? (
+                  <li>
+                    <ContentState
+                      kind="error"
+                      title="News feed unavailable"
+                      description="Briefing entries could not be loaded from the backend."
+                      actionLabel="Retry"
+                      onAction={() => { void refresh(); }}
+                      compact
+                    />
+                  </li>
+                ) : news.length === 0 ? (
+                  <li>
+                    <ContentState
+                      kind="empty"
+                      title="No briefing posted"
+                      description="The news feed is active, but there are no entries to display yet."
+                      compact
+                    />
+                  </li>
+                ) : news.map((n) => {
                   const inner = (
                     <>
                       <Clock className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
@@ -238,7 +328,30 @@ export default function HomePage() {
               </div>
               <div className="mecha-line" />
               <div className="space-y-3">
-                {characters.map((c) => (
+                {snapshotStatus === "loading" ? (
+                  <ContentState
+                    kind="loading"
+                    title="Loading personnel"
+                    description="Personnel spotlight entries are being prepared."
+                    compact
+                  />
+                ) : snapshotStatus === "error" && characters.length === 0 ? (
+                  <ContentState
+                    kind="error"
+                    title="Personnel unavailable"
+                    description="Character spotlight data could not be loaded."
+                    actionLabel="Retry"
+                    onAction={() => { void refresh(); }}
+                    compact
+                  />
+                ) : characters.length === 0 ? (
+                  <ContentState
+                    kind="empty"
+                    title="No personnel spotlight"
+                    description="No character is currently featured in this panel."
+                    compact
+                  />
+                ) : characters.map((c) => (
                   <Link
                     key={c.id}
                     to={`/lore/characters/${c.id}`}
@@ -280,7 +393,30 @@ export default function HomePage() {
               </div>
               <div className="mecha-line" />
               <div className="space-y-3">
-                {places.map((p) => (
+                {snapshotStatus === "loading" ? (
+                  <ContentState
+                    kind="loading"
+                    title="Loading locations"
+                    description="Location entries are being requested."
+                    compact
+                  />
+                ) : snapshotStatus === "error" && places.length === 0 ? (
+                  <ContentState
+                    kind="error"
+                    title="Locations unavailable"
+                    description="Location cards could not be loaded."
+                    actionLabel="Retry"
+                    onAction={() => { void refresh(); }}
+                    compact
+                  />
+                ) : places.length === 0 ? (
+                  <ContentState
+                    kind="empty"
+                    title="No featured locations"
+                    description="There is no location highlight configured for this panel."
+                    compact
+                  />
+                ) : places.map((p) => (
                   <Link
                     key={p.id}
                     to={`/lore/places/${p.id}`}
@@ -306,7 +442,30 @@ export default function HomePage() {
               </div>
               <div className="mecha-line" />
               <div className="space-y-3">
-                {tech.map((t) => (
+                {snapshotStatus === "loading" ? (
+                  <ContentState
+                    kind="loading"
+                    title="Loading technology"
+                    description="Technology references are being requested."
+                    compact
+                  />
+                ) : snapshotStatus === "error" && tech.length === 0 ? (
+                  <ContentState
+                    kind="error"
+                    title="Technology unavailable"
+                    description="Technology cards could not be loaded."
+                    actionLabel="Retry"
+                    onAction={() => { void refresh(); }}
+                    compact
+                  />
+                ) : tech.length === 0 ? (
+                  <ContentState
+                    kind="empty"
+                    title="No featured technology"
+                    description="No technology entry is currently pinned here."
+                    compact
+                  />
+                ) : tech.map((t) => (
                   <Link
                     key={t.id}
                     to={`/lore/tech/${t.id}`}
@@ -335,7 +494,36 @@ export default function HomePage() {
           </div>
           <div className="mecha-line" />
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {gallery.map((g) => (
+            {snapshotStatus === "loading" ? (
+              <div className="col-span-full">
+                <ContentState
+                  kind="loading"
+                  title="Loading gallery"
+                  description="Recent media entries are being requested from the live snapshot."
+                  compact
+                />
+              </div>
+            ) : snapshotStatus === "error" && gallery.length === 0 ? (
+              <div className="col-span-full">
+                <ContentState
+                  kind="error"
+                  title="Gallery unavailable"
+                  description="Recent media entries could not be loaded."
+                  actionLabel="Retry"
+                  onAction={() => { void refresh(); }}
+                  compact
+                />
+              </div>
+            ) : gallery.length === 0 ? (
+              <div className="col-span-full">
+                <ContentState
+                  kind="empty"
+                  title="No recent gallery items"
+                  description="The gallery is active, but there is no recent media selected for this panel."
+                  compact
+                />
+              </div>
+            ) : gallery.map((g) => (
               <Link
                 key={g.id}
                 to={`/gallery/${g.id}`}
@@ -392,9 +580,16 @@ export default function HomePage() {
       <motion.div {...fadeUp(0.45)} className="flex items-center justify-between gap-2 text-[10px] sm:text-xs text-muted-foreground font-heading tracking-wider px-1 pb-4 flex-wrap">
         <div className="flex items-center gap-2">
           <div className="h-1.5 w-1.5 rounded-full bg-accent-yellow animate-pulse" />
-          ALL SYSTEMS OPERATIONAL
+          {snapshotStatus === "error" ? "LIVE DATA DEGRADED" : snapshotStatus === "loading" ? "SYNCING LIVE DATA" : "ALL SYSTEMS OPERATIONAL"}
         </div>
-        <span>MORNEVEN INSTITUTE © 2026</span>
+        <button
+          type="button"
+          onClick={() => { void refresh(true); }}
+          className="inline-flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <RefreshCw className="h-3 w-3" />
+          Refresh Feed
+        </button>
       </motion.div>
     </div>
   );

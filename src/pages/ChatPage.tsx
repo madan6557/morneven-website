@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { listPersonnel, lookupPersonnelByUsernames } from "@/services/personnelApi";
 import {
@@ -6,6 +6,7 @@ import {
   listInvitesForRemote,
   listMessagesRemote,
   sendMessageRemote,
+  editMessageRemote,
   deleteMessageRemote,
   createDMRemote,
   createManualGroupRemote,
@@ -32,7 +33,7 @@ import {
   type ReplyPreview,
 } from "@/services/chatApi";
 import { apiUpload } from "@/services/api";
-import { downloadAuthenticatedFile } from "@/services/fileProxyService";
+import { downloadAuthenticatedFile, openAuthenticatedFile } from "@/services/fileProxyService";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import type { PersonnelUser } from "@/types";
 import {
@@ -52,11 +53,20 @@ import {
   LogOut,
   Inbox,
   Trash2,
+  Pencil,
   Download,
   Check,
   Reply,
   CornerDownRight,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  PanelLeft,
+  Search,
+  ExternalLink,
+  FileText,
+  Image as ImageIcon,
+  Play,
 } from "lucide-react";
 import {
   Dialog,
@@ -73,6 +83,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { PERSONNEL_TRACKS } from "@/lib/pl";
 import type { PersonnelTrack } from "@/lib/pl";
+import { personnelLevelBadgeStyle, personnelLevelPanelStyle } from "@/lib/personnelTone";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 async function fileToAttachmentRemote(file: File): Promise<ChatAttachment> {
@@ -107,44 +118,47 @@ const KIND_ICON: Record<Conversation["kind"], typeof MessageSquare> = {
   institute: Building2,
 };
 
-const MESSAGE_THEME_BY_LEVEL: Record<number, string> = {
-  0: "bg-zinc-500/10 border-zinc-500/25",
-  1: "bg-sky-500/10 border-sky-500/25",
-  2: "bg-emerald-500/10 border-emerald-500/25",
-  3: "bg-cyan-500/10 border-cyan-500/25",
-  4: "bg-amber-500/10 border-amber-500/30",
-  5: "bg-orange-500/10 border-orange-500/30",
-  6: "bg-rose-500/10 border-rose-500/30",
-  7: "bg-primary/15 border-primary/35",
-};
-
-const MESSAGE_ACCENT_BY_LEVEL: Record<number, string> = {
-  0: "text-zinc-400 border-zinc-500/30 bg-zinc-500/10",
-  1: "text-sky-400 border-sky-500/30 bg-sky-500/10",
-  2: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
-  3: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10",
-  4: "text-amber-400 border-amber-500/30 bg-amber-500/10",
-  5: "text-orange-400 border-orange-500/30 bg-orange-500/10",
-  6: "text-rose-400 border-rose-500/30 bg-rose-500/10",
-  7: "text-primary border-primary/40 bg-primary/10",
-};
-
 function trackShort(track?: PersonnelUser["track"]) {
   if (!track) return "";
   return PERSONNEL_TRACKS.find((item) => item.key === track)?.short ?? track.toUpperCase();
 }
 
+function conversationKindLabel(kind: Conversation["kind"]) {
+  switch (kind) {
+    case "dm":
+      return "Direct";
+    case "group":
+      return "Manual Group";
+    case "team":
+      return "Team";
+    case "division":
+      return "Division";
+    case "institute":
+      return "Institute";
+    default:
+      return "Channel";
+  }
+}
+
 function messageThemeFor(person?: ChatAuthorMeta) {
   const level = person?.level ?? 0;
-  return MESSAGE_THEME_BY_LEVEL[level] ?? MESSAGE_THEME_BY_LEVEL[0];
+  return personnelLevelPanelStyle(level);
 }
 
 function messageBadgeThemeFor(person?: ChatAuthorMeta) {
   const level = person?.level ?? 0;
-  return MESSAGE_ACCENT_BY_LEVEL[level] ?? MESSAGE_ACCENT_BY_LEVEL[0];
+  return personnelLevelBadgeStyle(level);
 }
 
 type ChatAuthorMeta = Pick<PersonnelUser, "username" | "level" | "track" | "note">;
+type ConversationAttachmentItem = {
+  key: string;
+  attachment: ChatAttachment;
+  author: string;
+  createdAt: number;
+  messageId: string;
+  text: string;
+};
 
 function fallbackAuthorMeta(author: string): ChatAuthorMeta {
   const normalized = author.toLowerCase();
@@ -175,15 +189,21 @@ export default function ChatPage() {
   const [profileUser, setProfileUser] = useState<ChatAuthorMeta | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const conversationScrollRootRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const shouldScrollToLatestRef = useRef(false);
   const pendingOpenScrollRef = useRef(false);
   const [replyTo, setReplyTo] = useState<ReplyPreview | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [readMap, setReadMap] = useState<ChatReadMap>(() => readChatReadMap());
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const [conversationQuery, setConversationQuery] = useState("");
+  const deferredConversationQuery = useDeferredValue(conversationQuery);
+  const [mobileConversationPickerOpen, setMobileConversationPickerOpen] = useState(false);
+  const [activeAttachmentIndex, setActiveAttachmentIndex] = useState<number | null>(null);
   const nearBottomRef = useRef(true);
   const lastMessagesLenRef = useRef(0);
   const lastActiveRef = useRef<string | null>(null);
@@ -232,6 +252,83 @@ export default function ChatPage() {
     });
     return true;
   };
+
+  const conversationAttachments = useMemo<ConversationAttachmentItem[]>(
+    () =>
+      messages.flatMap((message) =>
+        (message.attachments ?? []).map((attachment, index) => ({
+          key: `${message.id}:${attachment.id}:${index}`,
+          attachment,
+          author: message.author,
+          createdAt: message.createdAt,
+          messageId: message.id,
+          text: message.text,
+        })),
+      ),
+    [messages],
+  );
+
+  const activeAttachmentItem =
+    activeAttachmentIndex === null ? null : conversationAttachments[activeAttachmentIndex] ?? null;
+
+  const openAttachmentViewer = (messageId: string, attachmentId: string) => {
+    const index = conversationAttachments.findIndex(
+      (item) => item.messageId === messageId && item.attachment.id === attachmentId,
+    );
+    if (index >= 0) {
+      setActiveAttachmentIndex(index);
+    }
+  };
+
+  const closeAttachmentViewer = () => setActiveAttachmentIndex(null);
+
+  const showPreviousAttachment = () => {
+    if (conversationAttachments.length <= 1) return;
+    setActiveAttachmentIndex((current) => {
+      if (current === null) return current;
+      return (current - 1 + conversationAttachments.length) % conversationAttachments.length;
+    });
+  };
+
+  const showNextAttachment = () => {
+    if (conversationAttachments.length <= 1) return;
+    setActiveAttachmentIndex((current) => {
+      if (current === null) return current;
+      return (current + 1) % conversationAttachments.length;
+    });
+  };
+
+  useEffect(() => {
+    if (activeAttachmentIndex === null) return;
+    if (conversationAttachments.length === 0) {
+      setActiveAttachmentIndex(null);
+      return;
+    }
+    if (activeAttachmentIndex >= conversationAttachments.length) {
+      setActiveAttachmentIndex(conversationAttachments.length - 1);
+    }
+  }, [activeAttachmentIndex, conversationAttachments.length]);
+
+  useEffect(() => {
+    if (activeAttachmentIndex === null) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (conversationAttachments.length <= 1) return;
+      if (event.key === "ArrowLeft") {
+        setActiveAttachmentIndex((current) => {
+          if (current === null) return current;
+          return (current - 1 + conversationAttachments.length) % conversationAttachments.length;
+        });
+      }
+      if (event.key === "ArrowRight") {
+        setActiveAttachmentIndex((current) => {
+          if (current === null) return current;
+          return (current + 1) % conversationAttachments.length;
+        });
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeAttachmentIndex, conversationAttachments.length]);
 
   // Boot: reconcile PL7 + institute auto memberships once personnel loads.
   useEffect(() => {
@@ -371,6 +468,19 @@ export default function ChatPage() {
   }, [active, messages.length]);
 
   const activeConv = useMemo(() => convs.find((c) => c.id === active) ?? null, [convs, active]);
+  const filteredConvs = useMemo(() => {
+    const query = deferredConversationQuery.trim().toLowerCase();
+    if (!query) return convs;
+    return convs.filter((conversation) => {
+      const haystack = [
+        conversation.name,
+        conversation.kind,
+        ...conversation.members.map((member) => member.username),
+      ].join(" ").toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [convs, deferredConversationQuery]);
+  const activeMemberCount = activeConv?.members.filter((member) => member.status === "active").length ?? 0;
   const myRole: MemberRole | null = activeConv ? getMemberRole(activeConv, username) : null;
   const iCanManage = activeConv ? canManage(activeConv, username) : false;
   const personnelByUsername = useMemo(
@@ -405,6 +515,106 @@ export default function ChatPage() {
   };
   const openAuthorProfile = (author: string) => setProfileUser(getAuthorMeta(author));
 
+  useEffect(() => {
+    const composer = composerRef.current;
+    if (!composer) return;
+    composer.style.height = "0px";
+    composer.style.height = `${Math.min(composer.scrollHeight, 160)}px`;
+  }, [input]);
+
+  useEffect(() => {
+    if (!editingMessageId) return;
+    composerRef.current?.focus();
+  }, [editingMessageId]);
+
+  const conversationListPanel = (
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="space-y-4 border-b border-border/70 p-4">
+        <div className="space-y-1">
+          <p className="font-heading text-xs tracking-[0.14em] text-foreground uppercase">Conversations</p>
+          <p className="text-xs leading-5 text-muted-foreground">
+            {convs.length} channel{convs.length === 1 ? "" : "s"} active
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => setDialog("dm")}
+            className="flex items-center justify-center gap-1 rounded-sm border border-primary/65 bg-background/50 px-3 py-2 text-[10px] font-display tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+          >
+            <Plus className="h-3 w-3" /> DM
+          </button>
+          <button
+            onClick={() => setDialog("group")}
+            className="flex items-center justify-center gap-1 rounded-sm border border-primary/65 bg-background/50 px-3 py-2 text-[10px] font-display tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+          >
+            <Plus className="h-3 w-3" /> GROUP
+          </button>
+        </div>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={conversationQuery}
+            onChange={(event) => setConversationQuery(event.target.value)}
+            placeholder="Search channels or members"
+            className="h-10 border-border/70 bg-background/40 pl-9 text-sm"
+          />
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="space-y-2 p-3 pr-2">
+          {filteredConvs.length === 0 ? (
+            <div className="rounded-sm border border-dashed border-border bg-background/35 px-3 py-6 text-center">
+              <p className="text-sm italic text-muted-foreground">
+                {conversationQuery.trim() ? "No conversations match this search." : "No conversations yet."}
+              </p>
+            </div>
+          ) : filteredConvs.map((c) => {
+            const Icon = KIND_ICON[c.kind];
+            const activeCount = c.members.filter((m) => m.status === "active").length;
+            const unreadCount = getUnreadCount(c.id);
+            return (
+              <button
+                key={c.id}
+                onClick={() => selectConversation(c.id)}
+                className={`w-full rounded-sm border px-3 py-2.5 text-left transition-colors ${
+                  active === c.id
+                    ? "border-primary/55 bg-primary/10 text-primary shadow-[inset_3px_0_0_hsl(var(--primary))]"
+                    : "border-border/70 bg-background/30 text-foreground hover:bg-muted/60"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`mt-0.5 rounded-sm border p-1.5 ${active === c.id ? "border-primary/45 bg-primary/10" : "border-border/70 bg-background/50"}`}>
+                    <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="truncate font-heading text-sm">{c.name}</span>
+                      {unreadCount > 0 ? (
+                        <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[9px] font-display text-destructive-foreground">
+                          {unreadCount}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center text-[9px] text-muted-foreground">
+                          <Check className="h-2.5 w-2.5" />
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+                      <span>{conversationKindLabel(c.kind)}</span>
+                      <span>{activeCount} active</span>
+                      {c.systemManaged ? <span className="text-primary">Auto</span> : null}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+
   if (!isAuthenticated) {
     return <div className="p-8 text-muted-foreground">Login to use chat.</div>;
   }
@@ -422,6 +632,26 @@ export default function ChatPage() {
 
   async function handleSend() {
     if (!active) return;
+    if (editingMessageId) {
+      const target = messages.find((message) => message.id === editingMessageId);
+      const nextText = input.trim();
+      if (!target) {
+        setEditingMessageId(null);
+        return;
+      }
+      if (!nextText && (target.attachments?.length ?? 0) === 0) return;
+      if (nextText === target.text) {
+        setEditingMessageId(null);
+        setInput("");
+        return;
+      }
+      await editMessageRemote(editingMessageId, nextText);
+      setEditingMessageId(null);
+      setInput("");
+      refresh();
+      return;
+    }
+
     if (!input.trim() && pendingFiles.length === 0) return;
 
     let attachments: ChatAttachment[] | undefined;
@@ -529,29 +759,46 @@ export default function ChatPage() {
       return next;
     });
   };
-  const getUnreadCount = (conversationId: string) => {
+  function getUnreadCount(conversationId: string) {
     return unreadCounts[conversationId] ?? getConversationUnreadCount(username, conversationId);
-  };
+  }
+
+  function startEditingMessage(message: ChatMessage) {
+    setEditingMessageId(message.id);
+    setInput(message.text);
+    setPendingFiles([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setReplyTo(null);
+  }
+
+  function cancelEditingMessage() {
+    setEditingMessageId(null);
+    setInput("");
+  }
   const markActiveConversationRead = () => {
     if (!active) return;
     markConversationRead(active, messages);
   };
+  function selectConversation(conversationId: string) {
+    setActive(conversationId);
+    setMobileConversationPickerOpen(false);
+  }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto">
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
+    <div className="mx-auto max-w-7xl space-y-4 p-4 md:p-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-2">
           <h1 className="font-display text-2xl tracking-[0.1em] text-primary">CHAT</h1>
-          <div className="mecha-line w-32 mt-2" />
-          <p className="text-xs font-body text-muted-foreground mt-2">
-            Direct messages, manual groups, auto-synced team / division channels, and the institute-wide channel.
+          <div className="mecha-line w-32" />
+          <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+            Direct messages, manual groups, auto-synced team and division channels, plus the institute-wide channel.
           </p>
         </div>
         <Button
           variant="outline"
           size="sm"
           onClick={() => setDialog("invites")}
-          className="font-display tracking-wider text-[10px] gap-1"
+          className="gap-1 font-display text-[10px] tracking-wider"
         >
           <Inbox className="h-3.5 w-3.5" /> INVITES
           {invites.length > 0 && (
@@ -560,100 +807,75 @@ export default function ChatPage() {
         </Button>
       </div>
 
-      <div className="grid grid-rows-[180px_minmax(0,1fr)] md:grid-rows-1 md:grid-cols-[300px_minmax(0,1fr)] gap-4 h-[calc(100dvh-6.5rem)] min-h-0 md:h-[72vh] md:min-h-[620px] max-h-[900px]">
+      <div className="grid h-[calc(100dvh-7rem)] max-h-[900px] min-h-0 gap-4 md:h-[76vh] md:min-h-[660px] xl:grid-cols-[340px_minmax(0,1fr)]">
         {/* Sidebar */}
-        <div className="hud-border bg-card p-3 space-y-3 h-full flex flex-col">
-          <div className="flex gap-1">
-            <button
-              onClick={() => setDialog("dm")}
-              className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-[10px] font-display tracking-wider border border-primary text-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors"
-            >
-              <Plus className="h-3 w-3" /> DM
-            </button>
-            <button
-              onClick={() => setDialog("group")}
-              className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-[10px] font-display tracking-wider border border-primary text-primary rounded-sm hover:bg-primary hover:text-primary-foreground transition-colors"
-            >
-              <Plus className="h-3 w-3" /> GROUP
-            </button>
-          </div>
-
-          <ScrollArea className="flex-1 min-h-0 pt-2">
-            <div className="space-y-1 pr-2">
-              {convs.length === 0 && (
-                <p className="text-[11px] text-muted-foreground font-body italic px-2">No conversations.</p>
-              )}
-              {convs.map((c) => {
-                const Icon = KIND_ICON[c.kind];
-                const activeCount = c.members.filter((m) => m.status === "active").length;
-                const unreadCount = getUnreadCount(c.id);
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => setActive(c.id)}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-sm transition-colors ${
-                      active === c.id ? "bg-primary/10 text-primary" : "hover:bg-muted text-foreground"
-                    }`}
-                  >
-                    <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="text-sm font-heading truncate flex-1">{c.name}</span>
-                    {unreadCount > 0 ? (
-                      <span className="px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-display">
-                        {unreadCount}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center text-[9px] text-muted-foreground">
-                        <Check className="h-2.5 w-2.5" />
-                      </span>
-                    )}
-                    <span className="text-[9px] font-display uppercase text-muted-foreground">{activeCount}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </ScrollArea>
+        <div className="hidden xl:flex xl:h-full xl:flex-col xl:overflow-hidden xl:bg-card xl:hud-border">
+          {conversationListPanel}
         </div>
 
         {/* Conversation */}
-        <div className="hud-border bg-card flex flex-col h-full overflow-hidden relative">
+        <div className="hud-border relative flex h-full flex-col overflow-hidden bg-card">
           {activeConv ? (
             <>
-              <div className="px-4 py-2 border-b border-border flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-heading text-base text-foreground truncate">{activeConv.name}</p>
+              <div className="border-b border-border/70 bg-background/35 px-4 py-3">
+                <div className="mb-3 flex items-center justify-between gap-2 xl:hidden">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-2 px-3 text-[10px] font-display tracking-wider"
+                    onClick={() => setMobileConversationPickerOpen(true)}
+                  >
+                    <PanelLeft className="h-3.5 w-3.5" /> CHANNELS
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setDialog("settings")} className="h-9 shrink-0 px-2.5">
+                    <Settings className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate font-heading text-base text-foreground">{activeConv.name}</p>
+                      <Badge variant="outline" className="border-primary/30 bg-background/50 text-[9px] font-display tracking-wider text-muted-foreground">
+                        {conversationKindLabel(activeConv.kind).toUpperCase()}
+                      </Badge>
+                      <Badge variant="outline" className="text-[9px] font-display tracking-wider">
+                        {activeMemberCount} ACTIVE
+                      </Badge>
                     {activeConv.systemManaged && (
-                      <Badge variant="outline" className="text-[9px] font-display tracking-wider">AUTO</Badge>
+                        <Badge variant="outline" className="text-[9px] font-display tracking-wider">AUTO</Badge>
                     )}
                     {myRole && (
-                      <Badge className="text-[9px] font-display tracking-wider gap-1">
+                        <Badge className="gap-1 text-[9px] font-display tracking-wider">
                         {myRole === "owner" ? <Crown className="h-2.5 w-2.5" /> : myRole === "admin" ? <Shield className="h-2.5 w-2.5" /> : null}
                         {myRole.toUpperCase()}
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground font-body truncate">
+                    <p className="truncate text-sm text-muted-foreground">
                     {activeConv.members
                       .filter((m) => m.status === "active")
                       .map((m) => m.username)
                       .join(", ")}
                   </p>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setDialog("settings")} className="h-8">
+                  <Button variant="ghost" size="sm" onClick={() => setDialog("settings")} className="mt-0.5 hidden h-9 shrink-0 px-2.5 xl:inline-flex">
                   <Settings className="h-3.5 w-3.5" />
                 </Button>
+                </div>
               </div>
 
               <ScrollArea ref={conversationScrollRootRef} className="flex-1 min-h-0">
-                <div className="p-4 space-y-3">
+                <div className="space-y-4 p-4 md:p-5">
                   {messages.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic text-center">No messages yet.</p>
+                    <div className="flex min-h-[220px] items-center justify-center rounded-sm border border-dashed border-border bg-background/35 px-4 text-center">
+                      <p className="text-sm italic text-muted-foreground">No messages yet. Start the conversation from the composer below.</p>
+                    </div>
                   ) : (
                     messages.map((m) => {
                     if (m.system) {
                       return (
                         <div key={m.id} className="flex justify-center">
-                          <span className="text-[10px] font-display tracking-wider text-muted-foreground italic px-2">
+                          <span className="rounded-full border border-border/60 bg-background/50 px-3 py-1 text-[10px] font-display italic tracking-wider text-muted-foreground">
                             {m.text}
                           </span>
                         </div>
@@ -661,6 +883,7 @@ export default function ChatPage() {
                     }
                     const mine = m.author === username;
                     const canDelete = mine || iCanManage;
+                    const canEdit = mine || iCanManage;
                     const isHighlighted = highlightId === m.id;
                     const authorPersonnel = getAuthorMeta(m.author);
                     const authorLevel = authorPersonnel.level;
@@ -679,7 +902,8 @@ export default function ChatPage() {
                         className={`flex group ${mine ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`w-fit max-w-[85%] md:max-w-[80%] rounded-md border px-3 py-2 text-sm text-foreground transition-shadow ${bubbleTheme} ${mine ? "shadow-[inset_3px_0_0_hsl(var(--primary)/0.55)]" : ""} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
+                          className={`w-fit max-w-[88%] rounded-md border px-3 py-2.5 text-sm text-foreground transition-shadow md:max-w-[78%] ${mine ? "shadow-[inset_3px_0_0_hsl(var(--primary)/0.55)]" : ""} ${isHighlighted ? "ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]" : ""}`}
+                          style={bubbleTheme}
                         >
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <div className="flex min-w-0 flex-wrap items-center gap-1">
@@ -691,12 +915,18 @@ export default function ChatPage() {
                                 {m.author}
                               </button>
                               {authorLevel !== null && authorLevel !== undefined && (
-                                <span className={`rounded-sm border px-1 py-0 text-[8px] leading-4 font-display tracking-wider ${badgeTheme}`}>
+                                <span
+                                  className="rounded-sm border px-1 py-0 text-[8px] leading-4 font-display tracking-wider"
+                                  style={badgeTheme}
+                                >
                                   PL{authorLevel}
                                 </span>
                               )}
                               {authorTrack && (
-                                <span className={`rounded-sm border px-1 py-0 text-[8px] leading-4 font-display tracking-wider ${badgeTheme}`}>
+                                <span
+                                  className="rounded-sm border px-1 py-0 text-[8px] leading-4 font-display tracking-wider"
+                                  style={badgeTheme}
+                                >
                                   {authorTrack}
                                 </span>
                               )}
@@ -709,15 +939,26 @@ export default function ChatPage() {
                                 {messageIsUnread ? "UNREAD" : "READ"}
                               </span>
                             )}
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                               <button
                                 onClick={() => setReplyTo(buildReplyPreview(m))}
+                                disabled={editingMessageId === m.id}
                                 className="text-muted-foreground hover:text-primary"
                                 aria-label="Reply to message"
                                 title="Reply"
                               >
                                 <Reply className="h-3 w-3" />
                               </button>
+                              {canEdit && !m.system && (
+                                <button
+                                  onClick={() => startEditingMessage(m)}
+                                  className="text-muted-foreground hover:text-primary"
+                                  aria-label="Edit message"
+                                  title="Edit"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                              )}
                               {canDelete && (
                                 <button
                                   onClick={async () => {
@@ -749,26 +990,72 @@ export default function ChatPage() {
                           )}
                           {m.text && <p className="font-body whitespace-pre-wrap break-words">{m.text}</p>}
                           {m.attachments && m.attachments.length > 0 && (
-                            <div className="mt-2 space-y-1.5">
+                            <div className="mt-2 space-y-2">
                               {m.attachments.map((a) => {
                                 const isImg = a.mimeType.startsWith("image/");
+                                const isVideo = a.mimeType.startsWith("video/");
+                                const visualLabel = `${a.name} attachment`;
                                 return (
-                                  <div key={a.id} className="border border-border/60 rounded-sm bg-background/40 p-1.5">
+                                  <div
+                                    key={a.id}
+                                    className="overflow-hidden rounded-sm border border-border/60 bg-background/45"
+                                  >
                                     {isImg ? (
-                                      <AuthenticatedImage src={a.dataUrl} alt={a.name} className="max-h-48 rounded-sm" />
-                                    ) : null}
-                                    <div className="flex items-start justify-between gap-2 mt-1">
-                                      <span className="flex-1 min-w-0 pr-1 text-xs font-body break-all whitespace-normal">
-                                        {a.name} <span className="text-muted-foreground">({formatBytes(a.size)})</span>
-                                      </span>
                                       <button
                                         type="button"
-                                        onClick={() => void downloadAuthenticatedFile(a.dataUrl, a.name)}
-                                        className="text-primary hover:text-primary/80 flex-shrink-0"
+                                        onClick={() => openAttachmentViewer(m.id, a.id)}
+                                        className="block w-full bg-background/15 p-2 text-left transition-colors hover:bg-background/30"
                                       >
-                                        <Download className="h-3 w-3" />
+                                        <div className="flex min-h-[180px] items-center justify-center rounded-sm border border-border/50 bg-black/20 p-2">
+                                          <AuthenticatedImage
+                                            src={a.dataUrl}
+                                            alt={visualLabel}
+                                            className="mx-auto max-h-64 w-auto max-w-full rounded-sm object-contain"
+                                          />
+                                        </div>
                                       </button>
-                                    </div>
+                                    ) : null}
+                                    {isVideo ? (
+                                      <div className="bg-background/15 p-2">
+                                        <div className="relative flex min-h-[180px] items-center justify-center rounded-sm border border-border/50 bg-black/35 p-2">
+                                          <video
+                                            src={a.dataUrl}
+                                            controls
+                                            preload="metadata"
+                                            className="mx-auto max-h-72 w-full rounded-sm bg-black object-contain"
+                                          />
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => openAttachmentViewer(m.id, a.id)}
+                                            className="absolute right-3 top-3 h-8 px-2 text-[10px] font-display tracking-wider"
+                                          >
+                                            Inspect
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                    {!isImg && !isVideo ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => openAttachmentViewer(m.id, a.id)}
+                                        className="flex w-full items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-background/25"
+                                      >
+                                        <div className="flex min-w-0 items-center gap-3">
+                                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-border/60 bg-background/55">
+                                            <FileText className="h-4 w-4 text-muted-foreground" />
+                                          </div>
+                                          <div className="min-w-0 space-y-0.5">
+                                            <p className="break-all text-xs font-body text-foreground">{a.name}</p>
+                                            <p className="text-[10px] font-display tracking-wider text-muted-foreground">
+                                              {formatBytes(a.size)} • Inspect attachment
+                                            </p>
+                                          </div>
+                                        </div>
+                                        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-primary" />
+                                      </button>
+                                    ) : null}
                                   </div>
                                 );
                               })}
@@ -799,9 +1086,14 @@ export default function ChatPage() {
 
               {/* Pending attachments preview */}
               {pendingFiles.length > 0 && (
-                <div className="px-3 py-2 border-t border-border flex flex-wrap gap-1.5">
+                <div className="border-t border-border/70 bg-background/25 px-4 py-3">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Pending Attachments</p>
+                    <p className="text-[10px] text-muted-foreground">{pendingFiles.length} item{pendingFiles.length === 1 ? "" : "s"}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
                   {pendingFiles.map((f, i) => (
-                    <div key={i} className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-sm text-[10px] font-body">
+                      <div key={i} className="flex items-center gap-1.5 rounded-sm border border-border/70 bg-background/60 px-2 py-1 text-[10px] font-body">
                       <Paperclip className="h-3 w-3" />
                       <span className="max-w-[160px] truncate">{f.name}</span>
                       <span className="text-muted-foreground">{formatBytes(f.size)}</span>
@@ -813,12 +1105,13 @@ export default function ChatPage() {
                       </button>
                     </div>
                   ))}
+                  </div>
                 </div>
               )}
 
               {/* Pending reply banner (WhatsApp-style) */}
               {replyTo && (
-                <div className="px-3 py-2 border-t border-border flex items-start gap-2 bg-muted/40">
+                <div className="flex items-start gap-2 border-t border-border/70 bg-muted/35 px-4 py-3">
                   <CornerDownRight className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0 border-l-2 border-primary pl-2">
                     <p className="text-xs font-display tracking-wider text-primary">
@@ -838,7 +1131,28 @@ export default function ChatPage() {
                 </div>
               )}
 
-              <div className="p-2 border-t border-border flex gap-2 items-center">
+              {editingMessageId && (
+                <div className="flex items-start gap-2 border-t border-border/70 bg-primary/10 px-4 py-3">
+                  <Pencil className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0 border-l-2 border-primary pl-2">
+                    <p className="text-xs font-display tracking-wider text-primary">
+                      Editing message
+                    </p>
+                    <p className="text-xs font-body text-muted-foreground line-clamp-2">
+                      Attachments stay unchanged. Only text will be updated.
+                    </p>
+                  </div>
+                  <button
+                    onClick={cancelEditingMessage}
+                    className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                    aria-label="Cancel edit"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+
+              <div className="border-t border-border/70 bg-background/45 p-3 md:p-4">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -846,43 +1160,230 @@ export default function ChatPage() {
                   className="hidden"
                   onChange={(e) => handleFiles(e.target.files)}
                 />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="h-9 px-2"
-                  aria-label="Attach files"
-                >
-                  <Paperclip className="h-4 w-4" />
-                </Button>
-                <input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
-                    }
-                  }}
-                  placeholder="Type a message..."
-                  className="flex-1 text-sm px-3 py-2 bg-background border border-border rounded-sm"
-                />
-                <button
-                  onClick={handleSend}
-                  className="px-3 py-2 bg-primary text-primary-foreground rounded-sm hover:opacity-90"
-                  aria-label="Send"
-                >
-                  <Send className="h-3.5 w-3.5" />
-                </button>
+                <div className="space-y-3 rounded-sm border border-border/70 bg-card/80 p-3">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Message Composer</p>
+                    <p className="text-[10px] text-muted-foreground">Enter to send, Shift+Enter for a new line</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={editingMessageId !== null}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-10 shrink-0 border border-border/70 px-2.5"
+                      aria-label="Attach files"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </Button>
+                    <textarea
+                      ref={composerRef}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          void handleSend();
+                        }
+                      }}
+                      placeholder={editingMessageId ? "Edit message..." : "Type a message..."}
+                      rows={1}
+                      className="min-h-[44px] flex-1 resize-none rounded-sm border border-border bg-background px-3 py-2.5 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground/75 focus:border-primary"
+                    />
+                    <Button
+                      onClick={() => void handleSend()}
+                      className="h-10 shrink-0 px-3 sm:px-4"
+                      aria-label={editingMessageId ? "Save edit" : "Send"}
+                    >
+                      {editingMessageId ? <Pencil className="h-3.5 w-3.5" /> : <Send className="h-3.5 w-3.5" />}
+                      <span className="hidden sm:inline">{editingMessageId ? "Save" : "Send"}</span>
+                    </Button>
+                  </div>
+                </div>
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-xs text-muted-foreground">
-              Select or start a conversation.
+            <div className="flex flex-1 items-center justify-center p-6">
+              <div className="max-w-md space-y-3 rounded-sm border border-dashed border-border bg-background/35 px-6 py-8 text-center">
+                <p className="font-heading text-sm tracking-[0.14em] text-foreground uppercase">No conversation selected</p>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Pick an existing channel from the left, or start a new direct message or group.
+                </p>
+                <div className="flex justify-center xl:hidden">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 text-[10px] font-display tracking-wider"
+                    onClick={() => setMobileConversationPickerOpen(true)}
+                  >
+                    <PanelLeft className="h-3.5 w-3.5" /> OPEN CHANNELS
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      <Dialog open={mobileConversationPickerOpen} onOpenChange={setMobileConversationPickerOpen}>
+        <DialogContent className="flex h-[min(82vh,720px)] max-w-[calc(100vw-20px)] flex-col overflow-hidden p-0 xl:hidden">
+          <DialogHeader className="border-b border-border/70 px-4 py-3">
+            <DialogTitle className="font-display tracking-wider">CHANNEL PICKER</DialogTitle>
+            <DialogDescription>Select a conversation optimized for mobile browsing.</DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 bg-card">
+            {conversationListPanel}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activeAttachmentItem !== null} onOpenChange={(open) => !open && closeAttachmentViewer()}>
+        <DialogContent className="max-h-[92vh] w-[min(1100px,calc(100vw-20px))] max-w-none gap-0 overflow-hidden border-border bg-background p-0 sm:rounded-sm">
+          {activeAttachmentItem && (
+            <div className="grid max-h-[92vh] grid-rows-[auto_minmax(0,1fr)_auto]">
+              <div className="border-b border-border bg-card px-4 py-3 pr-12">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 space-y-1">
+                    <DialogTitle className="font-display text-sm tracking-wider">
+                      ATTACHMENT INSPECTOR
+                    </DialogTitle>
+                    <DialogDescription className="space-y-1 text-xs">
+                      <span className="block truncate">
+                        {activeAttachmentItem.attachment.name || "Untitled attachment"}
+                      </span>
+                      <span className="block text-muted-foreground">
+                        {activeAttachmentIndex! + 1} of {conversationAttachments.length} • {activeAttachmentItem.author} •{" "}
+                        {new Date(activeAttachmentItem.createdAt).toLocaleString()}
+                      </span>
+                    </DialogDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void openAuthenticatedFile(activeAttachmentItem.attachment.dataUrl)}
+                    >
+                      <ExternalLink className="h-4 w-4" /> Inspect
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() =>
+                        void downloadAuthenticatedFile(
+                          activeAttachmentItem.attachment.dataUrl,
+                          activeAttachmentItem.attachment.name,
+                        )
+                      }
+                    >
+                      <Download className="h-4 w-4" /> Download
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative min-h-0 bg-muted/30 p-3 md:p-5">
+                <div className="flex h-full min-h-[320px] items-center justify-center overflow-hidden rounded-sm border border-border bg-background/90 p-3">
+                  {activeAttachmentItem.attachment.mimeType.startsWith("image/") ? (
+                    <AuthenticatedImage
+                      src={activeAttachmentItem.attachment.dataUrl}
+                      alt={activeAttachmentItem.attachment.name}
+                      className="max-h-[72vh] w-full object-contain"
+                    />
+                  ) : activeAttachmentItem.attachment.mimeType.startsWith("video/") ? (
+                    <video
+                      src={activeAttachmentItem.attachment.dataUrl}
+                      controls
+                      preload="metadata"
+                      className="max-h-[72vh] w-full rounded-sm bg-black object-contain"
+                    />
+                  ) : (
+                    <div className="flex max-w-xl flex-col items-center justify-center gap-4 rounded-sm border border-border/70 bg-card/70 px-6 py-8 text-center">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border/70 bg-background/70">
+                        <FileText className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="break-all text-sm font-body text-foreground">
+                          {activeAttachmentItem.attachment.name}
+                        </p>
+                        <p className="text-xs font-display tracking-wider text-muted-foreground">
+                          {formatBytes(activeAttachmentItem.attachment.size)} •{" "}
+                          {activeAttachmentItem.attachment.mimeType || "FILE"}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => void openAuthenticatedFile(activeAttachmentItem.attachment.dataUrl)}
+                        >
+                          <ExternalLink className="h-4 w-4" /> Open
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() =>
+                            void downloadAuthenticatedFile(
+                              activeAttachmentItem.attachment.dataUrl,
+                              activeAttachmentItem.attachment.name,
+                            )
+                          }
+                        >
+                          <Download className="h-4 w-4" /> Download
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {conversationAttachments.length > 1 && (
+                  <>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={showPreviousAttachment}
+                      className="absolute left-4 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-background/92"
+                      aria-label="Previous attachment"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={showNextAttachment}
+                      className="absolute right-4 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-background/92"
+                      aria-label="Next attachment"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              <div className="border-t border-border bg-card/80 px-4 py-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2 text-[10px] font-display tracking-wider text-muted-foreground">
+                    {activeAttachmentItem.attachment.mimeType.startsWith("image/") ? (
+                      <ImageIcon className="h-3.5 w-3.5" />
+                    ) : activeAttachmentItem.attachment.mimeType.startsWith("video/") ? (
+                      <Play className="h-3.5 w-3.5" />
+                    ) : (
+                      <FileText className="h-3.5 w-3.5" />
+                    )}
+                    <span>{activeAttachmentItem.attachment.mimeType || "FILE"}</span>
+                  </div>
+                  <p className="line-clamp-2 text-xs text-muted-foreground">
+                    {activeAttachmentItem.text
+                      ? activeAttachmentItem.text
+                      : "This attachment was sent without additional message text."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* DM dialog */}
       <Dialog open={dialog === "dm"} onOpenChange={(o) => !o && closeDialog()}>

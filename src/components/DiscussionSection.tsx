@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { DiscussionComment, DiscussionMention } from "@/types";
 import { MessageSquare, Reply, Send, Pencil, Trash2, Check, X } from "lucide-react";
 import MentionInput, { extractMentions, renderWithMentions } from "@/components/MentionInput";
+import { accentBorder, accentSurface, accentText } from "@/lib/themeColor";
 
 interface Props {
   comments: DiscussionComment[];
@@ -95,6 +96,9 @@ export default function DiscussionSection({
   };
 
   const accent = accentColor || "hsl(var(--primary))";
+  const readableAccent = accentText(accent);
+  const softAccentBorder = accentBorder(accent);
+  const softAccentSurface = accentSurface(accent);
   const sortedComments = useMemo(
     () => [...comments].sort((a, b) => (b.date || "").localeCompare(a.date || "")),
     [comments],
@@ -109,7 +113,7 @@ export default function DiscussionSection({
   return (
     <div className="space-y-4">
       <h2 className="font-heading text-lg tracking-wider text-foreground uppercase flex items-center gap-2">
-        <MessageSquare className="h-5 w-5" style={{ color: accent }} />
+        <MessageSquare className="h-5 w-5" style={{ color: readableAccent }} />
         Discussion
         <span className="text-xs text-muted-foreground font-body normal-case">({comments.length})</span>
       </h2>
@@ -127,8 +131,8 @@ export default function DiscussionSection({
           />
           <button
             onClick={handleSubmitComment}
-            className="px-3 py-2 text-xs font-display tracking-wider rounded-sm transition-opacity hover:opacity-90"
-            style={{ backgroundColor: accent, color: "#fff" }}
+            className="px-3 py-2 text-xs font-display tracking-wider rounded-sm border transition-opacity hover:opacity-90"
+            style={{ color: readableAccent, borderColor: softAccentBorder, backgroundColor: softAccentSurface }}
           >
             <Send className="h-3.5 w-3.5" />
           </button>
@@ -151,10 +155,10 @@ export default function DiscussionSection({
           const hasMoreReplies = sortedReplies.length > visibleReplies.length;
 
           return (
-          <div key={c.id} className="hud-border-sm bg-card p-4 space-y-2" style={{ borderColor: `${accent}20` }}>
+          <div key={c.id} className="hud-border-sm bg-card p-4 space-y-2" style={{ borderColor: softAccentBorder }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-heading tracking-wider" style={{ color: accent }}>{c.author}</span>
+                <span className="text-xs font-heading tracking-wider" style={{ color: readableAccent }}>{c.author}</span>
                 <span className="text-[10px] text-muted-foreground font-body">{c.date}</span>
               </div>
               {canModify(c.author) && editingComment !== c.id && (
@@ -187,7 +191,7 @@ export default function DiscussionSection({
                   accentColor={accent}
                   autoFocus
                 />
-                <button onClick={() => saveEditComment(c.id)} className="text-xs px-2 py-1 rounded-sm" style={{ backgroundColor: accent, color: "#fff" }} title="Save">
+                <button onClick={() => saveEditComment(c.id)} className="text-xs px-2 py-1 rounded-sm border" style={{ color: readableAccent, borderColor: softAccentBorder, backgroundColor: softAccentSurface }} title="Save">
                   <Check className="h-3 w-3" />
                 </button>
                 <button onClick={cancelEdit} className="text-xs text-muted-foreground px-2 py-1" title="Cancel">
@@ -200,7 +204,7 @@ export default function DiscussionSection({
 
             {/* Replies */}
             {c.replies.length > 0 && (
-              <div className="ml-4 border-l-2 pl-3 space-y-2 mt-2" style={{ borderColor: `${accent}30` }}>
+              <div className="ml-4 border-l-2 pl-3 space-y-2 mt-2" style={{ borderColor: softAccentBorder }}>
                 {visibleReplies.map((r) => (
                   <div key={r.id} className="space-y-1">
                     <div className="flex items-center justify-between">
@@ -238,7 +242,7 @@ export default function DiscussionSection({
                           accentColor={accent}
                           autoFocus
                         />
-                        <button onClick={() => saveEditReply(c.id, r.id)} className="text-xs px-2 py-1 rounded-sm" style={{ backgroundColor: accent, color: "#fff" }} title="Save">
+                        <button onClick={() => saveEditReply(c.id, r.id)} className="text-xs px-2 py-1 rounded-sm border" style={{ color: readableAccent, borderColor: softAccentBorder, backgroundColor: softAccentSurface }} title="Save">
                           <Check className="h-3 w-3" />
                         </button>
                         <button onClick={cancelEdit} className="text-xs text-muted-foreground px-2 py-1" title="Cancel">
@@ -282,7 +286,7 @@ export default function DiscussionSection({
                       accentColor={accent}
                       autoFocus
                     />
-                    <button onClick={() => handleSubmitReply(c.id)} className="text-xs px-2 py-1 rounded-sm" style={{ backgroundColor: accent, color: "#fff" }}>
+                    <button onClick={() => handleSubmitReply(c.id)} className="text-xs px-2 py-1 rounded-sm border" style={{ color: readableAccent, borderColor: softAccentBorder, backgroundColor: softAccentSurface }}>
                       <Send className="h-3 w-3" />
                     </button>
                     <button onClick={() => { setReplyTo(null); setReplyText(""); }} className="text-xs text-muted-foreground px-2 py-1">✕</button>

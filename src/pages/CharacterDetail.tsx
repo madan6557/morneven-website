@@ -10,12 +10,13 @@ import {
   editCharacterDiscussionReply,
   deleteCharacterDiscussionReply,
 } from "@/services/api";
-import { getProxyUrl } from "@/services/fileProxyService";
 import type { Character, DiscussionComment, DiscussionMention, LoreFieldNote } from "@/types";
 import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen, Info } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
+import { AuthenticatedImage, useResolvedImageUrl } from "@/components/AuthenticatedImage";
+import DocumentationViewer from "@/components/DocumentationViewer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillList } from "@/components/SkillCard";
 import StatsRadar from "@/components/StatsRadar";
@@ -49,17 +50,26 @@ export default function CharacterDetail() {
       };
     }
 
-    getCharacter(id).then((c) => {
-      if (!active) return;
-      setChar(c ?? null);
-      setDiscussion(c?.discussions ?? []);
-      setLoading(false);
-    });
+    getCharacter(id)
+      .then((c) => {
+        if (!active) return;
+        setChar(c ?? null);
+        setDiscussion(c?.discussions ?? []);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setChar(null);
+        setDiscussion([]);
+        setLoading(false);
+      });
 
     return () => {
       active = false;
     };
   }, [id]);
+
+  const resolvedHeaderImage = useResolvedImageUrl(char?.headerImage || char?.thumbnail || "");
 
   if (loading) return <div className="p-8 text-muted-foreground font-body">Loading...</div>;
 
@@ -142,11 +152,11 @@ export default function CharacterDetail() {
   return (
     <div className="space-y-0" style={{ "--char-accent": accentColor } as React.CSSProperties}>
       {/* Parallax header with custom accent and thumbnail */}
-      <div className="relative h-72 md:h-96 overflow-hidden flex items-end" style={headerImage ? { backgroundImage: `url(${getProxyUrl(headerImage)})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
+      <div className="relative h-72 md:h-96 overflow-hidden flex items-end" style={resolvedHeaderImage ? { backgroundImage: `url(${resolvedHeaderImage})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundColor: "var(--color-muted)" }}>
         <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accentMuted(accentColor)} 0%, transparent 62%)` }} />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent z-10" />
         <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: accentColor }} />
-        {!headerImage && (
+        {!resolvedHeaderImage && (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="font-display text-8xl opacity-5 tracking-[0.3em]" style={{ color: accentReadable }}>{char.name.split(" ")[0].toUpperCase()}</span>
           </div>
@@ -366,45 +376,7 @@ export default function CharacterDetail() {
               <SkillList items={char.skills} accent={accentColor} variant="skill" />
             </div>
 
-            {/* Documentation - always visible (outside tabs) */}
-            {char.docs && char.docs.length > 0 && (
-              <div className="space-y-4 pt-6">
-                <h2 className="font-heading text-lg tracking-wider text-foreground uppercase border-b pb-2" style={{ borderColor: `${accentColor}30` }}>Documentation</h2>
-                <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-                  {char.docs.map((doc, i) => (
-                    <div key={i} className="hud-border-sm bg-card overflow-hidden" style={{ borderColor: `${accentColor}20` }}>
-                      {doc.type === "video" && doc.url ? (
-                        <div className="aspect-video bg-muted">
-                          <iframe
-                            src={doc.url}
-                            className="w-full h-full"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            title={`${char.name} Documentation`}
-                          />
-                        </div>
-                      ) : doc.type === "file" && doc.url ? (
-                        <a href={doc.url} target="_blank" rel="noreferrer" className="aspect-video bg-muted flex flex-col items-center justify-center gap-2 hover:bg-muted/80 transition-colors">
-                          <FileText className="h-6 w-6 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground font-heading tracking-wider">FILE</span>
-                        </a>
-                      ) : doc.type === "image" && doc.url ? (
-                        <div className="aspect-video bg-muted overflow-hidden">
-                          <img src={doc.url} alt={doc.caption} className="w-full h-full object-cover" />
-                        </div>
-                      ) : (
-                        <div className="aspect-video bg-muted flex items-center justify-center">
-                          <span className="text-xs text-muted-foreground font-heading tracking-wider">{doc.type === "video" ? "▶ VIDEO" : doc.type === "file" ? "FILE" : "IMAGE"}</span>
-                        </div>
-                      )}
-                      <div className="p-3">
-                        <p className="text-xs font-body text-muted-foreground">{doc.caption}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <DocumentationViewer docs={char.docs} itemLabel={char.name} accentColor={accentColor} className="pt-6" />
 
             {/* Discussion Section - standalone, outside tabs */}
             <div className="space-y-4 pt-6">
@@ -452,3 +424,4 @@ function FieldNoteList({ title, items, accent }: { title: string; items: LoreFie
     </div>
   );
 }
+

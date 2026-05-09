@@ -5,6 +5,7 @@ import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import type { Project } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { Archive, Plus, Search } from "lucide-react";
+import { ContentState } from "@/components/ContentState";
 
 const tabs = ["All", "Planning", "On Progress", "On Hold", "Completed", "Canceled", "Archived"] as const;
 type Tab = typeof tabs[number];
@@ -20,6 +21,7 @@ export default function ProjectsPage() {
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const { role } = useAuth();
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     void loadProjects(true);
@@ -41,6 +43,7 @@ export default function ProjectsPage() {
     const status = active !== "All" && active !== "Archived" ? active : undefined;
 
     setLoading(true);
+    setErrorMessage("");
     try {
       const response = await getProjectsPage({
         page,
@@ -51,6 +54,18 @@ export default function ProjectsPage() {
       });
       setProjects((current) => reset ? response.items : [...current, ...response.items]);
       setPageInfo(response.pageInfo);
+    } catch (error) {
+      if (reset) {
+        setProjects([]);
+        setPageInfo(null);
+      }
+      setErrorMessage(
+        error instanceof Error
+          ? error.message === "Failed to fetch"
+            ? "Network request failed."
+            : error.message
+          : "Projects could not be loaded.",
+      );
     } finally {
       setLoading(false);
     }
@@ -70,18 +85,20 @@ export default function ProjectsPage() {
         )}
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        {tabs.map((t) => (
-          <button
-            key={t}
-            onClick={() => setActive(t)}
-            className={`px-4 py-1.5 text-xs font-display tracking-[0.1em] uppercase border rounded-sm transition-colors flex items-center gap-1
-              ${active === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}
-          >
-            {t === "Archived" && <Archive className="h-3 w-3" />}
-            {t}
-          </button>
-        ))}
+      <div className="overflow-x-auto pb-1">
+        <div className="flex min-w-max gap-2">
+          {tabs.map((t) => (
+            <button
+              key={t}
+              onClick={() => setActive(t)}
+              className={`px-4 py-2 text-xs font-display tracking-[0.1em] uppercase border rounded-sm transition-colors flex items-center gap-1
+                ${active === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-foreground/80 hover:bg-muted"}`}
+            >
+              {t === "Archived" && <Archive className="h-3 w-3" />}
+              {t}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="relative max-w-xl">
@@ -95,11 +112,51 @@ export default function ProjectsPage() {
         />
       </div>
 
+      {errorMessage && projects.length > 0 && (
+        <ContentState
+          kind="error"
+          title="Project refresh failed"
+          description={`The last request did not complete. ${errorMessage}`}
+          actionLabel="Retry"
+          onAction={() => { void loadProjects(true); }}
+          compact
+          className="bg-card/65 text-left"
+        />
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {projects.length === 0 && !loading && (
-          <p className="col-span-full text-sm text-muted-foreground font-body italic">
-            {search.trim() ? "No projects match your search." : active === "Archived" ? "No archived projects." : "No projects in this view."}
-          </p>
+        {loading && projects.length === 0 && (
+          <div className="col-span-full">
+            <ContentState
+              kind="loading"
+              title="Loading projects"
+              description="The project archive is being requested from the backend."
+            />
+          </div>
+        )}
+        {!loading && projects.length === 0 && errorMessage && (
+          <div className="col-span-full">
+            <ContentState
+              kind="error"
+              title="Project archive unavailable"
+              description={`The project list could not be loaded. ${errorMessage}`}
+              actionLabel="Retry"
+              onAction={() => { void loadProjects(true); }}
+            />
+          </div>
+        )}
+        {!loading && projects.length === 0 && !errorMessage && (
+          <div className="col-span-full">
+            <ContentState
+              kind="empty"
+              title={search.trim() ? "No matching projects" : active === "Archived" ? "No archived projects" : "No projects in this view"}
+              description={search.trim()
+                ? "Try a different keyword or remove filters to broaden the result set."
+                : active === "Archived"
+                  ? "Archived entries will appear here once at least one project has been archived."
+                  : "There is no project published for this filter yet."}
+            />
+          </div>
         )}
         {projects.map((p) => (
           <Link key={p.id} to={`/projects/${p.id}`} className="block">
@@ -159,7 +216,7 @@ export default function ProjectsPage() {
           </button>
         )}
         {loading && !pageInfo?.hasNextPage && (
-          <p className="text-xs text-muted-foreground font-body">Loading projects...</p>
+          <p className="text-sm text-muted-foreground font-body">Loading projects...</p>
         )}
       </div>
     </div>
