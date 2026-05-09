@@ -1103,10 +1103,8 @@ export default function ChatPage() {
                                             <FileText className="h-4 w-4 text-muted-foreground" />
                                           </div>
                                           <div className="min-w-0 space-y-0.5">
-                                            <p className="break-all text-xs font-body text-foreground">{a.name}</p>
-                                            <p className="text-[10px] font-display tracking-wider text-muted-foreground">
-                                              {formatBytes(a.size)} • Inspect attachment
-                                            </p>
+                                            <p className="truncate text-xs font-body text-foreground">{a.name}</p>
+                                            <p className="text-[10px] font-display tracking-wider text-muted-foreground">{formatBytes(a.size)}</p>
                                           </div>
                                         </div>
                                         <ExternalLink className="h-3.5 w-3.5 shrink-0 text-primary" />
