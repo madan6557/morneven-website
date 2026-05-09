@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import { ArrowUpDown, CalendarClock, Plus, Search, ShieldAlert, ShieldCheck } from "lucide-react";
 import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
+import { canAccessAuthorPanel, type LoreSubSection } from "@/lib/pl";
 
 const tabs = ["Characters", "Places", "Technology", "Creatures", "Events", "Other", "Personnel"] as const;
 type LoreTab = Exclude<typeof tabs[number], "Personnel">;
@@ -134,7 +135,14 @@ export default function LorePage() {
   const [sort, setSort] = useState<SortOption>("name");
   const [pageSize, setPageSize] = useState(getResponsivePageSize);
   const deferredSearch = useDeferredValue(search);
-  const { role } = useAuth();
+  const { personnelLevel, track } = useAuth();
+  const activeLoreSub = loreRoutes[active] === "tech" ? "technology" : loreRoutes[active];
+  const canCreateActiveLore = canAccessAuthorPanel({
+    level: personnelLevel,
+    track,
+    section: "lore",
+    loreSub: activeLoreSub as LoreSubSection,
+  });
 
   useEffect(() => {
     setActive(routeToTab(category));
@@ -221,7 +229,7 @@ export default function LorePage() {
           <h1 className="font-display text-xl sm:text-2xl tracking-[0.1em] text-primary">LORE / WIKI</h1>
           <div className="mecha-line w-32 mt-2" />
         </div>
-        {role === "author" && (
+        {canCreateActiveLore && (
           <Link to="/author?tab=lore&action=create" className="flex items-center gap-1 px-3 py-1.5 text-xs font-display tracking-wider text-primary-foreground bg-primary rounded-sm hover:opacity-90 transition-opacity">
             <Plus className="h-3 w-3" /> NEW
           </Link>

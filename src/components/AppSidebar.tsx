@@ -72,7 +72,7 @@ const navItems: NavItem[] = [
     title: "Author Panel",
     url: "/author",
     icon: Shield,
-    visible: ({ role, level, track }) => role === "author" || canEnterAuthorPanel(level, track),
+    visible: ({ level, track }) => canEnterAuthorPanel(level, track),
   },
   {
     title: "Personnel",
@@ -257,7 +257,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
             <label htmlFor="track-switch" className="text-[10px] font-display tracking-wider text-sidebar-foreground/70 uppercase">
               Track
             </label>
-            {personnelLevel >= PL_FULL_AUTHORITY ? (
+            {role === "author" || personnelLevel >= PL_FULL_AUTHORITY ? (
               <select
                 id="track-switch"
                 value={track}

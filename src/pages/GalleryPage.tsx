@@ -5,6 +5,7 @@ import { getGalleryPage, type PageInfo } from "@/services/api";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import type { GalleryItem } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { canAccessAuthorPanel } from "@/lib/pl";
 
 const typeTabs = ["All", "Image", "Video"] as const;
 type GalleryTypeTab = typeof typeTabs[number];
@@ -26,7 +27,8 @@ export default function GalleryPage() {
   const [sort, setSort] = useState<SortOption>("newest");
   const [pageSize, setPageSize] = useState(getResponsivePageSize);
   const deferredSearch = useDeferredValue(search);
-  const { role } = useAuth();
+  const { personnelLevel, track } = useAuth();
+  const canUploadGallery = canAccessAuthorPanel({ level: personnelLevel, track, section: "gallery" });
 
   useEffect(() => {
     const updatePageSize = () => setPageSize(getResponsivePageSize());
@@ -86,7 +88,7 @@ export default function GalleryPage() {
           <h1 className="font-display text-2xl tracking-[0.1em] text-primary">GALLERY</h1>
           <div className="mecha-line w-32 mt-2" />
         </div>
-        {role === "author" && (
+        {canUploadGallery && (
           <Link to="/author?tab=gallery&action=create" className="flex items-center gap-1 px-3 py-1.5 text-xs font-display tracking-wider text-primary-foreground bg-primary rounded-sm hover:opacity-90 transition-opacity">
             <Plus className="h-3 w-3" /> UPLOAD
           </Link>

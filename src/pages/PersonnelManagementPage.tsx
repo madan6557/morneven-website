@@ -108,8 +108,8 @@ export default function PersonnelManagementPage() {
     });
   }, [people, filter, trackFilter]);
 
-  // L7-only guard. Render an explicit denial page rather than silently
-  // redirecting so the rule is visible.
+  // PL5+ guard. Detailed create, update, and delete permissions are enforced
+  // by the action-level predicates below.
   if (!canManagePersonnel(personnelLevel)) {
     return <Navigate to="/home" replace />;
   }

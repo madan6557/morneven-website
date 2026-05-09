@@ -6,6 +6,7 @@ import type { Project } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { Archive, Plus, Search } from "lucide-react";
 import { ContentState } from "@/components/ContentState";
+import { canAccessAuthorPanel } from "@/lib/pl";
 
 const tabs = ["All", "Planning", "On Progress", "On Hold", "Completed", "Canceled", "Archived"] as const;
 type Tab = typeof tabs[number];
@@ -20,7 +21,8 @@ export default function ProjectsPage() {
   const [active, setActive] = useState<Tab>(tabs.includes(initial) ? initial : "All");
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
-  const { role } = useAuth();
+  const { personnelLevel, track } = useAuth();
+  const canCreateProject = canAccessAuthorPanel({ level: personnelLevel, track, section: "projects" });
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
@@ -78,7 +80,7 @@ export default function ProjectsPage() {
           <h1 className="font-display text-2xl tracking-[0.1em] text-primary">PROJECTS</h1>
           <div className="mecha-line w-32 mt-2" />
         </div>
-        {role === "author" && (
+        {canCreateProject && (
           <Link to="/author?tab=projects&action=create" className="flex items-center gap-1 px-3 py-1.5 text-xs font-display tracking-wider text-primary-foreground bg-primary rounded-sm hover:opacity-90 transition-opacity">
             <Plus className="h-3 w-3" /> NEW
           </Link>

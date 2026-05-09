@@ -185,6 +185,7 @@ export default function SettingsPage() {
   const title = trackInfo?.titles[personnelLevel] ?? "Unknown";
   const canRun = personnelLevel >= 7 && confirmText === "CONFIRM" && verifyPassword(password);
   const canReconcileChat = personnelLevel >= 7;
+  const hasMaintenanceAccess = personnelLevel >= 7;
   const inputClass = "w-full rounded-sm border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:ring-1 focus:ring-primary";
   const helperTextClass = "text-sm leading-6 text-muted-foreground";
 
@@ -313,7 +314,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-8 xl:p-10">
+    <div className="w-full space-y-6 p-4 md:p-8 xl:p-10">
       <div className="space-y-3">
         <h1 className="font-display text-2xl tracking-[0.1em] text-primary">SETTINGS</h1>
         <div className="mecha-line w-32" />
@@ -328,8 +329,15 @@ export default function SettingsPage() {
         <SummaryTile icon={Sparkles} label="Role" value={role.toUpperCase()} description={`Signed in as ${username}`} />
       </div>
 
-      <div className="grid w-full items-start gap-5 xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
-        <div className="space-y-5">
+      <div
+        className={cn(
+          "grid w-full items-start gap-5",
+          hasMaintenanceAccess
+            ? "xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]"
+            : "",
+        )}
+      >
+        <div className={cn("space-y-5", !hasMaintenanceAccess && "grid gap-5 space-y-0 lg:grid-cols-2 xl:grid-cols-3")}>
           <SectionCard
             icon={Sparkles}
             title="Appearance"
@@ -399,7 +407,7 @@ export default function SettingsPage() {
               icon={KeyRound}
               title="Account Security"
               description="Sensitive actions are grouped here so password changes and account deletion are easier to review before execution."
-              className="border-destructive/25"
+              className={cn("border-destructive/25", !hasMaintenanceAccess && "lg:col-span-2 xl:col-span-3")}
             >
               <div className="space-y-4">
                 <div className="space-y-3 rounded-sm border border-border/70 bg-background/45 p-4">
@@ -514,6 +522,7 @@ export default function SettingsPage() {
           )}
         </div>
 
+        {hasMaintenanceAccess && (
         <div className="space-y-5">
           {canReconcileChat && (
             <SectionCard
@@ -587,7 +596,7 @@ export default function SettingsPage() {
             </SectionCard>
           )}
 
-          {personnelLevel >= 7 && (
+          {hasMaintenanceAccess && (
             <SectionCard
               icon={HardDrive}
               title="PL7 Storage Cleanup"
@@ -733,7 +742,7 @@ export default function SettingsPage() {
             </SectionCard>
           )}
 
-          {personnelLevel >= 7 && (
+          {hasMaintenanceAccess && (
             <SectionCard
               icon={AlertTriangle}
               title="PL7 Data Extraction"
@@ -940,6 +949,7 @@ export default function SettingsPage() {
             </SectionCard>
           )}
         </div>
+        )}
       </div>
     </div>
   );

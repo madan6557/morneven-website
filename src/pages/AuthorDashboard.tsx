@@ -438,11 +438,9 @@ export default function AuthorDashboard() {
 
   // Per-section access predicate (PL + track aware).
   const canAccess = (section: DashboardTab, sub?: LoreSub) =>
-    role === "author" ||
     canAccessAuthorPanel({ level: personnelLevel, track, section, loreSub: sub });
 
   const tabAllowed = (t: DashboardTab) => {
-    if (role === "author") return true;
     if (t === "lore") {
       // Allow if any sub-section is reachable.
       return loreSubs.some((s) => canAccessAuthorPanel({ level: personnelLevel, track, section: "lore", loreSub: s }));
@@ -451,14 +449,13 @@ export default function AuthorDashboard() {
   };
 
   const subAllowed = (s: LoreSub) =>
-    role === "author" ||
     canAccessAuthorPanel({ level: personnelLevel, track, section: "lore", loreSub: s });
 
   // Gallery ownership gate. L7 / "author" role bypasses; everyone else
   // (i.e. L6) may only modify items they uploaded themselves. Items with
   // no uploader stamp (legacy seed data) are treated as author-owned.
   const canModifyGalleryItem = (item: GalleryItem): boolean => {
-    if (role === "author" || personnelLevel >= 7) return true;
+    if (personnelLevel >= 7) return true;
     if (!item.uploadedBy) return false;
     return item.uploadedBy === username;
   };
@@ -773,7 +770,7 @@ export default function AuthorDashboard() {
         const response = await getGalleryPage({
           page,
           pageSize: DASHBOARD_LIST_PAGE_SIZE,
-          uploadedBy: role === "author" || personnelLevel >= 7 ? undefined : username,
+          uploadedBy: personnelLevel >= 7 ? undefined : username,
         });
         setGallery((current) => reset ? response.items : [...current, ...response.items]);
         setDashboardPageInfo(response.pageInfo);
@@ -810,9 +807,7 @@ export default function AuthorDashboard() {
     }
   };
 
-  // Access gate: author role bypasses everything; otherwise PL+track must
-  // grant entry to at least one section.
-  const hasAnyAccess = role === "author" || canEnterAuthorPanel(personnelLevel, track);
+  const hasAnyAccess = canEnterAuthorPanel(personnelLevel, track);
   if (!hasAnyAccess) {
     return (
       <div className="p-6 md:p-8 space-y-4">
@@ -1113,9 +1108,9 @@ export default function AuthorDashboard() {
           comments: editing.comments ?? [],
           // Stamp the uploader on creation; preserve on edit so ownership
           // doesn't transfer when an author edits someone else's upload.
-          uploadedBy: isCreating
-            ? username
-            : ((editing as EditableState & { uploadedBy?: string }).uploadedBy ?? username),
+        uploadedBy: isCreating
+          ? (personnelLevel >= 7 ? undefined : username)
+          : ((editing as EditableState & { uploadedBy?: string }).uploadedBy ?? username),
         };
 
         if (isCreating) await createGalleryItem(payload);
@@ -1202,7 +1197,7 @@ export default function AuthorDashboard() {
     if (activeTab === "gallery") {
       // L6 personnel only see their own uploads in the management list.
       // L7 / author see everything.
-      if (role === "author" || personnelLevel >= 7) return gallery;
+      if (personnelLevel >= 7) return gallery;
       return gallery.filter((g) => g.uploadedBy === username);
     }
     return [];

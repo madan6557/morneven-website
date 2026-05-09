@@ -4,6 +4,7 @@ import type { DiscussionComment, DiscussionMention } from "@/types";
 import { MessageSquare, Reply, Send, Pencil, Trash2, Check, X } from "lucide-react";
 import MentionInput, { extractMentions, renderWithMentions } from "@/components/MentionInput";
 import { accentBorder, accentSurface, accentText } from "@/lib/themeColor";
+import { canModerateDiscussions } from "@/lib/pl";
 
 interface Props {
   comments: DiscussionComment[];
@@ -30,7 +31,7 @@ export default function DiscussionSection({
   commentLimit = 10,
   replyLimit = 5,
 }: Props) {
-  const { role, username } = useAuth();
+  const { role, username, personnelLevel, track } = useAuth();
   const [newComment, setNewComment] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -42,9 +43,9 @@ export default function DiscussionSection({
 
   const authorName = username || (role === "guest" ? "Guest" : "User");
   const canComment = role !== "guest";
-  const isAuthor = role === "author";
+  const canModerate = canModerateDiscussions(personnelLevel, track);
 
-  const canModify = (commentAuthor: string) => isAuthor || commentAuthor === username;
+  const canModify = (commentAuthor: string) => canModerate || commentAuthor === username;
 
   const handleSubmitComment = () => {
     if (!newComment.trim()) return;
