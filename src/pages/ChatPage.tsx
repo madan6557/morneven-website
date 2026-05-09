@@ -179,6 +179,7 @@ export default function ChatPage() {
   const [active, setActive] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [sendInFlightCount, setSendInFlightCount] = useState(0);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [personnel, setPersonnel] = useState<PersonnelUser[]>([]);
 
@@ -532,8 +533,11 @@ export default function ChatPage() {
   useEffect(() => {
     const composer = composerRef.current;
     if (!composer) return;
-    composer.style.height = "0px";
-    composer.style.height = `${Math.min(composer.scrollHeight, 160)}px`;
+    composer.style.height = "auto";
+    const maxHeight = 160;
+    const nextHeight = Math.min(composer.scrollHeight, maxHeight);
+    composer.style.height = `${nextHeight}px`;
+    composer.style.overflowY = composer.scrollHeight > maxHeight ? "auto" : "hidden";
   }, [input]);
 
   useEffect(() => {
@@ -672,28 +676,34 @@ export default function ChatPage() {
       return;
     }
 
-    if (!input.trim() && pendingFiles.length === 0) return;
+    const draftText = input.trim();
+    const draftFiles = pendingFiles;
+    if (!draftText && draftFiles.length === 0) return;
 
-    let attachments: ChatAttachment[] | undefined;
-    try {
-      if (pendingFiles.length) {
-        attachments = await Promise.all(pendingFiles.map(fileToAttachmentRemote));
-      }
-    } catch (error) {
-      toast({
-        title: "Attachment upload failed",
-        description: error instanceof Error ? error.message : "Backend rejected one of the selected files.",
-        variant: "destructive",
-      });
-      return;
-    }
-    await sendMessageRemote(active, input.trim(), attachments, replyTo ?? undefined);
+    const draftReplyTo = replyTo;
     shouldScrollToLatestRef.current = true;
     setInput("");
     setPendingFiles([]);
     setReplyTo(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
-    refresh();
+
+    setSendInFlightCount((c) => c + 1);
+    try {
+      let attachments: ChatAttachment[] | undefined;
+      if (draftFiles.length) {
+        attachments = await Promise.all(draftFiles.map(fileToAttachmentRemote));
+      }
+      await sendMessageRemote(active, draftText, attachments, draftReplyTo ?? undefined);
+      refresh();
+    } catch (error) {
+      toast({
+        title: "Send failed",
+        description: error instanceof Error ? error.message : "Backend rejected the message.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendInFlightCount((c) => Math.max(0, c - 1));
+    }
   }
 
   function handleFiles(files: FileList | null) {
@@ -913,7 +923,7 @@ export default function ChatPage() {
                 </div>
               </div>
 
-              <div className="relative flex-1 min-h-0">
+          <div className="relative flex-1 min-h-0">
               <ScrollArea ref={conversationScrollRootRef} className="h-full">
                 <div className="space-y-4 p-4 md:p-5">
                   {messages.length === 0 ? (
@@ -1210,6 +1220,11 @@ export default function ChatPage() {
               )}
 
               <div className="border-t border-border/70 bg-background/45 p-3 md:p-4">
+                {(() => {
+                  const hasDraft = input.trim().length > 0 || pendingFiles.length > 0;
+                  const showSending = sendInFlightCount > 0 && !hasDraft && !editingMessageId;
+                  return (
+                    <>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -1241,18 +1256,28 @@ export default function ChatPage() {
                       }}
                       placeholder={editingMessageId ? "Edit message..." : "Type a message..."}
                       rows={1}
-                      className="min-h-[44px] flex-1 resize-none rounded-sm border border-border bg-background px-3 py-2.5 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground/75 focus:border-primary"
+                      className="min-h-[44px] flex-1 resize-none rounded-sm border border-border bg-background px-3 py-2.5 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground/75 focus:border-primary overflow-y-hidden"
                     />
                     <Button
                       onClick={() => void handleSend()}
                       className="h-10 shrink-0 px-3 sm:px-4"
                       aria-label={editingMessageId ? "Save edit" : "Send"}
+                      disabled={!editingMessageId && (!hasDraft || showSending)}
                     >
-                      {editingMessageId ? <Pencil className="h-3.5 w-3.5" /> : <Send className="h-3.5 w-3.5" />}
-                      <span className="hidden sm:inline">{editingMessageId ? "Save" : "Send"}</span>
+                      {editingMessageId ? (
+                        <Pencil className="h-3.5 w-3.5" />
+                      ) : (
+                        <Send className={showSending ? "h-3.5 w-3.5 animate-pulse" : "h-3.5 w-3.5"} />
+                      )}
+                      <span className="hidden sm:inline">
+                        {editingMessageId ? "Save" : showSending ? "Sending" : "Send"}
+                      </span>
                     </Button>
                   </div>
                 </div>
+                    </>
+                  );
+                })()}
               </div>
             </>
           ) : (
