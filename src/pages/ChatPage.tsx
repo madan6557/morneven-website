@@ -1058,7 +1058,7 @@ export default function ChatPage() {
                           )}
                           {m.text && <p className="font-body whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word]">{m.text}</p>}
                           {m.attachments && m.attachments.length > 0 && (
-                            <div className={`mt-2 ${m.attachments.length > 1 ? "grid grid-cols-2 gap-2" : "space-y-2"}`}>
+                            <div className={`mt-2 ${m.attachments.length > 1 && m.attachments.every((attachment) => attachment.mimeType.startsWith("image/") || attachment.mimeType.startsWith("video/")) ? "grid grid-cols-2 gap-2" : "space-y-2"}`}>
                               {m.attachments.slice(0, 2).map((a, index) => {
                                 const isImg = a.mimeType.startsWith("image/");
                                 const isVideo = a.mimeType.startsWith("video/");
