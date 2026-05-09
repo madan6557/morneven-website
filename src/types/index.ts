@@ -1,8 +1,13 @@
+export interface SkillRestriction {
+  key: string;
+  value: string;
+}
+
 export interface Skill {
   id: string;
   name: string;
   category: string;
-  cooldown: string;
+  restriction?: SkillRestriction;
   description: string;
   icon?: string;
   color?: string;
