@@ -202,7 +202,7 @@ export default function ChatPage() {
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const [conversationQuery, setConversationQuery] = useState("");
   const deferredConversationQuery = useDeferredValue(conversationQuery);
-  const [mobileConversationPickerOpen, setMobileConversationPickerOpen] = useState(false);
+  const [mobileViewport, setMobileViewport] = useState<"list" | "thread">("list");
   const [activeAttachmentIndex, setActiveAttachmentIndex] = useState<number | null>(null);
   const nearBottomRef = useRef(true);
   const lastMessagesLenRef = useRef(0);
@@ -527,6 +527,12 @@ export default function ChatPage() {
     composerRef.current?.focus();
   }, [editingMessageId]);
 
+  useEffect(() => {
+    if (!active) {
+      setMobileViewport("list");
+    }
+  }, [active]);
+
   const conversationListPanel = (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="space-y-4 border-b border-border/70 p-4">
@@ -781,12 +787,12 @@ export default function ChatPage() {
   };
   function selectConversation(conversationId: string) {
     setActive(conversationId);
-    setMobileConversationPickerOpen(false);
+    setMobileViewport("thread");
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4 p-4 md:p-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="mx-auto max-w-7xl space-y-0 p-0 md:space-y-4 md:p-6">
+      <div className="hidden flex-wrap items-end justify-between gap-4 xl:flex">
         <div className="space-y-2">
           <h1 className="font-display text-2xl tracking-[0.1em] text-primary">CHAT</h1>
           <div className="mecha-line w-32" />
@@ -807,14 +813,41 @@ export default function ChatPage() {
         </Button>
       </div>
 
-      <div className="grid h-[calc(100dvh-7rem)] max-h-[900px] min-h-0 gap-4 md:h-[76vh] md:min-h-[660px] xl:grid-cols-[340px_minmax(0,1fr)]">
+      <div className="grid h-[calc(100dvh-3.5rem)] min-h-0 gap-0 md:h-[76vh] md:min-h-[660px] md:gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
+        <div className={`xl:hidden ${!activeConv || mobileViewport === "list" ? "flex" : "hidden"} min-h-0 flex-col overflow-hidden bg-card md:hud-border`}>
+          <div className="border-b border-border/70 bg-background/35 px-4 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="font-display text-xl tracking-[0.1em] text-primary">CHAT</p>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {convs.length} channel{convs.length === 1 ? "" : "s"} active
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDialog("invites")}
+                className="gap-1 font-display text-[10px] tracking-wider"
+              >
+                <Inbox className="h-3.5 w-3.5" /> INVITES
+                {invites.length > 0 && (
+                  <span className="ml-1 rounded-full bg-primary px-1.5 text-[9px] text-primary-foreground">{invites.length}</span>
+                )}
+              </Button>
+            </div>
+          </div>
+          <div className="min-h-0 flex-1">
+            {conversationListPanel}
+          </div>
+        </div>
+
         {/* Sidebar */}
         <div className="hidden xl:flex xl:h-full xl:flex-col xl:overflow-hidden xl:bg-card xl:hud-border">
           {conversationListPanel}
         </div>
 
         {/* Conversation */}
-        <div className="hud-border relative flex h-full flex-col overflow-hidden bg-card">
+        <div className={`${!activeConv || mobileViewport === "list" ? "hidden xl:flex" : "flex"} hud-border relative h-full min-h-0 flex-col overflow-hidden bg-card`}>
           {activeConv ? (
             <>
               <div className="border-b border-border/70 bg-background/35 px-4 py-3">
@@ -823,9 +856,9 @@ export default function ChatPage() {
                     variant="outline"
                     size="sm"
                     className="h-9 gap-2 px-3 text-[10px] font-display tracking-wider"
-                    onClick={() => setMobileConversationPickerOpen(true)}
+                    onClick={() => setMobileViewport("list")}
                   >
-                    <PanelLeft className="h-3.5 w-3.5" /> CHANNELS
+                    <ChevronLeft className="h-3.5 w-3.5" /> CHANNELS
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setDialog("settings")} className="h-9 shrink-0 px-2.5">
                     <Settings className="h-3.5 w-3.5" />
@@ -1216,7 +1249,7 @@ export default function ChatPage() {
                     variant="outline"
                     size="sm"
                     className="gap-2 text-[10px] font-display tracking-wider"
-                    onClick={() => setMobileConversationPickerOpen(true)}
+                    onClick={() => setMobileViewport("list")}
                   >
                     <PanelLeft className="h-3.5 w-3.5" /> OPEN CHANNELS
                   </Button>
@@ -1226,18 +1259,6 @@ export default function ChatPage() {
           )}
         </div>
       </div>
-
-      <Dialog open={mobileConversationPickerOpen} onOpenChange={setMobileConversationPickerOpen}>
-        <DialogContent className="flex h-[min(82vh,720px)] max-w-[calc(100vw-20px)] flex-col overflow-hidden p-0 xl:hidden">
-          <DialogHeader className="border-b border-border/70 px-4 py-3">
-            <DialogTitle className="font-display tracking-wider">CHANNEL PICKER</DialogTitle>
-            <DialogDescription>Select a conversation optimized for mobile browsing.</DialogDescription>
-          </DialogHeader>
-          <div className="min-h-0 flex-1 bg-card">
-            {conversationListPanel}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={activeAttachmentItem !== null} onOpenChange={(open) => !open && closeAttachmentViewer()}>
         <DialogContent className="max-h-[92vh] w-[min(1100px,calc(100vw-20px))] max-w-none gap-0 overflow-hidden border-border bg-background p-0 sm:rounded-sm">
