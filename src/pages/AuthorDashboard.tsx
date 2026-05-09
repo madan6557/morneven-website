@@ -2204,15 +2204,32 @@ export default function AuthorDashboard() {
               {(editing.docs || []).map((doc: DocItem & { _key?: string }, idx: number) => {
                 const key = doc._key ?? `doc-${idx}`;
                 return (
-                <div key={key} ref={newItemRef(key)} className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex gap-2 items-center">
-                      <select value={doc.type} onChange={(e) => updateDoc(idx, "type", e.target.value)} className="px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground">
+                <div
+                  key={key}
+                  ref={newItemRef(key)}
+                  className="space-y-3 rounded-sm border border-border bg-muted/50 p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <select value={doc.type} onChange={(e) => updateDoc(idx, "type", e.target.value)} className="h-8 rounded-sm border border-border bg-background px-2 py-1 text-xs font-body text-foreground">
                         <option value="image">Image</option>
                         <option value="video">Video</option>
                         <option value="file">File</option>
                       </select>
+                      <p className="truncate text-[10px] font-display tracking-wider text-muted-foreground">
+                        Documentation item {idx + 1}
+                      </p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => removeDoc(idx)}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-border bg-background text-muted-foreground transition-colors hover:border-destructive/60 hover:text-destructive"
+                      aria-label={`Remove documentation item ${idx + 1}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="space-y-2">
                     <FileUploadField
                       label=""
                       value={doc.url}
@@ -2223,7 +2240,6 @@ export default function AuthorDashboard() {
                     />
                     <input type="text" value={doc.caption} onChange={(e) => updateDoc(idx, "caption", e.target.value)} placeholder="Caption" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                   </div>
-                  <button type="button" onClick={() => removeDoc(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X className="h-3.5 w-3.5" /></button>
                 </div>
                 );
               })}
