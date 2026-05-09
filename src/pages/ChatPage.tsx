@@ -150,7 +150,10 @@ function messageBadgeThemeFor(person?: ChatAuthorMeta) {
   return personnelLevelBadgeStyle(level);
 }
 
-type ChatAuthorMeta = Pick<PersonnelUser, "username" | "level" | "track" | "note">;
+type ChatAuthorMeta = Pick<PersonnelUser, "username" | "level" | "track" | "note"> & {
+  deleted?: boolean;
+  originalUsername?: string;
+};
 type ConversationAttachmentItem = {
   key: string;
   attachment: ChatAttachment;
@@ -511,9 +514,20 @@ export default function ChatPage() {
         : { username: author, level: 1, track: "executive" };
     }
 
-    return fallbackAuthorMeta(author);
+    const fallback = fallbackAuthorMeta(author);
+    return {
+      ...fallback,
+      username: "Deleted User",
+      note: "This message was sent by a user account that has been removed.",
+      deleted: true,
+      originalUsername: author,
+    };
   };
-  const openAuthorProfile = (author: string) => setProfileUser(getAuthorMeta(author));
+  const openAuthorProfile = (author: string) => {
+    const meta = getAuthorMeta(author);
+    if (meta.deleted) return;
+    setProfileUser(meta);
+  };
 
   useEffect(() => {
     const composer = composerRef.current;
@@ -923,7 +937,11 @@ export default function ChatPage() {
                     const isHighlighted = highlightId === m.id;
                     const authorPersonnel = getAuthorMeta(m.author);
                     const authorLevel = authorPersonnel.level;
-                    const authorTrack = authorLevel === 0 ? "GUEST" : trackShort(authorPersonnel.track);
+                    const authorTrack = authorPersonnel.deleted
+                      ? "DELETED"
+                      : authorLevel === 0
+                        ? "GUEST"
+                        : trackShort(authorPersonnel.track);
                     const bubbleTheme = messageThemeFor(authorPersonnel);
                     const badgeTheme = messageBadgeThemeFor(authorPersonnel);
                     const messageIsUnread =
@@ -946,9 +964,11 @@ export default function ChatPage() {
                               <button
                                 type="button"
                                 onClick={() => openAuthorProfile(m.author)}
-                                className="font-heading text-[10px] leading-4 tracking-wider text-foreground hover:text-primary"
+                                disabled={authorPersonnel.deleted}
+                                title={authorPersonnel.deleted ? authorPersonnel.originalUsername : undefined}
+                                className={`font-heading text-[10px] leading-4 tracking-wider text-foreground ${authorPersonnel.deleted ? "cursor-default opacity-80" : "hover:text-primary"}`}
                               >
-                                {m.author}
+                                {authorPersonnel.username}
                               </button>
                               {authorLevel !== null && authorLevel !== undefined && (
                                 <span
