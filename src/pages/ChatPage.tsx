@@ -1228,93 +1228,47 @@ export default function ChatPage() {
                   onChange={(e) => handleFiles(e.target.files)}
                 />
                 <div className="space-y-3 rounded-sm border border-border/70 bg-card/80 p-3">
-                  {composerExpanded ? (
-                    <div className="space-y-2">
-                      <textarea
-                        ref={composerRef}
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            void handleSend();
-                          }
-                        }}
-                        placeholder={editingMessageId ? "Edit message..." : "Type a message..."}
-                        rows={1}
-                        className="min-h-10 w-full resize-none rounded-sm border border-border bg-background px-3 py-2.5 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground/75 focus:border-primary overflow-y-hidden"
-                      />
-                      <div className="flex items-center justify-between gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={editingMessageId !== null}
-                          onClick={() => fileInputRef.current?.click()}
-                          className="h-10 shrink-0 border border-border/70 px-2.5"
-                          aria-label="Attach files"
-                        >
-                          <Paperclip className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          onClick={() => void handleSend()}
-                          className="h-10 shrink-0 px-3 sm:px-4"
-                          aria-label={editingMessageId ? "Save edit" : "Send"}
-                          disabled={!editingMessageId && (!hasDraft || showSending)}
-                        >
-                          {editingMessageId ? (
-                            <Pencil className="h-3.5 w-3.5" />
-                          ) : (
-                            <Send className={showSending ? "h-3.5 w-3.5 animate-pulse" : "h-3.5 w-3.5"} />
-                          )}
-                          <span className="hidden sm:inline">
-                            {editingMessageId ? "Save" : showSending ? "Sending" : "Send"}
-                          </span>
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={editingMessageId !== null}
-                        onClick={() => fileInputRef.current?.click()}
-                        className="h-10 shrink-0 border border-border/70 px-2.5"
-                        aria-label="Attach files"
-                      >
-                        <Paperclip className="h-4 w-4" />
-                      </Button>
-                      <textarea
-                        ref={composerRef}
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            void handleSend();
-                          }
-                        }}
-                        placeholder={editingMessageId ? "Edit message..." : "Type a message..."}
-                        rows={1}
-                        className="min-h-10 w-full resize-none rounded-sm border border-border bg-background px-3 py-2.5 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground/75 focus:border-primary overflow-y-hidden"
-                      />
-                      <Button
-                        onClick={() => void handleSend()}
-                        className="h-10 shrink-0 px-3 sm:px-4"
-                        aria-label={editingMessageId ? "Save edit" : "Send"}
-                        disabled={!editingMessageId && (!hasDraft || showSending)}
-                      >
-                        {editingMessageId ? (
-                          <Pencil className="h-3.5 w-3.5" />
-                        ) : (
-                          <Send className={showSending ? "h-3.5 w-3.5 animate-pulse" : "h-3.5 w-3.5"} />
-                        )}
-                        <span className="hidden sm:inline">
-                          {editingMessageId ? "Save" : showSending ? "Sending" : "Send"}
-                        </span>
-                      </Button>
-                    </div>
-                  )}
+                  <div className={composerExpanded ? "grid grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-2" : "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2"}>
+                    <textarea
+                      ref={composerRef}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          void handleSend();
+                        }
+                      }}
+                      placeholder={editingMessageId ? "Edit message..." : "Type a message..."}
+                      rows={1}
+                      className={`min-h-10 w-full resize-none rounded-sm border border-border bg-background px-3 py-2.5 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground/75 focus:border-primary overflow-y-hidden ${composerExpanded ? "col-span-3 row-start-1" : "col-start-2 row-start-1"}`}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={editingMessageId !== null}
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`h-10 shrink-0 border border-border/70 px-2.5 ${composerExpanded ? "col-start-1 row-start-2" : "col-start-1 row-start-1"}`}
+                      aria-label="Attach files"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      onClick={() => void handleSend()}
+                      className={`h-10 shrink-0 px-3 sm:px-4 ${composerExpanded ? "col-start-3 row-start-2 justify-self-end" : "col-start-3 row-start-1"}`}
+                      aria-label={editingMessageId ? "Save edit" : "Send"}
+                      disabled={!editingMessageId && (!hasDraft || showSending)}
+                    >
+                      {editingMessageId ? (
+                        <Pencil className="h-3.5 w-3.5" />
+                      ) : (
+                        <Send className={showSending ? "h-3.5 w-3.5 animate-pulse" : "h-3.5 w-3.5"} />
+                      )}
+                      <span className="hidden sm:inline">
+                        {editingMessageId ? "Save" : showSending ? "Sending" : "Send"}
+                      </span>
+                    </Button>
+                  </div>
                 </div>
                     </>
                   );
