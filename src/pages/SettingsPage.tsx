@@ -17,6 +17,7 @@ import {
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ContentState } from "@/components/ContentState";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { showValidation } from "@/components/ui/validation-dialog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -95,7 +96,10 @@ export default function SettingsPage() {
     setHistoryLoading(true);
     setHistoryError(null);
     listExtractionHistoryRemote()
-      .then(setHistory)
+      .then((items) => {
+        setHistory(items);
+        setShouldPollExtraction(items.some((job) => job.status === "processing"));
+      })
       .catch((error) => {
         setHistoryError(toUserFacingError(error, "Extraction history could not be loaded."));
       })
@@ -194,7 +198,9 @@ export default function SettingsPage() {
     setHistoryLoading(true);
     setHistoryError(null);
     try {
-      setHistory(await listExtractionHistoryRemote());
+      const nextHistory = await listExtractionHistoryRemote();
+      setHistory(nextHistory);
+      setShouldPollExtraction(nextHistory.some((job) => job.status === "processing"));
     } catch (error) {
       setHistoryError(toUserFacingError(error, "Extraction history could not be loaded."));
     } finally {
@@ -868,6 +874,16 @@ export default function SettingsPage() {
                           <p className="break-words text-foreground">
                             {job.mode.toUpperCase()} / {job.status} / expires {new Date(job.expiresAt).toLocaleDateString()}
                           </p>
+                          {job.progress && (
+                            <div className="space-y-2 pt-1">
+                              <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                                <span className="uppercase tracking-[0.12em]">{job.progress.stage}</span>
+                                <span className="font-display text-foreground">{job.progress.percent}%</span>
+                              </div>
+                              <Progress value={job.progress.percent} className="h-2 bg-muted/70" />
+                              <p className="text-xs leading-5 text-muted-foreground">{job.progress.message}</p>
+                            </div>
+                          )}
                         </div>
                         <div className="shrink-0">
                           {job.status === "completed" && (
