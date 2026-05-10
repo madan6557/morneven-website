@@ -59,6 +59,14 @@ function roleBadgeLabel(person: PersonnelUser) {
   return null;
 }
 
+function DisabledActionLabel() {
+  return (
+    <span className="inline-flex items-center rounded-sm border border-border px-2 py-1 text-[9px] font-display tracking-wider text-muted-foreground opacity-70">
+      ACTION NOT ALLOWED
+    </span>
+  );
+}
+
 export default function PersonnelManagementPage() {
   const { personnelLevel, username, track, role } = useAuth();
   const { toast } = useToast();
@@ -611,6 +619,9 @@ export default function PersonnelManagementPage() {
             <tbody>
               {filtered.map((p) => {
                 const isEditing = editingId === p.id;
+                const canEditRecord = canUpdatePersonnelRecord(p);
+                const canDeleteRecord = canDeletePersonnelRow(p);
+                const showActionNotAllowed = !canEditRecord && !canDeleteRecord;
                 return (
                   <tr key={p.id} className={`border-b border-border/60 last:border-b-0 ${selected.has(p.id) ? "bg-primary/5" : ""}`}>
                     <td className="p-3 align-top">
@@ -752,19 +763,20 @@ export default function PersonnelManagementPage() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 justify-end">
+                          {showActionNotAllowed ? <DisabledActionLabel /> : null}
                           <button
                             onClick={() => startEdit(p)}
-                            className="text-muted-foreground hover:text-primary p-1.5"
-                            title={canUpdatePersonnelRecord(p) ? "Edit" : personnelLevel >= 5 ? "Action not allowed for this account" : "PL5 or higher required"}
-                            disabled={!canUpdatePersonnelRecord(p)}
+                            className="p-1.5 text-muted-foreground hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
+                            title={canEditRecord ? "Edit" : "Action not allowed"}
+                            disabled={!canEditRecord}
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => handleDelete(p)}
-                            disabled={!canDeletePersonnelRow(p) || busyAction === `delete-${p.id}`}
+                            disabled={!canDeleteRecord || busyAction === `delete-${p.id}`}
                             className="text-muted-foreground hover:text-destructive p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
-                            title={!canDeletePersonnelRow(p) ? "Delete not allowed" : "Delete"}
+                            title={!canDeleteRecord ? "Action not allowed" : "Delete"}
                           >
                             {busyAction === `delete-${p.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                           </button>
@@ -789,6 +801,9 @@ export default function PersonnelManagementPage() {
         <div className="lg:hidden space-y-3">
           {filtered.map((p) => {
             const isEditing = editingId === p.id;
+            const canEditRecord = canUpdatePersonnelRecord(p);
+            const canDeleteRecord = canDeletePersonnelRow(p);
+            const showActionNotAllowed = !canEditRecord && !canDeleteRecord;
             return (
               <div key={p.id} className={`hud-border-sm bg-card p-3 space-y-2 ${selected.has(p.id) ? "ring-1 ring-primary/40" : ""}`}>
                 <div className="flex items-start justify-between gap-2">
@@ -819,17 +834,20 @@ export default function PersonnelManagementPage() {
                   <div className="flex items-center gap-1">
                     {!isEditing && (
                       <>
+                        {showActionNotAllowed ? <DisabledActionLabel /> : null}
                         <button
                           onClick={() => startEdit(p)}
-                          disabled={!canUpdatePersonnelRecord(p)}
-                          className="text-muted-foreground hover:text-primary p-1.5 disabled:opacity-30"
+                          disabled={!canEditRecord}
+                          className="p-1.5 text-muted-foreground hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
+                          title={canEditRecord ? "Edit" : "Action not allowed"}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => handleDelete(p)}
-                          disabled={!canDeletePersonnelRow(p) || busyAction === `delete-${p.id}`}
-                          className="text-muted-foreground hover:text-destructive p-1.5 disabled:opacity-30"
+                          disabled={!canDeleteRecord || busyAction === `delete-${p.id}`}
+                          className="p-1.5 text-muted-foreground hover:text-destructive disabled:cursor-not-allowed disabled:opacity-30"
+                          title={!canDeleteRecord ? "Action not allowed" : "Delete"}
                         >
                           {busyAction === `delete-${p.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                         </button>
