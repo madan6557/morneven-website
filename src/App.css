@@ -40,3 +40,15 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Responsive adjustment: make the Role summary tile span full width under 870px */
+@media (max-width: 870px) {
+  .summary-grid .role-tile {
+    display: block !important;
+    -webkit-box-flex: 0;
+    flex: 0 0 auto;
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
