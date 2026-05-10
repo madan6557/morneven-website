@@ -479,6 +479,10 @@ export default function ChatPage() {
   }, [active, messages.length]);
 
   const activeConv = useMemo(() => convs.find((c) => c.id === active) ?? null, [convs, active]);
+  const personnelByUsername = useMemo(
+    () => new Map(personnel.map((person) => [person.username.toLowerCase(), person])),
+    [personnel],
+  );
   const mentionCandidates = useMemo(() => {
     if (!activeConv) return [];
     const unique = new Map<string, { username: string; note?: string; level?: number; track?: PersonnelTrack }>();
@@ -517,10 +521,6 @@ export default function ChatPage() {
   const activeMemberCount = activeConv?.members.filter((member) => member.status === "active").length ?? 0;
   const myRole: MemberRole | null = activeConv ? getMemberRole(activeConv, username) : null;
   const iCanManage = activeConv ? canManage(activeConv, username) : false;
-  const personnelByUsername = useMemo(
-    () => new Map(personnel.map((person) => [person.username.toLowerCase(), person])),
-    [personnel],
-  );
   const getAuthorMeta = (author: string): ChatAuthorMeta => {
     const fromPersonnel = personnelByUsername.get(author.toLowerCase());
     if (fromPersonnel) return fromPersonnel;
