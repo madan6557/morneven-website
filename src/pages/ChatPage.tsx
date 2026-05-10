@@ -35,6 +35,7 @@ import {
 import { apiUpload } from "@/services/api";
 import { downloadAuthenticatedFile, openAuthenticatedFile } from "@/services/fileProxyService";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { renderWithMentions } from "@/components/MentionInput";
 import type { PersonnelUser } from "@/types";
 import {
   Send,
@@ -119,6 +120,8 @@ const KIND_ICON: Record<Conversation["kind"], typeof MessageSquare> = {
   institute: Building2,
 };
 
+const CHAT_MENTION_TRIGGER_RE = /(?:^|\s)@([\w.-]*)$/;
+
 function trackShort(track?: PersonnelUser["track"]) {
   if (!track) return "";
   return PERSONNEL_TRACKS.find((item) => item.key === track)?.short ?? track.toUpperCase();
@@ -181,9 +184,11 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sendInFlightCount, setSendInFlightCount] = useState(0);
-  const [composerExpanded, setComposerExpanded] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [personnel, setPersonnel] = useState<PersonnelUser[]>([]);
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
 
   // Dialogs
   const [dialog, setDialog] = useState<"dm" | "group" | "settings" | "invites" | null>(null);
@@ -474,6 +479,29 @@ export default function ChatPage() {
   }, [active, messages.length]);
 
   const activeConv = useMemo(() => convs.find((c) => c.id === active) ?? null, [convs, active]);
+  const mentionCandidates = useMemo(() => {
+    if (!activeConv) return [];
+    const unique = new Map<string, { username: string; note?: string; level?: number; track?: PersonnelTrack }>();
+    activeConv.members
+      .filter((member) => member.status === "active")
+      .forEach((member) => {
+        const fromPersonnel = personnelByUsername.get(member.username.toLowerCase());
+        unique.set(member.username.toLowerCase(), {
+          username: member.username,
+          note: fromPersonnel?.note,
+          level: fromPersonnel?.level ?? member.level ?? member.personnelLevel,
+          track: fromPersonnel?.track ?? member.track,
+        });
+      });
+    return [...unique.values()].sort((a, b) => a.username.localeCompare(b.username));
+  }, [activeConv, personnelByUsername]);
+  const filteredMentionCandidates = useMemo(() => {
+    if (!mentionOpen) return [];
+    const query = mentionQuery.trim().toLowerCase();
+    return mentionCandidates
+      .filter((candidate) => candidate.username.toLowerCase().includes(query))
+      .slice(0, 6);
+  }, [mentionCandidates, mentionOpen, mentionQuery]);
   const filteredConvs = useMemo(() => {
     const query = deferredConversationQuery.trim().toLowerCase();
     if (!query) return convs;
@@ -532,6 +560,38 @@ export default function ChatPage() {
     setProfileUser(meta);
   };
 
+  const updateMentionState = (nextValue: string, caret: number) => {
+    const match = CHAT_MENTION_TRIGGER_RE.exec(nextValue.slice(0, caret));
+    if (!match) {
+      setMentionOpen(false);
+      setMentionQuery("");
+      setMentionActiveIndex(0);
+      return;
+    }
+    setMentionOpen(true);
+    setMentionQuery(match[1] ?? "");
+    setMentionActiveIndex(0);
+  };
+
+  const insertMention = (mentionedUsername: string) => {
+    const composer = composerRef.current;
+    if (!composer) return;
+    const caret = composer.selectionStart ?? input.length;
+    const before = input.slice(0, caret);
+    const after = input.slice(caret);
+    const replaced = before.replace(/(^|\s)@([\w.-]*)$/, (_match, leadingSpace) => `${leadingSpace}@${mentionedUsername} `);
+    const nextValue = `${replaced}${after}`;
+    setInput(nextValue);
+    setMentionOpen(false);
+    setMentionQuery("");
+    setMentionActiveIndex(0);
+    requestAnimationFrame(() => {
+      composer.focus();
+      const nextCaret = replaced.length;
+      composer.setSelectionRange(nextCaret, nextCaret);
+    });
+  };
+
   useEffect(() => {
     const composer = composerRef.current;
     if (!composer) return;
@@ -540,7 +600,6 @@ export default function ChatPage() {
     const nextHeight = Math.min(composer.scrollHeight, maxHeight);
     composer.style.height = `${nextHeight}px`;
     composer.style.overflowY = composer.scrollHeight > maxHeight ? "auto" : "hidden";
-    setComposerExpanded(nextHeight > 44);
   }, [input]);
 
   useEffect(() => {
@@ -553,6 +612,14 @@ export default function ChatPage() {
       setMobileViewport("list");
     }
   }, [active]);
+
+  useEffect(() => {
+    if (!activeConv) {
+      setMentionOpen(false);
+      setMentionQuery("");
+      setMentionActiveIndex(0);
+    }
+  }, [activeConv]);
 
   const renderConversationListPanel = (isMobileList = false) => (
     <div className="flex h-full flex-col overflow-hidden">
@@ -684,11 +751,13 @@ export default function ChatPage() {
       if (nextText === target.text) {
         setEditingMessageId(null);
         setInput("");
+        setMentionOpen(false);
         return;
       }
       await editMessageRemote(editingMessageId, nextText);
       setEditingMessageId(null);
       setInput("");
+      setMentionOpen(false);
       refresh();
       return;
     }
@@ -702,6 +771,9 @@ export default function ChatPage() {
     setInput("");
     setPendingFiles([]);
     setReplyTo(null);
+    setMentionOpen(false);
+    setMentionQuery("");
+    setMentionActiveIndex(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
 
     setSendInFlightCount((c) => c + 1);
@@ -813,6 +885,9 @@ export default function ChatPage() {
   function startEditingMessage(message: ChatMessage) {
     setEditingMessageId(message.id);
     setInput(message.text);
+    setMentionOpen(false);
+    setMentionQuery("");
+    setMentionActiveIndex(0);
     setPendingFiles([]);
     if (fileInputRef.current) fileInputRef.current.value = "";
     setReplyTo(null);
@@ -821,6 +896,9 @@ export default function ChatPage() {
   function cancelEditingMessage() {
     setEditingMessageId(null);
     setInput("");
+    setMentionOpen(false);
+    setMentionQuery("");
+    setMentionActiveIndex(0);
   }
   const markActiveConversationRead = () => {
     if (!active) return;
@@ -1071,7 +1149,11 @@ export default function ChatPage() {
                               </p>
                             </button>
                           )}
-                          {m.text && <p className="font-body whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word]">{m.text}</p>}
+                          {m.text && (
+                            <p className="font-body whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word]">
+                              {renderWithMentions(m.text, "hsl(var(--primary))")}
+                            </p>
+                          )}
                           {m.attachments && m.attachments.length > 0 && (
                             <div
                               className={`mt-2 ${
@@ -1257,35 +1339,103 @@ export default function ChatPage() {
                   className="hidden"
                   onChange={(e) => handleFiles(e.target.files)}
                 />
-                <div className="space-y-3 rounded-sm border border-border/70 bg-card/80 p-3">
-                  <div className={composerExpanded ? "grid grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-2" : "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2"}>
+                <div className="relative space-y-3 rounded-sm border border-border/70 bg-card/80 p-3">
+                  {mentionOpen && filteredMentionCandidates.length > 0 && (
+                    <div className="absolute inset-x-3 bottom-full z-20 mb-2 overflow-hidden rounded-sm border border-border bg-popover shadow-lg">
+                      {filteredMentionCandidates.map((candidate, index) => (
+                        <button
+                          key={candidate.username}
+                          type="button"
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            insertMention(candidate.username);
+                          }}
+                          onMouseEnter={() => setMentionActiveIndex(index)}
+                          className={cn(
+                            "flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs transition-colors",
+                            index === mentionActiveIndex
+                              ? "bg-primary/15 text-primary"
+                              : "bg-popover text-foreground hover:bg-muted/70",
+                          )}
+                        >
+                          <div className="min-w-0 space-y-0.5">
+                            <p className="truncate font-heading tracking-wider">@{candidate.username}</p>
+                            {(candidate.note || candidate.track || candidate.level !== undefined) && (
+                              <p className="truncate text-[10px] text-muted-foreground">
+                                {candidate.note || `PL${candidate.level ?? 0} ${trackShort(candidate.track)}`}
+                              </p>
+                            )}
+                          </div>
+                          {candidate.level !== undefined && candidate.level > 0 && (
+                            <span className="rounded-sm border border-border/70 px-1.5 py-0.5 text-[9px] font-display tracking-wider text-muted-foreground">
+                              PL{candidate.level}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-2">
                     <textarea
                       ref={composerRef}
                       value={input}
-                      onChange={(e) => setInput(e.target.value)}
+                      onChange={(e) => {
+                        const nextValue = e.target.value;
+                        setInput(nextValue);
+                        updateMentionState(nextValue, e.target.selectionStart ?? nextValue.length);
+                      }}
                       onKeyDown={(e) => {
+                        if (mentionOpen && filteredMentionCandidates.length > 0) {
+                          if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            setMentionActiveIndex((current) => (current + 1) % filteredMentionCandidates.length);
+                            return;
+                          }
+                          if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            setMentionActiveIndex((current) => (current - 1 + filteredMentionCandidates.length) % filteredMentionCandidates.length);
+                            return;
+                          }
+                          if ((e.key === "Enter" && !e.shiftKey) || e.key === "Tab") {
+                            e.preventDefault();
+                            insertMention(filteredMentionCandidates[mentionActiveIndex].username);
+                            return;
+                          }
+                          if (e.key === "Escape") {
+                            e.preventDefault();
+                            setMentionOpen(false);
+                            return;
+                          }
+                        }
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
                           void handleSend();
                         }
                       }}
+                      onSelect={(e) => {
+                        const target = e.target as HTMLTextAreaElement;
+                        updateMentionState(target.value, target.selectionStart ?? target.value.length);
+                      }}
+                      onBlur={() => {
+                        window.setTimeout(() => setMentionOpen(false), 120);
+                      }}
                       placeholder={editingMessageId ? "Edit message..." : "Type a message..."}
                       rows={1}
-                      className={`min-h-10 w-full resize-none rounded-sm border border-border bg-background px-3 py-2.5 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground/75 focus:border-primary overflow-y-hidden ${composerExpanded ? "col-span-3 row-start-1" : "col-start-2 row-start-1"}`}
+                      className="col-start-2 row-start-1 min-h-10 w-full resize-none rounded-sm border border-border bg-background px-3 py-2.5 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground/75 focus:border-primary overflow-y-hidden"
                     />
                     <Button
                       variant="ghost"
                       size="sm"
                       disabled={editingMessageId !== null}
                       onClick={() => fileInputRef.current?.click()}
-                      className={`h-10 shrink-0 border border-border/70 px-2.5 ${composerExpanded ? "col-start-1 row-start-2" : "col-start-1 row-start-1"}`}
+                      className="col-start-1 row-start-1 h-10 shrink-0 self-end border border-border/70 px-2.5"
                       aria-label="Attach files"
                     >
                       <Paperclip className="h-4 w-4" />
                     </Button>
                     <Button
                       onClick={() => void handleSend()}
-                      className={`h-10 shrink-0 px-3 sm:px-4 ${composerExpanded ? "col-start-3 row-start-2 justify-self-end" : "col-start-3 row-start-1"}`}
+                      className="col-start-3 row-start-1 h-10 shrink-0 self-end px-3 sm:px-4"
                       aria-label={editingMessageId ? "Save edit" : "Send"}
                       disabled={!editingMessageId && (!hasDraft || showSending)}
                     >
