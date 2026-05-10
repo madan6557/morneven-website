@@ -48,13 +48,13 @@ type SnapshotStatus = "loading" | "ready" | "error";
 
 function StatCard({ icon: Icon, label, value, color, delay }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number; color: string; delay: number }) {
   return (
-    <motion.div {...fadeUp(delay)} className="hud-border bg-card p-4 flex items-center gap-4">
-      <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${color}`}>
-        <Icon className="h-5 w-5" />
+    <motion.div {...fadeUp(delay)} className="hud-border bg-card flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
+      <div className={`flex h-9 w-9 items-center justify-center rounded-lg sm:h-10 sm:w-10 ${color}`}>
+        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
       </div>
       <div>
-        <p className="text-2xl font-display tracking-wider text-foreground">{value}</p>
-        <p className="text-xs font-heading tracking-wider text-muted-foreground uppercase">{label}</p>
+        <p className="text-xl font-display tracking-wider text-foreground sm:text-2xl">{value}</p>
+        <p className="text-[10px] font-heading tracking-wider text-muted-foreground uppercase sm:text-xs">{label}</p>
       </div>
     </motion.div>
   );
@@ -144,15 +144,15 @@ export default function HomePage() {
     : `Live dashboard data could not be loaded. ${snapshotError || "The API request failed."}`;
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 space-y-6 md:space-y-8 max-w-7xl mx-auto">
+    <div className="mx-auto max-w-7xl space-y-5 p-3 sm:space-y-6 sm:p-6 md:space-y-8 md:p-8">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0 flex-1">
           <motion.div {...fadeUp(0)} className="flex items-center gap-3">
             <h1 className="font-display text-xl sm:text-2xl md:text-3xl tracking-[0.1em] text-primary">COMMAND CENTER</h1>
           </motion.div>
-          <div className="mecha-line w-32 mt-2" />
-          <motion.p {...fadeUp(0.05)} className="mt-3 text-sm font-body text-muted-foreground">
+          <div className="mecha-line mt-2 w-24 sm:w-32" />
+          <motion.p {...fadeUp(0.05)} className="mt-2 text-xs font-body text-muted-foreground sm:mt-3 sm:text-sm">
             Welcome back, <span className="text-foreground font-medium">{username}</span>. {settings.welcomeMessage}
           </motion.p>
         </div>
@@ -218,17 +218,17 @@ export default function HomePage() {
                     description="No project has been pinned into the command center snapshot yet."
                     compact
                   />
-                ) : projects.map((p) => (
+                ) : projects.map((p, index) => (
                   <Link
                     key={p.id}
                     to={`/projects/${p.id}`}
-                    className="flex items-center justify-between gap-2 p-3 rounded-md bg-background/50 hover:bg-background transition-colors group"
+                    className={`${index > 1 ? "hidden sm:flex" : "flex"} items-center justify-between gap-2 rounded-md bg-background/50 p-2.5 transition-colors group hover:bg-background sm:p-3`}
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-heading text-foreground group-hover:text-primary transition-colors truncate">
                         {p.title}
                       </p>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{p.shortDesc}</p>
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground sm:text-xs">{p.shortDesc}</p>
                     </div>
                     <span className={`text-[10px] sm:text-xs font-display tracking-wider uppercase flex-shrink-0 ${statusColor[p.status] || "text-muted-foreground"}`}>
                       {p.status}
@@ -275,15 +275,15 @@ export default function HomePage() {
                       compact
                     />
                   </li>
-                ) : news.map((n) => {
+                ) : news.map((n, index) => {
                   const inner = (
                     <>
                       <Clock className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start gap-2 flex-wrap">
-                          <p className="font-body text-foreground/80 break-words flex-1">{n.text}</p>
+                          <p className="flex-1 break-words font-body text-foreground/80 line-clamp-2 sm:line-clamp-none">{n.text}</p>
                           {n.hasDetail && (
-                            <span className="inline-flex items-center gap-1 text-[9px] font-display tracking-wider uppercase px-1.5 py-0.5 rounded-sm border border-primary/40 text-primary flex-shrink-0">
+                            <span className="hidden flex-shrink-0 items-center gap-1 rounded-sm border border-primary/40 px-1.5 py-0.5 text-[9px] font-display tracking-wider uppercase text-primary sm:inline-flex">
                               <BookOpen className="h-2.5 w-2.5" /> Detail
                             </span>
                           )}
@@ -293,7 +293,7 @@ export default function HomePage() {
                     </>
                   );
                   return n.hasDetail ? (
-                    <li key={n.id}>
+                    <li key={n.id} className={index > 1 ? "hidden sm:block" : ""}>
                       <Link
                         to={`/news/${n.id}`}
                         className="flex items-start gap-3 text-sm rounded-sm p-1 -m-1 hover:bg-background/60 transition-colors"
@@ -302,7 +302,7 @@ export default function HomePage() {
                       </Link>
                     </li>
                   ) : (
-                    <li key={n.id} className="flex items-start gap-3 text-sm">
+                    <li key={n.id} className={`${index > 1 ? "hidden sm:flex" : "flex"} items-start gap-3 text-sm`}>
                       {inner}
                     </li>
                   );
@@ -351,11 +351,11 @@ export default function HomePage() {
                     description="No character is currently featured in this panel."
                     compact
                   />
-                ) : characters.map((c) => (
+                ) : characters.map((c, index) => (
                   <Link
                     key={c.id}
                     to={`/lore/characters/${c.id}`}
-                    className="flex items-center gap-3 p-2 rounded-md hover:bg-background/50 transition-colors group"
+                    className={`${index > 1 ? "hidden sm:flex" : "flex"} items-center gap-3 p-2 rounded-md hover:bg-background/50 transition-colors group`}
                   >
                     <div
                       className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-display font-bold flex-shrink-0"
@@ -416,14 +416,14 @@ export default function HomePage() {
                     description="There is no location highlight configured for this panel."
                     compact
                   />
-                ) : places.map((p) => (
+                ) : places.map((p, index) => (
                   <Link
                     key={p.id}
                     to={`/lore/places/${p.id}`}
-                    className="block p-2 rounded-md hover:bg-background/50 transition-colors group"
+                    className={`${index > 1 ? "hidden sm:block" : "block"} p-2 rounded-md hover:bg-background/50 transition-colors group`}
                   >
                     <p className="text-sm font-heading text-foreground group-hover:text-primary transition-colors truncate">{p.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{p.type} · {p.shortDesc}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{p.type} / {p.shortDesc}</p>
                   </Link>
                 ))}
               </div>
@@ -465,11 +465,11 @@ export default function HomePage() {
                     description="No technology entry is currently pinned here."
                     compact
                   />
-                ) : tech.map((t) => (
+                ) : tech.map((t, index) => (
                   <Link
                     key={t.id}
                     to={`/lore/tech/${t.id}`}
-                    className="block p-2 rounded-md hover:bg-background/50 transition-colors group"
+                    className={`${index > 1 ? "hidden sm:block" : "block"} p-2 rounded-md hover:bg-background/50 transition-colors group`}
                   >
                     <p className="text-sm font-heading text-foreground group-hover:text-primary transition-colors truncate">{t.name}</p>
                     <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">{t.category}</p>
@@ -493,7 +493,7 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="mecha-line" />
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-4">
             {snapshotStatus === "loading" ? (
               <div className="col-span-full">
                 <ContentState
@@ -538,7 +538,7 @@ export default function HomePage() {
                 </div>
                 <div className="p-2">
                   <p className="text-xs font-heading text-foreground group-hover:text-primary transition-colors truncate">{g.title}</p>
-                  <p className="text-[10px] text-muted-foreground">{g.date}</p>
+                  <p className="hidden text-[10px] text-muted-foreground sm:block">{g.date}</p>
                 </div>
               </Link>
             ))}
@@ -553,7 +553,7 @@ export default function HomePage() {
             <TrendingUp className="h-4 w-4" /> Quick Navigation
           </h3>
           <div className="mecha-line" />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
             {[
               { label: "Projects", to: "/projects", icon: FolderKanban, desc: "View all projects" },
               { label: "Gallery", to: "/gallery", icon: Image, desc: "Browse artwork" },
@@ -568,7 +568,7 @@ export default function HomePage() {
                 <q.icon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="text-sm font-heading text-foreground group-hover:text-primary transition-colors truncate">{q.label}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{q.desc}</p>
+                  <p className="hidden truncate text-[10px] text-muted-foreground sm:block">{q.desc}</p>
                 </div>
               </Link>
             ))}
