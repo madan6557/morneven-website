@@ -252,7 +252,7 @@ export default function SettingsPage() {
   const trackInfo = PERSONNEL_TRACKS.find((item) => item.key === track);
   const title = trackInfo?.titles[personnelLevel] ?? "Unknown";
   const isPl7Author = personnelLevel >= 7 && role === "author";
-  const isPl7Admin = personnelLevel >= 7 && role === "personel";
+  const isPl7Admin = personnelLevel >= 7 && role === "admin";
   const canRun = isPl7Author && confirmText === "CONFIRM" && verifyPassword(password);
   const canRunMigration =
     isPl7Author &&
@@ -418,10 +418,12 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:gap-3">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-3 md:gap-3 summary-grid">
         <SummaryTile icon={ShieldCheck} label="Clearance" value={`L${personnelLevel}`} description={title} />
         <SummaryTile icon={UsersRound} label="Track" value={trackInfo?.short ?? "N/A"} description={trackInfo?.label ?? "No active track"} />
-        <SummaryTile icon={Sparkles} label="Role" value={role.toUpperCase()} description={`Signed in as ${username}`} />
+        <div className="role-tile col-span-2 lg:col-span-1">
+          <SummaryTile icon={Sparkles} label="Role" value={role.toUpperCase()} description={`Signed in as ${username}`} />
+        </div>
       </div>
 
       <div

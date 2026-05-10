@@ -48,13 +48,13 @@ function normalizeRoleForLevel(
   canAssignAuthor: boolean,
 ): PersonnelUser["role"] {
   if (level <= 0) return "guest";
-  if (level >= PL_FULL_AUTHORITY) return canAssignAuthor && role === "author" ? "author" : "personel";
+  if (level >= PL_FULL_AUTHORITY) return canAssignAuthor && role === "author" ? "author" : "admin";
   return "personel";
 }
 
 function roleBadgeLabel(person: PersonnelUser) {
   if (person.level >= PL_FULL_AUTHORITY && person.role === "author") return "Author";
-  if (person.level >= PL_FULL_AUTHORITY && person.role === "personel") return "Admin";
+  if (person.level >= PL_FULL_AUTHORITY && person.role === "admin") return "Admin";
   if (person.role === "guest") return "Guest";
   return null;
 }
@@ -86,7 +86,7 @@ export default function PersonnelManagementPage() {
   const [bulkTrack, setBulkTrack] = useState<PersonnelTrack | "">("");
   const [bulkSaving, setBulkSaving] = useState(false);
   const isPl7Author = personnelLevel >= PL_FULL_AUTHORITY && role === "author";
-  const isPl7Admin = personnelLevel >= PL_FULL_AUTHORITY && role === "personel";
+  const isPl7Admin = personnelLevel >= PL_FULL_AUTHORITY && role === "admin";
   const maxManageableLevel = personnelLevel === 6 ? 5 : personnelLevel >= PL_FULL_AUTHORITY ? PL_FULL_AUTHORITY : personnelLevel;
   const availableLevels = useMemo(
     () =>
@@ -102,13 +102,13 @@ export default function PersonnelManagementPage() {
 
   const roleOptionsForLevel = (level: PersonnelLevel) => {
     if (level <= 0) return [{ value: "guest" as const, label: "Guest" }];
-    if (level >= PL_FULL_AUTHORITY) {
-      return canManageRoleAtLevel7
-        ? [
-            { value: "personel" as const, label: "Admin" },
-            { value: "author" as const, label: "Author" },
-          ]
-        : [{ value: "personel" as const, label: "Admin" }];
+      if (level >= PL_FULL_AUTHORITY) {
+        return canManageRoleAtLevel7
+          ? [
+              { value: "admin" as const, label: "Admin" },
+              { value: "author" as const, label: "Author" },
+            ]
+        : [{ value: "admin" as const, label: "Admin" }];
     }
     return [{ value: "personel" as const, label: "Personnel" }];
   };

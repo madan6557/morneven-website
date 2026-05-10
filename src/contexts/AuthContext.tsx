@@ -90,9 +90,13 @@ function writeSavedAuth(next: {
 }
 
 function normalizeUser(user: BackendUser) {
+  const normalizedRole: UserRole =
+    user.level >= 7 && user.role === "personel"
+      ? "admin"
+      : user.role;
   return {
     username: user.username,
-    role: user.role,
+    role: normalizedRole,
     personnelLevel: user.level,
     track: user.track,
   };
