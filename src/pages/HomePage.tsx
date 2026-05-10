@@ -222,7 +222,7 @@ export default function HomePage() {
                   <Link
                     key={p.id}
                     to={`/projects/${p.id}`}
-                    className={`${index > 1 ? "hidden sm:flex" : "flex"} items-center justify-between gap-2 rounded-md bg-background/50 p-2.5 transition-colors group hover:bg-background sm:p-3`}
+                    className="flex items-center justify-between gap-2 rounded-md bg-background/50 p-2.5 transition-colors group hover:bg-background sm:p-3"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-heading text-foreground group-hover:text-primary transition-colors truncate">
@@ -293,7 +293,7 @@ export default function HomePage() {
                     </>
                   );
                   return n.hasDetail ? (
-                    <li key={n.id} className={index > 1 ? "hidden sm:block" : ""}>
+                    <li key={n.id}>
                       <Link
                         to={`/news/${n.id}`}
                         className="flex items-start gap-3 text-sm rounded-sm p-1 -m-1 hover:bg-background/60 transition-colors"
@@ -302,7 +302,7 @@ export default function HomePage() {
                       </Link>
                     </li>
                   ) : (
-                    <li key={n.id} className={`${index > 1 ? "hidden sm:flex" : "flex"} items-start gap-3 text-sm`}>
+                    <li key={n.id} className="flex items-start gap-3 text-sm">
                       {inner}
                     </li>
                   );
@@ -355,7 +355,7 @@ export default function HomePage() {
                   <Link
                     key={c.id}
                     to={`/lore/characters/${c.id}`}
-                    className={`${index > 1 ? "hidden sm:flex" : "flex"} items-center gap-3 p-2 rounded-md hover:bg-background/50 transition-colors group`}
+                    className="flex items-center gap-3 p-2 rounded-md hover:bg-background/50 transition-colors group"
                   >
                     <div
                       className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-display font-bold flex-shrink-0"
@@ -420,7 +420,7 @@ export default function HomePage() {
                   <Link
                     key={p.id}
                     to={`/lore/places/${p.id}`}
-                    className={`${index > 1 ? "hidden sm:block" : "block"} p-2 rounded-md hover:bg-background/50 transition-colors group`}
+                    className="block p-2 rounded-md hover:bg-background/50 transition-colors group"
                   >
                     <p className="text-sm font-heading text-foreground group-hover:text-primary transition-colors truncate">{p.name}</p>
                     <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{p.type} / {p.shortDesc}</p>
@@ -469,7 +469,7 @@ export default function HomePage() {
                   <Link
                     key={t.id}
                     to={`/lore/tech/${t.id}`}
-                    className={`${index > 1 ? "hidden sm:block" : "block"} p-2 rounded-md hover:bg-background/50 transition-colors group`}
+                    className="block p-2 rounded-md hover:bg-background/50 transition-colors group"
                   >
                     <p className="text-sm font-heading text-foreground group-hover:text-primary transition-colors truncate">{t.name}</p>
                     <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">{t.category}</p>
