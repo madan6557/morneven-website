@@ -84,6 +84,7 @@ import { toast } from "@/hooks/use-toast";
 import { PERSONNEL_TRACKS } from "@/lib/pl";
 import type { PersonnelTrack } from "@/lib/pl";
 import { personnelLevelBadgeStyle, personnelLevelPanelStyle } from "@/lib/personnelTone";
+import { cn } from "@/lib/utils";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 async function fileToAttachmentRemote(file: File): Promise<ChatAttachment> {
@@ -553,25 +554,33 @@ export default function ChatPage() {
     }
   }, [active]);
 
-  const conversationListPanel = (
+  const renderConversationListPanel = (isMobileList = false) => (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="space-y-4 border-b border-border/70 p-4">
-        <div className="space-y-1">
+      <div className={cn("border-b border-border/70", isMobileList ? "space-y-3 p-3" : "space-y-4 p-4")}>
+        {!isMobileList && (
+          <div className="space-y-1">
           <p className="font-heading text-xs tracking-[0.14em] text-foreground uppercase">Conversations</p>
           <p className="text-xs leading-5 text-muted-foreground">
             {convs.length} channel{convs.length === 1 ? "" : "s"} active
           </p>
-        </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => setDialog("dm")}
-            className="flex items-center justify-center gap-1 rounded-sm border border-primary/65 bg-background/50 px-3 py-2 text-[10px] font-display tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+            className={cn(
+              "flex items-center justify-center gap-1 rounded-sm border border-primary/65 bg-background/50 font-display tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground",
+              isMobileList ? "px-3 py-2 text-[10px]" : "px-3 py-2 text-[10px]",
+            )}
           >
             <Plus className="h-3 w-3" /> DM
           </button>
           <button
             onClick={() => setDialog("group")}
-            className="flex items-center justify-center gap-1 rounded-sm border border-primary/65 bg-background/50 px-3 py-2 text-[10px] font-display tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+            className={cn(
+              "flex items-center justify-center gap-1 rounded-sm border border-primary/65 bg-background/50 font-display tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground",
+              isMobileList ? "px-3 py-2 text-[10px]" : "px-3 py-2 text-[10px]",
+            )}
           >
             <Plus className="h-3 w-3" /> GROUP
           </button>
@@ -581,14 +590,14 @@ export default function ChatPage() {
           <Input
             value={conversationQuery}
             onChange={(event) => setConversationQuery(event.target.value)}
-            placeholder="Search channels or members"
-            className="h-10 border-border/70 bg-background/40 pl-9 text-sm"
+            placeholder={isMobileList ? "Search channels" : "Search channels or members"}
+            className={cn("border-border/70 bg-background/40 pl-9", isMobileList ? "h-9 text-sm" : "h-10 text-sm")}
           />
         </div>
       </div>
 
       <ScrollArea className="flex-1 min-h-0">
-        <div className="space-y-2 p-3 pr-2">
+        <div className={cn("space-y-2", isMobileList ? "p-2.5 pr-2" : "p-3 pr-2")}>
           {filteredConvs.length === 0 ? (
             <div className="rounded-sm border border-dashed border-border bg-background/35 px-3 py-6 text-center">
               <p className="text-sm italic text-muted-foreground">
@@ -610,12 +619,18 @@ export default function ChatPage() {
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <div className={`mt-0.5 rounded-sm border p-1.5 ${active === c.id ? "border-primary/45 bg-primary/10" : "border-border/70 bg-background/50"}`}>
+                  <div
+                    className={cn(
+                      "mt-0.5 rounded-sm border",
+                      isMobileList ? "p-1.5" : "p-1.5",
+                      active === c.id ? "border-primary/45 bg-primary/10" : "border-border/70 bg-background/50",
+                    )}
+                  >
                     <Icon className="h-3.5 w-3.5 flex-shrink-0" />
                   </div>
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-start justify-between gap-2">
-                      <span className="truncate font-heading text-sm">{c.name}</span>
+                      <span className={cn("truncate font-heading", isMobileList ? "text-[13px]" : "text-sm")}>{c.name}</span>
                       {unreadCount > 0 ? (
                         <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[9px] font-display text-destructive-foreground">
                           {unreadCount}
@@ -628,8 +643,8 @@ export default function ChatPage() {
                     </div>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-display tracking-wider text-muted-foreground uppercase">
                       <span>{conversationKindLabel(c.kind)}</span>
-                      <span>{activeCount} active</span>
-                      {c.systemManaged ? <span className="text-primary">Auto</span> : null}
+                      {!isMobileList && <span>{activeCount} active</span>}
+                      {!isMobileList && c.systemManaged ? <span className="text-primary">Auto</span> : null}
                     </div>
                   </div>
                 </div>
@@ -863,13 +878,13 @@ export default function ChatPage() {
             </div>
           </div>
           <div className="min-h-0 flex-1">
-            {conversationListPanel}
+            {renderConversationListPanel(true)}
           </div>
         </div>
 
         {/* Sidebar */}
         <div className="hidden xl:flex xl:h-full xl:flex-col xl:overflow-hidden xl:bg-card xl:hud-border">
-          {conversationListPanel}
+          {renderConversationListPanel()}
         </div>
 
         {/* Conversation */}

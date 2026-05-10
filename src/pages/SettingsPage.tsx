@@ -12,6 +12,7 @@ import {
   Sparkles,
   Trash2,
   UsersRound,
+  Waypoints,
 } from "lucide-react";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -36,6 +37,12 @@ import {
   type ExtractionJob,
   type ExtractionMode,
 } from "@/services/extractionService";
+import {
+  downloadMigrationReport,
+  listMigrationHistoryRemote,
+  startMigrationRemote,
+  type MigrationJob,
+} from "@/services/migrationService";
 import { changePassword, deleteAccount } from "@/services/accountApi";
 import {
   getStorageCleanupReportRemote,
@@ -58,14 +65,22 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [quota, setQuota] = useState<{ pl2: number; pl3: number; pl4: number } | null>(null);
   const [history, setHistory] = useState<ExtractionJob[]>([]);
+  const [migrationHistory, setMigrationHistory] = useState<MigrationJob[]>([]);
   const [mode, setMode] = useState<ExtractionMode>("all");
   const [autoDownload, setAutoDownload] = useState(true);
   const [password, setPassword] = useState("");
+  const [migrationPassword, setMigrationPassword] = useState("");
+  const [migrationSecretKey, setMigrationSecretKey] = useState("");
+  const [migrationBaseUrl, setMigrationBaseUrl] = useState("");
+  const [migrationEndpoint, setMigrationEndpoint] = useState("");
   const [showExtractionPassword, setShowExtractionPassword] = useState(false);
+  const [showMigrationPassword, setShowMigrationPassword] = useState(false);
+  const [showMigrationSecretKey, setShowMigrationSecretKey] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showDeletePassword, setShowDeletePassword] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [migrationConfirmText, setMigrationConfirmText] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
@@ -76,15 +91,22 @@ export default function SettingsPage() {
   const [isReconciling, setIsReconciling] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [shouldPollExtraction, setShouldPollExtraction] = useState(false);
+  const [shouldPollMigration, setShouldPollMigration] = useState(false);
   const [quotaLoading, setQuotaLoading] = useState(role !== "guest");
   const [quotaError, setQuotaError] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(personnelLevel >= 7);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [migrationLoading, setMigrationLoading] = useState(personnelLevel >= 7 && role === "author");
+  const [migrationError, setMigrationError] = useState<string | null>(null);
   const [chatLoading, setChatLoading] = useState(personnelLevel >= 7);
   const [chatError, setChatError] = useState<string | null>(null);
   const [storageLoading, setStorageLoading] = useState(personnelLevel >= 7);
   const [storageError, setStorageError] = useState<string | null>(null);
   const processing = useMemo(() => history.some((job) => job.status === "processing"), [history]);
+  const migrationProcessing = useMemo(
+    () => migrationHistory.some((job) => job.status === "processing"),
+    [migrationHistory],
+  );
 
   useEffect(() => {
     if (personnelLevel < 7) {
@@ -105,6 +127,26 @@ export default function SettingsPage() {
       })
       .finally(() => setHistoryLoading(false));
   }, [personnelLevel]);
+
+  useEffect(() => {
+    if (personnelLevel < 7 || role !== "author") {
+      setMigrationHistory([]);
+      setMigrationLoading(false);
+      setMigrationError(null);
+      return;
+    }
+    setMigrationLoading(true);
+    setMigrationError(null);
+    listMigrationHistoryRemote()
+      .then((items) => {
+        setMigrationHistory(items);
+        setShouldPollMigration(items.some((job) => job.status === "processing"));
+      })
+      .catch((error) => {
+        setMigrationError(toUserFacingError(error, "Migration history could not be loaded."));
+      })
+      .finally(() => setMigrationLoading(false));
+  }, [personnelLevel, role]);
 
   useEffect(() => {
     if (personnelLevel < 7) {
@@ -161,6 +203,28 @@ export default function SettingsPage() {
   }, [processing, shouldPollExtraction]);
 
   useEffect(() => {
+    if (!shouldPollMigration || !migrationProcessing) {
+      if (shouldPollMigration && !migrationProcessing) setShouldPollMigration(false);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      listMigrationHistoryRemote()
+        .then((items) => {
+          setMigrationHistory(items);
+          setMigrationError(null);
+          if (!items.some((job) => job.status === "processing")) {
+            setShouldPollMigration(false);
+          }
+        })
+        .catch((error) => {
+          setMigrationError(toUserFacingError(error, "Migration history could not be refreshed."));
+          setShouldPollMigration(false);
+        });
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [migrationProcessing, shouldPollMigration]);
+
+  useEffect(() => {
     if (role === "guest") {
       setQuota(null);
       setQuotaLoading(false);
@@ -187,14 +251,24 @@ export default function SettingsPage() {
 
   const trackInfo = PERSONNEL_TRACKS.find((item) => item.key === track);
   const title = trackInfo?.titles[personnelLevel] ?? "Unknown";
-  const canRun = personnelLevel >= 7 && confirmText === "CONFIRM" && verifyPassword(password);
-  const canReconcileChat = personnelLevel >= 7;
-  const hasMaintenanceAccess = personnelLevel >= 7;
+  const isPl7Author = personnelLevel >= 7 && role === "author";
+  const isPl7Admin = personnelLevel >= 7 && role === "personel";
+  const canRun = isPl7Author && confirmText === "CONFIRM" && verifyPassword(password);
+  const canRunMigration =
+    isPl7Author &&
+    migrationConfirmText === "MIGRATION" &&
+    verifyPassword(migrationPassword) &&
+    migrationSecretKey.trim().length >= 16 &&
+    Boolean(migrationBaseUrl.trim() || migrationEndpoint.trim()) &&
+    !(migrationBaseUrl.trim() && migrationEndpoint.trim());
+  const canReconcileChat = isPl7Author || isPl7Admin;
+  const canUseStorageCleanup = isPl7Author || isPl7Admin;
+  const hasMaintenanceAccess = canReconcileChat || canRun || isPl7Author;
   const inputClass = "w-full rounded-sm border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:ring-1 focus:ring-primary";
   const helperTextClass = "text-sm leading-6 text-muted-foreground";
 
   const loadExtractionHistory = async () => {
-    if (personnelLevel < 7) return;
+    if (!isPl7Author) return;
     setHistoryLoading(true);
     setHistoryError(null);
     try {
@@ -205,6 +279,21 @@ export default function SettingsPage() {
       setHistoryError(toUserFacingError(error, "Extraction history could not be loaded."));
     } finally {
       setHistoryLoading(false);
+    }
+  };
+
+  const loadMigrationHistory = async () => {
+    if (!isPl7Author) return;
+    setMigrationLoading(true);
+    setMigrationError(null);
+    try {
+      const nextHistory = await listMigrationHistoryRemote();
+      setMigrationHistory(nextHistory);
+      setShouldPollMigration(nextHistory.some((job) => job.status === "processing"));
+    } catch (error) {
+      setMigrationError(toUserFacingError(error, "Migration history could not be loaded."));
+    } finally {
+      setMigrationLoading(false);
     }
   };
 
@@ -320,7 +409,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="w-full space-y-6 p-4 md:p-8 xl:p-10">
+    <div className="w-full space-y-5 p-4 md:space-y-6 md:p-8 xl:p-10">
       <div className="space-y-3">
         <h1 className="font-display text-2xl tracking-[0.1em] text-primary">SETTINGS</h1>
         <div className="mecha-line w-32" />
@@ -329,7 +418,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 md:gap-3">
         <SummaryTile icon={ShieldCheck} label="Clearance" value={`L${personnelLevel}`} description={title} />
         <SummaryTile icon={UsersRound} label="Track" value={trackInfo?.short ?? "N/A"} description={trackInfo?.label ?? "No active track"} />
         <SummaryTile icon={Sparkles} label="Role" value={role.toUpperCase()} description={`Signed in as ${username}`} />
@@ -343,7 +432,7 @@ export default function SettingsPage() {
             : "",
         )}
       >
-        <div className={cn("space-y-5", !hasMaintenanceAccess && "grid gap-5 space-y-0 lg:grid-cols-2 xl:grid-cols-3")}>
+        <div className={cn("space-y-5", !hasMaintenanceAccess && "grid gap-5 space-y-0 lg:grid-cols-2 2xl:grid-cols-3")}>
           <SectionCard
             icon={Sparkles}
             title="Appearance"
@@ -413,7 +502,7 @@ export default function SettingsPage() {
               icon={KeyRound}
               title="Account Security"
               description="Sensitive actions are grouped here so password changes and account deletion are easier to review before execution."
-              className={cn("border-destructive/25", !hasMaintenanceAccess && "lg:col-span-2 xl:col-span-3")}
+              className={cn("border-destructive/25", !hasMaintenanceAccess && "lg:col-span-2 2xl:col-span-3")}
             >
               <div className="space-y-4">
                 <div className="space-y-3 rounded-sm border border-border/70 bg-background/45 p-4">
@@ -528,7 +617,7 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {hasMaintenanceAccess && (
+        {canReconcileChat && (
         <div className="space-y-5">
           {canReconcileChat && (
             <SectionCard
@@ -602,7 +691,7 @@ export default function SettingsPage() {
             </SectionCard>
           )}
 
-          {hasMaintenanceAccess && (
+          {canUseStorageCleanup && (
             <SectionCard
               icon={HardDrive}
               title="PL7 Storage Cleanup"
@@ -748,7 +837,7 @@ export default function SettingsPage() {
             </SectionCard>
           )}
 
-          {hasMaintenanceAccess && (
+          {isPl7Author && (
             <SectionCard
               icon={AlertTriangle}
               title="PL7 Data Extraction"
@@ -964,6 +1053,175 @@ export default function SettingsPage() {
               </div>
             </SectionCard>
           )}
+
+          {isPl7Author && (
+            <SectionCard
+              icon={Waypoints}
+              title="PL7 Backend Migration"
+              description="Send the full database snapshot and storage manifest to a target backend, then download a verification report."
+              className="border-primary/35"
+              accentClass="text-primary"
+            >
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Use Base URL for a clone backend, or a custom migration endpoint when the destination translates payloads into a different environment.
+                </p>
+                {migrationProcessing && <p className="text-sm text-muted-foreground">Migration in progress...</p>}
+              </div>
+
+              <div className="grid gap-3 xl:grid-cols-2">
+                <LabeledInput
+                  label="New BE Base URL"
+                  value={migrationBaseUrl}
+                  onChange={setMigrationBaseUrl}
+                  placeholder="https://new-backend.example.com"
+                  className={inputClass}
+                />
+                <LabeledInput
+                  label="Migration Path"
+                  value={migrationEndpoint}
+                  onChange={setMigrationEndpoint}
+                  placeholder="https://new-backend.example.com/migration"
+                  className={inputClass}
+                />
+              </div>
+
+              <div className="grid gap-3 xl:grid-cols-3 xl:items-end">
+                <PasswordField
+                  label="Password"
+                  value={migrationPassword}
+                  onChange={setMigrationPassword}
+                  shown={showMigrationPassword}
+                  onToggle={() => setShowMigrationPassword((value) => !value)}
+                  placeholder="Account password"
+                  className={inputClass}
+                />
+                <PasswordField
+                  label="Secret Key"
+                  value={migrationSecretKey}
+                  onChange={setMigrationSecretKey}
+                  shown={showMigrationSecretKey}
+                  onToggle={() => setShowMigrationSecretKey((value) => !value)}
+                  placeholder="MIGRATION_KEY"
+                  className={inputClass}
+                />
+                <LabeledInput
+                  label="Confirmation"
+                  value={migrationConfirmText}
+                  onChange={setMigrationConfirmText}
+                  placeholder='Type "MIGRATION"'
+                  className={inputClass}
+                />
+              </div>
+
+              <Button
+                type="button"
+                className="w-full xl:w-auto"
+                disabled={!canRunMigration}
+                isLoading={busyAction === "start-migration"}
+                loadingText="Starting..."
+                onClick={() => showValidation({
+                  variant: "warning",
+                  title: "Start backend migration",
+                  description: "This sends the full migration payload to the destination backend and generates a verification report.",
+                  confirmLabel: "Start migration",
+                  cancelLabel: "Cancel",
+                  critical: true,
+                  confirmDelaySeconds: 5,
+                  onConfirm: async () => {
+                    await runWithFeedback("start-migration", async () => {
+                      const job = await startMigrationRemote({
+                        newBaseUrl: migrationBaseUrl.trim() || undefined,
+                        migrationUrl: migrationEndpoint.trim() || undefined,
+                        password: migrationPassword,
+                        secretKey: migrationSecretKey,
+                        confirmText: "MIGRATION",
+                      });
+                      setMigrationHistory((current) => [job, ...current]);
+                      setShouldPollMigration(job.status === "processing");
+                    }, "Migration started", "Migration failed");
+                  },
+                })}
+              >
+                Start Migration
+              </Button>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-heading tracking-[0.12em] text-foreground uppercase">Migration History</p>
+                  <p className="text-sm text-muted-foreground">{migrationHistory.length} job{migrationHistory.length === 1 ? "" : "s"}</p>
+                </div>
+                <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
+                  {migrationLoading ? (
+                    <ContentState
+                      kind="loading"
+                      title="Loading migration history"
+                      description="Fetching recent migration jobs."
+                      compact
+                      className="bg-background/45"
+                    />
+                  ) : migrationError ? (
+                    <ContentState
+                      kind="error"
+                      title="Migration history unavailable"
+                      description={migrationError}
+                      actionLabel="Retry"
+                      onAction={() => { void loadMigrationHistory(); }}
+                      compact
+                      className="bg-background/45"
+                    />
+                  ) : migrationHistory.length === 0 ? (
+                    <ContentState
+                      kind="empty"
+                      title="No migration jobs yet"
+                      description="Start a migration when a new backend is ready to receive the full payload."
+                      compact
+                      className="bg-background/45"
+                    />
+                  ) : migrationHistory.map((job) => (
+                    <div key={job.id} className="rounded-sm border border-border bg-background/45 p-3 text-sm">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0 space-y-1">
+                          <p className="break-all text-foreground">{job.targetUrl}</p>
+                          <p className="text-muted-foreground">
+                            {job.status.toUpperCase()} / started {new Date(job.createdAt).toLocaleString()}
+                          </p>
+                          {job.progress && (
+                            <div className="space-y-2 pt-1">
+                              <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                                <span className="uppercase tracking-[0.12em]">{job.progress.stage}</span>
+                                <span className="font-display text-foreground">{job.progress.percent}%</span>
+                              </div>
+                              <Progress value={job.progress.percent} className="h-2 bg-muted/70" />
+                              <p className="text-xs leading-5 text-muted-foreground">{job.progress.message}</p>
+                            </div>
+                          )}
+                          {job.error && <p className="text-xs text-destructive">{job.error}</p>}
+                        </div>
+                        <div className="shrink-0">
+                          {job.status === "completed" && (
+                            <button
+                              type="button"
+                              className="text-sm text-primary underline underline-offset-4 disabled:cursor-wait disabled:opacity-60"
+                              disabled={busyAction === `download-migration-${job.id}`}
+                              onClick={() => runWithFeedback(
+                                `download-migration-${job.id}`,
+                                () => downloadMigrationReport(job),
+                                "Report download started",
+                                "Report download failed",
+                              )}
+                            >
+                              {busyAction === `download-migration-${job.id}` ? "Downloading..." : "Download Report"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </SectionCard>
+          )}
         </div>
         )}
       </div>
@@ -979,9 +1237,9 @@ function toUserFacingError(error: unknown, fallback: string) {
 
 function Row({ label, value, active = true, strong = false }: { label: string; value: string; active?: boolean; strong?: boolean }) {
   return (
-    <div className="flex justify-between gap-4">
+    <div className="flex items-start justify-between gap-4">
       <span className={active ? "text-foreground" : "text-muted-foreground"}>{label}</span>
-      <span className={strong ? "font-display text-xs tracking-wider text-primary uppercase" : active ? "text-foreground" : "text-muted-foreground"}>{value}</span>
+      <span className={`text-right ${strong ? "font-display text-xs tracking-wider text-primary uppercase" : active ? "text-foreground" : "text-muted-foreground"}`}>{value}</span>
     </div>
   );
 }
@@ -998,14 +1256,14 @@ function SummaryTile({
   description: string;
 }) {
   return (
-    <div className="hud-border bg-card p-4 space-y-2">
-      <div className="flex items-center gap-2 text-accent-orange">
-        <Icon className="h-4 w-4" />
-        <span className="text-xs font-heading tracking-[0.12em] uppercase">{label}</span>
+    <div className="hud-border bg-card space-y-1.5 p-3 sm:space-y-2 sm:p-4">
+      <div className="flex items-center gap-1.5 text-accent-orange sm:gap-2">
+        <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+        <span className="text-[10px] font-heading tracking-[0.12em] uppercase sm:text-xs">{label}</span>
       </div>
       <div className="space-y-1">
-        <p className="font-display text-xl tracking-[0.08em] text-primary">{value}</p>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <p className="font-display text-base tracking-[0.08em] text-primary sm:text-xl">{value}</p>
+        <p className="line-clamp-2 text-[11px] leading-4 text-muted-foreground sm:text-sm sm:leading-5">{description}</p>
       </div>
     </div>
   );
@@ -1027,13 +1285,13 @@ function SectionCard({
   accentClass?: string;
 }) {
   return (
-    <section className={cn("hud-border bg-card p-5 space-y-5", className)}>
+    <section className={cn("hud-border bg-card space-y-4 p-4 sm:space-y-5 sm:p-5", className)}>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Icon className={cn("h-4 w-4", accentClass)} />
           <h3 className={cn("font-heading text-sm tracking-[0.15em] uppercase", accentClass)}>{title}</h3>
         </div>
-        <p className="text-sm leading-6 text-muted-foreground">{description}</p>
+        <p className="text-sm leading-5 sm:leading-6 text-muted-foreground">{description}</p>
       </div>
       {children}
     </section>
