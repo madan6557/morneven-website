@@ -418,7 +418,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 md:gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:gap-3">
         <SummaryTile icon={ShieldCheck} label="Clearance" value={`L${personnelLevel}`} description={title} />
         <SummaryTile icon={UsersRound} label="Track" value={trackInfo?.short ?? "N/A"} description={trackInfo?.label ?? "No active track"} />
         <SummaryTile icon={Sparkles} label="Role" value={role.toUpperCase()} description={`Signed in as ${username}`} />
@@ -1262,7 +1262,7 @@ function SummaryTile({
         <span className="text-[10px] font-heading tracking-[0.12em] uppercase sm:text-xs">{label}</span>
       </div>
       <div className="space-y-1">
-        <p className="font-display text-base tracking-[0.08em] text-primary sm:text-xl">{value}</p>
+        <p className="font-display text-base tracking-[0.08em] text-primary break-words sm:text-xl">{value}</p>
         <p className="line-clamp-2 text-[11px] leading-4 text-muted-foreground sm:text-sm sm:leading-5">{description}</p>
       </div>
     </div>
