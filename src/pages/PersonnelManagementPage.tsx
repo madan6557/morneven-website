@@ -59,14 +59,6 @@ function roleBadgeLabel(person: PersonnelUser) {
   return null;
 }
 
-function DisabledActionLabel() {
-  return (
-    <span className="inline-flex items-center rounded-sm border border-border px-2 py-1 text-[9px] font-display tracking-wider text-muted-foreground opacity-70">
-      ACTION NOT ALLOWED
-    </span>
-  );
-}
-
 export default function PersonnelManagementPage() {
   const { personnelLevel, username, track, role } = useAuth();
   const { toast } = useToast();
@@ -124,7 +116,7 @@ export default function PersonnelManagementPage() {
   const canUpdatePersonnelRecord = (p: PersonnelUser) => {
     const isSelf = p.username.toLowerCase() === username.toLowerCase();
     const isTargetAuthor = p.level >= PL_FULL_AUTHORITY && p.role === "author";
-    if (isSelf) return false;
+    if (isSelf) return personnelLevel >= 6;
     if (personnelLevel < 5) return false;
     if (personnelLevel === 5) return p.track === track && p.level < PL_FULL_AUTHORITY;
     if (personnelLevel === 6) return p.level < PL_FULL_AUTHORITY;
@@ -194,8 +186,9 @@ export default function PersonnelManagementPage() {
     if (!draft) return;
     setBusyAction(`save-${person.id}`);
     try {
+      const isSelf = person.username.toLowerCase() === username.toLowerCase();
       const payload =
-        personnelLevel === 5
+        personnelLevel === 5 || isSelf
           ? { note: draft.note }
           : {
               level: draft.level,
@@ -222,6 +215,11 @@ export default function PersonnelManagementPage() {
 
   const saveEdit = async (person: PersonnelUser) => {
     if (!draft) return;
+    const isSelf = person.username.toLowerCase() === username.toLowerCase();
+    if (isSelf) {
+      await persistEdit(person);
+      return;
+    }
     if (personnelLevel >= 6 && draft.level !== person.level) {
       showValidation({
         variant: "warning",
@@ -621,7 +619,6 @@ export default function PersonnelManagementPage() {
                 const isEditing = editingId === p.id;
                 const canEditRecord = canUpdatePersonnelRecord(p);
                 const canDeleteRecord = canDeletePersonnelRow(p);
-                const showActionNotAllowed = !canEditRecord && !canDeleteRecord;
                 return (
                   <tr key={p.id} className={`border-b border-border/60 last:border-b-0 ${selected.has(p.id) ? "bg-primary/5" : ""}`}>
                     <td className="p-3 align-top">
@@ -656,8 +653,8 @@ export default function PersonnelManagementPage() {
                     </td>
                     <td className="p-3 align-top text-xs font-body text-muted-foreground">{p.email}</td>
                     <td className="p-3 align-top">
-                      {isEditing && draft ? (
-                        personnelLevel === 5 ? (
+              {isEditing && draft ? (
+                        personnelLevel === 5 || p.username.toLowerCase() === username.toLowerCase() ? (
                           <span
                             className="inline-flex items-center justify-center text-[11px] font-display tracking-wider uppercase px-2 py-0.5 rounded-sm border"
                             style={personnelLevelBadgeStyle(p.level)}
@@ -697,7 +694,7 @@ export default function PersonnelManagementPage() {
                     </td>
                     <td className="p-3 align-top">
                       {isEditing && draft ? (
-                        personnelLevel === 5 ? (
+                        personnelLevel === 5 || p.username.toLowerCase() === username.toLowerCase() ? (
                           <span
                             className="inline-flex min-w-12 items-center justify-center rounded-sm border px-2 py-1 text-[10px] font-display tracking-wider uppercase"
                             style={personnelTrackBadgeStyle(p.track)}
@@ -763,7 +760,6 @@ export default function PersonnelManagementPage() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 justify-end">
-                          {showActionNotAllowed ? <DisabledActionLabel /> : null}
                           <button
                             onClick={() => startEdit(p)}
                             className="p-1.5 text-muted-foreground hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
@@ -803,7 +799,6 @@ export default function PersonnelManagementPage() {
             const isEditing = editingId === p.id;
             const canEditRecord = canUpdatePersonnelRecord(p);
             const canDeleteRecord = canDeletePersonnelRow(p);
-            const showActionNotAllowed = !canEditRecord && !canDeleteRecord;
             return (
               <div key={p.id} className={`hud-border-sm bg-card p-3 space-y-2 ${selected.has(p.id) ? "ring-1 ring-primary/40" : ""}`}>
                 <div className="flex items-start justify-between gap-2">
@@ -834,7 +829,6 @@ export default function PersonnelManagementPage() {
                   <div className="flex items-center gap-1">
                     {!isEditing && (
                       <>
-                        {showActionNotAllowed ? <DisabledActionLabel /> : null}
                         <button
                           onClick={() => startEdit(p)}
                           disabled={!canEditRecord}
@@ -857,7 +851,7 @@ export default function PersonnelManagementPage() {
                 </div>
                 {isEditing && draft ? (
                   <div className="space-y-2">
-                    {personnelLevel === 5 ? null : (
+                    {personnelLevel === 5 || p.username.toLowerCase() === username.toLowerCase() ? null : (
                       <div className="grid grid-cols-2 gap-2">
                         <select
                           value={draft.level}
@@ -886,7 +880,7 @@ export default function PersonnelManagementPage() {
                         </select>
                       </div>
                     )}
-                    {draft.level >= PL_FULL_AUTHORITY && personnelLevel !== 5 ? (
+                    {draft.level >= PL_FULL_AUTHORITY && personnelLevel !== 5 && p.username.toLowerCase() !== username.toLowerCase() ? (
                       <select
                         value={draft.role}
                         onChange={(e) => setDraft({ ...draft, role: e.target.value as PersonnelUser["role"] })}
