@@ -3,6 +3,8 @@ import { Navigate } from "react-router-dom";
 import {
   AlertTriangle,
   Ban,
+  ChevronLeft,
+  ChevronRight,
   FileLock2,
   KeyRound,
   RefreshCw,
@@ -33,6 +35,8 @@ import {
   type SecuritySession,
   type SecurityStatus,
 } from "@/services/securityApi";
+
+const EVENTS_PAGE_SIZE = 6;
 
 const panelClass = "hud-border bg-card/95";
 const metricClass = "hud-border-sm bg-background/50 p-4 space-y-2";
