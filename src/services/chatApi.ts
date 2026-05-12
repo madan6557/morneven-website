@@ -1,6 +1,8 @@
 import type { PersonnelTrack } from "@/lib/pl";
 import type { PersonnelUser } from "@/types";
 import { apiRequest, unwrapPageItems, type BackendPage } from "@/services/restClient";
+import { subscribeRealtimeEvents } from "@/services/realtime";
+import { invalidateNavigationBadges } from "@/services/navigationBadgesApi";
 
 export type ConversationKind = "dm" | "group" | "team" | "division" | "institute";
 export type MemberRole = "owner" | "admin" | "member";
@@ -86,11 +88,24 @@ export const CHAT_READ_KEY = "morneven_chat_last_read_v1";
 export type ChatReadMap = Record<string, string>;
 
 const EVT = "morneven:chat-changed";
+const REALTIME_EVENTS = [
+  "chat.message.created",
+  "chat.message.updated",
+  "chat.message.deleted",
+  "chat.conversation.created",
+  "chat.conversation.updated",
+  "chat.invite.created",
+  "chat.invite.resolved",
+  "chat.read.updated",
+  "chat.unread.updated",
+  "socket.ready",
+] as const;
 
 let conversationCache: Conversation[] = [];
 let inviteCache: Conversation[] = [];
 const messageCache = new Map<string, ChatMessage[]>();
 let unreadCountCache: Record<string, number> = {};
+let releaseRealtimeBridge: (() => void) | null = null;
 
 const todayISO = () => new Date().toISOString();
 const uid = (prefix = "id") => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -98,6 +113,17 @@ const uid = (prefix = "id") => `${prefix}-${Date.now()}-${Math.random().toString
 function emitChatChanged() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(EVT));
+}
+
+function ensureRealtimeBridge() {
+  if (releaseRealtimeBridge || typeof window === "undefined") return;
+
+  releaseRealtimeBridge = subscribeRealtimeEvents(
+    [...REALTIME_EVENTS],
+    () => {
+      emitChatChanged();
+    },
+  );
 }
 
 function upsertConversationInto(list: Conversation[], conversation: Conversation) {
@@ -159,6 +185,7 @@ export function writeChatReadMap(next: ChatReadMap) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(CHAT_READ_KEY, JSON.stringify(next));
+    invalidateNavigationBadges();
     emitChatChanged();
     Object.entries(next).forEach(([conversationId, lastReadAt]) => {
       apiRequest("/chat/read", {
@@ -520,6 +547,7 @@ export async function leaveConversationRemote(conversationId: string): Promise<b
   conversationCache = conversationCache.filter((item) => item.id !== conversationId);
   messageCache.delete(conversationId);
   delete unreadCountCache[conversationId];
+  invalidateNavigationBadges();
   emitChatChanged();
   return true;
 }
@@ -636,6 +664,7 @@ export function reconcileAutoMemberships(
 }
 
 export function subscribeChat(cb: () => void): () => void {
+  ensureRealtimeBridge();
   if (typeof window === "undefined") return () => undefined;
   const handler = () => cb();
   window.addEventListener(EVT, handler);

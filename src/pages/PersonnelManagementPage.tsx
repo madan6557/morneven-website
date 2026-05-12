@@ -16,6 +16,8 @@ import {
   bulkUpdatePersonnel,
   createPersonnel,
   deletePersonnel,
+  subscribePersonnel,
+  updatePersonnelStatus,
 } from "@/services/personnelApi";
 import type { PersonnelUser } from "@/types";
 import { personnelLevelBadgeStyle, personnelTrackBadgeStyle } from "@/lib/personnelTone";
@@ -30,9 +32,34 @@ function trackMeta(track: PersonnelTrack) {
 }
 
 function formatPresenceText(person: PersonnelUser) {
-  if (person.online) return "";
-  if (person.lastSeenAt) return `Last seen ${new Date(person.lastSeenAt).toLocaleTimeString()}`;
+  if (person.online || person.status !== "active") return "";
+  if (person.lastSeenAt) return `Last seen ${new Date(person.lastSeenAt).toLocaleString()}`;
   return "";
+}
+
+function statusTone(person: PersonnelUser) {
+  if (person.status === "banned" || person.status === "deleted") {
+    return "border-destructive/40 bg-destructive/10 text-destructive";
+  }
+  if (person.status === "suspended") {
+    return "border-accent-orange/40 bg-accent-orange/10 text-accent-orange";
+  }
+  if (person.online && person.status === "active") {
+    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
+  }
+  return "border-border text-muted-foreground";
+}
+
+function statusDotTone(person: PersonnelUser) {
+  if (person.status === "banned" || person.status === "deleted") return "bg-destructive";
+  if (person.status === "suspended") return "bg-accent-orange";
+  if (person.online && person.status === "active") return "bg-emerald-400";
+  return "bg-muted-foreground/40";
+}
+
+function statusLabel(person: PersonnelUser) {
+  if (person.status !== "active") return person.statusLabel ?? person.status ?? "Unknown";
+  return person.online ? "Online" : "Offline";
 }
 
 interface DraftState {
@@ -134,6 +161,37 @@ export default function PersonnelManagementPage() {
     return false;
   };
 
+  const canModerateStatus = (p: PersonnelUser) => {
+    const isSelf = p.username.toLowerCase() === username.toLowerCase();
+    const isTargetAuthor = p.level >= PL_FULL_AUTHORITY && p.role === "author";
+    if (isSelf || p.status === "deleted") return false;
+    if (personnelLevel === 6) return p.level < 6;
+    if (isPl7Admin) return p.level < 7 && !isTargetAuthor;
+    if (isPl7Author) return !isTargetAuthor;
+    return false;
+  };
+
+  const handleStatusUpdate = async (
+    person: PersonnelUser,
+    nextStatus: "active" | "suspended" | "banned",
+    reason: string,
+  ) => {
+    setBusyAction(`${nextStatus}-${person.id}`);
+    try {
+      const updated = await updatePersonnelStatus(person.id, { status: nextStatus, reason });
+      setPeople((prev) => prev.map((item) => (item.id === person.id ? updated : item)));
+      toast({ title: `${person.username} set to ${updated.statusLabel ?? nextStatus}` });
+    } catch (error) {
+      toast({
+        title: "Status update failed",
+        description: error instanceof Error ? error.message : "Backend rejected the moderation action.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     const load = () =>
@@ -142,12 +200,16 @@ export default function PersonnelManagementPage() {
       });
 
     void load();
+    const unsubscribe = subscribePersonnel(() => {
+      void load();
+    });
     const intervalId = window.setInterval(() => {
       void load();
     }, 20000);
 
     return () => {
       cancelled = true;
+      unsubscribe();
       window.clearInterval(intervalId);
     };
   }, []);
@@ -255,9 +317,9 @@ export default function PersonnelManagementPage() {
         setBusyAction(`delete-${p.id}`);
         try {
           const ok = await deletePersonnel(p.id);
-          if (ok) {
-            setPeople((prev) => prev.filter((x) => x.id !== p.id));
-            toast({ title: "Personnel removed" });
+          if (ok.user) {
+            setPeople((prev) => prev.map((item) => (item.id === p.id ? ok.user! : item)));
+            toast({ title: "Personnel archived" });
           }
         } catch (error) {
           toast({
@@ -619,6 +681,7 @@ export default function PersonnelManagementPage() {
                 const isEditing = editingId === p.id;
                 const canEditRecord = canUpdatePersonnelRecord(p);
                 const canDeleteRecord = canDeletePersonnelRow(p);
+                const canModerateRecord = canModerateStatus(p);
                 return (
                   <tr key={p.id} className={`border-b border-border/60 last:border-b-0 ${selected.has(p.id) ? "bg-primary/5" : ""}`}>
                     <td className="p-3 align-top">
@@ -642,12 +705,14 @@ export default function PersonnelManagementPage() {
                     </td>
                     <td className="p-3 align-top">
                       <div className="inline-flex items-center gap-2 rounded-sm border border-border/70 bg-background/40 px-2 py-1">
-                        <span className={`h-2.5 w-2.5 rounded-full ${p.online ? "bg-emerald-400 shadow-[0_0_10px_rgba(74,222,128,0.55)]" : "bg-muted-foreground/40"}`} />
-                        <span className={`text-[10px] font-display tracking-wider uppercase ${p.online ? "text-emerald-300" : "text-muted-foreground"}`}>
-                          {p.online ? "Online" : "Offline"}
+                        <span className={`h-2.5 w-2.5 rounded-full ${statusDotTone(p)}`} />
+                        <span className={`text-[10px] font-display tracking-wider uppercase`}>
+                          {statusLabel(p)}
                         </span>
                       </div>
-                      {formatPresenceText(p) ? (
+                      {p.statusReason ? (
+                        <p className="mt-1 text-[10px] text-muted-foreground">{p.statusReason}</p>
+                      ) : formatPresenceText(p) ? (
                         <p className="mt-1 text-[10px] text-muted-foreground">{formatPresenceText(p)}</p>
                       ) : null}
                     </td>
@@ -760,6 +825,71 @@ export default function PersonnelManagementPage() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 justify-end">
+                          {canModerateRecord && (
+                            <>
+                              {p.status !== "active" && (
+                                <button
+                                  onClick={() => showValidation({
+                                    variant: "info",
+                                    title: "Restore account",
+                                    description: `Restore ${p.username} to active access?`,
+                                    confirmLabel: "Restore account",
+                                    cancelLabel: "Cancel",
+                                    onConfirm: async () => {
+                                      await handleStatusUpdate(p, "active", "Restored by personnel management");
+                                    },
+                                  })}
+                                  className="p-1.5 text-muted-foreground hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-30"
+                                  title="Restore account"
+                                  disabled={busyAction === `active-${p.id}`}
+                                >
+                                  {busyAction === `active-${p.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                                </button>
+                              )}
+                              {p.status !== "suspended" && p.status !== "deleted" && (
+                                <button
+                                  onClick={() => showValidation({
+                                    variant: "warning",
+                                    title: "Suspend account",
+                                    description: `Suspend ${p.username} from website access?`,
+                                    confirmLabel: "Suspend account",
+                                    cancelLabel: "Cancel",
+                                    critical: true,
+                                    confirmDelaySeconds: 5,
+                                    onConfirm: async () => {
+                                      await handleStatusUpdate(p, "suspended", "Suspended by personnel management");
+                                    },
+                                  })}
+                                  className="p-1.5 text-muted-foreground hover:text-accent-orange disabled:cursor-not-allowed disabled:opacity-30"
+                                  title="Suspend account"
+                                  disabled={busyAction === `suspended-${p.id}`}
+                                >
+                                  {busyAction === `suspended-${p.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Layers className="h-3.5 w-3.5" />}
+                                </button>
+                              )}
+                              {p.status !== "banned" && p.status !== "deleted" && (
+                                <button
+                                  onClick={() => showValidation({
+                                    variant: "error",
+                                    title: "Ban account",
+                                    description: `Ban ${p.username} from website access?`,
+                                    confirmLabel: "Ban account",
+                                    cancelLabel: "Cancel",
+                                    critical: true,
+                                    confirmDelaySeconds: 5,
+                                    onConfirm: async () => {
+                                      await handleStatusUpdate(p, "banned", "Banned by personnel management");
+                                    },
+                                  })}
+                                  className="p-1.5 text-muted-foreground hover:text-destructive disabled:cursor-not-allowed disabled:opacity-30"
+                                  title="Ban account"
+                                  disabled={busyAction === `banned-${p.id}`}
+                                >
+                                  {busyAction === `banned-${p.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                                </button>
+                              )}
+                            </>
+                          )}
                           <button
                             onClick={() => startEdit(p)}
                             className="p-1.5 text-muted-foreground hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
@@ -799,6 +929,7 @@ export default function PersonnelManagementPage() {
             const isEditing = editingId === p.id;
             const canEditRecord = canUpdatePersonnelRecord(p);
             const canDeleteRecord = canDeletePersonnelRow(p);
+            const canModerateRecord = canModerateStatus(p);
             return (
               <div key={p.id} className={`hud-border-sm bg-card p-3 space-y-2 ${selected.has(p.id) ? "ring-1 ring-primary/40" : ""}`}>
                 <div className="flex items-start justify-between gap-2">
@@ -818,9 +949,9 @@ export default function PersonnelManagementPage() {
                             {roleBadgeLabel(p)}
                           </span>
                         )}
-                        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-display tracking-wider uppercase ${p.online ? "border-emerald-500/40 text-emerald-300" : "border-border text-muted-foreground"}`}>
-                          <span className={`h-2 w-2 rounded-full ${p.online ? "bg-emerald-400" : "bg-muted-foreground/40"}`} />
-                          {p.online ? "Online" : "Offline"}
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-display tracking-wider uppercase ${statusTone(p)}`}>
+                          <span className={`h-2 w-2 rounded-full ${statusDotTone(p)}`} />
+                          {statusLabel(p)}
                         </span>
                       </div>
                       <p className="text-[11px] text-muted-foreground font-body">{p.email}</p>
@@ -829,6 +960,71 @@ export default function PersonnelManagementPage() {
                   <div className="flex items-center gap-1">
                     {!isEditing && (
                       <>
+                        {canModerateRecord && (
+                          <>
+                            {p.status !== "active" && (
+                              <button
+                                onClick={() => showValidation({
+                                  variant: "info",
+                                  title: "Restore account",
+                                  description: `Restore ${p.username} to active access?`,
+                                  confirmLabel: "Restore account",
+                                  cancelLabel: "Cancel",
+                                  onConfirm: async () => {
+                                    await handleStatusUpdate(p, "active", "Restored by personnel management");
+                                  },
+                                })}
+                                className="p-1.5 text-muted-foreground hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-30"
+                                disabled={busyAction === `active-${p.id}`}
+                                title="Restore account"
+                              >
+                                {busyAction === `active-${p.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                              </button>
+                            )}
+                            {p.status !== "suspended" && p.status !== "deleted" && (
+                              <button
+                                onClick={() => showValidation({
+                                  variant: "warning",
+                                  title: "Suspend account",
+                                  description: `Suspend ${p.username} from website access?`,
+                                  confirmLabel: "Suspend account",
+                                  cancelLabel: "Cancel",
+                                  critical: true,
+                                  confirmDelaySeconds: 5,
+                                  onConfirm: async () => {
+                                    await handleStatusUpdate(p, "suspended", "Suspended by personnel management");
+                                  },
+                                })}
+                                className="p-1.5 text-muted-foreground hover:text-accent-orange disabled:cursor-not-allowed disabled:opacity-30"
+                                disabled={busyAction === `suspended-${p.id}`}
+                                title="Suspend account"
+                              >
+                                {busyAction === `suspended-${p.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Layers className="h-3.5 w-3.5" />}
+                              </button>
+                            )}
+                            {p.status !== "banned" && p.status !== "deleted" && (
+                              <button
+                                onClick={() => showValidation({
+                                  variant: "error",
+                                  title: "Ban account",
+                                  description: `Ban ${p.username} from website access?`,
+                                  confirmLabel: "Ban account",
+                                  cancelLabel: "Cancel",
+                                  critical: true,
+                                  confirmDelaySeconds: 5,
+                                  onConfirm: async () => {
+                                    await handleStatusUpdate(p, "banned", "Banned by personnel management");
+                                  },
+                                })}
+                                className="p-1.5 text-muted-foreground hover:text-destructive disabled:cursor-not-allowed disabled:opacity-30"
+                                disabled={busyAction === `banned-${p.id}`}
+                                title="Ban account"
+                              >
+                                {busyAction === `banned-${p.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                              </button>
+                            )}
+                          </>
+                        )}
                         <button
                           onClick={() => startEdit(p)}
                           disabled={!canEditRecord}
@@ -919,7 +1115,9 @@ export default function PersonnelManagementPage() {
                     >
                       {trackMeta(p.track).short}
                     </span>
-                    {formatPresenceText(p) ? (
+                    {p.statusReason ? (
+                      <span className="w-full text-[10px] text-muted-foreground">{p.statusReason}</span>
+                    ) : formatPresenceText(p) ? (
                       <span className="w-full text-[10px] text-muted-foreground">{formatPresenceText(p)}</span>
                     ) : null}
                     {p.note && <p className="w-full text-xs text-foreground/80 font-body">{p.note}</p>}

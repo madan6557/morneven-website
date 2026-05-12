@@ -13,6 +13,7 @@ import {
   getRefreshToken,
   setAuthTokens,
 } from "@/services/restClient";
+import { connectRealtime, disconnectRealtime } from "@/services/realtime";
 import { sendPresenceHeartbeat } from "@/services/personnelApi";
 
 interface AuthState {
@@ -181,6 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (hasDemoToken) {
       clearSavedAuth();
       clearAuthTokens();
+      disconnectRealtime();
       return;
     }
 
@@ -188,6 +190,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthTokens(saved.token ?? getAccessToken(), saved.refreshToken ?? getRefreshToken());
     }
   }, [hasDemoToken, saved?.refreshToken, saved?.token]);
+
+  useEffect(() => {
+    if (isAuthenticated && role !== "guest") {
+      connectRealtime();
+      return;
+    }
+
+    disconnectRealtime();
+  }, [isAuthenticated, role]);
 
   useEffect(() => {
     if (!isAuthenticated || role === "guest") return;
@@ -265,6 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     apiRequest("/auth/logout", { method: "POST" }).catch(() => undefined);
+    disconnectRealtime();
     setIsAuthenticated(false);
     setUsername("Guest");
     setRole("guest");

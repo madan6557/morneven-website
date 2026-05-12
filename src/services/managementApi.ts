@@ -1,5 +1,7 @@
 import type { PersonnelLevel, PersonnelTrack } from "@/lib/pl";
 import { apiRequest, buildQuery, unwrapPageItems, type BackendPage } from "@/services/restClient";
+import { subscribeRealtimeEvents } from "@/services/realtime";
+import { invalidateNavigationBadges } from "@/services/navigationBadgesApi";
 
 export type RequestKind =
   | "transfer"
@@ -45,6 +47,7 @@ export interface QuotaRecord {
 }
 
 const EVT = "morneven:management-changed";
+let releaseRealtimeBridge: (() => void) | null = null;
 
 const monthKey = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -53,6 +56,17 @@ const yearKey = (d = new Date()) => String(d.getFullYear());
 function emitManagementChanged() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(EVT));
+}
+
+function ensureRealtimeBridge() {
+  if (releaseRealtimeBridge || typeof window === "undefined") return;
+
+  releaseRealtimeBridge = subscribeRealtimeEvents(
+    ["management.updated", "navigation_badges.updated", "socket.ready"],
+    () => {
+      emitManagementChanged();
+    },
+  );
 }
 
 export async function listRequests(filter?: {
@@ -76,6 +90,7 @@ export async function createRequest(
       reason: data.reason,
     },
   });
+  invalidateNavigationBadges();
   emitManagementChanged();
   return created;
 }
@@ -90,6 +105,7 @@ export async function decideRequest(
     method: "POST",
     body: { decision, reviewNote },
   });
+  invalidateNavigationBadges();
   emitManagementChanged();
   return decided;
 }
@@ -108,6 +124,7 @@ export async function createTeam(data: Omit<Team, "id" | "createdAt" | "complete
       members: data.members,
     },
   });
+  invalidateNavigationBadges();
   emitManagementChanged();
   return created;
 }
@@ -207,6 +224,7 @@ export function getReviewableRequestCount(_viewer: {
 }
 
 export function subscribeManagement(cb: () => void): () => void {
+  ensureRealtimeBridge();
   if (typeof window === "undefined") return () => undefined;
   const handler = () => cb();
   window.addEventListener(EVT, handler);

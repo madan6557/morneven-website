@@ -1,12 +1,15 @@
 ﻿import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import {
   AlertTriangle,
+  Archive,
   CheckCircle2,
   DatabaseZap,
   Eye,
   EyeOff,
   HardDrive,
+  Inbox,
   KeyRound,
+  MessageSquareWarning,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -19,6 +22,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { ContentState } from "@/components/ContentState";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { showValidation } from "@/components/ui/validation-dialog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,11 +50,20 @@ import {
 } from "@/services/migrationService";
 import { changePassword, deleteAccount } from "@/services/accountApi";
 import {
+  createPersonnelReport,
+  listMyPersonnelReports,
+  listPersonnelReportQueue,
+  reviewPersonnelReport,
+  type PersonnelReportCreateInput,
+  type PersonnelReportReviewInput,
+} from "@/services/personnelApi";
+import {
   getStorageCleanupReportRemote,
   runStorageCleanupRemote,
   type StorageCleanupReport,
 } from "@/services/storageCleanupService";
 import { cn } from "@/lib/utils";
+import type { PersonnelReport, PersonnelReviewAction, PersonnelReviewDecision } from "@/types";
 
 const emptyChatReport: ChatReconciliationReport = {
   instituteGroups: 0,
@@ -58,6 +72,33 @@ const emptyChatReport: ChatReconciliationReport = {
   activeMemberships: 0,
   removedMemberships: 0,
   ranAt: new Date().toISOString(),
+};
+
+const REPORT_CATEGORIES = [
+  { value: "abuse", label: "Abuse" },
+  { value: "harassment", label: "Harassment" },
+  { value: "impersonation", label: "Impersonation" },
+  { value: "spam", label: "Spam" },
+  { value: "security", label: "Security" },
+  { value: "other", label: "Other" },
+] as const;
+
+const REVIEW_DECISIONS: Array<{ value: PersonnelReviewDecision; label: string }> = [
+  { value: "confirmed", label: "Confirm report" },
+  { value: "dismissed", label: "Dismiss report" },
+];
+
+const REVIEW_ACTIONS: Array<{ value: PersonnelReviewAction; label: string }> = [
+  { value: "none", label: "No account action" },
+  { value: "suspend", label: "Suspend account" },
+  { value: "demote", label: "Demote clearance" },
+  { value: "ban", label: "Ban account" },
+];
+
+type ReviewDraft = {
+  decision: PersonnelReviewDecision;
+  action: PersonnelReviewAction;
+  note: string;
 };
 
 export default function SettingsPage() {
@@ -85,6 +126,14 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [reportTargetUsername, setReportTargetUsername] = useState("");
+  const [reportCategory, setReportCategory] = useState<PersonnelReportCreateInput["category"]>("abuse");
+  const [reportReason, setReportReason] = useState("");
+  const [reportDetail, setReportDetail] = useState("");
+  const [reportEvidence, setReportEvidence] = useState("");
+  const [myReports, setMyReports] = useState<PersonnelReport[]>([]);
+  const [reviewQueue, setReviewQueue] = useState<PersonnelReport[]>([]);
+  const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
   const [selected, setSelected] = useState<string[]>([]);
   const [chatReport, setChatReport] = useState<ChatReconciliationReport>(emptyChatReport);
   const [storageCleanupReport, setStorageCleanupReport] = useState<StorageCleanupReport | null>(null);
@@ -98,6 +147,10 @@ export default function SettingsPage() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [migrationLoading, setMigrationLoading] = useState(personnelLevel >= 7 && role === "author");
   const [migrationError, setMigrationError] = useState<string | null>(null);
+  const [reportLoading, setReportLoading] = useState(role !== "guest");
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reviewQueueLoading, setReviewQueueLoading] = useState(personnelLevel >= 6);
+  const [reviewQueueError, setReviewQueueError] = useState<string | null>(null);
   const [chatLoading, setChatLoading] = useState(personnelLevel >= 7);
   const [chatError, setChatError] = useState<string | null>(null);
   const [storageLoading, setStorageLoading] = useState(personnelLevel >= 7);
@@ -249,10 +302,62 @@ export default function SettingsPage() {
       .finally(() => setQuotaLoading(false));
   }, [role, username]);
 
+  useEffect(() => {
+    if (role === "guest") {
+      setMyReports([]);
+      setReportLoading(false);
+      setReportError(null);
+      return;
+    }
+
+    setReportLoading(true);
+    setReportError(null);
+    listMyPersonnelReports()
+      .then(setMyReports)
+      .catch((error) => {
+        setMyReports([]);
+        setReportError(toUserFacingError(error, "Your submitted reports could not be loaded."));
+      })
+      .finally(() => setReportLoading(false));
+  }, [role]);
+
+  useEffect(() => {
+    if (personnelLevel < 6) {
+      setReviewQueue([]);
+      setReviewQueueLoading(false);
+      setReviewQueueError(null);
+      return;
+    }
+
+    setReviewQueueLoading(true);
+    setReviewQueueError(null);
+    listPersonnelReportQueue()
+      .then((items) => {
+        setReviewQueue(items);
+        setReviewDrafts((current) => {
+          const next = { ...current };
+          items.forEach((item) => {
+            next[item.id] ??= {
+              decision: "confirmed",
+              action: "none",
+              note: "",
+            };
+          });
+          return next;
+        });
+      })
+      .catch((error) => {
+        setReviewQueue([]);
+        setReviewQueueError(toUserFacingError(error, "Moderation review queue could not be loaded."));
+      })
+      .finally(() => setReviewQueueLoading(false));
+  }, [personnelLevel]);
+
   const trackInfo = PERSONNEL_TRACKS.find((item) => item.key === track);
   const title = trackInfo?.titles[personnelLevel] ?? "Unknown";
   const isPl7Author = personnelLevel >= 7 && role === "author";
   const isPl7Admin = personnelLevel >= 7 && role === "admin";
+  const canReviewReports = personnelLevel >= 6;
   const canRun = isPl7Author && confirmText === "CONFIRM" && verifyPassword(password);
   const canRunMigration =
     isPl7Author &&
@@ -264,6 +369,10 @@ export default function SettingsPage() {
   const canReconcileChat = isPl7Author || isPl7Admin;
   const canUseStorageCleanup = isPl7Author || isPl7Admin;
   const hasMaintenanceAccess = canReconcileChat || canRun || isPl7Author;
+  const pendingReviewCount = useMemo(
+    () => reviewQueue.filter((item) => item.status === "open").length,
+    [reviewQueue],
+  );
   const inputClass = "w-full rounded-sm border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:ring-1 focus:ring-primary";
   const helperTextClass = "text-sm leading-6 text-muted-foreground";
 
@@ -313,6 +422,46 @@ export default function SettingsPage() {
       setQuotaError(toUserFacingError(error, "Obligation status could not be loaded."));
     } finally {
       setQuotaLoading(false);
+    }
+  };
+
+  const loadMyReports = async () => {
+    if (role === "guest") return;
+    setReportLoading(true);
+    setReportError(null);
+    try {
+      setMyReports(await listMyPersonnelReports());
+    } catch (error) {
+      setMyReports([]);
+      setReportError(toUserFacingError(error, "Your submitted reports could not be loaded."));
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const loadReviewQueue = async () => {
+    if (!canReviewReports) return;
+    setReviewQueueLoading(true);
+    setReviewQueueError(null);
+    try {
+      const items = await listPersonnelReportQueue();
+      setReviewQueue(items);
+      setReviewDrafts((current) => {
+        const next = { ...current };
+        items.forEach((item) => {
+            next[item.id] ??= {
+              decision: "confirmed",
+              action: "none",
+              note: "",
+            };
+        });
+        return next;
+      });
+    } catch (error) {
+      setReviewQueue([]);
+      setReviewQueueError(toUserFacingError(error, "Moderation review queue could not be loaded."));
+    } finally {
+      setReviewQueueLoading(false);
     }
   };
 
@@ -406,6 +555,77 @@ export default function SettingsPage() {
     } finally {
       setBusyAction(null);
     }
+  };
+
+  const updateReviewDraft = (reportId: string, patch: Partial<ReviewDraft>) => {
+    setReviewDrafts((current) => ({
+      ...current,
+      [reportId]: {
+        decision: "confirmed",
+        action: "none",
+        note: "",
+        ...current[reportId],
+        ...patch,
+      },
+    }));
+  };
+
+  const handleSubmitReport = async () => {
+    if (role === "guest") return;
+    const payload: PersonnelReportCreateInput = {
+      targetUsername: reportTargetUsername.trim(),
+      category: reportCategory,
+      details: [reportReason.trim(), reportDetail.trim(), reportEvidence.trim() ? `Evidence: ${reportEvidence.trim()}` : ""]
+        .filter(Boolean)
+        .join("\n\n"),
+    };
+
+    if (!payload.targetUsername || !payload.details) return;
+
+    await runWithFeedback(
+      "submit-report",
+      async () => {
+        const created = await createPersonnelReport(payload);
+        setMyReports((current) => [created, ...current]);
+        setReportTargetUsername("");
+        setReportCategory("abuse");
+        setReportReason("");
+        setReportDetail("");
+        setReportEvidence("");
+      },
+      "Report submitted",
+      "Report submission failed",
+    );
+  };
+
+  const handleReviewReport = async (report: PersonnelReport) => {
+    const draft = reviewDrafts[report.id] ?? {
+      decision: "confirmed" as PersonnelReviewDecision,
+      action: "none" as PersonnelReviewAction,
+      note: "",
+    };
+
+    const payload: PersonnelReportReviewInput = {
+      decision: draft.decision,
+      note: draft.note.trim() || undefined,
+      action:
+        draft.action === "none" || draft.action === "suspend" || draft.action === "demote" || draft.action === "ban"
+          ? draft.action
+          : "none",
+    };
+
+    await runWithFeedback(
+      `review-report-${report.id}`,
+      async () => {
+        const updated = await reviewPersonnelReport(report.id, payload);
+        setReviewQueue((current) => current.map((item) => (item.id === report.id ? updated : item)));
+        setMyReports((current) =>
+          current.map((item) => (item.id === report.id ? updated : item)),
+        );
+      },
+      "Review decision submitted",
+      "Review decision failed",
+    );
   };
 
   return (
@@ -615,6 +835,314 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
+            </SectionCard>
+          )}
+
+          {role !== "guest" && (
+            <SectionCard
+              icon={MessageSquareWarning}
+              title="User Reporting"
+              description="Report account abuse, impersonation, or security concerns. Authorized reviewers can triage and apply moderation outcomes from the same queue."
+              className={cn(!hasMaintenanceAccess && "lg:col-span-2 2xl:col-span-3")}
+            >
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Metric icon={AlertTriangle} label="Submitted" value={myReports.length} />
+                <Metric
+                  icon={Archive}
+                  label="Awaiting outcome"
+                  value={myReports.filter((item) => item.status === "open").length}
+                />
+                <Metric icon={Inbox} label="Review queue" value={canReviewReports ? pendingReviewCount : 0} />
+              </div>
+
+              <Tabs defaultValue="submit" className="w-full">
+                <TabsList className={cn(
+                  "grid h-auto w-full gap-1 bg-muted/70 p-1",
+                  canReviewReports ? "grid-cols-3" : "grid-cols-2",
+                )}>
+                  <TabsTrigger value="submit" className="text-[11px] font-heading tracking-wider uppercase">
+                    Submit Report
+                  </TabsTrigger>
+                  <TabsTrigger value="mine" className="text-[11px] font-heading tracking-wider uppercase">
+                    My Reports
+                  </TabsTrigger>
+                  {canReviewReports && (
+                    <TabsTrigger value="queue" className="text-[11px] font-heading tracking-wider uppercase">
+                      Review Queue
+                    </TabsTrigger>
+                  )}
+                </TabsList>
+
+                <TabsContent value="submit" className="mt-4 space-y-4">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <LabeledInput
+                      label="Target username"
+                      value={reportTargetUsername}
+                      onChange={setReportTargetUsername}
+                      placeholder="username to review"
+                      className={inputClass}
+                    />
+                    <div className="space-y-2">
+                      <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Category</label>
+                      <select
+                        value={reportCategory}
+                        onChange={(event) => setReportCategory(event.target.value)}
+                        className={inputClass}
+                      >
+                        {REPORT_CATEGORIES.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Summary</label>
+                    <Textarea
+                      value={reportReason}
+                      onChange={(event) => setReportReason(event.target.value)}
+                      placeholder="Concise explanation of the issue"
+                      className="min-h-[92px]"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Details</label>
+                    <Textarea
+                      value={reportDetail}
+                      onChange={(event) => setReportDetail(event.target.value)}
+                      placeholder="Timeline, evidence notes, or any context reviewers need"
+                      className="min-h-[132px]"
+                    />
+                  </div>
+
+                  <LabeledInput
+                    label="Evidence URL"
+                    value={reportEvidence}
+                    onChange={setReportEvidence}
+                    placeholder="https://..."
+                    className={inputClass}
+                  />
+
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Reports are linked to your authenticated account. Moderation outcomes may update the target account status instead of removing the record.
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="w-full sm:w-auto sm:min-w-48"
+                      disabled={!reportTargetUsername.trim() || !reportReason.trim()}
+                      isLoading={busyAction === "submit-report"}
+                      loadingText="Submitting..."
+                      onClick={() => { void handleSubmitReport(); }}
+                    >
+                      Submit Report
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="mine" className="mt-4">
+                  <div className="space-y-3">
+                    {reportLoading ? (
+                      <ContentState
+                        kind="loading"
+                        title="Loading submitted reports"
+                        description="Fetching reports tied to your account."
+                        compact
+                        className="bg-background/45"
+                      />
+                    ) : reportError ? (
+                      <ContentState
+                        kind="error"
+                        title="Reports unavailable"
+                        description={reportError}
+                        actionLabel="Retry"
+                        onAction={() => { void loadMyReports(); }}
+                        compact
+                        className="bg-background/45"
+                      />
+                    ) : myReports.length === 0 ? (
+                      <ContentState
+                        kind="empty"
+                        title="No reports submitted"
+                        description="Submitted account reports will appear here with their latest review state."
+                        compact
+                        className="bg-background/45"
+                      />
+                    ) : myReports.map((report) => (
+                      <div key={report.id} className="rounded-sm border border-border bg-background/45 p-4 space-y-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="space-y-1">
+                            <p className="font-heading text-sm tracking-[0.1em] text-foreground uppercase">
+                              {report.targetUsername}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {statusLabel(report.status)} · {statusLabel(report.category)} · {new Date(report.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                          <span className={cn(
+                            "inline-flex items-center rounded-sm border px-2 py-1 text-[10px] font-display tracking-wider uppercase",
+                            report.status === "confirmed"
+                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                              : report.status === "dismissed"
+                                ? "border-muted bg-muted/20 text-muted-foreground"
+                                : "border-accent-orange/40 bg-accent-orange/10 text-accent-orange",
+                          )}>
+                            {statusLabel(report.status)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-foreground">{report.reason}</p>
+                        {report.detail && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{report.detail}</p>}
+                        {report.reviewNote && (
+                          <div className="rounded-sm border border-border/70 bg-background/60 p-3 text-sm text-muted-foreground">
+                            Reviewer note: {report.reviewNote}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+
+                {canReviewReports && (
+                  <TabsContent value="queue" className="mt-4">
+                    <div className="space-y-3">
+                      {reviewQueueLoading ? (
+                        <ContentState
+                          kind="loading"
+                          title="Loading moderation queue"
+                          description="Fetching reports awaiting reviewer action."
+                          compact
+                          className="bg-background/45"
+                        />
+                      ) : reviewQueueError ? (
+                        <ContentState
+                          kind="error"
+                          title="Moderation queue unavailable"
+                          description={reviewQueueError}
+                          actionLabel="Retry"
+                          onAction={() => { void loadReviewQueue(); }}
+                          compact
+                          className="bg-background/45"
+                        />
+                      ) : reviewQueue.length === 0 ? (
+                        <ContentState
+                          kind="empty"
+                          title="Queue clear"
+                          description="No account reports are waiting for review."
+                          compact
+                          className="bg-background/45"
+                        />
+                      ) : reviewQueue.map((report) => {
+                        const draft = reviewDrafts[report.id] ?? {
+                          decision: "confirmed" as PersonnelReviewDecision,
+                          action: "none" as PersonnelReviewAction,
+                          note: "",
+                        };
+                        const highRiskAction = draft.action === "ban" || draft.action === "suspend" || draft.action === "demote";
+
+                        return (
+                          <div key={report.id} className="rounded-sm border border-border bg-background/45 p-4 space-y-4">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                              <div className="space-y-1">
+                                <p className="font-heading text-sm tracking-[0.1em] text-foreground uppercase">
+                                  {report.targetUsername}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  Reporter: {report.reporterUsername ?? "Unknown"} · {statusLabel(report.category)} · {new Date(report.createdAt).toLocaleString()}
+                                </p>
+                              </div>
+                              <span className={cn(
+                                "inline-flex items-center rounded-sm border px-2 py-1 text-[10px] font-display tracking-wider uppercase",
+                                report.status === "confirmed"
+                                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                                  : report.status === "dismissed"
+                                    ? "border-muted bg-muted/20 text-muted-foreground"
+                                    : "border-destructive/40 bg-destructive/10 text-destructive",
+                              )}>
+                                {statusLabel(report.status)}
+                              </span>
+                            </div>
+
+                            <div className="space-y-2 text-sm">
+                              <p className="text-foreground">{report.reason}</p>
+                              {report.detail && <p className="text-muted-foreground whitespace-pre-wrap">{report.detail}</p>}
+                              {report.targetStatus && (
+                                <p className="text-muted-foreground">
+                                  Target status: {report.targetStatus.label ?? statusLabel(report.targetStatus.key)}
+                                  {report.targetStatus.reason ? ` · ${report.targetStatus.reason}` : ""}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                              <div className="space-y-2">
+                                <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Decision</label>
+                                <select
+                                  value={draft.decision}
+                                  onChange={(event) => updateReviewDraft(report.id, { decision: event.target.value as PersonnelReviewDecision })}
+                                  className={inputClass}
+                                >
+                                  {REVIEW_DECISIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Account action</label>
+                                <select
+                                  value={draft.action}
+                                  onChange={(event) => updateReviewDraft(report.id, { action: event.target.value as PersonnelReviewAction })}
+                                  className={inputClass}
+                                >
+                                  {REVIEW_ACTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="flex items-end md:col-span-2 xl:col-span-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="w-full"
+                                  isLoading={busyAction === `review-report-${report.id}`}
+                                  loadingText="Applying..."
+                                  onClick={() => showValidation({
+                                    variant: highRiskAction ? "warning" : "info",
+                                    title: "Submit moderation decision",
+                                    description: highRiskAction
+                                      ? `Apply ${statusLabel(draft.action)} to ${report.targetUsername} and mark this report ${statusLabel(draft.decision)}?`
+                                      : `Mark report for ${report.targetUsername} as ${statusLabel(draft.decision)}?`,
+                                    confirmLabel: highRiskAction ? "Confirm moderation" : "Submit review",
+                                    cancelLabel: "Cancel",
+                                    critical: highRiskAction,
+                                    confirmDelaySeconds: highRiskAction ? 5 : undefined,
+                                    onConfirm: async () => {
+                                      await handleReviewReport(report);
+                                    },
+                                  })}
+                                >
+                                  Apply Review
+                                </Button>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Reviewer note</label>
+                              <Textarea
+                                value={draft.note}
+                                onChange={(event) => updateReviewDraft(report.id, { note: event.target.value })}
+                                placeholder="Explain the decision and any follow-up action"
+                                className="min-h-[96px]"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </TabsContent>
+                )}
+              </Tabs>
             </SectionCard>
           )}
         </div>
@@ -1237,6 +1765,12 @@ function toUserFacingError(error: unknown, fallback: string) {
   return error.message || fallback;
 }
 
+function statusLabel(value: string) {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
 function Row({ label, value, active = true, strong = false }: { label: string; value: string; active?: boolean; strong?: boolean }) {
   return (
     <div className="flex items-start justify-between gap-4">
@@ -1390,5 +1924,3 @@ function Metric({ icon: Icon, label, value }: { icon: typeof DatabaseZap; label:
     </div>
   );
 }
-
-

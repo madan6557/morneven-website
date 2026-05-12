@@ -33,9 +33,11 @@ import {
   type PersonnelLevel,
   type PersonnelTrack,
 } from "@/lib/pl";
-import { subscribeChat } from "@/services/chatApi";
-import { subscribeManagement } from "@/services/managementApi";
-import { getNavigationBadges } from "@/services/navigationBadgesApi";
+import {
+  getNavigationBadges,
+  subscribeNavigationBadges,
+  type NavigationBadges,
+} from "@/services/navigationBadgesApi";
 import logoColor from "@/assets/logo-color.png";
 
 interface NavItem {
@@ -131,30 +133,45 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
   }, []);
 
   useEffect(() => {
-    const refreshBadges = () => {
+    let cancelled = false;
+
+    const refreshBadges = async (badges?: NavigationBadges) => {
       if (role === "guest") {
         setChatBadgeCount(0);
         setManagementBadgeCount(0);
         return;
       }
 
-      getNavigationBadges({ level: personnelLevel, track, username })
-        .then((badges) => {
+      if (badges) {
+        if (!cancelled) {
           setChatBadgeCount(badges.chat.unreadTotal);
           setManagementBadgeCount(badges.management.pendingRequests);
-        })
-        .catch(() => {
+        }
+        return;
+      }
+
+      try {
+        const nextBadges = await getNavigationBadges({ level: personnelLevel, track, username });
+        if (!cancelled) {
+          setChatBadgeCount(nextBadges.chat.unreadTotal);
+          setManagementBadgeCount(nextBadges.management.pendingRequests);
+        }
+      } catch {
+        if (!cancelled) {
           setChatBadgeCount(0);
           setManagementBadgeCount(0);
-        });
+        }
+      }
     };
 
-    refreshBadges();
-    const unsubscribeChat = subscribeChat(refreshBadges);
-    const unsubscribeManagement = subscribeManagement(refreshBadges);
+    void refreshBadges();
+    const unsubscribeBadges = subscribeNavigationBadges((badges) => {
+      void refreshBadges(badges);
+    });
+
     return () => {
-      unsubscribeChat();
-      unsubscribeManagement();
+      cancelled = true;
+      unsubscribeBadges();
     };
   }, [personnelLevel, role, track, username]);
 

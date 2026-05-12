@@ -10,6 +10,7 @@ import {
   clearAll,
   subscribeNotifications,
   type AppNotification,
+  type NotificationsChangeDetail,
 } from "@/services/notificationsApi";
 import {
   Popover,
@@ -39,13 +40,46 @@ export default function NotificationBell() {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
-    const refresh = () => {
-      listNotificationsRemote(username).then(setItems).catch(() => undefined);
-      unreadCountRemote(username).then(setCount).catch(() => undefined);
+    if (!isAuthenticated) {
+      setItems([]);
+      setCount(0);
+      return;
+    }
+
+    let cancelled = false;
+
+    const refresh = (detail?: NotificationsChangeDetail) => {
+      listNotificationsRemote(username)
+        .then((nextItems) => {
+          if (!cancelled) {
+            setItems(nextItems);
+          }
+        })
+        .catch(() => undefined);
+
+      if (typeof detail?.unreadTotal === "number") {
+        if (!cancelled) {
+          setCount(detail.unreadTotal);
+        }
+        return;
+      }
+
+      unreadCountRemote(username)
+        .then((nextCount) => {
+          if (!cancelled) {
+            setCount(nextCount);
+          }
+        })
+        .catch(() => undefined);
     };
+
     refresh();
-    return subscribeNotifications(refresh);
+    const unsubscribe = subscribeNotifications(refresh);
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [username, isAuthenticated]);
 
   if (!isAuthenticated) return null;

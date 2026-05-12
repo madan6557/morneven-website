@@ -395,6 +395,73 @@ export interface MapMarker {
 
 export type UserRole = "author" | "admin" | "personel" | "guest";
 
+export type PersonnelAccountStatus =
+  | "active"
+  | "suspended"
+  | "banned"
+  | "deleted";
+
+export type PersonnelStatusSeverity = "info" | "warning" | "critical";
+
+export interface PersonnelStatusSummary {
+  key: PersonnelAccountStatus | string;
+  label?: string;
+  reason?: string;
+  detail?: string;
+  severity?: PersonnelStatusSeverity;
+  active?: boolean;
+  permanent?: boolean;
+  imposedBy?: string;
+  imposedAt?: string;
+  expiresAt?: string;
+}
+
+export interface PersonnelReportSummary {
+  open?: number;
+  resolved?: number;
+  latestAt?: string;
+}
+
+export type PersonnelReportCategory =
+  | "abuse"
+  | "harassment"
+  | "impersonation"
+  | "spam"
+  | "security"
+  | "other"
+  | string;
+
+export type PersonnelReportStatus =
+  | "open"
+  | "confirmed"
+  | "dismissed"
+  | string;
+
+export type PersonnelReviewDecision = "confirmed" | "dismissed";
+
+export type PersonnelReviewAction = "none" | "suspend" | "demote" | "ban" | "auto-demote" | "auto-ban";
+
+export interface PersonnelReport {
+  id: string;
+  targetUserId?: string;
+  targetUsername: string;
+  targetEmail?: string;
+  reporterUsername?: string;
+  category: PersonnelReportCategory;
+  reason: string;
+  detail?: string;
+  evidence?: string;
+  status: PersonnelReportStatus;
+  priority?: "low" | "normal" | "high" | "critical" | string;
+  createdAt: string;
+  updatedAt?: string;
+  reviewedAt?: string;
+  reviewerUsername?: string;
+  reviewNote?: string;
+  resolution?: string;
+  targetStatus?: PersonnelStatusSummary;
+}
+
 export interface PersonnelUser {
   id: string;
   username: string;
@@ -406,4 +473,26 @@ export interface PersonnelUser {
   updatedAt?: string;
   online?: boolean;
   lastSeenAt?: string;
+  status?: PersonnelAccountStatus | string;
+  statusLabel?: string;
+  statusReason?: string;
+  statusDetail?: string;
+  statusSeverity?: PersonnelStatusSeverity;
+  statusActive?: boolean;
+  statusPermanent?: boolean;
+  statusUpdatedAt?: string;
+  statusExpiresAt?: string;
+  archived?: boolean;
+  archivedAt?: string;
+  deleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+  originalUsername?: string;
+  moderationNote?: string;
+  reportsOpen?: number;
+  reportsResolved?: number;
+  reportSummary?: PersonnelReportSummary;
+  accountStatus?: PersonnelStatusSummary;
+  banReason?: string;
+  banExpiresAt?: string;
 }

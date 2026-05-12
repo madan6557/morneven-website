@@ -26,6 +26,9 @@
 7. **`lazy-load-content-audit-2026-05-01.md`**
    Frontend code audit for high-volume card-based content areas, especially Gallery and Lore lazy loading readiness.
 
+8. **`security-module-proposal-2026-05-11.md`**
+   Draft proposal for the Morneven Security Module, covering modular security architecture, active defense boundaries, RBAC policy hardening, audit, threat detection, file security, incident response, and phased implementation.
+
 ## Document status
 
 - `backend-requirements-full-platform-2026-04-27.md` is retained as an **earlier baseline draft** for historical context.
