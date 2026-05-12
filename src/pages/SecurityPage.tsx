@@ -15,6 +15,16 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,6 +94,7 @@ export default function SecurityPage() {
   const [actionId, setActionId] = useState<string | null>(null);
   const [eventsPage, setEventsPage] = useState(1);
   const [sessionsPage, setSessionsPage] = useState(1);
+  const [pendingRevoke, setPendingRevoke] = useState<SecuritySession | null>(null);
 
   useEffect(() => {
     setEventsPage(1);
@@ -377,7 +388,7 @@ export default function SecurityPage() {
                                 size="sm"
                                 variant="outline"
                                 className="h-7 shrink-0 gap-1 px-2"
-                                onClick={() => void handleRevokeSession(session)}
+                                onClick={() => setPendingRevoke(session)}
                                 disabled={actionId === session.id}
                               >
                                 <UserX className="h-3.5 w-3.5" />
@@ -459,6 +470,43 @@ export default function SecurityPage() {
           </Card>
         </section>
       </div>
+
+      <AlertDialog open={pendingRevoke !== null} onOpenChange={(open) => !open && setPendingRevoke(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke this session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingRevoke ? (
+                <>
+                  This will immediately sign out{" "}
+                  <span className="font-heading text-foreground">
+                    {pendingRevoke.user?.username ?? pendingRevoke.userId}
+                  </span>
+                  {" "}from this device. The account itself is not deleted, and the user can sign back in.
+                </>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pendingRevoke ? actionId === pendingRevoke.id : false}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={pendingRevoke ? actionId === pendingRevoke.id : false}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!pendingRevoke) return;
+                const target = pendingRevoke;
+                await handleRevokeSession(target);
+                setPendingRevoke(null);
+              }}
+            >
+              Revoke session
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
