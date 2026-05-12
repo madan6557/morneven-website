@@ -217,29 +217,70 @@ export default function SecurityPage() {
               <CardDescription>Latest deny, rate-limit, auth, upload, and risk engine events.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {state.events.length ? state.events.map((event) => (
-                <div key={event.id} className="rounded-sm border border-border/70 bg-background/45 p-3">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-heading text-sm tracking-wide text-foreground">{event.action}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formatDate(event.createdAt)} / actor {event.actorUsername ?? "anonymous"} / risk {event.riskScore}
-                      </p>
+              {state.events.length ? (() => {
+                const totalPages = Math.max(1, Math.ceil(state.events.length / EVENTS_PAGE_SIZE));
+                const safePage = Math.min(eventsPage, totalPages);
+                const start = (safePage - 1) * EVENTS_PAGE_SIZE;
+                const pageEvents = state.events.slice(start, start + EVENTS_PAGE_SIZE);
+                return (
+                  <>
+                    <ul className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
+                      {pageEvents.map((event) => (
+                        <li key={event.id} className="rounded-sm border border-border/70 bg-background/45 px-3 py-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="min-w-0 flex-1 truncate font-heading text-sm tracking-wide text-foreground">
+                              {event.action}
+                            </p>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              <Badge variant="outline" className={cn("text-[10px] font-display uppercase tracking-wider", severityClass(event.severity))}>
+                                {event.severity}
+                              </Badge>
+                              <Badge variant="outline" className="text-[10px] font-display uppercase tracking-wider">
+                                {event.decision}
+                              </Badge>
+                            </div>
+                          </div>
+                          <p className="mt-1 truncate text-[11px] text-muted-foreground">
+                            {formatDate(event.createdAt)} · {event.actorUsername ?? "anonymous"} · risk {event.riskScore}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+                      <span>
+                        {start + 1}–{Math.min(start + EVENTS_PAGE_SIZE, state.events.length)} of {state.events.length}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 px-2"
+                          onClick={() => setEventsPage((p) => Math.max(1, p - 1))}
+                          disabled={safePage <= 1}
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                          Prev
+                        </Button>
+                        <span className="px-1 font-display tracking-[0.1em]">
+                          {safePage}/{totalPages}
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 px-2"
+                          onClick={() => setEventsPage((p) => Math.min(totalPages, p + 1))}
+                          disabled={safePage >= totalPages}
+                        >
+                          Next
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline" className={cn("text-[10px] font-display uppercase tracking-wider", severityClass(event.severity))}>
-                        {event.severity}
-                      </Badge>
-                      <Badge variant="outline" className="text-[10px] font-display uppercase tracking-wider">
-                        {event.decision}
-                      </Badge>
-                    </div>
-                  </div>
-                  <p className="mt-2 break-all font-mono text-[11px] text-muted-foreground">
-                    request {event.requestId ?? "N/A"} / session {shortHash(event.sessionId)}
-                  </p>
-                </div>
-              )) : (
+                  </>
+                );
+              })() : (
                 <EmptyState text={state.loading ? "Loading events." : "No security events recorded."} />
               )}
             </CardContent>
