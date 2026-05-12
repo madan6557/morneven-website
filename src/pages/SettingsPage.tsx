@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Archive,
   CheckCircle2,
+  ChevronDown,
   DatabaseZap,
   Eye,
   EyeOff,
@@ -2133,6 +2134,7 @@ function SectionCard({
   children,
   className,
   accentClass = "text-accent-orange",
+  defaultOpen = false,
 }: {
   icon: ComponentType<{ className?: string }>;
   title: string;
@@ -2140,17 +2142,35 @@ function SectionCard({
   children: ReactNode;
   className?: string;
   accentClass?: string;
+  defaultOpen?: boolean;
 }) {
+  // Mobile-only collapse so users don't scroll past long feature blocks to
+  // reach the bottom panels. On >=sm, content is always expanded.
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <section className={cn("hud-border bg-card space-y-4 p-4 sm:space-y-5 sm:p-5", className)}>
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Icon className={cn("h-4 w-4", accentClass)} />
-          <h3 className={cn("font-heading text-sm tracking-[0.15em] uppercase", accentClass)}>{title}</h3>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-start gap-2 text-left sm:cursor-default"
+      >
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center gap-2">
+            <Icon className={cn("h-4 w-4", accentClass)} />
+            <h3 className={cn("font-heading text-sm tracking-[0.15em] uppercase", accentClass)}>{title}</h3>
+          </div>
+          <p className="text-sm leading-5 sm:leading-6 text-muted-foreground">{description}</p>
         </div>
-        <p className="text-sm leading-5 sm:leading-6 text-muted-foreground">{description}</p>
-      </div>
-      {children}
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 mt-1 shrink-0 text-muted-foreground transition-transform sm:hidden",
+            open && "rotate-180",
+          )}
+          aria-hidden
+        />
+      </button>
+      <div className={cn(open ? "block" : "hidden", "sm:block")}>{children}</div>
     </section>
   );
 }
