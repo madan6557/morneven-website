@@ -120,7 +120,96 @@ function ensureRealtimeBridge() {
 
   releaseRealtimeBridge = subscribeRealtimeEvents(
     [...REALTIME_EVENTS],
-    () => {
+    (payload, envelope) => {
+      if (envelope.event === "socket.ready") {
+        emitChatChanged();
+        return;
+      }
+
+      if (envelope.event === "chat.message.created" && payload && typeof payload === "object") {
+        const message = payload as ChatMessage;
+        if (message.conversationId) {
+          const current = messageCache.get(message.conversationId) ?? [];
+          if (!current.some((item) => item.id === message.id)) {
+            messageCache.set(
+              message.conversationId,
+              [...current, message].sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+            );
+          }
+        }
+        emitChatChanged();
+        return;
+      }
+
+      if (envelope.event === "chat.message.updated" && payload && typeof payload === "object") {
+        const message = payload as ChatMessage;
+        if (message.conversationId) {
+          const current = messageCache.get(message.conversationId) ?? [];
+          const index = current.findIndex((item) => item.id === message.id);
+          if (index >= 0) {
+            const next = [...current];
+            next[index] = message;
+            messageCache.set(message.conversationId, next);
+          }
+        }
+        emitChatChanged();
+        return;
+      }
+
+      if (envelope.event === "chat.message.deleted" && payload && typeof payload === "object") {
+        const eventPayload = payload as { id?: string; conversationId?: string };
+        if (eventPayload.id && eventPayload.conversationId) {
+          const current = messageCache.get(eventPayload.conversationId) ?? [];
+          messageCache.set(
+            eventPayload.conversationId,
+            current.filter((item) => item.id !== eventPayload.id),
+          );
+        }
+        emitChatChanged();
+        return;
+      }
+
+      if (
+        (envelope.event === "chat.conversation.created"
+          || envelope.event === "chat.conversation.updated"
+          || envelope.event === "chat.invite.created")
+        && payload
+        && typeof payload === "object"
+        && "id" in payload
+      ) {
+        upsertConversation(payload as Conversation);
+        emitChatChanged();
+        return;
+      }
+
+      if (envelope.event === "chat.invite.resolved" && payload && typeof payload === "object") {
+        const eventPayload = payload as { conversationId?: string; status?: string };
+        if (eventPayload.conversationId) {
+          if (eventPayload.status === "accepted") {
+            inviteCache = inviteCache.filter((item) => item.id !== eventPayload.conversationId);
+          }
+          if (eventPayload.status === "rejected") {
+            inviteCache = inviteCache.filter((item) => item.id !== eventPayload.conversationId);
+          }
+        }
+        emitChatChanged();
+        return;
+      }
+
+      if (envelope.event === "chat.unread.updated" && payload && typeof payload === "object") {
+        const eventPayload = payload as { conversationId?: string };
+        if (eventPayload.conversationId) {
+          delete unreadCountCache[eventPayload.conversationId];
+        }
+        emitChatChanged();
+        return;
+      }
+
+      if (envelope.event === "chat.read.updated") {
+        emitChatChanged();
+        return;
+      }
+
       emitChatChanged();
     },
   );

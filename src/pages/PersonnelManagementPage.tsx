@@ -86,6 +86,26 @@ function roleBadgeLabel(person: PersonnelUser) {
   return null;
 }
 
+const STATUS_FILTERS = [
+  { key: "operational", label: "Operational" },
+  { key: "all", label: "All Status" },
+  { key: "active", label: "Active" },
+  { key: "suspended", label: "Suspended" },
+  { key: "banned", label: "Banned" },
+  { key: "deleted", label: "Deleted Archive" },
+] as const;
+
+const ROLE_FILTERS = [
+  { key: "all", label: "All Roles" },
+  { key: "author", label: "Author" },
+  { key: "admin", label: "Admin" },
+  { key: "personel", label: "Personnel" },
+  { key: "guest", label: "Guest" },
+] as const;
+
+type StatusFilter = (typeof STATUS_FILTERS)[number]["key"];
+type RoleFilter = (typeof ROLE_FILTERS)[number]["key"];
+
 export default function PersonnelManagementPage() {
   const { personnelLevel, username, track, role } = useAuth();
   const { toast } = useToast();
@@ -94,6 +114,9 @@ export default function PersonnelManagementPage() {
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [filter, setFilter] = useState("");
   const [trackFilter, setTrackFilter] = useState<"all" | PersonnelTrack>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("operational");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [levelFilter, setLevelFilter] = useState<PersonnelLevel | "all">("all");
   const [creating, setCreating] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [newUser, setNewUser] = useState<Omit<PersonnelUser, "id" | "updatedAt">>({
@@ -143,6 +166,7 @@ export default function PersonnelManagementPage() {
   const canUpdatePersonnelRecord = (p: PersonnelUser) => {
     const isSelf = p.username.toLowerCase() === username.toLowerCase();
     const isTargetAuthor = p.level >= PL_FULL_AUTHORITY && p.role === "author";
+    if (p.status === "deleted") return false;
     if (isSelf) return personnelLevel >= 6;
     if (personnelLevel < 5) return false;
     if (personnelLevel === 5) return p.track === track && p.level < PL_FULL_AUTHORITY;
@@ -154,6 +178,7 @@ export default function PersonnelManagementPage() {
   const canDeletePersonnelRow = (p: PersonnelUser) => {
     const isSelf = p.username.toLowerCase() === username.toLowerCase();
     const isTargetAuthor = p.level >= PL_FULL_AUTHORITY && p.role === "author";
+    if (p.status === "deleted") return false;
     if (isSelf || !canDeletePersonnelRecord) return false;
     if (isTargetAuthor) return false;
     if (isPl7Admin) return p.role !== "author";
@@ -170,6 +195,12 @@ export default function PersonnelManagementPage() {
     if (isPl7Author) return !isTargetAuthor;
     return false;
   };
+
+  const canBulkSelectPersonnel = (p: PersonnelUser) =>
+    canBulkUpdatePersonnel &&
+    p.username.toLowerCase() !== username.toLowerCase() &&
+    p.status !== "deleted" &&
+    canUpdatePersonnelRecord(p);
 
   const handleStatusUpdate = async (
     person: PersonnelUser,
@@ -216,16 +247,36 @@ export default function PersonnelManagementPage() {
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    return people.filter((p) => {
-      if (trackFilter !== "all" && p.track !== trackFilter) return false;
-      if (!q) return true;
-      return (
-        p.username.toLowerCase().includes(q) ||
-        p.email.toLowerCase().includes(q) ||
-        (p.note ?? "").toLowerCase().includes(q)
-      );
-    });
-  }, [people, filter, trackFilter]);
+    const statusRank: Record<string, number> = {
+      active: 0,
+      suspended: 1,
+      banned: 2,
+      deleted: 3,
+    };
+
+    return [...people]
+      .filter((p) => {
+        if (trackFilter !== "all" && p.track !== trackFilter) return false;
+        if (statusFilter === "operational" && p.status === "deleted") return false;
+        if (statusFilter !== "all" && statusFilter !== "operational" && p.status !== statusFilter) return false;
+        if (roleFilter !== "all" && p.role !== roleFilter) return false;
+        if (levelFilter !== "all" && p.level !== levelFilter) return false;
+        if (!q) return true;
+        return (
+          p.username.toLowerCase().includes(q) ||
+          p.email.toLowerCase().includes(q) ||
+          (p.note ?? "").toLowerCase().includes(q) ||
+          (p.statusLabel ?? "").toLowerCase().includes(q) ||
+          (p.statusReason ?? "").toLowerCase().includes(q)
+        );
+      })
+      .sort((left, right) => {
+        const statusDiff = (statusRank[left.status ?? "active"] ?? 99) - (statusRank[right.status ?? "active"] ?? 99);
+        if (statusDiff !== 0) return statusDiff;
+        if (right.level !== left.level) return right.level - left.level;
+        return left.username.localeCompare(right.username);
+      });
+  }, [people, filter, trackFilter, statusFilter, roleFilter, levelFilter]);
 
   // PL5+ guard. Detailed create, update, and delete permissions are enforced
   // by the action-level predicates below.
@@ -374,18 +425,19 @@ export default function PersonnelManagementPage() {
     });
   };
 
+  const bulkSelectable = filtered.filter(canBulkSelectPersonnel);
   const allFilteredSelected =
-    filtered.length > 0 && filtered.every((p) => selected.has(p.id));
+    bulkSelectable.length > 0 && bulkSelectable.every((p) => selected.has(p.id));
   const someFilteredSelected =
-    filtered.some((p) => selected.has(p.id)) && !allFilteredSelected;
+    bulkSelectable.some((p) => selected.has(p.id)) && !allFilteredSelected;
 
   const toggleSelectAllFiltered = () => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (allFilteredSelected) {
-        filtered.forEach((p) => next.delete(p.id));
+        bulkSelectable.forEach((p) => next.delete(p.id));
       } else {
-        filtered.forEach((p) => next.add(p.id));
+        bulkSelectable.forEach((p) => next.add(p.id));
       }
       return next;
     });
@@ -568,31 +620,94 @@ export default function PersonnelManagementPage() {
         )}
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[220px]">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <input
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              placeholder="Search username, email, note..."
-              className="w-full pl-7 pr-3 py-2 bg-card border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            />
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Search username, email, note, or status..."
+                className="w-full pl-7 pr-3 py-2 bg-card border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {(["all", ...PERSONNEL_TRACKS.map((t) => t.key)] as Array<"all" | PersonnelTrack>).map((k) => (
+                <button
+                  key={k}
+                  onClick={() => setTrackFilter(k)}
+                  className={`px-3 py-1.5 text-[10px] font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${
+                    trackFilter === k
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {k === "all" ? "All Tracks" : PERSONNEL_TRACKS.find((t) => t.key === k)?.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-1">
-            {(["all", ...PERSONNEL_TRACKS.map((t) => t.key)] as Array<"all" | PersonnelTrack>).map((k) => (
-              <button
-                key={k}
-                onClick={() => setTrackFilter(k)}
-                className={`px-3 py-1.5 text-[10px] font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${
-                  trackFilter === k
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "border-border text-muted-foreground hover:bg-muted"
-                }`}
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <label className="space-y-1">
+              <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Status</span>
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+                className={inputClass}
               >
-                {k === "all" ? "All Tracks" : PERSONNEL_TRACKS.find((t) => t.key === k)?.label}
+                {STATUS_FILTERS.map((option) => (
+                  <option key={option.key} value={option.key}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Role</span>
+              <select
+                value={roleFilter}
+                onChange={(event) => setRoleFilter(event.target.value as RoleFilter)}
+                className={inputClass}
+              >
+                {ROLE_FILTERS.map((option) => (
+                  <option key={option.key} value={option.key}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Level</span>
+              <select
+                value={levelFilter}
+                onChange={(event) =>
+                  setLevelFilter(event.target.value === "all" ? "all" : (Number(event.target.value) as PersonnelLevel))
+                }
+                className={inputClass}
+              >
+                <option value="all">All Levels</option>
+                {[...PERSONNEL_LEVELS, PL_FULL_AUTHORITY].map((level) => (
+                  <option key={level} value={level}>L{level}</option>
+                ))}
+              </select>
+            </label>
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setFilter("");
+                  setTrackFilter("all");
+                  setStatusFilter("operational");
+                  setRoleFilter("all");
+                  setLevelFilter("all");
+                }}
+                className="w-full px-3 py-2 text-xs font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors"
+              >
+                RESET FILTERS
               </button>
-            ))}
+            </div>
           </div>
+
+          <p className="text-[11px] font-body text-muted-foreground">
+            Deleted accounts stay archived for history safety and are isolated under <span className="text-foreground">Deleted Archive</span> or <span className="text-foreground">All Status</span>.
+          </p>
         </div>
 
         {/* Bulk action toolbar - visible when 1+ rows are selected. Lets the
@@ -664,7 +779,8 @@ export default function PersonnelManagementPage() {
                     checked={allFilteredSelected}
                     ref={(el) => { if (el) el.indeterminate = someFilteredSelected; }}
                     onChange={toggleSelectAllFiltered}
-                    className="h-4 w-4 accent-primary cursor-pointer"
+                    disabled={bulkSelectable.length === 0}
+                    className="h-4 w-4 accent-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                   />
                 </th>
                 <th className="text-left p-3 font-display text-[10px] tracking-[0.15em] uppercase text-muted-foreground">User</th>
@@ -690,7 +806,8 @@ export default function PersonnelManagementPage() {
                         aria-label={`Select ${p.username}`}
                         checked={selected.has(p.id)}
                         onChange={() => toggleSelected(p.id)}
-                        className="h-4 w-4 accent-primary cursor-pointer"
+                        disabled={!canBulkSelectPersonnel(p)}
+                        className="h-4 w-4 accent-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                       />
                     </td>
                     <td className="p-3 align-top">
@@ -939,7 +1056,8 @@ export default function PersonnelManagementPage() {
                       aria-label={`Select ${p.username}`}
                       checked={selected.has(p.id)}
                       onChange={() => toggleSelected(p.id)}
-                      className="h-4 w-4 mt-0.5 accent-primary cursor-pointer"
+                      disabled={!canBulkSelectPersonnel(p)}
+                      className="h-4 w-4 mt-0.5 accent-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                     />
                     <div>
                       <div className="flex flex-wrap items-center gap-2">

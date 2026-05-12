@@ -523,7 +523,19 @@ export default function ChatPage() {
   const iCanManage = activeConv ? canManage(activeConv, username) : false;
   const getAuthorMeta = (author: string): ChatAuthorMeta => {
     const fromPersonnel = personnelByUsername.get(author.toLowerCase());
-    if (fromPersonnel) return fromPersonnel;
+    if (fromPersonnel) {
+      if (fromPersonnel.status === "deleted") {
+        return {
+          username: "Deleted User",
+          level: fromPersonnel.level,
+          track: fromPersonnel.track,
+          note: fromPersonnel.statusReason ?? "This message was sent by a user account that has been removed.",
+          deleted: true,
+          originalUsername: fromPersonnel.username,
+        };
+      }
+      return fromPersonnel;
+    }
 
     const fromConversation = activeConv?.members.find((member) => member.username === author) as
       | (Conversation["members"][number] & { level?: number; personnelLevel?: number; track?: PersonnelTrack })

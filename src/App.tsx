@@ -17,6 +17,7 @@ import { useEffect } from "react";
 
 const Landing = lazy(() => import("./pages/Landing"));
 const Auth = lazy(() => import("./pages/Auth"));
+const PasswordResetConfirmationPage = lazy(() => import("./pages/PasswordResetConfirmationPage"));
 const HomePage = lazy(() => import("./pages/HomePage"));
 const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
 const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
@@ -73,6 +74,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Landing />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/auth/password-reset/confirm" element={<PasswordResetConfirmationPage />} />
                 <Route element={<AppLayout />}>
                   <Route path="/home" element={<HomePage />} />
                   <Route path="/projects" element={<ProjectsPage />} />
