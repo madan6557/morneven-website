@@ -94,6 +94,7 @@ export default function SecurityPage() {
   const [actionId, setActionId] = useState<string | null>(null);
   const [eventsPage, setEventsPage] = useState(1);
   const [sessionsPage, setSessionsPage] = useState(1);
+  const [pendingRevoke, setPendingRevoke] = useState<SecuritySession | null>(null);
 
   useEffect(() => {
     setEventsPage(1);
