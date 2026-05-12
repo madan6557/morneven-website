@@ -352,37 +352,83 @@ export default function SecurityPage() {
               <CardDescription>Security sessions are revocable without deleting the account.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {state.sessions.length ? state.sessions.slice(0, 12).map((session) => (
-                <div key={session.id} className="rounded-sm border border-border/70 bg-background/45 p-3">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="font-heading text-sm text-foreground">{session.user?.username ?? session.userId}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {session.user?.role ?? "unknown"} / L{session.user?.level ?? "?"} / risk {session.riskScore}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">Last seen {formatDate(session.lastSeenAt)}</p>
+              {state.sessions.length ? (() => {
+                const totalPages = Math.max(1, Math.ceil(state.sessions.length / SESSIONS_PAGE_SIZE));
+                const safePage = Math.min(sessionsPage, totalPages);
+                const start = (safePage - 1) * SESSIONS_PAGE_SIZE;
+                const pageSessions = state.sessions.slice(start, start + SESSIONS_PAGE_SIZE);
+                return (
+                  <>
+                    <ul className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
+                      {pageSessions.map((session) => (
+                        <li key={session.id} className="rounded-sm border border-border/70 bg-background/45 px-3 py-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-heading text-sm text-foreground">
+                                {session.user?.username ?? session.userId}
+                              </p>
+                              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                                {session.user?.role ?? "unknown"} · L{session.user?.level ?? "?"} · risk {session.riskScore} · {formatDate(session.lastSeenAt)}
+                              </p>
+                            </div>
+                            {!session.revokedAt && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-7 shrink-0 gap-1 px-2"
+                                onClick={() => void handleRevokeSession(session)}
+                                disabled={actionId === session.id}
+                              >
+                                <UserX className="h-3.5 w-3.5" />
+                                Revoke
+                              </Button>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+                      <span>
+                        {start + 1}–{Math.min(start + SESSIONS_PAGE_SIZE, state.sessions.length)} of {state.sessions.length}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 px-2"
+                          onClick={() => setSessionsPage((p) => Math.max(1, p - 1))}
+                          disabled={safePage <= 1}
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                          Prev
+                        </Button>
+                        <span className="px-1 font-display tracking-[0.1em]">
+                          {safePage}/{totalPages}
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 px-2"
+                          onClick={() => setSessionsPage((p) => Math.min(totalPages, p + 1))}
+                          disabled={safePage >= totalPages}
+                        >
+                          Next
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                    {!session.revokedAt && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="gap-2"
-                        onClick={() => void handleRevokeSession(session)}
-                        disabled={actionId === session.id}
-                      >
-                        <UserX className="h-4 w-4" />
-                        Revoke
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )) : (
+                  </>
+                );
+              })() : (
                 <EmptyState text={state.loading ? "Loading sessions." : "No security sessions recorded."} />
               )}
             </CardContent>
           </Card>
         </section>
+
 
         <section>
           <Card className={panelClass}>
