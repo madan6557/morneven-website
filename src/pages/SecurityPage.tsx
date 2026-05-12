@@ -388,7 +388,7 @@ export default function SecurityPage() {
                                 size="sm"
                                 variant="outline"
                                 className="h-7 shrink-0 gap-1 px-2"
-                                onClick={() => void handleRevokeSession(session)}
+                                onClick={() => setPendingRevoke(session)}
                                 disabled={actionId === session.id}
                               >
                                 <UserX className="h-3.5 w-3.5" />
