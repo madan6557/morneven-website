@@ -393,7 +393,7 @@ export interface MapMarker {
   loreLink?: string;
 }
 
-export type UserRole = "author" | "admin" | "personel" | "guest";
+export type UserRole = "author" | "admin" | "security" | "personel" | "guest";
 
 export type PersonnelAccountStatus =
   | "active"

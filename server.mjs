@@ -1,10 +1,19 @@
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, normalize, resolve, sep } from "node:path";
 
 const port = Number(process.env.PORT || 8080);
 const distDir = resolve("dist");
 const indexPath = join(distDir, "index.html");
+const packageJson = JSON.parse(readFileSync(resolve("package.json"), "utf-8"));
+const frontendVersion = {
+  service: "morneven-website",
+  version: packageJson.version || "unknown",
+  buildVersion: process.env.BUILD_VERSION || packageJson.version || "unknown",
+  commitSha: process.env.BUILD_COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA || null,
+  env: process.env.NODE_ENV || "production",
+  startedAt: new Date().toISOString(),
+};
 
 if (!existsSync(indexPath)) {
   console.error(`Missing build output: ${indexPath}`);
@@ -58,7 +67,13 @@ function resolvePublicPath(requestUrl) {
 createServer((request, response) => {
   if (request.url === "/health" || request.url === "/ready") {
     response.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-    response.end(JSON.stringify({ ok: true }));
+    response.end(JSON.stringify({ ok: true, env: frontendVersion.env }));
+    return;
+  }
+
+  if (request.url === "/version") {
+    response.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    response.end(JSON.stringify(frontendVersion));
     return;
   }
 

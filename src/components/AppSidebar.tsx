@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
+  ShieldCheck,
   LogOut,
   User,
   Map,
@@ -24,10 +25,12 @@ import {
 } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
+import type { UserRole } from "@/types";
 import {
   PERSONNEL_LEVELS,
   PERSONNEL_TRACKS,
   PL_FULL_AUTHORITY,
+  canAccessSecurityConsole,
   canManagePersonnel,
   canEnterAuthorPanel,
   type PersonnelLevel,
@@ -47,7 +50,7 @@ interface NavItem {
   badge?: "chat" | "management";
   // Visibility predicate; receives current PL + track + role.
   // Default: visible to everyone.
-  visible?: (ctx: { role: string; level: PersonnelLevel; track: PersonnelTrack }) => boolean;
+  visible?: (ctx: { role: UserRole; level: PersonnelLevel; track: PersonnelTrack }) => boolean;
 }
 
 const navItems: NavItem[] = [
@@ -75,6 +78,12 @@ const navItems: NavItem[] = [
     url: "/author",
     icon: Shield,
     visible: ({ level, track }) => canEnterAuthorPanel(level, track),
+  },
+  {
+    title: "Security",
+    url: "/security",
+    icon: ShieldCheck,
+    visible: ({ role, level }) => canAccessSecurityConsole(level, role),
   },
   {
     title: "Personnel",
@@ -110,7 +119,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
   );
 
   // Authors can preview every tier including the hidden L7 (Full Authority).
-  // Everyone else stops at the public ladder (L0–L6).
+  // Everyone else stops at the public ladder (L0-L6).
   const selectableLevels: PersonnelLevel[] =
     role === "author" ? [...PERSONNEL_LEVELS, PL_FULL_AUTHORITY] : PERSONNEL_LEVELS;
 
@@ -253,7 +262,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
               >
                 {selectableLevels.map((l) => (
                   <option key={l} value={l}>
-                    L{l}{l === PL_FULL_AUTHORITY ? " · Full" : ""}
+                    L{l}{l === PL_FULL_AUTHORITY ? " (Full)" : ""}
                   </option>
                 ))}
               </select>

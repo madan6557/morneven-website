@@ -48,7 +48,8 @@ export class ApiError extends Error {
   }
 }
 
-const DEFAULT_BASE_URL = "https://backend.dev.morneven.com/api";
+const DEFAULT_PRODUCTION_BASE_URL = "https://morneven-backend-production.up.railway.app/api";
+const DEFAULT_LOCAL_BASE_URL = "http://localhost:3000/api";
 const DEFAULT_REQUEST_TIMEOUT_MS = 10000;
 const TOKEN_KEY = "morneven_api_token";
 const REFRESH_TOKEN_KEY = "morneven_api_refresh_token";
@@ -62,9 +63,24 @@ export interface ApiRequestOptions extends Omit<RequestInit, "body" | "method"> 
   retryOnUnauthorized?: boolean;
 }
 
+function inferDefaultBaseUrl(): string {
+  if (typeof window === "undefined") return DEFAULT_PRODUCTION_BASE_URL;
+
+  const { hostname, origin } = window.location;
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]") {
+    return DEFAULT_LOCAL_BASE_URL;
+  }
+
+  if (hostname === "morneven.com" || hostname.endsWith(".morneven.com")) {
+    return DEFAULT_PRODUCTION_BASE_URL;
+  }
+
+  return `${origin}/api`;
+}
+
 export function getApiBaseUrl(): string {
   const configured = import.meta.env.VITE_API_BASE_URL as string | undefined;
-  const baseUrl = (configured || DEFAULT_BASE_URL).replace(/\/+$/, "");
+  const baseUrl = (configured || inferDefaultBaseUrl()).replace(/\/+$/, "");
   if (/\/(api|v1)$/i.test(baseUrl)) return baseUrl;
   return `${baseUrl}/api`;
 }
@@ -200,6 +216,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
       ...init,
       method,
       headers: requestHeaders,
+      credentials: init.credentials ?? "include",
       body: body instanceof FormData ? body : body === undefined ? undefined : JSON.stringify(body),
       signal: timeoutController.signal,
     });

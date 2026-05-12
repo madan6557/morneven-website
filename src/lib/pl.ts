@@ -36,6 +36,7 @@ const PL_OPEN_RE = /\[L([0-6])\+(?:\s+track=([a-zA-Z]+))?\]/;
 export const DEFAULT_PL_BY_ROLE: Record<UserRole, PersonnelLevel> = {
   author: 7,
   admin: 7,
+  security: 7,
   personel: 2,
   guest: 0,
 };
@@ -43,6 +44,7 @@ export const DEFAULT_PL_BY_ROLE: Record<UserRole, PersonnelLevel> = {
 export const DEFAULT_TRACK_BY_ROLE: Record<UserRole, PersonnelTrack> = {
   author: "executive",
   admin: "executive",
+  security: "executive",
   personel: "executive",
   guest: "executive",
 };
@@ -208,7 +210,7 @@ export interface SectionAccessOpts {
 //   • logistics   → only Gallery (own uploads)
 // All L6 tracks may enter the panel via Gallery, but Gallery edits are
 // scoped per-item to the original uploader (enforced in the UI layer).
-// L0–L5 → no author panel access.
+// L0-L5 has no author panel access.
 export function canAccessAuthorPanel(opts: SectionAccessOpts): boolean {
   const { level, track, section, loreSub } = opts;
   if (level >= PL_FULL_AUTHORITY) return true;
@@ -249,4 +251,8 @@ export function canModerateDiscussions(level: PersonnelLevel, track: PersonnelTr
 
 export function canManagePersonnel(level: PersonnelLevel): boolean {
   return level >= 4;
+}
+
+export function canAccessSecurityConsole(level: PersonnelLevel, role: UserRole): boolean {
+  return level >= PL_FULL_AUTHORITY && (role === "author" || role === "admin" || role === "security");
 }

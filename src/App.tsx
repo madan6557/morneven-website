@@ -34,6 +34,7 @@ const MapPage = lazy(() => import("./pages/MapPage"));
 const PersonnelLevelPage = lazy(() => import("./pages/PersonnelLevelPage"));
 const AuthorDashboard = lazy(() => import("./pages/AuthorDashboard"));
 const PersonnelManagementPage = lazy(() => import("./pages/PersonnelManagementPage"));
+const SecurityPage = lazy(() => import("./pages/SecurityPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const NewsDetail = lazy(() => import("./pages/NewsDetail"));
 const ManagementPage = lazy(() => import("./pages/ManagementPage"));
@@ -93,6 +94,7 @@ function App() {
                   <Route path="/maps" element={<MapPage />} />
                   <Route path="/author" element={<AuthorRoute><AuthorDashboard /></AuthorRoute>} />
                   <Route path="/personnel" element={<PersonnelManagementPage />} />
+                  <Route path="/security" element={<SecurityPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/news/:id" element={<NewsDetail />} />
                   <Route path="/management" element={<ManagementPage />} />

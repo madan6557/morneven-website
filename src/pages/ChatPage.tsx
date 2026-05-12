@@ -271,7 +271,7 @@ export default function ChatPage() {
           key: `${message.id}:${attachment.id}:${index}`,
           attachment,
           author: message.author,
-          createdAt: message.createdAt,
+          createdAt: new Date(message.createdAt).getTime(),
           messageId: message.id,
           text: message.text,
         })),

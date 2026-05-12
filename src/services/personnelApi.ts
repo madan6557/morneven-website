@@ -117,7 +117,7 @@ function normalizePersonnelUser(raw: unknown): PersonnelUser {
     username: asString(source.username) ?? "Unknown",
     email: asString(source.email) ?? "",
     role:
-      source.role === "author" || source.role === "admin" || source.role === "guest"
+      source.role === "author" || source.role === "admin" || source.role === "security" || source.role === "guest"
         ? source.role
         : "personel",
     level: Math.max(0, Math.min(7, Math.trunc(asNumber(source.level) ?? 0))) as PersonnelUser["level"],

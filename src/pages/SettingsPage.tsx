@@ -176,6 +176,12 @@ export default function SettingsPage() {
     () => migrationHistory.some((job) => job.status === "processing"),
     [migrationHistory],
   );
+  const isPl7Author = personnelLevel >= 7 && role === "author";
+  const isPl7Admin = personnelLevel >= 7 && role === "admin";
+  const canReviewReports = personnelLevel >= 6;
+  const canReconcileChat = isPl7Author || isPl7Admin;
+  const canUseStorageCleanup = isPl7Author || isPl7Admin;
+  const hasMaintenanceAccess = isPl7Author || isPl7Admin;
 
   useEffect(() => {
     if (personnelLevel < 7) {
@@ -441,9 +447,6 @@ export default function SettingsPage() {
 
   const trackInfo = PERSONNEL_TRACKS.find((item) => item.key === track);
   const title = trackInfo?.titles[personnelLevel] ?? "Unknown";
-  const isPl7Author = personnelLevel >= 7 && role === "author";
-  const isPl7Admin = personnelLevel >= 7 && role === "admin";
-  const canReviewReports = personnelLevel >= 6;
   const canRun = isPl7Author && confirmText === "CONFIRM" && verifyPassword(password);
   const canRunMigration =
     isPl7Author &&
@@ -452,9 +455,6 @@ export default function SettingsPage() {
     migrationSecretKey.trim().length >= 16 &&
     Boolean(migrationBaseUrl.trim() || migrationEndpoint.trim()) &&
     !(migrationBaseUrl.trim() && migrationEndpoint.trim());
-  const canReconcileChat = isPl7Author || isPl7Admin;
-  const canUseStorageCleanup = isPl7Author || isPl7Admin;
-  const hasMaintenanceAccess = isPl7Author || isPl7Admin;
   const pendingReviewCount = useMemo(
     () => reviewQueue.filter((item) => item.status === "open").length,
     [reviewQueue],

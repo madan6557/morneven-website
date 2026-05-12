@@ -33,15 +33,24 @@ function normalizeNavigationBadges(data: BackendNavigationBadges | null | undefi
     return data;
   }
 
+  const legacy = data as
+    | {
+        chatUnreadCount?: number;
+        managementPendingCount?: number;
+        notificationUnreadCount?: number;
+      }
+    | null
+    | undefined;
+
   return {
     chat: {
-      unreadTotal: Number(data?.chatUnreadCount ?? 0),
+      unreadTotal: Number(legacy?.chatUnreadCount ?? 0),
     },
     notifications: {
-      unreadTotal: Number(data?.notificationUnreadCount ?? 0),
+      unreadTotal: Number(legacy?.notificationUnreadCount ?? 0),
     },
     management: {
-      pendingRequests: Number(data?.managementPendingCount ?? 0),
+      pendingRequests: Number(legacy?.managementPendingCount ?? 0),
     },
   };
 }
