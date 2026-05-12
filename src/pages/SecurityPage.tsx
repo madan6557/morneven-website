@@ -81,6 +81,11 @@ export default function SecurityPage() {
   const { isAuthenticated, role, personnelLevel } = useAuth();
   const [state, setState] = useState<LoadState>(initialState);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [eventsPage, setEventsPage] = useState(1);
+
+  useEffect(() => {
+    setEventsPage(1);
+  }, [state.events.length]);
 
   const accessAllowed = canAccessSecurityConsole(personnelLevel, role);
 
