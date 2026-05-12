@@ -37,6 +37,7 @@ import {
 } from "@/services/securityApi";
 
 const EVENTS_PAGE_SIZE = 6;
+const SESSIONS_PAGE_SIZE = 6;
 
 const panelClass = "hud-border bg-card/95";
 const metricClass = "hud-border-sm bg-background/50 p-4 space-y-2";
