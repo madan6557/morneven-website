@@ -470,6 +470,43 @@ export default function SecurityPage() {
           </Card>
         </section>
       </div>
+
+      <AlertDialog open={pendingRevoke !== null} onOpenChange={(open) => !open && setPendingRevoke(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke this session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingRevoke ? (
+                <>
+                  This will immediately sign out{" "}
+                  <span className="font-heading text-foreground">
+                    {pendingRevoke.user?.username ?? pendingRevoke.userId}
+                  </span>
+                  {" "}from this device. The account itself is not deleted, and the user can sign back in.
+                </>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pendingRevoke ? actionId === pendingRevoke.id : false}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={pendingRevoke ? actionId === pendingRevoke.id : false}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!pendingRevoke) return;
+                const target = pendingRevoke;
+                await handleRevokeSession(target);
+                setPendingRevoke(null);
+              }}
+            >
+              Revoke session
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
