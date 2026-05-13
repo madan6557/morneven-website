@@ -686,17 +686,6 @@ export default function SettingsPage() {
     }));
   };
 
-  const updatePasswordResetReviewDraft = (requestId: string, patch: Partial<PasswordResetReviewDraft>) => {
-    setPasswordResetDrafts((current) => ({
-      ...current,
-      [requestId]: {
-        status: "approved",
-        reviewNote: "",
-        ...current[requestId],
-        ...patch,
-      },
-    }));
-  };
 
   const handleSubmitReport = async () => {
     if (role === "guest") return;
