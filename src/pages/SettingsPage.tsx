@@ -460,10 +460,6 @@ export default function SettingsPage() {
     () => reviewQueue.filter((item) => item.status === "open").length,
     [reviewQueue],
   );
-  const pendingPasswordResetCount = useMemo(
-    () => passwordResetRequests.filter((item) => item.status === "pending").length,
-    [passwordResetRequests],
-  );
   const inputClass = "w-full rounded-sm border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:ring-1 focus:ring-primary";
   const helperTextClass = "text-sm leading-6 text-muted-foreground";
 
