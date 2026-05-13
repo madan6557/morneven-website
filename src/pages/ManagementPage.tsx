@@ -90,7 +90,7 @@ const STATUS_META: Record<RequestStatus, { label: string; hsl: string; icon: typ
   },
 };
 
-const TAB_VALUES = ["transfer", "clearance", "submission", "team", "executive", "queue", "mine"] as const;
+const TAB_VALUES = ["transfer", "clearance", "submission", "team", "executive", "queue", "mine", "reset"] as const;
 type MgmtTab = typeof TAB_VALUES[number];
 
 const panelClass = "hud-border bg-card/95 p-4 md:p-5 space-y-4";
