@@ -51,6 +51,7 @@ import { PERSONNEL_TRACKS, type PersonnelTrack, type PersonnelLevel } from "@/li
 import { themedHslStyle } from "@/lib/themeColor";
 import type { PersonnelUser } from "@/types";
 import RequestPayloadPreview from "@/components/RequestPayloadPreview";
+import PasswordResetReviewPanel from "@/components/PasswordResetReviewPanel";
 import { showValidation } from "@/components/ui/validation-dialog";
 
 const KIND_LABEL: Record<RequestKind, string> = {
