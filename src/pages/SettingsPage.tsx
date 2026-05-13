@@ -556,30 +556,6 @@ export default function SettingsPage() {
     }
   };
 
-  const loadPasswordResetRequests = async () => {
-    if (!hasMaintenanceAccess) return;
-    setPasswordResetLoading(true);
-    setPasswordResetError(null);
-    try {
-      const items = await listPasswordResetRequests();
-      setPasswordResetRequests(items);
-      setPasswordResetDrafts((current) => {
-        const next = { ...current };
-        items.forEach((item) => {
-          next[item.id] ??= {
-            status: "approved",
-            reviewNote: "",
-          };
-        });
-        return next;
-      });
-    } catch (error) {
-      setPasswordResetRequests([]);
-      setPasswordResetError(toUserFacingError(error, "Password reset requests could not be loaded."));
-    } finally {
-      setPasswordResetLoading(false);
-    }
-  };
 
   const loadChatReport = async () => {
     if (personnelLevel < 7) return;
