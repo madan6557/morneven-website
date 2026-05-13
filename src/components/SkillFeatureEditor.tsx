@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import * as Lucide from "lucide-react";
 import { Image, Plus, Search, Upload, X, Zap } from "lucide-react";
-import type { Feature, Skill } from "@/types";
+import { SKILL_FEATURE_CATEGORIES, type Feature, type Skill, type SkillFeatureCategory } from "@/types";
 import { SKILL_ATTRIBUTE_LIST, buildAttributeTag } from "@/lib/skillAttributes";
 import { themedHslBorder, themedHslColor, themedHslSurface } from "@/lib/themeColor";
 import { apiUpload } from "@/services/restClient";
@@ -11,6 +11,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 const inputClass =
   "w-full px-2 py-1.5 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 const labelClass = "font-heading text-[10px] tracking-wider text-muted-foreground uppercase";
+const categoryOptions: Array<{ value: SkillFeatureCategory; label: string }> = [
+  { value: "general", label: "General" },
+  { value: "passive", label: "Passive" },
+  { value: "active", label: "Active" },
+];
 
 interface SkillFeatureEditorProps {
   variant: "skill" | "feature";
@@ -61,6 +66,7 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
     const next: Feature = {
       id: `feature-${Date.now()}`,
       title: "",
+      category: "general",
       summary: "",
       details: "",
       restriction: { key: "Condition", value: "" },
@@ -82,7 +88,7 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
     next[idx] = {
       ...current,
       restriction: {
-        key: current.restriction?.key ?? "Cooldown",
+        key: current.restriction?.key ?? "",
         value: current.restriction?.value ?? "",
         [field]: value,
       },
@@ -102,7 +108,7 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
     next[idx] = {
       ...current,
       restriction: {
-        key: current.restriction?.key ?? "Condition",
+        key: current.restriction?.key ?? "",
         value: current.restriction?.value ?? "",
         [field]: value,
       },
@@ -225,19 +231,21 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                   </div>
                   <div>
                     <label className={labelClass}>Category</label>
-                    <input
-                      type="text"
-                      value={(item as Skill).category}
+                    <select
+                      value={((item as Skill).category || "general").toLowerCase()}
                       onChange={(e) => updateSkill(idx, "category", e.target.value)}
-                      placeholder="combat, support, utility"
                       className={inputClass}
-                    />
+                    >
+                      {categoryOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className={labelClass}>Restriction Key</label>
                     <input
                       type="text"
-                      value={(item as Skill).restriction?.key || "Cooldown"}
+                      value={(item as Skill).restriction?.key ?? ""}
                       onChange={(e) => updateSkillRestriction(idx, "key", e.target.value)}
                       placeholder="e.g. Cooldown, Usage, Condition"
                       className={inputClass}
@@ -267,6 +275,18 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                     />
                   </div>
                   <div>
+                    <label className={labelClass}>Category</label>
+                    <select
+                      value={(((item as Feature).category || "general") as string).toLowerCase()}
+                      onChange={(e) => updateFeature(idx, "category", e.target.value)}
+                      className={inputClass}
+                    >
+                      {categoryOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
                     <label className={labelClass}>Tags</label>
                     <input
                       type="text"
@@ -289,7 +309,7 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                     <label className={labelClass}>Restriction Key</label>
                     <input
                       type="text"
-                      value={(item as Feature).restriction?.key || "Condition"}
+                      value={(item as Feature).restriction?.key ?? ""}
                       onChange={(e) => updateFeatureRestriction(idx, "key", e.target.value)}
                       placeholder="e.g. Condition, Usage, Cooldown"
                       className={inputClass}

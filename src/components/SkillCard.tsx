@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import * as Lucide from "lucide-react";
 import { Filter, Tag, X, Zap } from "lucide-react";
-import type { Feature, Skill, SkillRestriction } from "@/types";
+import { SKILL_FEATURE_CATEGORIES, type Feature, type Skill, type SkillFeatureCategory, type SkillRestriction } from "@/types";
 import { AttributeBadge, RichDescription } from "./AttributeBadge";
 import {
   SKILL_ATTRIBUTES,
@@ -32,6 +32,23 @@ function restrictionLabel(restriction?: SkillRestriction) {
   const key = restriction?.key?.trim() || "Restriction";
   const value = restriction?.value?.trim() || "-";
   return `${key}: ${value}`;
+}
+
+const categoryOrder: SkillFeatureCategory[] = ["general", "passive", "active"];
+const categoryLabels: Record<SkillFeatureCategory, string> = {
+  general: "General",
+  passive: "Passive",
+  active: "Active",
+};
+
+function normalizeCategory(value?: string): SkillFeatureCategory {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "passive" || normalized === "active") return normalized;
+  return "general";
+}
+
+function categoryLabel(value?: string) {
+  return categoryLabels[normalizeCategory(value)];
 }
 
 interface SkillCardProps {
@@ -139,7 +156,19 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
                     backgroundColor: softSurface,
                   }}
                 >
-                  {skill.category || "general"}
+                  {categoryLabel(skill.category)}
+                </span>
+              ) : null}
+              {variant === "feature" && feature ? (
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-display tracking-wider uppercase rounded-sm border"
+                  style={{
+                    color: readableHue,
+                    borderColor: softBorder,
+                    backgroundColor: softSurface,
+                  }}
+                >
+                  {categoryLabel(feature.category)}
                 </span>
               ) : null}
             </div>
@@ -302,22 +331,9 @@ function itemHasAttr(item: Skill, key: SkillAttribute) {
 
 function compareDisplayItems(a: Skill | Feature, b: Skill | Feature, variant: "skill" | "feature") {
   if (variant === "skill") {
-    const left = a as Skill;
-    const right = b as Skill;
-    const leftCategory = (left.category || "general").trim().toLowerCase();
-    const rightCategory = (right.category || "general").trim().toLowerCase();
-    const categoryCompare = leftCategory.localeCompare(rightCategory);
-    if (categoryCompare !== 0) return categoryCompare;
-    return (left.name || "").trim().toLowerCase().localeCompare((right.name || "").trim().toLowerCase());
+    return (a as Skill).name.trim().toLowerCase().localeCompare((b as Skill).name.trim().toLowerCase());
   }
-
-  const left = a as Feature;
-  const right = b as Feature;
-  const leftGroup = (left.tags?.[0] || "").trim().toLowerCase();
-  const rightGroup = (right.tags?.[0] || "").trim().toLowerCase();
-  const groupCompare = leftGroup.localeCompare(rightGroup);
-  if (groupCompare !== 0) return groupCompare;
-  return (left.title || "").trim().toLowerCase().localeCompare((right.title || "").trim().toLowerCase());
+  return ((a as Feature).title || "").trim().toLowerCase().localeCompare(((b as Feature).title || "").trim().toLowerCase());
 }
 
 export function SkillList({ title, items, accent, variant = "skill" }: SkillListProps) {
@@ -336,6 +352,21 @@ export function SkillList({ title, items, accent, variant = "skill" }: SkillList
     if (variant !== "skill" || !activeAttr) return list;
     return list.filter((item) => itemHasAttr(item as Skill, activeAttr));
   }, [activeAttr, list, variant]);
+
+  const groupedItems = useMemo(
+    () =>
+      categoryOrder
+        .map((category) => ({
+          category,
+          items: filtered.filter((item) =>
+            variant === "skill"
+              ? normalizeCategory((item as Skill).category) === category
+              : normalizeCategory((item as Feature).category) === category,
+          ),
+        }))
+        .filter((group) => group.items.length > 0),
+    [filtered, variant],
+  );
 
   if (list.length === 0) return null;
 
@@ -416,9 +447,27 @@ export function SkillList({ title, items, accent, variant = "skill" }: SkillList
           No {variant === "skill" ? "skills" : "features"} match this filter.
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {filtered.map((item) => (
-            <SkillCard key={item.id} item={item} accent={accent} variant={variant} />
+        <div className="space-y-4">
+          {groupedItems.map((group) => (
+            <section key={group.category} className="space-y-2">
+              <div className="flex items-center gap-2 px-1">
+                <span
+                  className="inline-flex items-center rounded-sm border px-2 py-0.5 text-[10px] font-display tracking-wider uppercase"
+                  style={{
+                    color: readableAccent,
+                    borderColor: softAccentBorder,
+                    backgroundColor: softAccentSurface,
+                  }}
+                >
+                  {categoryLabels[group.category]}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                {group.items.map((item) => (
+                  <SkillCard key={item.id} item={item} accent={accent} variant={variant} />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}

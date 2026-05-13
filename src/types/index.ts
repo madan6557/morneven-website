@@ -3,10 +3,13 @@ export interface SkillRestriction {
   value: string;
 }
 
+export const SKILL_FEATURE_CATEGORIES = ["general", "passive", "active"] as const;
+export type SkillFeatureCategory = (typeof SKILL_FEATURE_CATEGORIES)[number];
+
 export interface Skill {
   id: string;
   name: string;
-  category: string;
+  category: SkillFeatureCategory | string;
   restriction?: SkillRestriction;
   description: string;
   icon?: string;
@@ -16,6 +19,7 @@ export interface Skill {
 export interface Feature {
   id: string;
   title: string;
+  category?: SkillFeatureCategory | string;
   summary: string;
   details?: string;
   restriction?: SkillRestriction;
