@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiUpload, getProjectsPage, createProject, updateProject, deleteProject, getCharactersPage, createCharacter, updateCharacter, deleteCharacter, getPlacesPage, createPlace, updatePlace, deletePlace, getTechnologyPage, createTech, updateTech, deleteTech, getGalleryPage, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreaturesPage, createCreature, updateCreature, deleteCreature, getEventsPage, createEvent, updateEvent, deleteEvent, getOthersPage, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImageRemote, setMapImageRemote, type PageInfo } from "@/services/api";
@@ -18,7 +18,7 @@ import {
   type CommandCenterSettings,
 } from "@/services/commandCenterSettings";
 import type { Project, Character, CharacterContribution, Place, Technology, GalleryItem, DocItem, ProjectPatch, Creature, OtherLore, LoreEvent, EventRelatedLink, MapMarker, MapZoneStatus, CreatureClassification, CreatureDangerLevel, LoreMeta, LoreFieldNote, Skill, Feature } from "@/types";
-import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, File as FileIcon, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon, Star, CheckCircle2, FilePlus, RefreshCw, Loader2 } from "lucide-react";
+import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, File as FileIcon, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon, Star, CheckCircle2, FilePlus, RefreshCw, Loader2, ChevronDown } from "lucide-react";
 import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
 import NewsManagementSection from "@/components/NewsManagementSection";
 import CommandCenterSelectionPanel from "@/components/CommandCenterSelectionPanel";
@@ -132,6 +132,52 @@ type EditableState = {
   // Production-credit metadata (all lore + projects).
   meta?: LoreMeta;
 };
+
+function EditorSection({
+  title,
+  description,
+  badge,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  description?: string;
+  badge?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section className="overflow-hidden rounded-sm border border-border bg-muted/20">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-start justify-between gap-3 p-3 text-left transition-colors hover:bg-muted/30 sm:p-4"
+        aria-expanded={open}
+      >
+        <span className="min-w-0 space-y-1">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="font-heading text-xs tracking-wider text-accent-orange uppercase">{title}</span>
+            {badge ? (
+              <span className="rounded-sm border border-border bg-background/70 px-2 py-0.5 text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+                {badge}
+              </span>
+            ) : null}
+          </span>
+          {description ? <span className="block text-xs leading-5 text-muted-foreground">{description}</span> : null}
+        </span>
+        <ChevronDown
+          className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        />
+      </button>
+      <div className={`${open ? "block" : "hidden"} border-t border-border/70 p-3 sm:p-4`}>
+        {children}
+      </div>
+    </section>
+  );
+}
 
 const isDashboardTab = (value: string | null): value is DashboardTab => {
   if (!value) return false;
@@ -1786,7 +1832,7 @@ export default function AuthorDashboard() {
 
       {/* Edit Form */}
       {editing && canAccess(activeTab, loreSub) && (
-        <div ref={editFormRef} className="hud-border bg-card p-6 space-y-4 scroll-mt-4">
+        <div ref={editFormRef} className="hud-border bg-card p-4 space-y-3 scroll-mt-4 sm:p-6 sm:space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase">
               {isCreating ? "Create New" : "Edit"} {activeTab === "lore" ? loreSub.slice(0, -1) : activeTab.slice(0, -1)}
@@ -1796,6 +1842,11 @@ export default function AuthorDashboard() {
             </button>
           </div>
 
+          <EditorSection
+            title="Core Fields"
+            description="Identity, media, status, and type-specific fields."
+            defaultOpen
+          >
           <div className="grid gap-4 md:grid-cols-2">
             {/* Title/Name */}
             <div>
@@ -2164,36 +2215,50 @@ export default function AuthorDashboard() {
               </>
             )}
           </div>
+          </EditorSection>
 
-          {/* Short Description / Caption */}
-          <div>
-            <label className={labelClass}>{editing.caption !== undefined ? "Caption" : "Short Description"}</label>
-            <input type="text" value={editing.shortDesc ?? editing.caption ?? ""} onChange={(e) => setEditing({ ...editing, [editing.caption !== undefined ? "caption" : "shortDesc"]: e.target.value })} className={inputClass} />
-          </div>
+          <EditorSection
+            title={editing.caption !== undefined ? "Caption & Tags" : "Descriptions"}
+            description="Primary text shown on list and detail views."
+            defaultOpen
+          >
+            <div className="space-y-4">
+              {/* Short Description / Caption */}
+              <div>
+                <label className={labelClass}>{editing.caption !== undefined ? "Caption" : "Short Description"}</label>
+                <input type="text" value={editing.shortDesc ?? editing.caption ?? ""} onChange={(e) => setEditing({ ...editing, [editing.caption !== undefined ? "caption" : "shortDesc"]: e.target.value })} className={inputClass} />
+              </div>
 
-          {/* Full Description */}
-          {editing.fullDesc !== undefined && (
-            <div className="space-y-2">
-              <label className={labelClass}>Full Description</label>
-              <RestrictedMarkerTool
-                textareaRef={fullDescRef}
-                value={editing.fullDesc || ""}
-                onChange={(next) => setEditing({ ...editing, fullDesc: next })}
-              />
-              <textarea ref={fullDescRef} value={editing.fullDesc || ""} onChange={(e) => setEditing({ ...editing, fullDesc: e.target.value })} rows={5} className={inputClass + " resize-y min-h-[120px]"} />
+              {/* Full Description */}
+              {editing.fullDesc !== undefined && (
+                <div className="space-y-2">
+                  <label className={labelClass}>Full Description</label>
+                  <RestrictedMarkerTool
+                    textareaRef={fullDescRef}
+                    value={editing.fullDesc || ""}
+                    onChange={(next) => setEditing({ ...editing, fullDesc: next })}
+                  />
+                  <textarea ref={fullDescRef} value={editing.fullDesc || ""} onChange={(e) => setEditing({ ...editing, fullDesc: e.target.value })} rows={5} className={inputClass + " resize-y min-h-[120px]"} />
+                </div>
+              )}
+
+              {/* Tags (gallery) */}
+              {isGallery && (
+                <div>
+                  <label className={labelClass}>Tags (comma-separated)</label>
+                  <input type="text" value={(editing.tags || []).join(", ")} onChange={(e) => setEditing({ ...editing, tags: e.target.value.split(",").map((t: string) => t.trim()).filter(Boolean) })} className={inputClass} />
+                </div>
+              )}
             </div>
-          )}
-
-          {/* Tags (gallery) */}
-          {isGallery && (
-            <div>
-              <label className={labelClass}>Tags (comma-separated)</label>
-              <input type="text" value={(editing.tags || []).join(", ")} onChange={(e) => setEditing({ ...editing, tags: e.target.value.split(",").map((t: string) => t.trim()).filter(Boolean) })} className={inputClass} />
-            </div>
-          )}
+          </EditorSection>
 
           {/* Documentation Section */}
           {hasDocs && (
+            <EditorSection
+              title="Documentation"
+              description="Images, videos, files, and captions attached to this content."
+              badge={`${(editing.docs || []).length} item${(editing.docs || []).length === 1 ? "" : "s"}`}
+            >
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className={labelClass}>Documentation (Images/Videos/Files)</label>
@@ -2244,9 +2309,15 @@ export default function AuthorDashboard() {
                 );
               })}
             </div>
+            </EditorSection>
           )}
 
           {activeTab === "lore" && (
+            <EditorSection
+              title="Field Records"
+              description="Internal notes and observations displayed on lore detail pages."
+              badge={`${(editing.fieldNotes || []).length + (editing.observations || []).length} item${(editing.fieldNotes || []).length + (editing.observations || []).length === 1 ? "" : "s"}`}
+            >
             <div className="grid gap-4 lg:grid-cols-2">
               <FieldEntryEditor
                 label="Field Notes"
@@ -2265,29 +2336,47 @@ export default function AuthorDashboard() {
                 itemRef={newItemRef}
               />
             </div>
+            </EditorSection>
           )}
 
           {/* Skills (living entities: characters, creatures) */}
           {(isCharacter || isCreature) && (
+            <EditorSection
+              title="Skills"
+              description="Combat, support, utility skills, attribute tags, icons, and restrictions."
+              badge={`${(editing.skills || []).length} item${(editing.skills || []).length === 1 ? "" : "s"}`}
+            >
             <SkillFeatureEditor
               variant="skill"
               items={editing.skills ?? []}
               onChange={(skills) => setEditing({ ...editing, skills: skills as Skill[] })}
             />
+            </EditorSection>
           )}
 
           {/* Features (non-living entities: places, tech, other, projects) */}
           {(isPlace || isTech || isEvent || isOther || isProject) && (
+            <EditorSection
+              title="Features"
+              description="Reusable feature cards, summaries, tags, icons, and restrictions."
+              badge={`${(editing.features || []).length} item${(editing.features || []).length === 1 ? "" : "s"}`}
+            >
             <SkillFeatureEditor
               variant="feature"
               items={editing.features ?? []}
               onChange={(features) => setEditing({ ...editing, features: features as Feature[] })}
             />
+            </EditorSection>
           )}
 
 
           {/* Contributions (characters) */}
           {isCharacter && (
+            <EditorSection
+              title="Contributions"
+              description="Notable achievements, missions, and historical works."
+              badge={`${(editing.contributions || []).length} item${(editing.contributions || []).length === 1 ? "" : "s"}`}
+            >
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className={labelClass}>Contributions</label>
@@ -2314,10 +2403,16 @@ export default function AuthorDashboard() {
                 </div>
               ))}
             </div>
+            </EditorSection>
           )}
 
           {/* Patch Notes (projects) */}
           {isProject && (
+            <EditorSection
+              title="Patch Notes"
+              description="Project version history and release notes."
+              badge={`${(editing.patches || []).length} item${(editing.patches || []).length === 1 ? "" : "s"}`}
+            >
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className={labelClass}>Patch Notes</label>
@@ -2344,14 +2439,20 @@ export default function AuthorDashboard() {
                 );
               })}
             </div>
+            </EditorSection>
           )}
 
           {/* Metadata editor (production credits) - for projects + lore. */}
           {!isGallery && (
+            <EditorSection
+              title="Metadata"
+              description="Production credits and metadata surfaced on detail pages."
+            >
             <MetadataEditor
               value={editing.meta}
               onChange={(next) => setEditing({ ...editing, meta: next })}
             />
+            </EditorSection>
           )}
 
           <div className="flex justify-end gap-2">
