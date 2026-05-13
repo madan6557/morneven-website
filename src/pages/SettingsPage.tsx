@@ -147,8 +147,6 @@ export default function SettingsPage() {
   const [myReports, setMyReports] = useState<PersonnelReport[]>([]);
   const [reviewQueue, setReviewQueue] = useState<PersonnelReport[]>([]);
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
-  const [passwordResetRequests, setPasswordResetRequests] = useState<PasswordResetRequestRecord[]>([]);
-  const [passwordResetDrafts, setPasswordResetDrafts] = useState<Record<string, PasswordResetReviewDraft>>({});
   const [selected, setSelected] = useState<string[]>([]);
   const [chatReport, setChatReport] = useState<ChatReconciliationReport>(emptyChatReport);
   const [storageCleanupReport, setStorageCleanupReport] = useState<StorageCleanupReport | null>(null);
