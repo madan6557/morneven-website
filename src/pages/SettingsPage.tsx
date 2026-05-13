@@ -60,6 +60,7 @@ import {
   reviewPersonnelReport,
   type PersonnelReportCreateInput,
   type PersonnelReportReviewInput,
+  type RestrictionDurationMode,
 } from "@/services/personnelApi";
 import {
   getStorageCleanupReportRemote,
@@ -104,7 +105,22 @@ type ReviewDraft = {
   decision: PersonnelReviewDecision;
   action: PersonnelReviewAction;
   note: string;
+  actionDurationMode: RestrictionDurationMode;
+  actionDurationAmount: number;
 };
+
+const RESTRICTION_DURATION_MODES: Array<{ value: RestrictionDurationMode; label: string }> = [
+  { value: "manual", label: "Manual restore" },
+  { value: "minutes", label: "Minutes" },
+  { value: "hours", label: "Hours" },
+  { value: "days", label: "Days" },
+];
+
+function describeRestrictionDuration(mode: RestrictionDurationMode, amount: number) {
+  if (mode === "manual") return "until manual restore";
+  const unit = amount === 1 ? { minutes: "minute", hours: "hour", days: "day" }[mode] : mode;
+  return `for ${amount} ${unit}`;
+}
 
 
 export default function SettingsPage() {
@@ -391,6 +407,8 @@ export default function SettingsPage() {
               decision: "confirmed",
               action: "none",
               note: "",
+              actionDurationMode: "manual",
+              actionDurationAmount: 1,
             };
           });
           return next;
@@ -498,6 +516,8 @@ export default function SettingsPage() {
               decision: "confirmed",
               action: "none",
               note: "",
+              actionDurationMode: "manual",
+              actionDurationAmount: 1,
             };
         });
         return next;
@@ -610,6 +630,8 @@ export default function SettingsPage() {
         decision: "confirmed",
         action: "none",
         note: "",
+        actionDurationMode: "manual",
+        actionDurationAmount: 1,
         ...current[reportId],
         ...patch,
       },
@@ -651,6 +673,8 @@ export default function SettingsPage() {
       decision: "confirmed" as PersonnelReviewDecision,
       action: "none" as PersonnelReviewAction,
       note: "",
+      actionDurationMode: "manual",
+      actionDurationAmount: 1,
     };
 
     const payload: PersonnelReportReviewInput = {
@@ -660,6 +684,11 @@ export default function SettingsPage() {
         draft.action === "none" || draft.action === "suspend" || draft.action === "demote" || draft.action === "ban"
           ? draft.action
           : "none",
+      actionDurationMode: draft.action === "suspend" || draft.action === "ban" ? draft.actionDurationMode : undefined,
+      actionDurationAmount:
+        (draft.action === "suspend" || draft.action === "ban") && draft.actionDurationMode !== "manual"
+          ? draft.actionDurationAmount
+          : undefined,
     };
 
     await runWithFeedback(
@@ -1086,8 +1115,12 @@ export default function SettingsPage() {
                           decision: "confirmed" as PersonnelReviewDecision,
                           action: "none" as PersonnelReviewAction,
                           note: "",
+                          actionDurationMode: "manual" as RestrictionDurationMode,
+                          actionDurationAmount: 1,
                         };
                         const highRiskAction = draft.action === "ban" || draft.action === "suspend" || draft.action === "demote";
+                        const requiresDuration = draft.action === "ban" || draft.action === "suspend";
+                        const durationPhrase = requiresDuration ? ` ${describeRestrictionDuration(draft.actionDurationMode, draft.actionDurationAmount)}` : "";
 
                         return (
                           <div key={report.id} className="rounded-sm border border-border bg-background/45 p-4 space-y-4">
@@ -1119,6 +1152,8 @@ export default function SettingsPage() {
                                 <p className="text-muted-foreground">
                                   Target status: {report.targetStatus.label ?? statusLabel(report.targetStatus.key)}
                                   {report.targetStatus.reason ? ` · ${report.targetStatus.reason}` : ""}
+                                  {report.targetStatus.expiresAt ? ` · Until ${new Date(report.targetStatus.expiresAt).toLocaleString()}` : ""}
+                                  {report.targetStatus.permanent ? " · Until manual restore" : ""}
                                 </p>
                               )}
                             </div>
@@ -1148,7 +1183,41 @@ export default function SettingsPage() {
                                   ))}
                                 </select>
                               </div>
-                              <div className="flex items-end lg:col-span-2 2xl:col-span-2">
+                              {requiresDuration && (
+                                <>
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Duration</label>
+                                    <select
+                                      value={draft.actionDurationMode}
+                                      onChange={(event) =>
+                                        updateReviewDraft(report.id, { actionDurationMode: event.target.value as RestrictionDurationMode })
+                                      }
+                                      className={inputClass}
+                                    >
+                                      {RESTRICTION_DURATION_MODES.map((option) => (
+                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Amount</label>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      max={3650}
+                                      disabled={draft.actionDurationMode === "manual"}
+                                      value={draft.actionDurationAmount}
+                                      onChange={(event) =>
+                                        updateReviewDraft(report.id, {
+                                          actionDurationAmount: Math.max(1, Math.min(3650, Number(event.target.value) || 1)),
+                                        })
+                                      }
+                                      className={inputClass}
+                                    />
+                                  </div>
+                                </>
+                              )}
+                              <div className={cn("flex items-end", requiresDuration ? "lg:col-span-2 2xl:col-span-4" : "lg:col-span-2 2xl:col-span-2")}>
                                 <Button
                                   type="button"
                                   size="sm"
@@ -1159,7 +1228,7 @@ export default function SettingsPage() {
                                     variant: highRiskAction ? "warning" : "info",
                                     title: "Submit moderation decision",
                                     description: highRiskAction
-                                      ? `Apply ${statusLabel(draft.action)} to ${report.targetUsername} and mark this report ${statusLabel(draft.decision)}?`
+                                      ? `Apply ${statusLabel(draft.action)}${durationPhrase} to ${report.targetUsername} and mark this report ${statusLabel(draft.decision)}?`
                                       : `Mark report for ${report.targetUsername} as ${statusLabel(draft.decision)}?`,
                                     confirmLabel: highRiskAction ? "Confirm moderation" : "Submit review",
                                     cancelLabel: "Cancel",

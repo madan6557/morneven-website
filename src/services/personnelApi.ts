@@ -11,6 +11,7 @@ import type {
 const EVT = "morneven:personnel-changed";
 
 type AnyRecord = Record<string, unknown>;
+export type RestrictionDurationMode = "manual" | "minutes" | "hours" | "days";
 
 type PersonnelPatch = Partial<
   Pick<PersonnelUser, "username" | "email" | "level" | "track" | "note" | "role">
@@ -24,6 +25,8 @@ export interface PersonnelDeleteResult {
 export interface PersonnelStatusUpdateInput {
   status: "active" | "suspended" | "banned";
   reason: string;
+  durationMode?: RestrictionDurationMode;
+  durationAmount?: number;
 }
 
 export interface PersonnelReportCreateInput {
@@ -36,6 +39,8 @@ export interface PersonnelReportReviewInput {
   decision: PersonnelReviewDecision;
   note?: string;
   action?: Extract<PersonnelReviewAction, "none" | "suspend" | "demote" | "ban">;
+  actionDurationMode?: RestrictionDurationMode;
+  actionDurationAmount?: number;
 }
 
 let releaseRealtimeBridge: (() => void) | null = null;
@@ -91,6 +96,7 @@ function normalizeSeverity(value: unknown): PersonnelStatusSeverity | undefined 
 
 function normalizePersonnelStatus(raw: AnyRecord) {
   const key = asString(raw.status) ?? "active";
+  const expiresAt = normalizeIsoDate(raw.statusExpiresAt);
   const severity =
     normalizeSeverity(raw.statusSeverity) ??
     (key === "banned" || key === "deleted"
@@ -106,6 +112,8 @@ function normalizePersonnelStatus(raw: AnyRecord) {
     severity,
     active: key === "active",
     imposedAt: normalizeIsoDate(raw.updatedAt),
+    expiresAt,
+    permanent: (key === "suspended" || key === "banned") && !expiresAt,
   };
 }
 
@@ -135,9 +143,11 @@ function normalizePersonnelUser(raw: unknown): PersonnelUser {
     statusSeverity: accountStatus.severity,
     statusActive: accountStatus.active,
     statusUpdatedAt: accountStatus.imposedAt,
+    statusExpiresAt: accountStatus.expiresAt,
     deleted: accountStatus.key === "deleted",
     moderationNote: asString(source.statusReason),
     accountStatus,
+    banExpiresAt: accountStatus.key === "banned" ? accountStatus.expiresAt : undefined,
   };
 }
 
@@ -304,6 +314,8 @@ export async function reviewPersonnelReport(
           status: input.decision,
           resolutionNote: input.note,
           action: input.action ?? "none",
+          actionDurationMode: input.actionDurationMode,
+          actionDurationAmount: input.actionDurationAmount,
         },
       }),
     );

@@ -18,6 +18,7 @@ import {
   deletePersonnel,
   subscribePersonnel,
   updatePersonnelStatus,
+  type RestrictionDurationMode,
 } from "@/services/personnelApi";
 import type { PersonnelUser } from "@/types";
 import { personnelLevelBadgeStyle, personnelTrackBadgeStyle } from "@/lib/personnelTone";
@@ -62,11 +63,38 @@ function statusLabel(person: PersonnelUser) {
   return person.online ? "Online" : "Offline";
 }
 
+function formatRestrictionExpiry(person: PersonnelUser) {
+  if (person.status !== "suspended" && person.status !== "banned") return formatPresenceText(person);
+  if (person.statusExpiresAt) return `Until ${new Date(person.statusExpiresAt).toLocaleString()}`;
+  return "Until manual restore";
+}
+
 interface DraftState {
   level: PersonnelLevel;
   track: PersonnelTrack;
   note: string;
   role: PersonnelUser["role"];
+}
+
+interface ModerationDraft {
+  person: PersonnelUser;
+  nextStatus: "suspended" | "banned";
+  reason: string;
+  durationMode: RestrictionDurationMode;
+  durationAmount: number;
+}
+
+const RESTRICTION_DURATION_MODES: Array<{ value: RestrictionDurationMode; label: string }> = [
+  { value: "manual", label: "Manual restore" },
+  { value: "minutes", label: "Minutes" },
+  { value: "hours", label: "Hours" },
+  { value: "days", label: "Days" },
+];
+
+function describeRestrictionDuration(mode: RestrictionDurationMode, amount: number) {
+  if (mode === "manual") return "until manual restore";
+  const unit = amount === 1 ? { minutes: "minute", hours: "hour", days: "day" }[mode] : mode;
+  return `${amount} ${unit}`;
 }
 
 function normalizeRoleForLevel(
@@ -119,6 +147,7 @@ export default function PersonnelManagementPage() {
   const [levelFilter, setLevelFilter] = useState<PersonnelLevel | "all">("all");
   const [creating, setCreating] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [moderationDraft, setModerationDraft] = useState<ModerationDraft | null>(null);
   const [newUser, setNewUser] = useState<Omit<PersonnelUser, "id" | "updatedAt">>({
     username: "",
     email: "",
@@ -206,21 +235,48 @@ export default function PersonnelManagementPage() {
     person: PersonnelUser,
     nextStatus: "active" | "suspended" | "banned",
     reason: string,
+    duration?: { durationMode?: RestrictionDurationMode; durationAmount?: number },
   ) => {
     setBusyAction(`${nextStatus}-${person.id}`);
     try {
-      const updated = await updatePersonnelStatus(person.id, { status: nextStatus, reason });
+      const updated = await updatePersonnelStatus(person.id, { status: nextStatus, reason, ...duration });
       setPeople((prev) => prev.map((item) => (item.id === person.id ? updated : item)));
       toast({ title: `${person.username} set to ${updated.statusLabel ?? nextStatus}` });
+      return true;
     } catch (error) {
       toast({
         title: "Status update failed",
         description: error instanceof Error ? error.message : "Backend rejected the moderation action.",
         variant: "destructive",
       });
+      return false;
     } finally {
       setBusyAction(null);
     }
+  };
+
+  const openModerationDraft = (person: PersonnelUser, nextStatus: "suspended" | "banned") => {
+    setModerationDraft({
+      person,
+      nextStatus,
+      reason: nextStatus === "suspended" ? "Suspended by personnel management" : "Banned by personnel management",
+      durationMode: "manual",
+      durationAmount: 1,
+    });
+  };
+
+  const submitModerationDraft = async () => {
+    if (!moderationDraft) return;
+    const success = await handleStatusUpdate(
+      moderationDraft.person,
+      moderationDraft.nextStatus,
+      moderationDraft.reason.trim() || (moderationDraft.nextStatus === "suspended" ? "Suspended by personnel management" : "Banned by personnel management"),
+      {
+        durationMode: moderationDraft.durationMode,
+        durationAmount: moderationDraft.durationMode === "manual" ? undefined : moderationDraft.durationAmount,
+      },
+    );
+    if (success) setModerationDraft(null);
   };
 
   useEffect(() => {
@@ -829,8 +885,9 @@ export default function PersonnelManagementPage() {
                       </div>
                       {p.statusReason ? (
                         <p className="mt-1 text-[10px] text-muted-foreground">{p.statusReason}</p>
-                      ) : formatPresenceText(p) ? (
-                        <p className="mt-1 text-[10px] text-muted-foreground">{formatPresenceText(p)}</p>
+                      ) : null}
+                      {formatRestrictionExpiry(p) ? (
+                        <p className="mt-1 text-[10px] text-muted-foreground">{formatRestrictionExpiry(p)}</p>
                       ) : null}
                     </td>
                     <td className="p-3 align-top text-xs font-body text-muted-foreground">{p.email}</td>
@@ -965,18 +1022,7 @@ export default function PersonnelManagementPage() {
                               )}
                               {p.status !== "suspended" && p.status !== "deleted" && (
                                 <button
-                                  onClick={() => showValidation({
-                                    variant: "warning",
-                                    title: "Suspend account",
-                                    description: `Suspend ${p.username} from website access?`,
-                                    confirmLabel: "Suspend account",
-                                    cancelLabel: "Cancel",
-                                    critical: true,
-                                    confirmDelaySeconds: 5,
-                                    onConfirm: async () => {
-                                      await handleStatusUpdate(p, "suspended", "Suspended by personnel management");
-                                    },
-                                  })}
+                                  onClick={() => openModerationDraft(p, "suspended")}
                                   className="p-1.5 text-muted-foreground hover:text-accent-orange disabled:cursor-not-allowed disabled:opacity-30"
                                   title="Suspend account"
                                   disabled={busyAction === `suspended-${p.id}`}
@@ -986,18 +1032,7 @@ export default function PersonnelManagementPage() {
                               )}
                               {p.status !== "banned" && p.status !== "deleted" && (
                                 <button
-                                  onClick={() => showValidation({
-                                    variant: "error",
-                                    title: "Ban account",
-                                    description: `Ban ${p.username} from website access?`,
-                                    confirmLabel: "Ban account",
-                                    cancelLabel: "Cancel",
-                                    critical: true,
-                                    confirmDelaySeconds: 5,
-                                    onConfirm: async () => {
-                                      await handleStatusUpdate(p, "banned", "Banned by personnel management");
-                                    },
-                                  })}
+                                  onClick={() => openModerationDraft(p, "banned")}
                                   className="p-1.5 text-muted-foreground hover:text-destructive disabled:cursor-not-allowed disabled:opacity-30"
                                   title="Ban account"
                                   disabled={busyAction === `banned-${p.id}`}
@@ -1101,18 +1136,7 @@ export default function PersonnelManagementPage() {
                             )}
                             {p.status !== "suspended" && p.status !== "deleted" && (
                               <button
-                                onClick={() => showValidation({
-                                  variant: "warning",
-                                  title: "Suspend account",
-                                  description: `Suspend ${p.username} from website access?`,
-                                  confirmLabel: "Suspend account",
-                                  cancelLabel: "Cancel",
-                                  critical: true,
-                                  confirmDelaySeconds: 5,
-                                  onConfirm: async () => {
-                                    await handleStatusUpdate(p, "suspended", "Suspended by personnel management");
-                                  },
-                                })}
+                                onClick={() => openModerationDraft(p, "suspended")}
                                 className="p-1.5 text-muted-foreground hover:text-accent-orange disabled:cursor-not-allowed disabled:opacity-30"
                                 disabled={busyAction === `suspended-${p.id}`}
                                 title="Suspend account"
@@ -1122,18 +1146,7 @@ export default function PersonnelManagementPage() {
                             )}
                             {p.status !== "banned" && p.status !== "deleted" && (
                               <button
-                                onClick={() => showValidation({
-                                  variant: "error",
-                                  title: "Ban account",
-                                  description: `Ban ${p.username} from website access?`,
-                                  confirmLabel: "Ban account",
-                                  cancelLabel: "Cancel",
-                                  critical: true,
-                                  confirmDelaySeconds: 5,
-                                  onConfirm: async () => {
-                                    await handleStatusUpdate(p, "banned", "Banned by personnel management");
-                                  },
-                                })}
+                                onClick={() => openModerationDraft(p, "banned")}
                                 className="p-1.5 text-muted-foreground hover:text-destructive disabled:cursor-not-allowed disabled:opacity-30"
                                 disabled={busyAction === `banned-${p.id}`}
                                 title="Ban account"
@@ -1235,8 +1248,9 @@ export default function PersonnelManagementPage() {
                     </span>
                     {p.statusReason ? (
                       <span className="w-full text-[10px] text-muted-foreground">{p.statusReason}</span>
-                    ) : formatPresenceText(p) ? (
-                      <span className="w-full text-[10px] text-muted-foreground">{formatPresenceText(p)}</span>
+                    ) : null}
+                    {formatRestrictionExpiry(p) ? (
+                      <span className="w-full text-[10px] text-muted-foreground">{formatRestrictionExpiry(p)}</span>
                     ) : null}
                     {p.note && <p className="w-full text-xs text-foreground/80 font-body">{p.note}</p>}
                   </div>
@@ -1251,6 +1265,95 @@ export default function PersonnelManagementPage() {
           )}
         </div>
       </div>
+      {moderationDraft && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-sm border border-border bg-card p-4 shadow-xl">
+            <div className="space-y-1">
+              <h2 className="font-heading text-sm tracking-[0.12em] text-foreground uppercase">
+                {moderationDraft.nextStatus === "suspended" ? "Suspend account" : "Ban account"}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {moderationDraft.person.username} will be restricted {describeRestrictionDuration(moderationDraft.durationMode, moderationDraft.durationAmount)}.
+              </p>
+            </div>
+            <div className="mt-4 grid gap-3">
+              <div className="space-y-2">
+                <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Duration</label>
+                <select
+                  value={moderationDraft.durationMode}
+                  onChange={(event) =>
+                    setModerationDraft((current) =>
+                      current ? { ...current, durationMode: event.target.value as RestrictionDurationMode } : current,
+                    )
+                  }
+                  className={inputClass}
+                >
+                  {RESTRICTION_DURATION_MODES.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+              {moderationDraft.durationMode !== "manual" && (
+                <div className="space-y-2">
+                  <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Amount</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={3650}
+                    value={moderationDraft.durationAmount}
+                    onChange={(event) =>
+                      setModerationDraft((current) =>
+                        current
+                          ? { ...current, durationAmount: Math.max(1, Math.min(3650, Number(event.target.value) || 1)) }
+                          : current,
+                      )
+                    }
+                    className={inputClass}
+                  />
+                </div>
+              )}
+              <div className="space-y-2">
+                <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Reason</label>
+                <textarea
+                  value={moderationDraft.reason}
+                  onChange={(event) =>
+                    setModerationDraft((current) => (current ? { ...current, reason: event.target.value } : current))
+                  }
+                  rows={3}
+                  className={`${inputClass} resize-none`}
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setModerationDraft(null)}
+                className="rounded-sm border border-border px-3 py-2 text-[10px] font-display tracking-wider text-muted-foreground hover:text-foreground"
+              >
+                CANCEL
+              </button>
+              <button
+                type="button"
+                disabled={busyAction === `${moderationDraft.nextStatus}-${moderationDraft.person.id}`}
+                onClick={() => showValidation({
+                  variant: moderationDraft.nextStatus === "banned" ? "error" : "warning",
+                  title: moderationDraft.nextStatus === "banned" ? "Ban account" : "Suspend account",
+                  description: `${moderationDraft.nextStatus === "banned" ? "Ban" : "Suspend"} ${moderationDraft.person.username} ${describeRestrictionDuration(moderationDraft.durationMode, moderationDraft.durationAmount)}?`,
+                  confirmLabel: moderationDraft.nextStatus === "banned" ? "Ban account" : "Suspend account",
+                  cancelLabel: "Cancel",
+                  critical: true,
+                  confirmDelaySeconds: 5,
+                  onConfirm: submitModerationDraft,
+                })}
+                className="inline-flex items-center gap-2 rounded-sm bg-primary px-3 py-2 text-[10px] font-display tracking-wider text-primary-foreground disabled:cursor-wait disabled:opacity-60"
+              >
+                {busyAction === `${moderationDraft.nextStatus}-${moderationDraft.person.id}` && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                APPLY
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
