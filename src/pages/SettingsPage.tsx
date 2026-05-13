@@ -414,37 +414,6 @@ export default function SettingsPage() {
       .finally(() => setReviewQueueLoading(false));
   }, [personnelLevel]);
 
-  useEffect(() => {
-    if (!hasMaintenanceAccess) {
-      setPasswordResetRequests([]);
-      setPasswordResetDrafts({});
-      setPasswordResetLoading(false);
-      setPasswordResetError(null);
-      return;
-    }
-
-    setPasswordResetLoading(true);
-    setPasswordResetError(null);
-    listPasswordResetRequests()
-      .then((items) => {
-        setPasswordResetRequests(items);
-        setPasswordResetDrafts((current) => {
-          const next = { ...current };
-          items.forEach((item) => {
-            next[item.id] ??= {
-              status: "approved",
-              reviewNote: "",
-            };
-          });
-          return next;
-        });
-      })
-      .catch((error) => {
-        setPasswordResetRequests([]);
-        setPasswordResetError(toUserFacingError(error, "Password reset requests could not be loaded."));
-      })
-      .finally(() => setPasswordResetLoading(false));
-  }, [hasMaintenanceAccess]);
 
   const trackInfo = PERSONNEL_TRACKS.find((item) => item.key === track);
   const title = trackInfo?.titles[personnelLevel] ?? "Unknown";
