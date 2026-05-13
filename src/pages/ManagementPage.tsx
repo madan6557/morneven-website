@@ -10,6 +10,7 @@ import {
   FileText,
   GitBranch,
   Inbox,
+  KeyRound,
   Layers,
   Send,
   ShieldCheck,
