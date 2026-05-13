@@ -385,7 +385,7 @@ export default function CreatureDetail() {
           <div className="lg:col-span-2">
         {/* Tabbed sections: Overview / Habitat / Notes */}
           <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:w-auto sm:inline-flex sm:grid-cols-4 sm:gap-0 sm:h-10">
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-sm p-1.5 sm:inline-flex sm:w-auto sm:grid-cols-4">
             <TabsTrigger value="overview" className="text-[11px] font-heading tracking-wider uppercase">
               <FileText className="h-3 w-3 mr-1.5" /> Overview
             </TabsTrigger>

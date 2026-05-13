@@ -648,7 +648,7 @@ export default function PersonnelManagementPage() {
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
             <label className="space-y-1">
               <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Status</span>
               <select
@@ -688,7 +688,7 @@ export default function PersonnelManagementPage() {
                 ))}
               </select>
             </label>
-            <div className="flex items-end">
+            <div className="flex items-end lg:col-span-2 2xl:col-span-1">
               <button
                 type="button"
                 onClick={() => {

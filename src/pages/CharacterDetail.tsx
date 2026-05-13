@@ -296,7 +296,7 @@ export default function CharacterDetail() {
           <div className="lg:col-span-2">
             <Tabs defaultValue="overview" className="w-full">
               <TabsList
-                className="grid w-full grid-cols-2 gap-1 h-auto sm:h-10 sm:grid-cols-5 sm:w-auto sm:inline-flex sm:gap-0 [&>[data-state=active]]:text-[color:var(--char-accent)] [&>[data-state=active]]:shadow-[inset_0_-2px_0_0_var(--char-accent)]"
+                className="grid h-auto w-full grid-cols-2 gap-1 rounded-sm p-1.5 sm:inline-flex sm:h-auto sm:w-auto sm:grid-cols-5 [&>[data-state=active]]:text-[color:var(--char-accent)] [&>[data-state=active]]:shadow-[inset_0_-2px_0_0_var(--char-accent)]"
                 style={{ borderColor: `${accentColor}30` }}
               >
                 <TabsTrigger value="overview" className="text-[11px] font-heading tracking-wider uppercase">

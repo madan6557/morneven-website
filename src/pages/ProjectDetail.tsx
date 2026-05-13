@@ -150,7 +150,7 @@ export default function ProjectDetail() {
         <div className="mecha-line" />
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 gap-1 h-auto sm:h-10 sm:grid-cols-4 sm:w-auto sm:inline-flex sm:gap-0">
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-sm p-1.5 sm:inline-flex sm:h-auto sm:w-auto sm:grid-cols-4">
             <TabsTrigger value="overview" className="text-[11px] font-heading tracking-wider uppercase">
               <FileText className="h-3 w-3 mr-1.5" /> Overview
             </TabsTrigger>

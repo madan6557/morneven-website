@@ -118,7 +118,7 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
     const ta = refs.current[skill.id];
     const desc = skill.description || "";
     if (!ta) {
-      updateSkill(idx, "description", `${desc} ${buildAttributeTag(attrKey as never)}`.trim());
+      updateSkill(idx, "description", `${desc}${desc && !/\s$/.test(desc) ? " " : ""}${buildAttributeTag(attrKey as never)}`);
       return;
     }
     const start = ta.selectionStart ?? desc.length;
@@ -195,11 +195,25 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
 
       {items.map((item, idx) => (
         <div key={item.id} className="p-3 rounded-sm border border-border bg-muted/40 space-y-3">
-          <div className="flex gap-2 items-start">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <p className="min-w-0 text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+              {variant === "skill" ? "Skill" : "Feature"} item {idx + 1}
+            </p>
+            <button
+              type="button"
+              onClick={() => remove(idx)}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-border bg-background text-muted-foreground transition-colors hover:border-destructive/60 hover:text-destructive"
+              aria-label="Remove"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div>
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
               {variant === "skill" ? (
                 <>
-                  <div className="sm:col-span-2">
+                  <div className="lg:col-span-2">
                     <label className={labelClass}>Name</label>
                     <input
                       type="text"
@@ -242,7 +256,7 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                 </>
               ) : (
                 <>
-                  <div className="sm:col-span-2">
+                  <div className="lg:col-span-2">
                     <label className={labelClass}>Title</label>
                     <input
                       type="text"
@@ -294,7 +308,7 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                 </>
               )}
 
-              <div className="sm:col-span-2">
+              <div className="lg:col-span-2">
                 <label className={labelClass}>{variant === "skill" ? "Icon (Lucide, URL, or upload)" : "Icon (optional)"}</label>
                 <div className="space-y-2">
                   <input
@@ -380,15 +394,6 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                 </div>
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => remove(idx)}
-              className="text-muted-foreground hover:text-destructive mt-5"
-              aria-label="Remove"
-            >
-              <X className="h-4 w-4" />
-            </button>
           </div>
 
           {variant === "skill" ? (
@@ -434,7 +439,7 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
               </div>
             </div>
           ) : (
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3 lg:grid-cols-2">
               <div>
                 <label className={labelClass}>Summary</label>
                 <textarea

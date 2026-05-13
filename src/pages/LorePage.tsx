@@ -249,8 +249,9 @@ export default function LorePage() {
       </div>
 
       {/* Category buttons and sort */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:items-end sm:justify-between">
-        <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div className="-mx-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
+          <div className="flex min-w-max gap-2 sm:min-w-0 sm:flex-wrap">
           {tabs.map((t) => (
             <button
               key={t}
@@ -263,7 +264,7 @@ export default function LorePage() {
                 setActive(t);
                 navigate(`/lore/${loreRoutes[t]}`);
               }}
-              className={`w-full sm:w-auto px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-display tracking-[0.08em] sm:tracking-[0.1em] uppercase border rounded-sm transition-colors truncate inline-flex items-center justify-center gap-1
+              className={`inline-flex min-w-[6.25rem] items-center justify-center gap-1 truncate rounded-sm border px-3 py-2 text-[10px] font-display uppercase tracking-[0.08em] transition-colors sm:w-auto sm:px-4 sm:text-xs sm:tracking-[0.1em]
                 ${active === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}
             >
               {t === "Personnel" && <ShieldCheck className="h-3 w-3" />}
@@ -271,6 +272,7 @@ export default function LorePage() {
               {t}
             </button>
           ))}
+          </div>
         </div>
         <button
           onClick={() => setSort(sort === "name" ? "name-desc" : "name")}

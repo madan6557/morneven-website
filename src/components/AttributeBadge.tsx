@@ -46,7 +46,7 @@ interface RichDescriptionProps {
 export function RichDescription({ text, className }: RichDescriptionProps) {
   const tokens = parseDescription(text || "");
   return (
-    <p className={cn("text-sm font-body text-foreground/85 leading-relaxed", className)}>
+    <p className={cn("text-sm font-body text-foreground/85 leading-relaxed whitespace-pre-wrap", className)}>
       {tokens.map((tok, i) =>
         tok.type === "text" ? (
           <span key={i}>{tok.text}</span>

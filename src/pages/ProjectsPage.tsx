@@ -74,14 +74,14 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="p-6 md:p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <div className="space-y-6 p-4 sm:p-6 md:p-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="font-display text-2xl tracking-[0.1em] text-primary">PROJECTS</h1>
           <div className="mecha-line w-32 mt-2" />
         </div>
         {canCreateProject && (
-          <Link to="/author?tab=projects&action=create" className="flex items-center gap-1 px-3 py-1.5 text-xs font-display tracking-wider text-primary-foreground bg-primary rounded-sm hover:opacity-90 transition-opacity">
+          <Link to="/author?tab=projects&action=create" className="inline-flex w-fit items-center gap-1 rounded-sm bg-primary px-3 py-1.5 text-xs font-display tracking-wider text-primary-foreground transition-opacity hover:opacity-90">
             <Plus className="h-3 w-3" /> NEW
           </Link>
         )}
@@ -93,7 +93,7 @@ export default function ProjectsPage() {
             <button
               key={t}
               onClick={() => setActive(t)}
-              className={`px-4 py-2 text-xs font-display tracking-[0.1em] uppercase border rounded-sm transition-colors flex items-center gap-1
+              className={`flex min-w-[6.5rem] items-center justify-center gap-1 rounded-sm border px-4 py-2 text-xs font-display uppercase tracking-[0.1em] transition-colors
                 ${active === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-foreground/80 hover:bg-muted"}`}
             >
               {t === "Archived" && <Archive className="h-3 w-3" />}

@@ -463,7 +463,7 @@ export default function SettingsPage() {
     () => passwordResetRequests.filter((item) => item.status === "pending").length,
     [passwordResetRequests],
   );
-  const inputClass = "w-full rounded-sm border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:ring-1 focus:ring-primary";
+  const inputClass = "min-w-0 w-full rounded-sm border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:ring-1 focus:ring-primary";
   const helperTextClass = "text-sm leading-6 text-muted-foreground";
 
   const loadExtractionHistory = async () => {
@@ -777,7 +777,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="w-full space-y-5 p-4 md:space-y-6 md:p-8 xl:p-10">
+    <div className="w-full space-y-5 p-4 sm:p-5 md:space-y-6 md:p-6 xl:p-8">
       <div className="space-y-3">
         <h1 className="font-display text-2xl tracking-[0.1em] text-primary">SETTINGS</h1>
         <div className="mecha-line w-32" />
@@ -786,10 +786,10 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-3 md:gap-3 summary-grid">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 md:gap-3 summary-grid">
         <SummaryTile icon={ShieldCheck} label="Clearance" value={`L${personnelLevel}`} description={title} />
         <SummaryTile icon={UsersRound} label="Track" value={trackInfo?.short ?? "N/A"} description={trackInfo?.label ?? "No active track"} />
-        <div className="role-tile col-span-2 lg:col-span-1">
+        <div className="role-tile">
           <SummaryTile icon={Sparkles} label="Role" value={role.toUpperCase()} description={`Signed in as ${username}`} />
         </div>
       </div>
@@ -798,7 +798,7 @@ export default function SettingsPage() {
         className={cn(
           "grid w-full items-start gap-5",
           hasMaintenanceAccess
-            ? "xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]"
+            ? "2xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]"
             : "",
         )}
       >
@@ -993,7 +993,7 @@ export default function SettingsPage() {
               description="Report account abuse, impersonation, or security concerns. Authorized reviewers can triage and apply moderation outcomes from the same queue."
               className={cn(!hasMaintenanceAccess && "lg:col-span-2 2xl:col-span-3")}
             >
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Metric icon={AlertTriangle} label="Submitted" value={myReports.length} />
                 <Metric
                   icon={Archive}
@@ -1005,17 +1005,17 @@ export default function SettingsPage() {
 
               <Tabs defaultValue="submit" className="w-full">
                 <TabsList className={cn(
-                  "grid h-auto w-full gap-1 bg-muted/70 p-1",
+                  "grid h-auto w-full gap-1 rounded-sm bg-muted/70 p-1.5",
                   canReviewReports ? "grid-cols-3" : "grid-cols-2",
                 )}>
-                  <TabsTrigger value="submit" className="text-[11px] font-heading tracking-wider uppercase">
+                  <TabsTrigger value="submit" className="min-w-0 px-2 text-center text-[11px] font-heading tracking-wider uppercase">
                     Submit Report
                   </TabsTrigger>
-                  <TabsTrigger value="mine" className="text-[11px] font-heading tracking-wider uppercase">
+                  <TabsTrigger value="mine" className="min-w-0 px-2 text-center text-[11px] font-heading tracking-wider uppercase">
                     My Reports
                   </TabsTrigger>
                   {canReviewReports && (
-                    <TabsTrigger value="queue" className="text-[11px] font-heading tracking-wider uppercase">
+                    <TabsTrigger value="queue" className="min-w-0 px-2 text-center text-[11px] font-heading tracking-wider uppercase">
                       Review Queue
                     </TabsTrigger>
                   )}
@@ -1223,7 +1223,7 @@ export default function SettingsPage() {
                               )}
                             </div>
 
-                            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                            <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-4">
                               <div className="space-y-2">
                                 <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Decision</label>
                                 <select
@@ -1248,7 +1248,7 @@ export default function SettingsPage() {
                                   ))}
                                 </select>
                               </div>
-                              <div className="flex items-end md:col-span-2 xl:col-span-2">
+                              <div className="flex items-end lg:col-span-2 2xl:col-span-2">
                                 <Button
                                   type="button"
                                   size="sm"
@@ -1352,7 +1352,7 @@ export default function SettingsPage() {
                     </Button>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <Metric icon={DatabaseZap} label="System channels" value={chatReport.instituteGroups + chatReport.divisionGroups + chatReport.teamGroups} />
                     <Metric icon={UsersRound} label="Active members" value={chatReport.activeMemberships} />
                     <Metric icon={CheckCircle2} label="Team groups" value={chatReport.teamGroups} />
@@ -1528,7 +1528,7 @@ export default function SettingsPage() {
                 {processing && <p className="text-sm text-muted-foreground">Extraction in progress...</p>}
               </div>
 
-              <div className="grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1fr)_12rem] xl:items-end">
+              <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1fr)_12rem] 2xl:items-end">
                 <div className="space-y-2">
                   <div className="space-y-2">
                     <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Extraction Mode</label>
@@ -1559,7 +1559,7 @@ export default function SettingsPage() {
                 />
                 <Button
                   type="button"
-                  className="w-full xl:self-end"
+                  className="w-full lg:col-span-2 2xl:col-span-1 2xl:self-end"
                   disabled={!canRun}
                   isLoading={busyAction === "start-extraction"}
                   loadingText="Starting..."
@@ -1647,7 +1647,7 @@ export default function SettingsPage() {
                                 <span className="uppercase tracking-[0.12em]">{job.progress.stage}</span>
                                 <span className="font-display text-foreground">{job.progress.percent}%</span>
                               </div>
-                              <Progress value={job.progress.percent} className="h-2 bg-muted/70" />
+                              <Progress value={Math.min(100, Math.max(0, job.progress.percent))} className="h-2 bg-muted/70" />
                               <p className="text-xs leading-5 text-muted-foreground">{job.progress.message}</p>
                             </div>
                           )}
@@ -1680,7 +1680,7 @@ export default function SettingsPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="w-full sm:min-w-40 sm:w-auto"
+                  className="w-full sm:w-44"
                   disabled={selected.length === 0}
                   isLoading={busyAction === "clear-selected"}
                   loadingText="Clearing..."
@@ -1706,7 +1706,7 @@ export default function SettingsPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="w-full sm:min-w-40 sm:w-auto"
+                  className="w-full sm:w-44"
                   isLoading={busyAction === "clear-all"}
                   loadingText="Clearing..."
                   onClick={() => showValidation({
@@ -1747,7 +1747,7 @@ export default function SettingsPage() {
                 {migrationProcessing && <p className="text-sm text-muted-foreground">Migration in progress...</p>}
               </div>
 
-              <div className="grid gap-3 xl:grid-cols-2">
+              <div className="grid gap-3 lg:grid-cols-2">
                 <LabeledInput
                   label="New BE Base URL"
                   value={migrationBaseUrl}
@@ -1764,7 +1764,7 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div className="grid gap-3 xl:grid-cols-3 xl:items-end">
+              <div className="grid gap-3 lg:grid-cols-3 lg:items-end">
                 <PasswordField
                   label="Password"
                   value={migrationPassword}
@@ -1794,7 +1794,7 @@ export default function SettingsPage() {
 
               <Button
                 type="button"
-                className="w-full xl:w-auto"
+                className="w-full sm:w-56"
                 disabled={!canRunMigration}
                 isLoading={busyAction === "start-migration"}
                 loadingText="Starting..."
@@ -1870,7 +1870,7 @@ export default function SettingsPage() {
                                 <span className="uppercase tracking-[0.12em]">{job.progress.stage}</span>
                                 <span className="font-display text-foreground">{job.progress.percent}%</span>
                               </div>
-                              <Progress value={job.progress.percent} className="h-2 bg-muted/70" />
+                              <Progress value={Math.min(100, Math.max(0, job.progress.percent))} className="h-2 bg-muted/70" />
                               <p className="text-xs leading-5 text-muted-foreground">{job.progress.message}</p>
                             </div>
                           )}
@@ -1907,7 +1907,7 @@ export default function SettingsPage() {
               title="Password Reset Review"
               description="Review manual password reset requests from personnel who cannot use the email path. Approved requests unlock credential confirmation for that account."
             >
-              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Metric icon={Inbox} label="Total requests" value={passwordResetRequests.length} />
                 <Metric icon={AlertTriangle} label="Pending review" value={pendingPasswordResetCount} />
                 <Metric
@@ -2000,7 +2000,7 @@ export default function SettingsPage() {
 
                       {request.status === "pending" ? (
                         <>
-                          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                          <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-4">
                             <div className="space-y-2">
                               <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Decision</label>
                               <select
@@ -2012,7 +2012,7 @@ export default function SettingsPage() {
                                 <option value="rejected">Reject request</option>
                               </select>
                             </div>
-                            <div className="space-y-2 md:col-span-2 xl:col-span-2">
+                            <div className="space-y-2 lg:col-span-2 2xl:col-span-2">
                               <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Reviewer note</label>
                               <Textarea
                                 value={draft.reviewNote}
@@ -2146,7 +2146,7 @@ function SectionCard({
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Icon className={cn("h-4 w-4", accentClass)} />
-          <h3 className={cn("font-heading text-sm tracking-[0.15em] uppercase", accentClass)}>{title}</h3>
+          <h3 className={cn("min-w-0 break-words font-heading text-sm tracking-[0.15em] uppercase", accentClass)}>{title}</h3>
         </div>
         <p className="text-sm leading-5 sm:leading-6 text-muted-foreground">{description}</p>
       </div>
@@ -2237,9 +2237,9 @@ function formatBytes(value: number) {
 function Metric({ icon: Icon, label, value }: { icon: typeof DatabaseZap; label: string; value: number }) {
   return (
     <div className="hud-border-sm flex min-h-[108px] flex-col justify-between bg-background/50 p-3">
-      <div className="flex items-center gap-2 text-muted-foreground">
+      <div className="flex min-w-0 items-start gap-2 text-muted-foreground">
         <Icon className="h-4 w-4 text-accent-orange" />
-        <span className="text-xs uppercase tracking-[0.12em]">{label}</span>
+        <span className="min-w-0 break-words text-xs uppercase tracking-[0.12em]">{label}</span>
       </div>
       <div className="mt-3 break-all font-display text-xl leading-tight text-primary">{value.toLocaleString()}</div>
     </div>

@@ -307,7 +307,7 @@ export default function ManagementPage() {
       )}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as MgmtTab)} className="w-full">
-        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 bg-muted/70 p-1 sm:grid-cols-3 xl:grid-cols-7">
+        <TabsList className="flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto rounded-sm bg-muted/70 p-1.5">
           <ManagementTab value="transfer" icon={GitBranch} label="Transfer" />
           <ManagementTab value="clearance" icon={ShieldCheck} label="Clearance" />
           <ManagementTab value="submission" icon={FileText} label="Submit" />
@@ -393,9 +393,9 @@ function ManagementTab({
   count?: number;
 }) {
   return (
-    <TabsTrigger value={value} className="gap-2 px-2 py-2 text-xs">
+    <TabsTrigger value={value} className="min-w-[7.5rem] flex-1 gap-2 px-3 py-2 text-xs">
       <Icon className="h-3.5 w-3.5" />
-      <span>{label}</span>
+      <span className="truncate">{label}</span>
       {!!count && (
         <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] leading-none text-primary-foreground">
           {count}
@@ -417,9 +417,9 @@ function MetricTile({
   hint: string;
 }) {
   return (
-    <Card className="hud-border bg-card/95 p-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
+    <Card className="hud-border flex min-h-[132px] bg-card/95 p-4">
+      <div className="flex w-full items-start justify-between gap-4">
+        <div className="min-w-0">
           <p className={labelClass}>{label}</p>
           <p className="mt-2 font-display text-3xl text-primary">{value}</p>
           <p className="mt-1 text-xs text-muted-foreground">{hint}</p>

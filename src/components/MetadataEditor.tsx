@@ -53,7 +53,7 @@ export default function MetadataEditor({ value, onChange }: MetadataEditorProps)
 
   return (
     <div className="space-y-4 hud-border bg-card/50 p-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h4 className="font-heading text-sm tracking-wider text-accent-orange uppercase">
           Metadata · Production Credits
         </h4>
@@ -62,7 +62,7 @@ export default function MetadataEditor({ value, onChange }: MetadataEditorProps)
         </span>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2">
         <div>
           <label className={labelClass}>Creator</label>
           <input
@@ -103,7 +103,7 @@ export default function MetadataEditor({ value, onChange }: MetadataEditorProps)
             placeholder="e.g. Lore Division"
           />
         </div>
-        <div className="md:col-span-2">
+        <div className="lg:col-span-2">
           <label className={labelClass}>Collaborators (comma-separated)</label>
           <input
             type="text"
@@ -121,7 +121,7 @@ export default function MetadataEditor({ value, onChange }: MetadataEditorProps)
             placeholder="e.g. Aelis, Rho-7, Director Vance"
           />
         </div>
-        <div className="md:col-span-2">
+        <div className="lg:col-span-2">
           <label className={labelClass}>Project Name</label>
           <input
             type="text"
@@ -212,9 +212,22 @@ export default function MetadataEditor({ value, onChange }: MetadataEditorProps)
           <div
             key={i}
             ref={newPatchRef(i)}
-            className="flex gap-2 items-start p-3 bg-muted/50 rounded-sm border border-border"
+            className="space-y-3 rounded-sm border border-border bg-muted/50 p-3"
           >
-            <div className="flex-1 space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <p className="min-w-0 text-[10px] font-display tracking-wider text-muted-foreground uppercase">
+                Patch note {i + 1}
+              </p>
+              <button
+                type="button"
+                onClick={() => removePatch(i)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-border bg-background text-muted-foreground transition-colors hover:border-destructive/60 hover:text-destructive"
+                aria-label={`Remove patch note ${i + 1}`}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div className="space-y-2">
               <div className="flex flex-wrap gap-2 items-center">
                 <input
                   type="text"
@@ -246,13 +259,6 @@ export default function MetadataEditor({ value, onChange }: MetadataEditorProps)
                 className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground resize-y min-h-[50px]"
               />
             </div>
-            <button
-              type="button"
-              onClick={() => removePatch(i)}
-              className="text-muted-foreground hover:text-destructive mt-1"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
           </div>
         ))}
       </div>

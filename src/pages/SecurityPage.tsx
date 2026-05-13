@@ -167,7 +167,7 @@ export default function SecurityPage() {
           </div>
         )}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
           <MetricCard
             icon={status?.enabled ? ShieldCheck : ShieldOff}
             label="Security level"
@@ -201,7 +201,7 @@ export default function SecurityPage() {
           />
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <section className="grid gap-4 2xl:grid-cols-[1.2fr_0.8fr]">
           <Card className={panelClass}>
             <CardHeader>
               <CardTitle className="font-display text-xl uppercase tracking-[0.12em] text-primary">Recent security events</CardTitle>
@@ -339,7 +339,7 @@ export default function SecurityPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {state.scans.length ? state.scans.slice(0, 20).map((scan) => (
-                <div key={scan.id} className="grid gap-3 rounded-sm border border-border/70 bg-background/45 p-3 md:grid-cols-[1.5fr_0.8fr_0.8fr_0.8fr]">
+                  <div key={scan.id} className="grid gap-3 rounded-sm border border-border/70 bg-background/45 p-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.8fr)_auto_minmax(0,0.8fr)]">
                   <div className="min-w-0">
                     <p className="truncate font-heading text-sm text-foreground">{scan.objectPath}</p>
                     <p className="mt-1 break-all font-mono text-[11px] text-muted-foreground">{shortHash(scan.sha256)}</p>
@@ -376,9 +376,9 @@ function MetricCard({
 }) {
   return (
     <div className={metricClass}>
-      <div className={cn("flex items-center gap-2", active ? "text-primary" : "text-muted-foreground")}>
+      <div className={cn("flex min-w-0 items-start gap-2", active ? "text-primary" : "text-muted-foreground")}>
         <Icon className="h-4 w-4" />
-        <p className="font-display text-[10px] uppercase tracking-[0.22em]">{label}</p>
+        <p className="min-w-0 break-words font-display text-[10px] uppercase tracking-[0.22em]">{label}</p>
       </div>
       <p className="text-3xl font-display tracking-[0.08em] text-foreground">{value}</p>
       <p className="text-sm text-muted-foreground">{detail}</p>
