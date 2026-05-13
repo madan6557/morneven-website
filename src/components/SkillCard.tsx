@@ -330,8 +330,17 @@ function itemHasAttr(item: Skill, key: SkillAttribute) {
 }
 
 function compareDisplayItems(a: Skill | Feature, b: Skill | Feature, variant: "skill" | "feature") {
+  const leftCategory = normalizeCategory(
+    variant === "skill" ? (a as Skill).category : (a as Feature).category,
+  );
+  const rightCategory = normalizeCategory(
+    variant === "skill" ? (b as Skill).category : (b as Feature).category,
+  );
+  const categoryCompare = categoryOrder.indexOf(leftCategory) - categoryOrder.indexOf(rightCategory);
+  if (categoryCompare !== 0) return categoryCompare;
+
   if (variant === "skill") {
-    return (a as Skill).name.trim().toLowerCase().localeCompare((b as Skill).name.trim().toLowerCase());
+    return ((a as Skill).name || "").trim().toLowerCase().localeCompare(((b as Skill).name || "").trim().toLowerCase());
   }
   return ((a as Feature).title || "").trim().toLowerCase().localeCompare(((b as Feature).title || "").trim().toLowerCase());
 }
@@ -352,21 +361,6 @@ export function SkillList({ title, items, accent, variant = "skill" }: SkillList
     if (variant !== "skill" || !activeAttr) return list;
     return list.filter((item) => itemHasAttr(item as Skill, activeAttr));
   }, [activeAttr, list, variant]);
-
-  const groupedItems = useMemo(
-    () =>
-      categoryOrder
-        .map((category) => ({
-          category,
-          items: filtered.filter((item) =>
-            variant === "skill"
-              ? normalizeCategory((item as Skill).category) === category
-              : normalizeCategory((item as Feature).category) === category,
-          ),
-        }))
-        .filter((group) => group.items.length > 0),
-    [filtered, variant],
-  );
 
   if (list.length === 0) return null;
 
@@ -447,27 +441,9 @@ export function SkillList({ title, items, accent, variant = "skill" }: SkillList
           No {variant === "skill" ? "skills" : "features"} match this filter.
         </p>
       ) : (
-        <div className="space-y-4">
-          {groupedItems.map((group) => (
-            <section key={group.category} className="space-y-2">
-              <div className="flex items-center gap-2 px-1">
-                <span
-                  className="inline-flex items-center rounded-sm border px-2 py-0.5 text-[10px] font-display tracking-wider uppercase"
-                  style={{
-                    color: readableAccent,
-                    borderColor: softAccentBorder,
-                    backgroundColor: softAccentSurface,
-                  }}
-                >
-                  {categoryLabels[group.category]}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                {group.items.map((item) => (
-                  <SkillCard key={item.id} item={item} accent={accent} variant={variant} />
-                ))}
-              </div>
-            </section>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {filtered.map((item) => (
+            <SkillCard key={item.id} item={item} accent={accent} variant={variant} />
           ))}
         </div>
       )}
