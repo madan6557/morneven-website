@@ -10,6 +10,7 @@ import {
   FileText,
   GitBranch,
   Inbox,
+  KeyRound,
   Layers,
   Send,
   ShieldCheck,
@@ -50,6 +51,7 @@ import { PERSONNEL_TRACKS, type PersonnelTrack, type PersonnelLevel } from "@/li
 import { themedHslStyle } from "@/lib/themeColor";
 import type { PersonnelUser } from "@/types";
 import RequestPayloadPreview from "@/components/RequestPayloadPreview";
+import PasswordResetReviewPanel from "@/components/PasswordResetReviewPanel";
 import { showValidation } from "@/components/ui/validation-dialog";
 
 const KIND_LABEL: Record<RequestKind, string> = {
@@ -88,7 +90,7 @@ const STATUS_META: Record<RequestStatus, { label: string; hsl: string; icon: typ
   },
 };
 
-const TAB_VALUES = ["transfer", "clearance", "submission", "team", "executive", "queue", "mine"] as const;
+const TAB_VALUES = ["transfer", "clearance", "submission", "team", "executive", "queue", "mine", "reset"] as const;
 type MgmtTab = typeof TAB_VALUES[number];
 
 const panelClass = "hud-border bg-card/95 p-4 md:p-5 space-y-4";
@@ -307,7 +309,7 @@ export default function ManagementPage() {
       )}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as MgmtTab)} className="w-full">
-        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 bg-muted/70 p-1 sm:grid-cols-3 xl:grid-cols-7">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 bg-muted/70 p-1 sm:grid-cols-3 xl:grid-cols-8">
           <ManagementTab value="transfer" icon={GitBranch} label="Transfer" />
           <ManagementTab value="clearance" icon={ShieldCheck} label="Clearance" />
           <ManagementTab value="submission" icon={FileText} label="Submit" />
@@ -315,6 +317,7 @@ export default function ManagementPage() {
           <ManagementTab value="executive" icon={Crown} label="Executive" />
           <ManagementTab value="queue" icon={Inbox} label="Queue" count={reviewable.length} />
           <ManagementTab value="mine" icon={ClipboardList} label="Mine" count={myRequests.length} />
+          <ManagementTab value="reset" icon={KeyRound} label="Reset" />
         </TabsList>
 
         <TabsContent value="transfer" className="mt-4">
@@ -375,6 +378,10 @@ export default function ManagementPage() {
 
         <TabsContent value="mine" className="mt-4">
           <RequestList list={myRequests} viewer={{ level: personnelLevel, track, username }} />
+        </TabsContent>
+
+        <TabsContent value="reset" className="mt-4">
+          <PasswordResetReviewPanel enabled={personnelLevel >= 7 && (role === "author" || role === "admin")} />
         </TabsContent>
       </Tabs>
     </div>
