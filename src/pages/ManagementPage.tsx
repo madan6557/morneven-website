@@ -309,7 +309,7 @@ export default function ManagementPage() {
       )}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as MgmtTab)} className="w-full">
-        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 bg-muted/70 p-1 sm:grid-cols-3 xl:grid-cols-7">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 bg-muted/70 p-1 sm:grid-cols-3 xl:grid-cols-8">
           <ManagementTab value="transfer" icon={GitBranch} label="Transfer" />
           <ManagementTab value="clearance" icon={ShieldCheck} label="Clearance" />
           <ManagementTab value="submission" icon={FileText} label="Submit" />
@@ -317,6 +317,7 @@ export default function ManagementPage() {
           <ManagementTab value="executive" icon={Crown} label="Executive" />
           <ManagementTab value="queue" icon={Inbox} label="Queue" count={reviewable.length} />
           <ManagementTab value="mine" icon={ClipboardList} label="Mine" count={myRequests.length} />
+          <ManagementTab value="reset" icon={KeyRound} label="Reset" />
         </TabsList>
 
         <TabsContent value="transfer" className="mt-4">
