@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Archive,
   CheckCircle2,
+  ChevronDown,
   DatabaseZap,
   Eye,
   EyeOff,
@@ -51,9 +52,6 @@ import {
 import {
   changePassword,
   deleteAccount,
-  listPasswordResetRequests,
-  reviewPasswordResetRequest,
-  type PasswordResetRequestRecord,
 } from "@/services/accountApi";
 import {
   createPersonnelReport,
@@ -108,10 +106,6 @@ type ReviewDraft = {
   note: string;
 };
 
-type PasswordResetReviewDraft = {
-  status: "approved" | "rejected";
-  reviewNote: string;
-};
 
 export default function SettingsPage() {
   const { role, username, personnelLevel, track, verifyPassword, logout } = useAuth();
@@ -146,8 +140,6 @@ export default function SettingsPage() {
   const [myReports, setMyReports] = useState<PersonnelReport[]>([]);
   const [reviewQueue, setReviewQueue] = useState<PersonnelReport[]>([]);
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
-  const [passwordResetRequests, setPasswordResetRequests] = useState<PasswordResetRequestRecord[]>([]);
-  const [passwordResetDrafts, setPasswordResetDrafts] = useState<Record<string, PasswordResetReviewDraft>>({});
   const [selected, setSelected] = useState<string[]>([]);
   const [chatReport, setChatReport] = useState<ChatReconciliationReport>(emptyChatReport);
   const [storageCleanupReport, setStorageCleanupReport] = useState<StorageCleanupReport | null>(null);
@@ -165,8 +157,6 @@ export default function SettingsPage() {
   const [reportError, setReportError] = useState<string | null>(null);
   const [reviewQueueLoading, setReviewQueueLoading] = useState(personnelLevel >= 6);
   const [reviewQueueError, setReviewQueueError] = useState<string | null>(null);
-  const [passwordResetLoading, setPasswordResetLoading] = useState(personnelLevel >= 7);
-  const [passwordResetError, setPasswordResetError] = useState<string | null>(null);
   const [chatLoading, setChatLoading] = useState(personnelLevel >= 7);
   const [chatError, setChatError] = useState<string | null>(null);
   const [storageLoading, setStorageLoading] = useState(personnelLevel >= 7);
@@ -413,37 +403,6 @@ export default function SettingsPage() {
       .finally(() => setReviewQueueLoading(false));
   }, [personnelLevel]);
 
-  useEffect(() => {
-    if (!hasMaintenanceAccess) {
-      setPasswordResetRequests([]);
-      setPasswordResetDrafts({});
-      setPasswordResetLoading(false);
-      setPasswordResetError(null);
-      return;
-    }
-
-    setPasswordResetLoading(true);
-    setPasswordResetError(null);
-    listPasswordResetRequests()
-      .then((items) => {
-        setPasswordResetRequests(items);
-        setPasswordResetDrafts((current) => {
-          const next = { ...current };
-          items.forEach((item) => {
-            next[item.id] ??= {
-              status: "approved",
-              reviewNote: "",
-            };
-          });
-          return next;
-        });
-      })
-      .catch((error) => {
-        setPasswordResetRequests([]);
-        setPasswordResetError(toUserFacingError(error, "Password reset requests could not be loaded."));
-      })
-      .finally(() => setPasswordResetLoading(false));
-  }, [hasMaintenanceAccess]);
 
   const trackInfo = PERSONNEL_TRACKS.find((item) => item.key === track);
   const title = trackInfo?.titles[personnelLevel] ?? "Unknown";
@@ -458,10 +417,6 @@ export default function SettingsPage() {
   const pendingReviewCount = useMemo(
     () => reviewQueue.filter((item) => item.status === "open").length,
     [reviewQueue],
-  );
-  const pendingPasswordResetCount = useMemo(
-    () => passwordResetRequests.filter((item) => item.status === "pending").length,
-    [passwordResetRequests],
   );
   const inputClass = "min-w-0 w-full rounded-sm border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:ring-1 focus:ring-primary";
   const helperTextClass = "text-sm leading-6 text-muted-foreground";
@@ -555,30 +510,6 @@ export default function SettingsPage() {
     }
   };
 
-  const loadPasswordResetRequests = async () => {
-    if (!hasMaintenanceAccess) return;
-    setPasswordResetLoading(true);
-    setPasswordResetError(null);
-    try {
-      const items = await listPasswordResetRequests();
-      setPasswordResetRequests(items);
-      setPasswordResetDrafts((current) => {
-        const next = { ...current };
-        items.forEach((item) => {
-          next[item.id] ??= {
-            status: "approved",
-            reviewNote: "",
-          };
-        });
-        return next;
-      });
-    } catch (error) {
-      setPasswordResetRequests([]);
-      setPasswordResetError(toUserFacingError(error, "Password reset requests could not be loaded."));
-    } finally {
-      setPasswordResetLoading(false);
-    }
-  };
 
   const loadChatReport = async () => {
     if (personnelLevel < 7) return;
@@ -685,17 +616,6 @@ export default function SettingsPage() {
     }));
   };
 
-  const updatePasswordResetReviewDraft = (requestId: string, patch: Partial<PasswordResetReviewDraft>) => {
-    setPasswordResetDrafts((current) => ({
-      ...current,
-      [requestId]: {
-        status: "approved",
-        reviewNote: "",
-        ...current[requestId],
-        ...patch,
-      },
-    }));
-  };
 
   const handleSubmitReport = async () => {
     if (role === "guest") return;
@@ -725,26 +645,6 @@ export default function SettingsPage() {
     );
   };
 
-  const handleReviewPasswordReset = async (request: PasswordResetRequestRecord) => {
-    const draft = passwordResetDrafts[request.id] ?? {
-      status: "approved" as const,
-      reviewNote: "",
-    };
-    const reviewed = await reviewPasswordResetRequest(request.id, {
-      status: draft.status,
-      reviewNote: draft.reviewNote.trim() || undefined,
-    });
-    setPasswordResetRequests((current) =>
-      current.map((item) => (item.id === reviewed.id ? reviewed : item)),
-    );
-    setPasswordResetDrafts((current) => ({
-      ...current,
-      [request.id]: {
-        status: "approved",
-        reviewNote: "",
-      },
-    }));
-  };
 
   const handleReviewReport = async (report: PersonnelReport) => {
     const draft = reviewDrafts[report.id] ?? {
@@ -1900,179 +1800,6 @@ export default function SettingsPage() {
               </div>
             </SectionCard>
           )}
-
-          {hasMaintenanceAccess && (
-            <SectionCard
-              icon={KeyRound}
-              title="Password Reset Review"
-              description="Review manual password reset requests from personnel who cannot use the email path. Approved requests unlock credential confirmation for that account."
-            >
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <Metric icon={Inbox} label="Total requests" value={passwordResetRequests.length} />
-                <Metric icon={AlertTriangle} label="Pending review" value={pendingPasswordResetCount} />
-                <Metric
-                  icon={CheckCircle2}
-                  label="Completed"
-                  value={passwordResetRequests.filter((item) => item.status === "completed").length}
-                />
-              </div>
-
-              <div className="space-y-3">
-                {passwordResetLoading ? (
-                  <ContentState
-                    kind="loading"
-                    title="Loading password reset requests"
-                    description="Fetching account recovery requests for reviewer action."
-                    compact
-                    className="bg-background/45"
-                  />
-                ) : passwordResetError ? (
-                  <ContentState
-                    kind="error"
-                    title="Password reset review unavailable"
-                    description={passwordResetError}
-                    actionLabel="Retry"
-                    onAction={() => { void loadPasswordResetRequests(); }}
-                    compact
-                    className="bg-background/45"
-                  />
-                ) : passwordResetRequests.length === 0 ? (
-                  <ContentState
-                    kind="empty"
-                    title="No password reset requests"
-                    description="Manual account recovery requests will appear here for admin or author review."
-                    compact
-                    className="bg-background/45"
-                  />
-                ) : passwordResetRequests.map((request) => {
-                  const draft = passwordResetDrafts[request.id] ?? {
-                    status: "approved" as const,
-                    reviewNote: "",
-                  };
-                  const requiresCriticalConfirm = draft.status === "approved";
-                  const targetStatus = request.targetUser?.status ?? "unknown";
-
-                  return (
-                    <div key={request.id} className="rounded-sm border border-border bg-background/45 p-4 space-y-4">
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="space-y-1">
-                          <p className="font-heading text-sm tracking-[0.1em] text-foreground uppercase">
-                            {request.username}
-                          </p>
-                          <p className="text-sm text-muted-foreground break-all">
-                            {request.email} · requested {new Date(request.createdAt).toLocaleString()}
-                          </p>
-                        </div>
-                        <span className={cn(
-                          "inline-flex items-center rounded-sm border px-2 py-1 text-[10px] font-display tracking-wider uppercase",
-                          request.status === "approved" || request.status === "completed"
-                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                            : request.status === "rejected"
-                              ? "border-muted bg-muted/20 text-muted-foreground"
-                              : "border-accent-orange/40 bg-accent-orange/10 text-accent-orange",
-                        )}>
-                          {statusLabel(request.status)}
-                        </span>
-                      </div>
-
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <div className="space-y-2 text-sm">
-                          <p className="text-muted-foreground">
-                            Account role: <span className="text-foreground">{statusLabel(request.targetUser?.role ?? "unknown")}</span>
-                          </p>
-                          <p className="text-muted-foreground">
-                            Clearance: <span className="text-foreground">L{request.targetUser?.level ?? "?"}</span>
-                          </p>
-                          <p className="text-muted-foreground">
-                            Track: <span className="text-foreground">{request.targetUser?.track ?? "unknown"}</span>
-                          </p>
-                          <p className="text-muted-foreground">
-                            Account status: <span className="text-foreground">{statusLabel(targetStatus)}</span>
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Identity proof</p>
-                          <div className="rounded-sm border border-border/70 bg-background/60 p-3 text-sm text-muted-foreground whitespace-pre-wrap">
-                            {request.identityProof}
-                          </div>
-                        </div>
-                      </div>
-
-                      {request.status === "pending" ? (
-                        <>
-                          <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-4">
-                            <div className="space-y-2">
-                              <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Decision</label>
-                              <select
-                                value={draft.status}
-                                onChange={(event) => updatePasswordResetReviewDraft(request.id, { status: event.target.value as "approved" | "rejected" })}
-                                className={inputClass}
-                              >
-                                <option value="approved">Approve request</option>
-                                <option value="rejected">Reject request</option>
-                              </select>
-                            </div>
-                            <div className="space-y-2 lg:col-span-2 2xl:col-span-2">
-                              <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Reviewer note</label>
-                              <Textarea
-                                value={draft.reviewNote}
-                                onChange={(event) => updatePasswordResetReviewDraft(request.id, { reviewNote: event.target.value })}
-                                placeholder="Explain the approval or rejection decision"
-                                className="min-h-[96px]"
-                              />
-                            </div>
-                            <div className="flex items-end">
-                              <Button
-                                type="button"
-                                size="sm"
-                                className="w-full"
-                                isLoading={busyAction === `review-password-reset-${request.id}`}
-                                loadingText="Applying..."
-                                onClick={() => showValidation({
-                                  variant: draft.status === "approved" ? "warning" : "info",
-                                  title: draft.status === "approved" ? "Approve password reset request" : "Reject password reset request",
-                                  description: draft.status === "approved"
-                                    ? `Approve ${request.username} for credential confirmation with the submitted replacement password?`
-                                    : `Reject the password reset request from ${request.username}?`,
-                                  confirmLabel: draft.status === "approved" ? "Approve request" : "Reject request",
-                                  cancelLabel: "Cancel",
-                                  critical: requiresCriticalConfirm,
-                                  confirmDelaySeconds: requiresCriticalConfirm ? 5 : undefined,
-                                  onConfirm: async () => {
-                                    await runWithFeedback(
-                                      `review-password-reset-${request.id}`,
-                                      () => handleReviewPasswordReset(request),
-                                      "Password reset request reviewed",
-                                      "Password reset review failed",
-                                    );
-                                  },
-                                })}
-                              >
-                                Apply Decision
-                              </Button>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="rounded-sm border border-border/70 bg-background/60 p-3 text-sm text-muted-foreground">
-                          <p>
-                            Reviewed {request.reviewedAt ? new Date(request.reviewedAt).toLocaleString() : "previously"}
-                            {request.reviewedBy ? ` by ${request.reviewedBy.username}` : ""}.
-                          </p>
-                          {request.reviewNote ? <p className="mt-2 whitespace-pre-wrap">{request.reviewNote}</p> : null}
-                          {request.completedAt ? (
-                            <p className="mt-2 text-emerald-300">
-                              Credential confirmation completed {new Date(request.completedAt).toLocaleString()}.
-                            </p>
-                          ) : null}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </SectionCard>
-          )}
         </div>
         )}
       </div>
@@ -2133,6 +1860,7 @@ function SectionCard({
   children,
   className,
   accentClass = "text-accent-orange",
+  defaultOpen = false,
 }: {
   icon: ComponentType<{ className?: string }>;
   title: string;
@@ -2140,17 +1868,35 @@ function SectionCard({
   children: ReactNode;
   className?: string;
   accentClass?: string;
+  defaultOpen?: boolean;
 }) {
+  // Mobile-only collapse so users don't scroll past long feature blocks to
+  // reach the bottom panels. On >=sm, content is always expanded.
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <section className={cn("hud-border bg-card space-y-4 p-4 sm:space-y-5 sm:p-5", className)}>
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Icon className={cn("h-4 w-4", accentClass)} />
-          <h3 className={cn("min-w-0 break-words font-heading text-sm tracking-[0.15em] uppercase", accentClass)}>{title}</h3>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-start gap-2 text-left sm:cursor-default"
+      >
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center gap-2">
+            <Icon className={cn("h-4 w-4", accentClass)} />
+            <h3 className={cn("min-w-0 break-words font-heading text-sm tracking-[0.15em] uppercase", accentClass)}>{title}</h3>
+          </div>
+          <p className="text-sm leading-5 sm:leading-6 text-muted-foreground">{description}</p>
         </div>
-        <p className="text-sm leading-5 sm:leading-6 text-muted-foreground">{description}</p>
-      </div>
-      {children}
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 mt-1 shrink-0 text-muted-foreground transition-transform sm:hidden",
+            open && "rotate-180",
+          )}
+          aria-hidden
+        />
+      </button>
+      <div className={cn(open ? "block" : "hidden", "sm:block")}>{children}</div>
     </section>
   );
 }
