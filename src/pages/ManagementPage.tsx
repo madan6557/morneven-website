@@ -379,6 +379,10 @@ export default function ManagementPage() {
         <TabsContent value="mine" className="mt-4">
           <RequestList list={myRequests} viewer={{ level: personnelLevel, track, username }} />
         </TabsContent>
+
+        <TabsContent value="reset" className="mt-4">
+          <PasswordResetReviewPanel enabled={personnelLevel >= 7 && (role === "author" || role === "admin")} />
+        </TabsContent>
       </Tabs>
     </div>
   );
