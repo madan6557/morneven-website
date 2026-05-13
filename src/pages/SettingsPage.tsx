@@ -1800,8 +1800,6 @@ export default function SettingsPage() {
               </div>
             </SectionCard>
           )}
-
-          {null}
         </div>
         )}
       </div>
