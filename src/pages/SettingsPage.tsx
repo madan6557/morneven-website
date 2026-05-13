@@ -726,26 +726,6 @@ export default function SettingsPage() {
     );
   };
 
-  const handleReviewPasswordReset = async (request: PasswordResetRequestRecord) => {
-    const draft = passwordResetDrafts[request.id] ?? {
-      status: "approved" as const,
-      reviewNote: "",
-    };
-    const reviewed = await reviewPasswordResetRequest(request.id, {
-      status: draft.status,
-      reviewNote: draft.reviewNote.trim() || undefined,
-    });
-    setPasswordResetRequests((current) =>
-      current.map((item) => (item.id === reviewed.id ? reviewed : item)),
-    );
-    setPasswordResetDrafts((current) => ({
-      ...current,
-      [request.id]: {
-        status: "approved",
-        reviewNote: "",
-      },
-    }));
-  };
 
   const handleReviewReport = async (report: PersonnelReport) => {
     const draft = reviewDrafts[report.id] ?? {
