@@ -164,8 +164,6 @@ export default function SettingsPage() {
   const [reportError, setReportError] = useState<string | null>(null);
   const [reviewQueueLoading, setReviewQueueLoading] = useState(personnelLevel >= 6);
   const [reviewQueueError, setReviewQueueError] = useState<string | null>(null);
-  const [passwordResetLoading, setPasswordResetLoading] = useState(personnelLevel >= 7);
-  const [passwordResetError, setPasswordResetError] = useState<string | null>(null);
   const [chatLoading, setChatLoading] = useState(personnelLevel >= 7);
   const [chatError, setChatError] = useState<string | null>(null);
   const [storageLoading, setStorageLoading] = useState(personnelLevel >= 7);
