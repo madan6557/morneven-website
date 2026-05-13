@@ -109,10 +109,6 @@ type ReviewDraft = {
   note: string;
 };
 
-type PasswordResetReviewDraft = {
-  status: "approved" | "rejected";
-  reviewNote: string;
-};
 
 export default function SettingsPage() {
   const { role, username, personnelLevel, track, verifyPassword, logout } = useAuth();
