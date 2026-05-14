@@ -969,10 +969,11 @@ export default function PersonnelManagementPage() {
                         )
                       ) : (
                         <span
-                          className="inline-flex min-w-12 items-center justify-center rounded-sm border px-2 py-1 text-[10px] font-display tracking-wider uppercase"
+                          className="inline-flex min-w-12 items-center gap-1 justify-center rounded-sm border px-2 py-1 text-[10px] font-display tracking-wider uppercase"
                           style={personnelTrackBadgeStyle(p.track)}
                           title={trackMeta(p.track).label}
                         >
+                          <TrackEmblem track={p.track} size={14} />
                           {trackMeta(p.track).short}
                         </span>
                       )}
