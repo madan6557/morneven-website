@@ -1243,10 +1243,11 @@ export default function PersonnelManagementPage() {
                       L{p.level}
                     </span>
                     <span
-                      className="inline-flex items-center rounded-sm border px-2 py-0.5 text-[10px] font-display tracking-wider uppercase"
+                      className="inline-flex items-center gap-1 rounded-sm border px-2 py-0.5 text-[10px] font-display tracking-wider uppercase"
                       style={personnelTrackBadgeStyle(p.track)}
                       title={trackMeta(p.track).label}
                     >
+                      <TrackEmblem track={p.track} size={12} />
                       {trackMeta(p.track).short}
                     </span>
                     {p.statusReason ? (
