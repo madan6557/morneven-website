@@ -36,6 +36,7 @@ import {
   type PersonnelLevel,
   type PersonnelTrack,
 } from "@/lib/pl";
+import { TrackEmblem } from "@/components/TrackEmblem";
 import {
   getNavigationBadges,
   subscribeNavigationBadges,
