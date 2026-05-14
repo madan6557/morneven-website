@@ -40,6 +40,7 @@ import {
   downloadExtractionJob,
   listExtractionHistoryRemote,
   startExtractionRemote,
+  type BackupMediaSource,
   type ExtractionJob,
   type ExtractionMode,
 } from "@/services/extractionService";
@@ -116,6 +117,20 @@ const RESTRICTION_DURATION_MODES: Array<{ value: RestrictionDurationMode; label:
   { value: "days", label: "Days" },
 ];
 
+const BACKUP_MEDIA_SOURCES: Array<{ value: BackupMediaSource; label: string }> = [
+  { value: "chat", label: "Chat" },
+  { value: "gallery", label: "Gallery" },
+  { value: "characters", label: "Characters" },
+  { value: "creatures", label: "Creatures" },
+  { value: "places", label: "Places" },
+  { value: "technology", label: "Technology" },
+  { value: "events", label: "Events" },
+  { value: "other", label: "Other Lore" },
+  { value: "projects", label: "Projects" },
+  { value: "news", label: "News" },
+  { value: "map", label: "Map" },
+];
+
 function describeRestrictionDuration(mode: RestrictionDurationMode, amount: number) {
   if (mode === "manual") return "until manual restore";
   const unit = amount === 1 ? { minutes: "minute", hours: "hour", days: "day" }[mode] : mode;
@@ -130,6 +145,7 @@ export default function SettingsPage() {
   const [history, setHistory] = useState<ExtractionJob[]>([]);
   const [migrationHistory, setMigrationHistory] = useState<MigrationJob[]>([]);
   const [mode, setMode] = useState<ExtractionMode>("all");
+  const [mediaSources, setMediaSources] = useState<BackupMediaSource[]>(BACKUP_MEDIA_SOURCES.map((source) => source.value));
   const [autoDownload, setAutoDownload] = useState(true);
   const [password, setPassword] = useState("");
   const [migrationPassword, setMigrationPassword] = useState("");
@@ -204,7 +220,7 @@ export default function SettingsPage() {
         setShouldPollExtraction(items.some((job) => job.status === "processing"));
       })
       .catch((error) => {
-        setHistoryError(toUserFacingError(error, "Extraction history could not be loaded."));
+        setHistoryError(toUserFacingError(error, "Backup history could not be loaded."));
       })
       .finally(() => setHistoryLoading(false));
   }, [personnelLevel]);
@@ -276,7 +292,7 @@ export default function SettingsPage() {
           setShouldPollExtraction(false);
         }
       }).catch((error) => {
-        setHistoryError(toUserFacingError(error, "Extraction history could not be refreshed."));
+        setHistoryError(toUserFacingError(error, "Backup history could not be refreshed."));
         setShouldPollExtraction(false);
       });
     }, 3000);
@@ -424,7 +440,11 @@ export default function SettingsPage() {
 
   const trackInfo = PERSONNEL_TRACKS.find((item) => item.key === track);
   const title = trackInfo?.titles[personnelLevel] ?? "Unknown";
-  const canRun = isPl7Author && confirmText === "CONFIRM" && verifyPassword(password);
+  const canRun =
+    isPl7Author &&
+    confirmText === "CONFIRM" &&
+    verifyPassword(password) &&
+    (mode === "db" || mediaSources.length > 0);
   const canRunMigration =
     isPl7Author &&
     migrationConfirmText === "MIGRATION" &&
@@ -448,7 +468,7 @@ export default function SettingsPage() {
       setHistory(nextHistory);
       setShouldPollExtraction(nextHistory.some((job) => job.status === "processing"));
     } catch (error) {
-      setHistoryError(toUserFacingError(error, "Extraction history could not be loaded."));
+      setHistoryError(toUserFacingError(error, "Backup history could not be loaded."));
     } finally {
       setHistoryLoading(false);
     }
@@ -1487,24 +1507,24 @@ export default function SettingsPage() {
           {isPl7Author && (
             <SectionCard
               icon={AlertTriangle}
-              title="PL7 Data Extraction"
-              description="Queue background archive jobs for DB or asset export. Requires account password and CONFIRM phrase."
+              title="PL7 Data Backup"
+              description="Queue full Morneven backup jobs for SQL database, compatibility JSON, and selected attachment sources."
               className="border-amber-500/40"
               accentClass="text-amber-500"
             >
               <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                <p className="text-sm text-muted-foreground">History is retained for 30 days, and completed jobs can be downloaded again while still valid.</p>
-                {processing && <p className="text-sm text-muted-foreground">Extraction in progress...</p>}
+                <p className="text-sm text-muted-foreground">History is retained for 30 days. Completed archives include restore guidance inside the attachment README.</p>
+                {processing && <p className="text-sm text-muted-foreground">Backup in progress...</p>}
               </div>
 
               <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1fr)_12rem] 2xl:items-end">
                 <div className="space-y-2">
                   <div className="space-y-2">
-                    <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Extraction Mode</label>
+                    <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Backup Mode</label>
                     <select className={inputClass} value={mode} onChange={(e) => setMode(e.target.value as ExtractionMode)}>
-                      <option value="all">All (DB + Images)</option>
-                      <option value="db">DB Data per category JSON</option>
-                      <option value="images">Images category manifest</option>
+                      <option value="all">Full Backup (SQL + JSON + Attachments)</option>
+                      <option value="db">Database Backup (SQL + JSON)</option>
+                      <option value="images">Attachments Only</option>
                     </select>
                   </div>
                 </div>
@@ -1534,24 +1554,66 @@ export default function SettingsPage() {
                   loadingText="Starting..."
                   onClick={() => showValidation({
                     variant: "warning",
-                    title: "Start data extraction",
-                    description: "This creates a backend extraction job and prepares downloadable archive data.",
-                    confirmLabel: "Start extraction",
+                    title: "Start data backup",
+                    description: "This creates a backend backup job with SQL database export and selected attachment sources.",
+                    confirmLabel: "Start backup",
                     cancelLabel: "Cancel",
                     critical: true,
                     confirmDelaySeconds: 5,
                     onConfirm: async () => {
                       await runWithFeedback("start-extraction", async () => {
-                        const job = await startExtractionRemote(mode, autoDownload, { confirmText, password });
+                        const job = await startExtractionRemote(mode, autoDownload, { confirmText, password, mediaSources });
                         setHistory((current) => [job, ...current]);
                         setShouldPollExtraction(job.status === "processing");
-                      }, "Extraction started", "Extraction failed");
+                      }, "Backup started", "Backup failed");
                     },
                   })}
                 >
-                  Start Extraction
+                  Start Backup
                 </Button>
               </div>
+
+              {mode !== "db" && (
+                <div className="space-y-2 rounded-sm border border-border/70 bg-background/35 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-heading uppercase tracking-[0.12em] text-muted-foreground">Attachment Sources</p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className="text-[10px] font-display uppercase tracking-[0.1em] text-primary"
+                        onClick={() => setMediaSources(BACKUP_MEDIA_SOURCES.map((source) => source.value))}
+                      >
+                        Select all
+                      </button>
+                      <button
+                        type="button"
+                        className="text-[10px] font-display uppercase tracking-[0.1em] text-muted-foreground"
+                        onClick={() => setMediaSources([])}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {BACKUP_MEDIA_SOURCES.map((source) => (
+                      <label key={source.value} className="flex items-center gap-2 rounded-sm border border-border/60 bg-card/50 px-3 py-2 text-xs text-foreground">
+                        <input
+                          type="checkbox"
+                          checked={mediaSources.includes(source.value)}
+                          onChange={(event) =>
+                            setMediaSources((current) =>
+                              event.target.checked
+                                ? Array.from(new Set([...current, source.value]))
+                                : current.filter((value) => value !== source.value),
+                            )
+                          }
+                        />
+                        {source.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <label className="flex items-start gap-2 rounded-sm border border-border/70 bg-background/35 px-3 py-2.5 text-sm text-muted-foreground">
                 <input
@@ -1565,22 +1627,22 @@ export default function SettingsPage() {
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-heading tracking-[0.12em] text-foreground uppercase">Extraction History</p>
+                  <p className="text-xs font-heading tracking-[0.12em] text-foreground uppercase">Backup History</p>
                   <p className="text-sm text-muted-foreground">{history.length} job{history.length === 1 ? "" : "s"}</p>
                 </div>
                 <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
                   {historyLoading ? (
                     <ContentState
                       kind="loading"
-                      title="Loading extraction history"
-                      description="Fetching recent archive jobs."
+                      title="Loading backup history"
+                      description="Fetching recent backup jobs."
                       compact
                       className="bg-background/45"
                     />
                   ) : historyError ? (
                     <ContentState
                       kind="error"
-                      title="Extraction history unavailable"
+                      title="Backup history unavailable"
                       description={historyError}
                       actionLabel="Retry"
                       onAction={() => { void loadExtractionHistory(); }}
@@ -1590,8 +1652,8 @@ export default function SettingsPage() {
                   ) : history.length === 0 ? (
                     <ContentState
                       kind="empty"
-                      title="No extraction jobs yet"
-                      description="Start a new export when archive data needs to be packaged."
+                      title="No backup jobs yet"
+                      description="Start a new backup when archive data needs to be packaged."
                       compact
                       className="bg-background/45"
                     />
@@ -1655,17 +1717,17 @@ export default function SettingsPage() {
                   loadingText="Clearing..."
                   onClick={() => showValidation({
                     variant: "warning",
-                    title: "Clear selected extraction jobs",
+                    title: "Clear selected backup jobs",
                     description: `Clear ${selected.length} selected history item(s)?`,
                     confirmLabel: "Clear selected",
                     cancelLabel: "Cancel",
-                    dontShowAgainKey: "clear_selected_extractions",
+                    dontShowAgainKey: "clear_selected_backups",
                     onConfirm: async () => {
                       await runWithFeedback("clear-selected", async () => {
                         await clearExtractionHistory(selected);
                         setSelected([]);
                         setHistory((current) => current.filter((job) => !selected.includes(job.id)));
-                      }, "Selected extraction history cleared", "Clear selected failed");
+                      }, "Selected backup history cleared", "Clear selected failed");
                     },
                   })}
                 >
@@ -1680,8 +1742,8 @@ export default function SettingsPage() {
                   loadingText="Clearing..."
                   onClick={() => showValidation({
                     variant: "error",
-                    title: "Clear all extraction history",
-                    description: "This clears all extraction history visible to this account.",
+                    title: "Clear all backup history",
+                    description: "This clears all backup history visible to this account.",
                     confirmLabel: "Clear all",
                     cancelLabel: "Cancel",
                     critical: true,
@@ -1691,7 +1753,7 @@ export default function SettingsPage() {
                         await clearExtractionHistory();
                         setSelected([]);
                         setHistory([]);
-                      }, "Extraction history cleared", "Clear all failed");
+                      }, "Backup history cleared", "Clear all failed");
                     },
                   })}
                 >

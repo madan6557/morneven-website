@@ -2,6 +2,18 @@ import { apiRequest, getAccessToken, getApiBaseUrl, unwrapPageItems, type Backen
 
 export type ExtractionMode = "db" | "images" | "all";
 export type ExtractionStatus = "processing" | "completed" | "failed";
+export type BackupMediaSource =
+  | "chat"
+  | "gallery"
+  | "characters"
+  | "creatures"
+  | "places"
+  | "technology"
+  | "events"
+  | "other"
+  | "projects"
+  | "news"
+  | "map";
 
 export interface ExtractionJob {
   id: string;
@@ -45,7 +57,7 @@ export function startExtraction(_mode: ExtractionMode, _autoDownload: boolean): 
 export async function startExtractionRemote(
   mode: ExtractionMode,
   autoDownload: boolean,
-  payload: { confirmText?: string; password?: string } = {},
+  payload: { confirmText?: string; password?: string; mediaSources?: BackupMediaSource[] } = {},
 ): Promise<ExtractionJob> {
   return apiRequest<ExtractionJob>("/settings/extractions", {
     method: "POST",
@@ -65,7 +77,7 @@ export async function downloadExtractionJob(job: ExtractionJob): Promise<void> {
   if (job.blobUrl) {
     const anchor = document.createElement("a");
     anchor.href = job.blobUrl;
-    anchor.download = job.downloadName ?? `morneven-extract-${job.id}.zip`;
+    anchor.download = job.downloadName ?? `morneven-backup-${job.id}.zip`;
     anchor.click();
     return;
   }
@@ -83,7 +95,7 @@ export async function downloadExtractionJob(job: ExtractionJob): Promise<void> {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = job.downloadName ?? `morneven-extract-${job.id}.zip`;
+  anchor.download = job.downloadName ?? `morneven-backup-${job.id}.zip`;
   anchor.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
