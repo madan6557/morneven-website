@@ -24,6 +24,7 @@ import type { PersonnelUser } from "@/types";
 import { personnelLevelBadgeStyle, personnelTrackBadgeStyle } from "@/lib/personnelTone";
 import { useToast } from "@/hooks/use-toast";
 import { showValidation } from "@/components/ui/validation-dialog";
+import { TrackEmblem } from "@/components/TrackEmblem";
 
 const inputClass =
   "w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
