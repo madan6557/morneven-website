@@ -715,7 +715,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 md:gap-3 summary-grid">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-4 summary-grid">
         <SummaryTile icon={ShieldCheck} label="Clearance" value={`L${personnelLevel}`} description={title} />
         <SummaryTile icon={UsersRound} label="Track" value={trackInfo?.short ?? "N/A"} description={trackInfo?.label ?? "No active track"} />
         <div className="role-tile">
@@ -1965,7 +1965,7 @@ function SectionCard({
           aria-hidden
         />
       </button>
-      <div className={cn(open ? "block" : "hidden", "sm:block")}>{children}</div>
+      <div className={cn(open ? "block" : "hidden", "sm:block", "space-y-4 sm:space-y-5")}>{children}</div>
     </section>
   );
 }
