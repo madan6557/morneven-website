@@ -1,4 +1,4 @@
-import { apiRequest, getAccessToken, getApiBaseUrl, unwrapPageItems, type BackendPage } from "@/services/restClient";
+import { apiRequest, getApiBaseUrl, unwrapPageItems, type BackendPage } from "@/services/restClient";
 
 export type ExtractionMode = "db" | "images" | "all";
 export type ExtractionStatus = "processing" | "completed" | "failed";
@@ -33,6 +33,11 @@ export interface ExtractionJob {
   };
 }
 
+export interface ExtractionDownloadTicket {
+  ticket: string;
+  expiresAt: string;
+}
+
 export function listExtractionHistory(): ExtractionJob[] {
   return [];
 }
@@ -57,7 +62,7 @@ export function startExtraction(_mode: ExtractionMode, _autoDownload: boolean): 
 export async function startExtractionRemote(
   mode: ExtractionMode,
   autoDownload: boolean,
-  payload: { confirmText?: string; password?: string; mediaSources?: BackupMediaSource[] } = {},
+  payload: { confirmText?: string; password?: string; secretKey?: string; mediaSources?: BackupMediaSource[] } = {},
 ): Promise<ExtractionJob> {
   return apiRequest<ExtractionJob>("/settings/extractions", {
     method: "POST",
@@ -73,7 +78,14 @@ export function getExtractionDownloadUrl(id: string): string {
   return `${getApiBaseUrl()}/settings/extractions/${id}/download`;
 }
 
-export async function downloadExtractionJob(job: ExtractionJob): Promise<void> {
+export async function createExtractionDownloadTicket(id: string, secretKey: string): Promise<ExtractionDownloadTicket> {
+  return apiRequest<ExtractionDownloadTicket>(`/settings/extractions/${id}/download-ticket`, {
+    method: "POST",
+    body: { secretKey },
+  });
+}
+
+export async function downloadExtractionJob(job: ExtractionJob, secretKey: string): Promise<void> {
   if (job.blobUrl) {
     const anchor = document.createElement("a");
     anchor.href = job.blobUrl;
@@ -82,22 +94,14 @@ export async function downloadExtractionJob(job: ExtractionJob): Promise<void> {
     return;
   }
 
-  const headers = new Headers();
-  const token = getAccessToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-
-  const response = await fetch(getExtractionDownloadUrl(job.id), { headers });
-  if (!response.ok) {
-    throw new Error(`Download failed with status ${response.status}`);
-  }
-
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
+  const { ticket } = await createExtractionDownloadTicket(job.id, secretKey);
   const anchor = document.createElement("a");
-  anchor.href = url;
+  anchor.href = `${getExtractionDownloadUrl(job.id)}?ticket=${encodeURIComponent(ticket)}`;
   anchor.download = job.downloadName ?? `morneven-backup-${job.id}.zip`;
+  anchor.rel = "noopener";
+  document.body.appendChild(anchor);
   anchor.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+  anchor.remove();
 }
 
 export function canUseLocalExtractionFallback(): boolean {

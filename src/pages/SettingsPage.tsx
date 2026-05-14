@@ -148,11 +148,13 @@ export default function SettingsPage() {
   const [mediaSources, setMediaSources] = useState<BackupMediaSource[]>(BACKUP_MEDIA_SOURCES.map((source) => source.value));
   const [autoDownload, setAutoDownload] = useState(true);
   const [password, setPassword] = useState("");
+  const [extractionSecretKey, setExtractionSecretKey] = useState("");
   const [migrationPassword, setMigrationPassword] = useState("");
   const [migrationSecretKey, setMigrationSecretKey] = useState("");
   const [migrationBaseUrl, setMigrationBaseUrl] = useState("");
   const [migrationEndpoint, setMigrationEndpoint] = useState("");
   const [showExtractionPassword, setShowExtractionPassword] = useState(false);
+  const [showExtractionSecretKey, setShowExtractionSecretKey] = useState(false);
   const [showMigrationPassword, setShowMigrationPassword] = useState(false);
   const [showMigrationSecretKey, setShowMigrationSecretKey] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -444,6 +446,7 @@ export default function SettingsPage() {
     isPl7Author &&
     confirmText === "CONFIRM" &&
     verifyPassword(password) &&
+    extractionSecretKey.trim().length >= 16 &&
     (mode === "db" || mediaSources.length > 0);
   const canRunMigration =
     isPl7Author &&
@@ -1517,7 +1520,7 @@ export default function SettingsPage() {
                 {processing && <p className="text-sm text-muted-foreground">Backup in progress...</p>}
               </div>
 
-              <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1fr)_12rem] 2xl:items-end">
+              <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_12rem] 2xl:items-end">
                 <div className="space-y-2">
                   <div className="space-y-2">
                     <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">Backup Mode</label>
@@ -1536,6 +1539,16 @@ export default function SettingsPage() {
                   shown={showExtractionPassword}
                   onToggle={() => setShowExtractionPassword((value) => !value)}
                   placeholder="Account password"
+                  className={inputClass}
+                />
+
+                <PasswordField
+                  label="Extraction Key"
+                  value={extractionSecretKey}
+                  onChange={setExtractionSecretKey}
+                  shown={showExtractionSecretKey}
+                  onToggle={() => setShowExtractionSecretKey((value) => !value)}
+                  placeholder="EXTRACTION_KEY"
                   className={inputClass}
                 />
 
@@ -1562,7 +1575,12 @@ export default function SettingsPage() {
                     confirmDelaySeconds: 5,
                     onConfirm: async () => {
                       await runWithFeedback("start-extraction", async () => {
-                        const job = await startExtractionRemote(mode, autoDownload, { confirmText, password, mediaSources });
+                        const job = await startExtractionRemote(mode, autoDownload, {
+                          confirmText,
+                          password,
+                          secretKey: extractionSecretKey,
+                          mediaSources,
+                        });
                         setHistory((current) => [job, ...current]);
                         setShouldPollExtraction(job.status === "processing");
                       }, "Backup started", "Backup failed");
@@ -1687,14 +1705,15 @@ export default function SettingsPage() {
                           {job.status === "completed" && (
                             <button
                               type="button"
-                              className="text-sm text-primary underline underline-offset-4 disabled:cursor-wait disabled:opacity-60"
-                              disabled={busyAction === `download-${job.id}`}
+                              className="text-sm text-primary underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-60"
+                              disabled={busyAction === `download-${job.id}` || extractionSecretKey.trim().length < 16}
                               onClick={() => runWithFeedback(
                                 `download-${job.id}`,
-                                () => downloadExtractionJob(job),
+                                () => downloadExtractionJob(job, extractionSecretKey),
                                 "Download started",
                                 "Download failed",
                               )}
+                              title={extractionSecretKey.trim().length < 16 ? "Enter EXTRACTION_KEY to download backup archives." : undefined}
                             >
                               {busyAction === `download-${job.id}` ? "Downloading..." : "Download ZIP"}
                             </button>
