@@ -36,6 +36,7 @@ import {
   type PersonnelLevel,
   type PersonnelTrack,
 } from "@/lib/pl";
+import { TrackEmblem } from "@/components/TrackEmblem";
 import {
   getNavigationBadges,
   subscribeNavigationBadges,
@@ -283,30 +284,33 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
             <label htmlFor="track-switch" className="text-[10px] font-display tracking-wider text-sidebar-foreground/70 uppercase">
               Track
             </label>
-            {role === "author" || personnelLevel >= PL_FULL_AUTHORITY ? (
-              <select
-                id="track-switch"
-                value={track}
-                onChange={(e) => setTrack(e.target.value as PersonnelTrack)}
-                className="text-[10px] font-display tracking-wider bg-sidebar-accent border border-sidebar-border rounded-sm px-1.5 py-0.5 text-sidebar-foreground focus:outline-none focus:ring-1 focus:ring-sidebar-primary"
-                aria-label="Personnel Track switcher"
-              >
-                {PERSONNEL_TRACKS.map((t) => (
-                  <option key={t.key} value={t.key}>{t.short}</option>
-                ))}
-              </select>
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="text-[10px] font-display tracking-wider bg-sidebar-accent border border-sidebar-border rounded-sm px-1.5 py-0.5 text-sidebar-foreground/85 cursor-not-allowed">
-                    {PERSONNEL_TRACKS.find((t) => t.key === track)?.short}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="font-heading text-xs">
-                  Track assigned by Personnel Management
-                </TooltipContent>
-              </Tooltip>
-            )}
+            <div className="flex items-center gap-1.5">
+              <TrackEmblem track={track} size={22} title={PERSONNEL_TRACKS.find((t) => t.key === track)?.label} />
+              {role === "author" || personnelLevel >= PL_FULL_AUTHORITY ? (
+                <select
+                  id="track-switch"
+                  value={track}
+                  onChange={(e) => setTrack(e.target.value as PersonnelTrack)}
+                  className="text-[10px] font-display tracking-wider bg-sidebar-accent border border-sidebar-border rounded-sm px-1.5 py-0.5 text-sidebar-foreground focus:outline-none focus:ring-1 focus:ring-sidebar-primary"
+                  aria-label="Personnel Track switcher"
+                >
+                  {PERSONNEL_TRACKS.map((t) => (
+                    <option key={t.key} value={t.key}>{t.short}</option>
+                  ))}
+                </select>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-[10px] font-display tracking-wider bg-sidebar-accent border border-sidebar-border rounded-sm px-1.5 py-0.5 text-sidebar-foreground/85 cursor-not-allowed">
+                      {PERSONNEL_TRACKS.find((t) => t.key === track)?.short}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="font-heading text-xs">
+                    Track assigned by Personnel Management
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </div>
         </div>
       )}

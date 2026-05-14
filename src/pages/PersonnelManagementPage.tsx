@@ -24,6 +24,7 @@ import type { PersonnelUser } from "@/types";
 import { personnelLevelBadgeStyle, personnelTrackBadgeStyle } from "@/lib/personnelTone";
 import { useToast } from "@/hooks/use-toast";
 import { showValidation } from "@/components/ui/validation-dialog";
+import { TrackEmblem } from "@/components/TrackEmblem";
 
 const inputClass =
   "w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
@@ -935,10 +936,11 @@ export default function PersonnelManagementPage() {
                       {isEditing && draft ? (
                         personnelLevel === 5 || p.username.toLowerCase() === username.toLowerCase() ? (
                           <span
-                            className="inline-flex min-w-12 items-center justify-center rounded-sm border px-2 py-1 text-[10px] font-display tracking-wider uppercase"
+                            className="inline-flex min-w-12 items-center gap-1 justify-center rounded-sm border px-2 py-1 text-[10px] font-display tracking-wider uppercase"
                             style={personnelTrackBadgeStyle(p.track)}
                             title={trackMeta(p.track).label}
                           >
+                            <TrackEmblem track={p.track} size={14} />
                             {trackMeta(p.track).short}
                           </span>
                         ) : (
@@ -967,10 +969,11 @@ export default function PersonnelManagementPage() {
                         )
                       ) : (
                         <span
-                          className="inline-flex min-w-12 items-center justify-center rounded-sm border px-2 py-1 text-[10px] font-display tracking-wider uppercase"
+                          className="inline-flex min-w-12 items-center gap-1 justify-center rounded-sm border px-2 py-1 text-[10px] font-display tracking-wider uppercase"
                           style={personnelTrackBadgeStyle(p.track)}
                           title={trackMeta(p.track).label}
                         >
+                          <TrackEmblem track={p.track} size={14} />
                           {trackMeta(p.track).short}
                         </span>
                       )}
@@ -1240,10 +1243,11 @@ export default function PersonnelManagementPage() {
                       L{p.level}
                     </span>
                     <span
-                      className="inline-flex items-center rounded-sm border px-2 py-0.5 text-[10px] font-display tracking-wider uppercase"
+                      className="inline-flex items-center gap-1 rounded-sm border px-2 py-0.5 text-[10px] font-display tracking-wider uppercase"
                       style={personnelTrackBadgeStyle(p.track)}
                       title={trackMeta(p.track).label}
                     >
+                      <TrackEmblem track={p.track} size={12} />
                       {trackMeta(p.track).short}
                     </span>
                     {p.statusReason ? (
