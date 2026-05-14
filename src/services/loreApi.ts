@@ -38,6 +38,17 @@ async function deleteLoreItem(category: string, id: string): Promise<boolean> {
   return true;
 }
 
+export async function setLoreStar(
+  category: string,
+  id: string,
+  starred: boolean,
+): Promise<{ views: number; stars: number; viewerStarred: boolean }> {
+  return apiRequest(`/lore/${category}/${id}/star`, {
+    method: "POST",
+    body: { starred },
+  });
+}
+
 // Characters
 export async function getCharacters(): Promise<Character[]> {
   return getLoreList<Character>("characters");

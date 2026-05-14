@@ -17,6 +17,7 @@ import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { AuthenticatedImage, useResolvedImageUrl } from "@/components/AuthenticatedImage";
 import DocumentationViewer from "@/components/DocumentationViewer";
+import { LoreEngagementBar } from "@/components/LoreEngagementBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function EventDetail() {
@@ -124,6 +125,16 @@ export default function EventDetail() {
           </Link>
           <h1 className="font-display text-2xl md:text-3xl tracking-[0.1em] text-primary">{item.title.toUpperCase()}</h1>
           <p className="text-xs font-display tracking-wider text-accent-orange uppercase mt-1">{item.category}</p>
+          <div className="mt-3">
+            <LoreEngagementBar
+              category="events"
+              id={item.id}
+              views={item.views}
+              stars={item.stars}
+              viewerStarred={item.viewerStarred}
+              onChange={(metrics) => setItem((current) => current ? { ...current, ...metrics } : current)}
+            />
+          </div>
         </div>
       </div>
 

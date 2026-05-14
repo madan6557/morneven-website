@@ -17,6 +17,7 @@ import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { AuthenticatedImage, useResolvedImageUrl } from "@/components/AuthenticatedImage";
 import DocumentationViewer from "@/components/DocumentationViewer";
+import { LoreEngagementBar } from "@/components/LoreEngagementBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function PlaceDetail() {
@@ -148,6 +149,16 @@ export default function PlaceDetail() {
           </Link>
           <h1 className="font-display text-2xl md:text-3xl tracking-[0.1em] text-primary">{place.name.toUpperCase()}</h1>
           <p className="text-xs font-display tracking-wider text-accent-orange uppercase mt-1">{place.type}</p>
+          <div className="mt-3">
+            <LoreEngagementBar
+              category="places"
+              id={place.id}
+              views={place.views}
+              stars={place.stars}
+              viewerStarred={place.viewerStarred}
+              onChange={(metrics) => setPlace((current) => current ? { ...current, ...metrics } : current)}
+            />
+          </div>
         </div>
       </div>
 

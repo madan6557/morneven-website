@@ -19,6 +19,7 @@ const Landing = lazy(() => import("./pages/Landing"));
 const Auth = lazy(() => import("./pages/Auth"));
 const PasswordResetConfirmationPage = lazy(() => import("./pages/PasswordResetConfirmationPage"));
 const HomePage = lazy(() => import("./pages/HomePage"));
+const ActivityPage = lazy(() => import("./pages/ActivityPage"));
 const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
 const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
 const GalleryPage = lazy(() => import("./pages/GalleryPage"));
@@ -78,6 +79,7 @@ function App() {
                 <Route path="/auth/password-reset/confirm" element={<PasswordResetConfirmationPage />} />
                 <Route element={<AppLayout />}>
                   <Route path="/home" element={<HomePage />} />
+                  <Route path="/activity" element={<ActivityPage />} />
                   <Route path="/projects" element={<ProjectsPage />} />
                   <Route path="/projects/:id" element={<ProjectDetail />} />
                   <Route path="/gallery" element={<GalleryPage />} />

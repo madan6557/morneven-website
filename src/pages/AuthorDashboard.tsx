@@ -1359,7 +1359,14 @@ export default function AuthorDashboard() {
     if (activeTab === "gallery") {
       const galleryItem = item as GalleryItem;
       setEditing({
-        ...galleryItem,
+        id: galleryItem.id,
+        type: galleryItem.type,
+        title: galleryItem.title,
+        thumbnail: galleryItem.thumbnail,
+        videoUrl: galleryItem.videoUrl,
+        caption: galleryItem.caption,
+        date: galleryItem.date,
+        uploadedBy: galleryItem.uploadedBy,
         comments: galleryItem.comments ?? [],
         tags: galleryItem.tags ?? [],
       });

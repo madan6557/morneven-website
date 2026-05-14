@@ -17,6 +17,7 @@ import {
   Users,
   ClipboardList,
   MessageCircle,
+  BarChart3,
 } from "lucide-react";
 import {
   Tooltip,
@@ -56,6 +57,12 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { title: "Command Center", url: "/home", icon: Home },
+  {
+    title: "Activity",
+    url: "/activity",
+    icon: BarChart3,
+    visible: ({ role }) => role !== "guest",
+  },
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Gallery", url: "/gallery", icon: Image },
   { title: "Lore / Wiki", url: "/lore", icon: BookOpen },

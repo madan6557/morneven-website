@@ -13,6 +13,7 @@ import {
 import type { Character, Creature, OtherLore, Place, Technology, LoreEvent } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { ContentMetricPill } from "@/components/ContentMetricPill";
 import { ArrowUpDown, CalendarClock, Plus, Search, ShieldAlert, ShieldCheck } from "lucide-react";
 import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 import { canAccessAuthorPanel, type LoreSubSection } from "@/lib/pl";
@@ -304,6 +305,7 @@ export default function LorePage() {
                   <h3 className="text-sm font-heading text-foreground group-hover:text-primary transition-colors truncate">{c.name}</h3>
                   <p className="text-[10px] text-muted-foreground font-body truncate">{c.race}</p>
                   {c.occupation && <p className="text-[10px] text-accent-orange font-display tracking-wider uppercase truncate">{c.occupation}</p>}
+                  <ContentMetricPill kind="stars" value={c.stars} active={c.viewerStarred} label="Stars" />
                 </div>
               </div>
             </Link>
@@ -331,6 +333,7 @@ export default function LorePage() {
                   <h3 className="text-sm font-heading text-foreground group-hover:text-primary transition-colors">{p.name}</h3>
                   <p className="text-[10px] text-muted-foreground font-display tracking-wider uppercase">{p.type}</p>
                   <p className="text-xs text-muted-foreground font-body line-clamp-2 mt-1">{p.shortDesc}</p>
+                  <ContentMetricPill kind="stars" value={p.stars} active={p.viewerStarred} label="Stars" />
                 </div>
               </div>
             </Link>
@@ -358,6 +361,7 @@ export default function LorePage() {
                   <h3 className="text-sm font-heading text-foreground group-hover:text-primary transition-colors">{t.name}</h3>
                   <p className="text-[10px] text-muted-foreground font-display tracking-wider uppercase">{t.category}</p>
                   <p className="text-xs text-muted-foreground font-body line-clamp-2 mt-1">{t.shortDesc}</p>
+                  <ContentMetricPill kind="stars" value={t.stars} active={t.viewerStarred} label="Stars" />
                 </div>
               </div>
             </Link>
@@ -399,6 +403,7 @@ export default function LorePage() {
                     {c.classification}
                   </Link>
                   <p className="text-xs text-muted-foreground font-body line-clamp-2 mt-1">{c.shortDesc}</p>
+                  <ContentMetricPill kind="stars" value={c.stars} active={c.viewerStarred} label="Stars" />
                 </div>
               </div>
             </Link>
@@ -436,6 +441,7 @@ export default function LorePage() {
                     <p className="text-[10px] text-muted-foreground font-body italic truncate">{e.dateLabel}</p>
                   )}
                   <p className="text-xs text-muted-foreground font-body line-clamp-2 mt-1">{e.shortDesc}</p>
+                  <ContentMetricPill kind="stars" value={e.stars} active={e.viewerStarred} label="Stars" />
                 </div>
               </div>
             </Link>
@@ -463,6 +469,7 @@ export default function LorePage() {
                   <h3 className="text-sm font-heading text-foreground group-hover:text-primary transition-colors">{o.title}</h3>
                   <p className="text-[10px] text-muted-foreground font-display tracking-wider uppercase">{o.category}</p>
                   <p className="text-xs text-muted-foreground font-body line-clamp-2 mt-1">{o.shortDesc}</p>
+                  <ContentMetricPill kind="stars" value={o.stars} active={o.viewerStarred} label="Stars" />
                 </div>
               </div>
             </Link>

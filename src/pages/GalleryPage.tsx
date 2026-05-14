@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowUpDown, Plus, Search } from "lucide-react";
 import { getGalleryPage, type PageInfo } from "@/services/api";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { ContentMetricPill } from "@/components/ContentMetricPill";
 import type { GalleryItem } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { canAccessAuthorPanel } from "@/lib/pl";
@@ -167,7 +168,10 @@ export default function GalleryPage() {
               )}
               <div className="p-3">
                 <h3 className="text-sm font-heading text-foreground truncate group-hover:text-primary transition-colors">{item.title}</h3>
-                <p className="text-[10px] text-muted-foreground font-body mt-1">{item.date}</p>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <p className="text-[10px] text-muted-foreground font-body">{item.date}</p>
+                  <ContentMetricPill kind="views" value={item.views} label="Views" />
+                </div>
               </div>
             </div>
           </Link>

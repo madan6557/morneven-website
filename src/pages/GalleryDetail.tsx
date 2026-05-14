@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Reply, AtSign } from "lucide-react";
-import { getGalleryItem, addComment, addReply } from "@/services/api";
-import { getProxyUrl } from "@/services/fileProxyService";
+import { ArrowLeft, Eye, MessageCircle, Reply, ThumbsDown, ThumbsUp } from "lucide-react";
+import { getGalleryItem, addComment, addReply, setGalleryReaction } from "@/services/api";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import type { GalleryItem } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import MentionInput, { extractMentions, renderWithMentions } from "@/components/MentionInput";
+import { formatCompactNumber } from "@/lib/formatNumber";
 
 export default function GalleryDetail() {
   const { id } = useParams<{ id: string }>();
@@ -70,6 +70,13 @@ export default function GalleryDetail() {
     setReplyingTo(null);
   };
 
+  const handleReaction = async (reaction: "like" | "dislike") => {
+    if (role === "guest") return;
+    const nextReaction = item.viewerReaction === reaction ? null : reaction;
+    const metrics = await setGalleryReaction(item.id, nextReaction);
+    setItem((current) => current ? { ...current, ...metrics } : current);
+  };
+
   return (
     <div className="space-y-0">
       {/* Header with back link */}
@@ -107,6 +114,38 @@ export default function GalleryDetail() {
         <h1 className="font-display text-xl tracking-[0.1em] text-primary">{item.title.toUpperCase()}</h1>
         <div className="mecha-line w-32" />
         <p className="text-sm font-body text-foreground/80 leading-relaxed">{item.caption}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded-sm border border-border/70 bg-background/50 px-2 py-1 text-[10px] font-display uppercase tracking-[0.08em] text-muted-foreground">
+            <Eye className="h-3 w-3" />
+            {formatCompactNumber(item.views)} views
+          </span>
+          <button
+            type="button"
+            onClick={() => handleReaction("like")}
+            disabled={role === "guest"}
+            className={`inline-flex items-center gap-1 rounded-sm border px-2 py-1 text-[10px] font-display uppercase tracking-[0.08em] transition-colors ${
+              item.viewerReaction === "like"
+                ? "border-primary/70 bg-primary/15 text-primary"
+                : "border-border/70 bg-background/50 text-muted-foreground hover:border-primary/60 hover:text-primary"
+            } disabled:cursor-not-allowed disabled:opacity-60`}
+          >
+            <ThumbsUp className="h-3 w-3" />
+            {formatCompactNumber(item.likes)}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleReaction("dislike")}
+            disabled={role === "guest"}
+            className={`inline-flex items-center gap-1 rounded-sm border px-2 py-1 text-[10px] font-display uppercase tracking-[0.08em] transition-colors ${
+              item.viewerReaction === "dislike"
+                ? "border-destructive/70 bg-destructive/15 text-destructive"
+                : "border-border/70 bg-background/50 text-muted-foreground hover:border-destructive/60 hover:text-destructive"
+            } disabled:cursor-not-allowed disabled:opacity-60`}
+          >
+            <ThumbsDown className="h-3 w-3" />
+            {formatCompactNumber(item.dislikes)}
+          </button>
+        </div>
         <div className="flex gap-2 flex-wrap mt-2">
           {item.tags.map((tag) => (
             <span key={tag} className="text-[10px] font-display tracking-wider text-accent-orange bg-accent-orange/10 px-2 py-0.5 rounded-sm uppercase">

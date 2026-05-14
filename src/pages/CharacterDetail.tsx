@@ -17,6 +17,7 @@ import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { AuthenticatedImage, useResolvedImageUrl } from "@/components/AuthenticatedImage";
 import DocumentationViewer from "@/components/DocumentationViewer";
+import { LoreEngagementBar } from "@/components/LoreEngagementBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillList } from "@/components/SkillCard";
 import StatsRadar from "@/components/StatsRadar";
@@ -170,6 +171,16 @@ export default function CharacterDetail() {
           {char.occupation && (
             <p className="text-xs font-display tracking-[0.15em] uppercase mt-1" style={{ color: accentReadable }}>{char.occupation}</p>
           )}
+          <div className="mt-3">
+            <LoreEngagementBar
+              category="characters"
+              id={char.id}
+              views={char.views}
+              stars={char.stars}
+              viewerStarred={char.viewerStarred}
+              onChange={(metrics) => setChar((current) => current ? { ...current, ...metrics } : current)}
+            />
+          </div>
         </div>
       </div>
 

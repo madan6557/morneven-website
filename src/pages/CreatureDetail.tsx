@@ -17,6 +17,7 @@ import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { AuthenticatedImage, useResolvedImageUrl } from "@/components/AuthenticatedImage";
 import DocumentationViewer from "@/components/DocumentationViewer";
+import { LoreEngagementBar } from "@/components/LoreEngagementBar";
 import { gecChipClass, GEC_LORE_ID } from "@/lib/gec";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillList } from "@/components/SkillCard";
@@ -210,6 +211,16 @@ export default function CreatureDetail() {
             <ArrowLeft className="h-3 w-3" /> BACK TO LORE
           </Link>
           <h1 className="font-display text-2xl md:text-3xl tracking-[0.1em]" style={{ color: accentReadable }}>{creature.name.toUpperCase()}</h1>
+          <div className="mt-3">
+            <LoreEngagementBar
+              category="creatures"
+              id={creature.id}
+              views={creature.views}
+              stars={creature.stars}
+              viewerStarred={creature.viewerStarred}
+              onChange={(metrics) => setCreature((current) => current ? { ...current, ...metrics } : current)}
+            />
+          </div>
         </div>
       </div>
 

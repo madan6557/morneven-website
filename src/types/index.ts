@@ -34,6 +34,13 @@ export interface ProjectPatch {
   notes: string;
 }
 
+export interface ContentMetrics {
+  views: number;
+  likes?: number;
+  dislikes?: number;
+  stars?: number;
+}
+
 export interface DocItem {
   type: "image" | "video" | "file";
   url: string;
@@ -154,6 +161,9 @@ export interface Character {
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
+  views?: number;
+  stars?: number;
+  viewerStarred?: boolean;
 }
 
 export type CreatureClassification =
@@ -226,6 +236,9 @@ export interface Creature {
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
+  views?: number;
+  stars?: number;
+  viewerStarred?: boolean;
 }
 
 export interface OtherLore {
@@ -243,6 +256,9 @@ export interface OtherLore {
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
+  views?: number;
+  stars?: number;
+  viewerStarred?: boolean;
 }
 
 export type EventCategory =
@@ -280,6 +296,9 @@ export interface LoreEvent {
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
+  views?: number;
+  stars?: number;
+  viewerStarred?: boolean;
 }
 
 export interface DiscussionMention {
@@ -320,6 +339,9 @@ export interface Place {
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
+  views?: number;
+  stars?: number;
+  viewerStarred?: boolean;
 }
 
 export interface Technology {
@@ -337,6 +359,9 @@ export interface Technology {
   discussions?: DiscussionComment[];
   contributor?: string;
   meta?: LoreMeta;
+  views?: number;
+  stars?: number;
+  viewerStarred?: boolean;
 }
 
 export interface CommentReply {
@@ -367,6 +392,10 @@ export interface GalleryItem {
   date: string;
   comments: GalleryComment[];
   uploadedBy?: string;
+  views?: number;
+  likes?: number;
+  dislikes?: number;
+  viewerReaction?: "like" | "dislike" | null;
 }
 
 export interface NewsAttachment {

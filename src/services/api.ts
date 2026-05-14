@@ -10,3 +10,4 @@ export * from "@/services/mapApi";
 export * from "@/services/pagination";
 export * from "@/services/contentStatsApi";
 export * from "@/services/commandCenterApi";
+export * from "@/services/activityApi";
