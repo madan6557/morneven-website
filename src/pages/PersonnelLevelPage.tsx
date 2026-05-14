@@ -11,6 +11,7 @@ import {
 } from "@/lib/pl";
 import { useAuth } from "@/contexts/AuthContext";
 import { personnelLevelBadgeStyle } from "@/lib/personnelTone";
+import { TrackEmblem } from "@/components/TrackEmblem";
 
 const ALL_TRACKS_KEY = "all" as const;
 type TabKey = typeof ALL_TRACKS_KEY | PersonnelTrack;
@@ -51,6 +52,45 @@ export default function PersonnelLevelPage() {
 
       <div className="p-6 md:p-8 space-y-8">
         <div className="mecha-line" />
+
+        {/* Personnel primer */}
+        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <section className="hud-border bg-card p-4 md:p-5 space-y-3">
+            <div className="flex items-center gap-2 text-primary">
+              <ShieldCheck className="h-4 w-4" />
+              <h2 className="font-heading text-sm tracking-[0.15em] uppercase">
+                What Personnel Means
+              </h2>
+            </div>
+            <p className="text-sm font-body text-foreground/80 leading-relaxed">
+              In Morneven, <span className="text-foreground font-semibold">personnel</span> refers to every authenticated
+              institute-affiliated operator who can be assigned clearance, doctrine scope, and a functional division.
+              Personnel are not grouped by prestige, but by the kind of institutional burden they carry and the access
+              required to carry it safely.
+            </p>
+            <p className="text-sm font-body text-foreground/80 leading-relaxed">
+              The page below should be read as two systems working together:
+              the <span className="text-foreground font-semibold">division</span> explains what kind of work a person is
+              expected to perform, while the <span className="text-foreground font-semibold">Personnel Level</span> explains
+              how far that person can act, see, approve, and override inside the institute.
+            </p>
+          </section>
+
+          <section className="hud-border bg-card p-4 md:p-5 space-y-3">
+            <div className="flex items-center gap-2 text-primary">
+              <Info className="h-4 w-4" />
+              <h2 className="font-heading text-sm tracking-[0.15em] uppercase">
+                Reading Guide
+              </h2>
+            </div>
+            <ul className="text-sm font-body text-foreground/80 leading-relaxed list-disc pl-5 space-y-1">
+              <li>Division explains operational identity, role, and doctrine burden.</li>
+              <li>Emblem explains the symbolic language attached to that division.</li>
+              <li>PL explains visibility, authority, and override scope inside the same division.</li>
+              <li>Equivalent PL across divisions means equal clearance, not equal task profile.</li>
+            </ul>
+          </section>
+        </div>
 
         {/* Doctrine note */}
         <div className="hud-border bg-card p-4 md:p-5 space-y-2 max-w-3xl">
@@ -103,6 +143,75 @@ export default function PersonnelLevelPage() {
               {opt.label}
             </button>
           ))}
+        </div>
+
+        {/* Division dossiers */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h2 className="font-heading text-sm tracking-[0.15em] uppercase text-foreground">
+              Division Registry
+            </h2>
+            <p className="text-sm font-body text-foreground/75 leading-relaxed max-w-4xl">
+              Each division below describes a different operational philosophy inside Morneven. The emblem is treated as
+              a doctrinal shorthand, not decoration, and is meant to communicate the type of pressure, responsibility, and
+              institutional logic that division carries.
+            </p>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+          {visibleTracks.map((trackInfo) => (
+            <section
+              key={trackInfo.key}
+              className="hud-border bg-card p-4 md:p-5 space-y-4"
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <div className="flex h-16 w-16 items-center justify-center rounded-sm border border-primary/20 bg-primary/10">
+                  <TrackEmblem
+                    track={trackInfo.key}
+                    size={40}
+                    title={`${trackInfo.label} emblem`}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="font-display text-lg tracking-[0.08em] text-primary uppercase">
+                      {trackInfo.label}
+                    </h2>
+                    <span className="inline-flex items-center rounded-sm border border-border px-2 py-1 text-[10px] font-display tracking-wider uppercase text-muted-foreground">
+                      {trackInfo.short}
+                    </span>
+                  </div>
+                  <p className="text-sm font-body leading-relaxed text-foreground/90">
+                    {trackInfo.summary}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+                <div className="space-y-2">
+                  <p className="font-heading text-sm tracking-[0.15em] uppercase text-foreground">
+                    Division Brief
+                  </p>
+                  <p className="text-sm font-body leading-relaxed text-foreground/80">
+                    {trackInfo.description}
+                  </p>
+                </div>
+
+                <div className="rounded-sm border border-border/70 bg-background/45 p-3 space-y-2">
+                  <p className="font-heading text-sm tracking-[0.15em] uppercase text-foreground">
+                    Emblem
+                  </p>
+                  <p className="text-[10px] font-display tracking-[0.12em] uppercase text-accent-orange">
+                    {trackInfo.emblemTitle}
+                  </p>
+                  <p className="text-sm font-body leading-relaxed text-muted-foreground">
+                    {trackInfo.emblemDescription}
+                  </p>
+                </div>
+              </div>
+            </section>
+          ))}
+          </div>
         </div>
 
         {/* Matrix table - desktop */}

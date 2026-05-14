@@ -1,38 +1,45 @@
 # Documentation Index & Finalization Notes
 
-**Last validated:** 2026-05-01 (Asia/Singapore)
+**Last validated:** 2026-05-14 (Asia/Singapore)
 **Scope:** `docs/` handover, readiness reports, and backend contracts.
 
 ## Canonical documents
 
-1. **`BE-REST-API-Requirement.md`**  
+1. **`CURRENT_SYSTEM_DOCUMENTATION_2026-05-14.md`**
+   Current frozen system documentation for the May 14 staging QA candidate. Covers FE and BE version identity, architecture, environment variables, user guide, route matrix, role and permission rules, API surface, realtime behavior, storage, security, known risks, and operational freeze rules.
+
+2. **`STAGING_QA_GUIDE_2026-05-14.md`**
+   Current staging QA guide for the frozen May 14 candidate. Covers staging setup, freeze rules, static validation, smoke order, seed accounts, endpoint QA, browser QA, cross-flow scenarios, mutation rules, cleanup, severity rubric, pass/fail gates, and report template.
+
+3. **`BE-REST-API-Requirement.md`**  
    Backend implementation contract (full platform) and the main source of truth for API behavior, including lore metadata, field notes, observations, image/video/file documentation attachments, management workflows, notifications, chat, and latest FE-aligned REST requirements. Refreshed on 2026-05-01 to reflect that the current BE has been developed and deploy-smoke-tested only, with functional QA still pending.
 
-2. **`frontend-feature-validation-report-2026-05-01.md`**
+4. **`frontend-feature-validation-report-2026-05-01.md`**
    Current frontend feature inventory and demo-readiness validation, including feature descriptions, usage notes, validation rules, demo status, known gaps, and REST API readiness notes.
 
-3. **`production-readiness-chat-plan.md`**
+5. **`production-readiness-chat-plan.md`**
    Detailed production-gap analysis and phased chat hardening roadmap.
 
-4. **`full-platform-readiness-assessment-2026-04-27.md`**
+6. **`full-platform-readiness-assessment-2026-04-27.md`**
    Platform-wide readiness snapshot for demo vs production.
 
-5. **`chat-readiness-assessment-2026-04-27.md`**
+7. **`chat-readiness-assessment-2026-04-27.md`**
    Chat-module readiness snapshot.
 
-6. **`functionality_test.md`**
+8. **`functionality_test.md`**
    Functional QA run summary (tests/lint/build) used by the readiness docs.
 
-7. **`lazy-load-content-audit-2026-05-01.md`**
+9. **`lazy-load-content-audit-2026-05-01.md`**
    Frontend code audit for high-volume card-based content areas, especially Gallery and Lore lazy loading readiness.
 
-8. **`security-module-proposal-2026-05-11.md`**
+10. **`security-module-proposal-2026-05-11.md`**
    Draft proposal for the Morneven Security Module, covering modular security architecture, active defense boundaries, RBAC policy hardening, audit, threat detection, file security, incident response, and phased implementation.
 
 ## Document status
 
 - `backend-requirements-full-platform-2026-04-27.md` is retained as an **earlier baseline draft** for historical context.
-- New implementation work should reference **`BE-REST-API-Requirement.md`** first, then `production-readiness-chat-plan.md` for chat-specific rollout strategy.
+- Staging QA should reference **`CURRENT_SYSTEM_DOCUMENTATION_2026-05-14.md`** and **`STAGING_QA_GUIDE_2026-05-14.md`** first.
+- New backend implementation work should reference **`BE-REST-API-Requirement.md`** first, then `production-readiness-chat-plan.md` for chat-specific rollout strategy.
 
 ## Validation performed for finalization
 

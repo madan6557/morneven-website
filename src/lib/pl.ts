@@ -53,6 +53,10 @@ export interface TrackTitles {
   key: PersonnelTrack;
   label: string;
   short: string;
+  summary: string;
+  description: string;
+  emblemTitle: string;
+  emblemDescription: string;
   // index 0..6 → title at that level
   titles: Record<PersonnelLevel, string>;
 }
@@ -62,6 +66,12 @@ export const PERSONNEL_TRACKS: TrackTitles[] = [
     key: "executive",
     label: "Executive",
     short: "GOV",
+    summary: "Strategic governance, doctrine control, and institute-wide decision authority.",
+    description:
+      "The Executive division governs policy, inter-division alignment, strategic approvals, and crisis doctrine. Personnel in this ladder are expected to translate fragmented field, engineering, and logistics realities into stable institutional direction without collapsing operational tempo.",
+    emblemTitle: "Command Sigil",
+    emblemDescription:
+      "A crowned hexagonal command sigil that represents supervisory authority, layered oversight, and the burden of central doctrine.",
     titles: {
       7: "Full Authority",
       6: "Board of Trustees",
@@ -77,6 +87,12 @@ export const PERSONNEL_TRACKS: TrackTitles[] = [
     key: "field",
     label: "Field Personnel",
     short: "OPS",
+    summary: "Reconnaissance, containment, combat deployment, and hostile-zone survival.",
+    description:
+      "The Field division handles direct exposure to unstable sectors, creature activity, anomaly response, and tactical retrieval. Its doctrine values adaptability, observation under stress, and the ability to move from intelligence gathering to decisive engagement without waiting for ideal conditions.",
+    emblemTitle: "Vector Scope",
+    emblemDescription:
+      "A crosshair pierced by an upward vector arrow, symbolizing target acquisition, mobility, and the will to advance into contested ground.",
     titles: {
       7: "Full Authority",
       6: "Global Operative",
@@ -92,6 +108,12 @@ export const PERSONNEL_TRACKS: TrackTitles[] = [
     key: "mechanic",
     label: "Mechanic / Tech",
     short: "ENG",
+    summary: "Systems design, maintenance, reverse engineering, and technical continuity.",
+    description:
+      "The Mechanic division keeps the institute functional at every scale, from emergency repairs to high-complexity architecture. It owns machine reliability, technical research conversion, and the disciplined translation of dangerous theory into tools that can survive field use.",
+    emblemTitle: "Cog Array",
+    emblemDescription:
+      "A cogged tri-bolt array with a hex core, representing engineered precision, modular systems thinking, and continuous maintenance pressure.",
     titles: {
       7: "Full Authority",
       6: "Chief Architect",
@@ -107,6 +129,12 @@ export const PERSONNEL_TRACKS: TrackTitles[] = [
     key: "logistics",
     label: "Logistics",
     short: "LOG",
+    summary: "Supply routing, inventory continuity, transport discipline, and operational sustainment.",
+    description:
+      "The Logistics division ensures the rest of the institute can continue operating when conditions degrade. It coordinates movement, storage, provisioning, and redundancy planning, treating continuity itself as a strategic capability rather than a background service.",
+    emblemTitle: "Cargo Prism",
+    emblemDescription:
+      "Stacked cargo prisms with directional chevrons, representing controlled throughput, layered distribution, and forward movement of critical resources.",
     titles: {
       7: "Full Authority",
       6: "Supply Chain Sovereign",
