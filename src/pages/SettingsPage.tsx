@@ -1965,7 +1965,7 @@ function SectionCard({
           aria-hidden
         />
       </button>
-      <div className={cn(open ? "block" : "hidden", "sm:block")}>{children}</div>
+      <div className={cn(open ? "block" : "hidden", "sm:block", "space-y-4 sm:space-y-5")}>{children}</div>
     </section>
   );
 }
