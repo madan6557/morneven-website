@@ -1,6 +1,6 @@
 # Morneven Staging QA Guide
 
-Last updated: 2026-05-14
+Last updated: 2026-05-15
 Timezone: Asia/Singapore
 Scope: full staging QA for the frozen current system version
 
@@ -9,6 +9,15 @@ Scope: full staging QA for the frozen current system version
 This document defines the staging QA process for the current Morneven system candidate.
 
 The target of this QA cycle is not active development. Development is paused until QA is complete. Staging QA must validate the exact frontend and backend commits below unless an approved P0 or P1 fix resets the affected scope.
+
+Update label: 2026-05-15
+
+| Surface | Current staging URL |
+| --- | --- |
+| Frontend | `https://morneven.com` |
+| Backend | `https://morneven-backend-development.up.railway.app` |
+| API base | `https://morneven-backend-development.up.railway.app/api` |
+| Chat WebSocket | `wss://morneven-backend-development.up.railway.app/ws/chat?token=<token>` |
 
 | Component | Frozen commit | Branch |
 | --- | --- | --- |
@@ -46,9 +55,11 @@ Production promotion must not be approved while any P0 is open. P1 issues requir
 
 | Variable | Example | Required |
 | --- | --- | --- |
-| `STAGING_FRONTEND_URL` | `https://<staging-frontend-host>` | Yes |
-| `STAGING_BACKEND_URL` | `https://<staging-backend-host>` | Yes |
-| `QA_RUN_ID` | `QA-20260514-CODEX-STAGING` | Yes |
+| `STAGING_FRONTEND_URL` | `https://morneven.com` | Yes |
+| `STAGING_BACKEND_URL` | `https://morneven-backend-development.up.railway.app` | Yes |
+| `QA_RUN_ID` | `QA-20260515-STAGING` | Yes |
+
+Frontend staging must expose `/health`, `/ready`, and `/version` as JSON routes. If any of these paths return SPA HTML, record it as an environment failure before functional QA.
 
 ### 4.2 Backend variables
 
@@ -58,7 +69,7 @@ Production promotion must not be approved while any P0 is open. P1 issues requir
 | `DATABASE_URL` | Isolated staging PostgreSQL URL |
 | `JWT_ACCESS_SECRET` | Secret, 16+ chars |
 | `JWT_REFRESH_SECRET` | Secret, 16+ chars |
-| `CORS_ORIGIN` | Exact staging frontend origin, optionally local QA origin |
+| `CORS_ORIGIN` | `https://morneven.com`, optionally local QA origin |
 | `SECURITY_LEVEL` | `5` |
 | `SECURITY_BLOCK_TTL_MS` | `900000` |
 | `SECURITY_RETENTION_DAYS` | `90` |
@@ -77,7 +88,7 @@ Production promotion must not be approved while any P0 is open. P1 issues requir
 
 | Variable | Required staging value |
 | --- | --- |
-| `VITE_API_BASE_URL` | `https://<staging-backend-host>/api` |
+| `VITE_API_BASE_URL` | `https://morneven-backend-development.up.railway.app/api` |
 | `VITE_DEMO_FALLBACK` | unset or `false` |
 | `NODE_ENV` | `production` |
 | `PORT` | Railway-provided or `8080` |
@@ -91,10 +102,10 @@ Production promotion must not be approved while any P0 is open. P1 issues requir
 | Backend staging service deployed | Pending | Railway deploy URL and deploy log |
 | Frontend staging service deployed | Pending | Railway or approved staging URL |
 | Backend `/version` returns frozen backend commit | Pending | JSON response captured |
-| Frontend `/version` returns frozen frontend commit | Pending | JSON response captured |
+| Frontend deploy version evidence matches frozen frontend commit | Pending | `/version` JSON if available, otherwise deploy metadata captured |
 | Backend `/ready` returns `200` | Pending | JSON response captured |
 | Backend `/api/ready` returns `200` | Pending | JSON response captured |
-| Frontend `/health` returns JSON if using Railway server | Pending | JSON response captured |
+| Frontend `/health` or root load is healthy | Pending | JSON if Railway server, otherwise root SPA response captured |
 | Staging CORS allows frontend origin | Pending | Response header captured |
 | Staging database isolated from production | Pending | Railway service name or DB URL confirmation |
 | Storage is persistent or intentionally local | Pending | Storage driver and volume/bucket confirmation |
@@ -176,9 +187,9 @@ Run this order exactly. Stop at the first P0 environment blocker.
 | 4 | Backend API health | `GET $STAGING_BACKEND_URL/api/health` | `200`, JSON |
 | 5 | Backend API ready | `GET $STAGING_BACKEND_URL/api/ready` | `200`, DB ready |
 | 6 | Backend API version | `GET $STAGING_BACKEND_URL/api/version` | frozen BE commit |
-| 7 | Frontend health | `GET $STAGING_FRONTEND_URL/health` | `200`, JSON if Railway server |
-| 8 | Frontend ready | `GET $STAGING_FRONTEND_URL/ready` | `200`, JSON if Railway server |
-| 9 | Frontend version | `GET $STAGING_FRONTEND_URL/version` | frozen FE commit if Railway server |
+| 7 | Frontend health | `GET $STAGING_FRONTEND_URL/health` | `200`, JSON |
+| 8 | Frontend ready | `GET $STAGING_FRONTEND_URL/ready` | `200`, JSON |
+| 9 | Frontend version | `GET $STAGING_FRONTEND_URL/version` | frozen FE commit |
 | 10 | Frontend root | `GET $STAGING_FRONTEND_URL/` | SPA loads |
 | 11 | Direct SPA route refresh | `/home`, `/projects`, `/chat` | no `404` |
 | 12 | Author login | `POST /api/auth/login` | token and user returned |
@@ -191,9 +202,9 @@ Run this order exactly. Stop at the first P0 environment blocker.
 ## 8. Smoke Test Commands
 
 ```powershell
-$env:STAGING_BACKEND_URL="https://<staging-backend-host>"
-$env:STAGING_FRONTEND_URL="https://<staging-frontend-host>"
-$env:QA_RUN_ID="QA-20260514-CODEX-STAGING"
+$env:STAGING_BACKEND_URL="https://morneven-backend-development.up.railway.app"
+$env:STAGING_FRONTEND_URL="https://morneven.com"
+$env:QA_RUN_ID="QA-20260515-STAGING"
 $env:QA_SEED_PASSWORD="SeedPassword123"
 ```
 
@@ -254,7 +265,7 @@ Use these accounts for staging QA after seeding.
 | `h.kato@morneven.com` | `personel` | 5 | logistics | `SeedPassword123` | Mid-level negative author checks |
 | `t.bremmer@morneven.com` | `personel` | 4 | field | `SeedPassword123` | Personnel visibility and review surfaces |
 | `r.alves@morneven.com` | `personel` | 3 | executive | `SeedPassword123` | Restricted content threshold |
-| `guest@morneven.com` | `guest` | 0 | executive | `SeedPassword123` | Guest negative checks |
+| `/api/auth/guest` | `guest` | 0 | executive | N/A | Guest negative checks |
 | `a.koval@morneven.com` | `personel` | 2 | mechanic | `SeedPassword123` | Low privilege negative checks |
 | `i.stratos@morneven.com` | `personel` | 1 | field | `SeedPassword123` | Low privilege request flows |
 | `y.tanaka@morneven.com` | `personel` | 1 | executive | `SeedPassword123` | Low privilege request flows |
@@ -333,7 +344,7 @@ Negative tests:
 | Browsers | Chrome latest, Edge latest, Firefox latest if available |
 | Viewports | `390x844`, `768x1024`, `1366x768`, `1920x1080` |
 | Console | No uncaught runtime exceptions or infinite loading loops |
-| Network | All API calls go to staging backend, no `backend.dev.morneven.com`, no demo fallback |
+| Network | All API calls go to `https://morneven-backend-development.up.railway.app/api`, no `backend.dev.morneven.com`, no demo fallback |
 | Auth | Login, reload session, refresh token behavior, logout |
 | Navigation | Sidebar visibility matches role, level, and track |
 | Mobile | Sidebar opens/closes, no horizontal overflow |
@@ -492,6 +503,7 @@ Run only with approval.
 
 ```powershell
 cd "D:\MiKy LiRa\Project\Morneven Project\Website\morneven-backend"
+$env:QA_EXTRACTION_KEY="<same value as backend EXTRACTION_KEY>"
 node qa/dev-api-qa.mjs `
   --base-url $env:STAGING_BACKEND_URL `
   --scope full `
@@ -515,7 +527,7 @@ Minimum manual test:
 3. Connect to:
 
 ```txt
-wss://<staging-backend-host>/ws/chat?token=<token>
+wss://morneven-backend-development.up.railway.app/ws/chat?token=<token>
 ```
 
 Expected:
@@ -624,7 +636,7 @@ Approval:
 | Realtime is process-local | P2 if scaled horizontally | Keep staging single-instance or accept limitation |
 | Uploaded files lack direct delete endpoint | P4 | Record residuals or use storage cleanup |
 | Manual chat group hard-delete missing | P4 | Record residuals |
-| Frontend Vercel health endpoints may return HTML | P2 for environment checks | Use Railway frontend for staging health/version, or document Vercel limitation |
+| Frontend health endpoints return SPA HTML | P2 for environment checks | Redeploy FE build with generated `/health`, `/ready`, and `/version` artifacts |
 | Backend package-lock is ignored | P2 release repeatability risk | Prefer lockfile policy before production |
 
 ## 22. Final Staging Acceptance Checklist
@@ -647,4 +659,3 @@ Approval:
 | Residual data listed | Pending |
 | Accepted risks signed off | Pending |
 | Final verdict assigned | Pending |
-

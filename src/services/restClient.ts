@@ -169,7 +169,8 @@ async function refreshAccessToken(): Promise<boolean> {
     if (!payload.token) return false;
     setAuthTokens(payload.token, payload.refreshToken ?? refreshToken);
     return true;
-  } catch {
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 429) return false;
     clearAuthTokens();
     return false;
   }

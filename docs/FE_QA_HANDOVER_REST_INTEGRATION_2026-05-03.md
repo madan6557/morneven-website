@@ -2,8 +2,11 @@
 
 Date: 2026-05-03
 Frontend target: `morneven-website`
-Backend target: `https://backend.dev.morneven.com/api`
+Staging frontend URL: `https://morneven.com`
+Backend target: `https://morneven-backend-development.up.railway.app/api`
 Status: Ready for FE QA regression
+
+Staging URL update: 2026-05-15
 
 ## Summary
 
@@ -21,7 +24,7 @@ Use this handover together with:
 Create or verify local environment:
 
 ```txt
-VITE_API_BASE_URL=https://backend.dev.morneven.com/api
+VITE_API_BASE_URL=https://morneven-backend-development.up.railway.app/api
 ```
 
 Do not set this variable during QA unless a demo fallback run is explicitly requested:

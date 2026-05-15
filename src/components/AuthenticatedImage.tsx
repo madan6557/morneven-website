@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAuthenticatedImageUrl, getProxyUrl } from "@/services/fileProxyService";
+import { getAuthenticatedImageUrl } from "@/services/fileProxyService";
 
 type AuthenticatedImageProps = {
   src: string;
@@ -34,7 +34,7 @@ export function useResolvedImageUrl(src: string) {
 
       const blobUrl = await getAuthenticatedImageUrl(src);
       if (!cancelled) {
-        setResolvedSrc(blobUrl || getProxyUrl(src));
+        setResolvedSrc(blobUrl);
       }
     };
 

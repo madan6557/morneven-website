@@ -1,6 +1,6 @@
 # Morneven Frontend QA Test Guide
 
-Last updated: 2026-05-02
+Last updated: 2026-05-15
 
 This guide is for QA testing of the Morneven frontend application. It covers local testing through localhost and deployed testing through `morneven.com`.
 
@@ -12,6 +12,9 @@ This guide is for QA testing of the Morneven frontend application. It covers loc
 | Framework | React, Vite, React Router, Tailwind CSS |
 | Local URL | `http://localhost:3000` |
 | Public URL | `https://morneven.com` |
+| Staging QA frontend URL | `https://morneven.com` |
+| Backend QA URL | `https://morneven-backend-development.up.railway.app` |
+| Backend API base | `https://morneven-backend-development.up.railway.app/api` |
 | Local dev command | `npm run dev` |
 | Production build command | `npm run build` |
 | Test command | `npm run test` |

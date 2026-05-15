@@ -7,6 +7,7 @@ import {
   type PersonnelTrack,
 } from "@/lib/pl";
 import {
+  ApiError,
   apiRequest,
   clearAuthTokens,
   getAccessToken,
@@ -156,8 +157,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setPersonnelLevel(next.personnelLevel);
         setTrack(next.track);
       })
-      .catch(() => {
+      .catch((error) => {
         if (cancelled) return;
+        if (error instanceof ApiError && error.status === 429 && saved?.isAuthenticated) {
+          setIsAuthenticated(true);
+          setUsername(saved.username);
+          setRole(saved.role);
+          setPersonnelLevel(saved.personnelLevel ?? DEFAULT_PL_BY_ROLE[saved.role]);
+          setTrack(saved.track ?? DEFAULT_TRACK_BY_ROLE[saved.role]);
+          setPasswordSnapshot(saved.passwordSnapshot ?? "");
+          return;
+        }
         setIsAuthenticated(false);
         setUsername("Guest");
         setRole("guest");
