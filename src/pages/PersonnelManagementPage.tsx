@@ -1087,8 +1087,8 @@ export default function PersonnelManagementPage() {
             const canModerateRecord = canModerateStatus(p);
             return (
               <div key={p.id} className={`hud-border-sm bg-card p-3 space-y-2 ${selected.has(p.id) ? "ring-1 ring-primary/40" : ""}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-start gap-2 min-w-0">
                     <input
                       type="checkbox"
                       aria-label={`Select ${p.username}`}
@@ -1097,9 +1097,9 @@ export default function PersonnelManagementPage() {
                       disabled={!canBulkSelectPersonnel(p)}
                       className="h-4 w-4 mt-0.5 accent-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                     />
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-heading text-sm text-foreground">{p.username}</p>
+                        <p className="font-heading text-sm text-foreground break-all">{p.username}</p>
                         {roleBadgeLabel(p) && (
                           <span className="text-[9px] font-display tracking-wider uppercase px-1.5 py-0.5 rounded-sm border border-destructive/40 bg-destructive/10 text-destructive">
                             {roleBadgeLabel(p)}
@@ -1110,10 +1110,10 @@ export default function PersonnelManagementPage() {
                           {statusLabel(p)}
                         </span>
                       </div>
-                      <p className="text-[11px] text-muted-foreground font-body">{p.email}</p>
+                      <p className="text-[11px] text-muted-foreground font-body break-all">{p.email}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex flex-wrap items-center justify-end gap-1 border-t border-border/50 pt-2">
                     {!isEditing && (
                       <>
                         {canModerateRecord && (
