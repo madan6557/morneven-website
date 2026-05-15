@@ -206,7 +206,7 @@ export async function getPersonnel(id: string): Promise<PersonnelUser | undefine
 }
 
 export async function createPersonnel(
-  data: Omit<PersonnelUser, "id" | "updatedAt"> & { password?: string },
+  data: Omit<PersonnelUser, "id" | "updatedAt"> & { password: string },
 ): Promise<PersonnelUser> {
   const created = normalizePersonnelUser(
     await apiRequest<unknown>("/personnel", {

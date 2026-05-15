@@ -149,6 +149,8 @@ export default function PersonnelManagementPage() {
   const [creating, setCreating] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [moderationDraft, setModerationDraft] = useState<ModerationDraft | null>(null);
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserPasswordConfirm, setNewUserPasswordConfirm] = useState("");
   const [newUser, setNewUser] = useState<Omit<PersonnelUser, "id" | "updatedAt">>({
     username: "",
     email: "",
@@ -451,15 +453,26 @@ export default function PersonnelManagementPage() {
       window.alert("Username and email are required.");
       return;
     }
+    if (newUserPassword.length < 12) {
+      window.alert("Initial password must be at least 12 characters.");
+      return;
+    }
+    if (newUserPassword !== newUserPasswordConfirm) {
+      window.alert("Initial password confirmation does not match.");
+      return;
+    }
     setBusyAction("create");
     try {
       const created = await createPersonnel({
         ...newUser,
+        password: newUserPassword,
         role: normalizeRoleForLevel(newUser.level, newUser.role, canManageRoleAtLevel7),
       });
       setPeople((prev) => [created, ...prev]);
       setCreating(false);
       setNewUser({ username: "", email: "", role: "personel", level: 2, track: "executive", note: "" });
+      setNewUserPassword("");
+      setNewUserPasswordConfirm("");
       toast({ title: "Personnel created" });
     } catch (error) {
       toast({
@@ -605,7 +618,14 @@ export default function PersonnelManagementPage() {
               <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase">
                 New Personnel Record
               </h3>
-              <button onClick={() => setCreating(false)} className="text-muted-foreground hover:text-foreground">
+              <button
+                onClick={() => {
+                  setCreating(false);
+                  setNewUserPassword("");
+                  setNewUserPasswordConfirm("");
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -617,6 +637,28 @@ export default function PersonnelManagementPage() {
               <label className="space-y-1">
                 <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Email</span>
                 <input value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} className={inputClass} />
+              </label>
+              <label className="space-y-1">
+                <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Initial Password</span>
+                <input
+                  type="password"
+                  value={newUserPassword}
+                  onChange={(e) => setNewUserPassword(e.target.value)}
+                  className={inputClass}
+                  placeholder="Min 12 characters"
+                  autoComplete="new-password"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Confirm Password</span>
+                <input
+                  type="password"
+                  value={newUserPasswordConfirm}
+                  onChange={(e) => setNewUserPasswordConfirm(e.target.value)}
+                  className={inputClass}
+                  placeholder="Repeat initial password"
+                  autoComplete="new-password"
+                />
               </label>
               <label className="space-y-1">
                 <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Level</span>
@@ -663,7 +705,16 @@ export default function PersonnelManagementPage() {
               </label>
             </div>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setCreating(false)} className="px-3 py-2 text-xs font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors">CANCEL</button>
+              <button
+                onClick={() => {
+                  setCreating(false);
+                  setNewUserPassword("");
+                  setNewUserPasswordConfirm("");
+                }}
+                className="px-3 py-2 text-xs font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors"
+              >
+                CANCEL
+              </button>
               <button
                 onClick={handleCreate}
                 disabled={busyAction === "create"}
