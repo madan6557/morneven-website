@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, ExternalLink } from "lucide-react";
 import { getNewsItem } from "@/services/newsApi";
-import { AuthenticatedImage, useResolvedImageUrl } from "@/components/AuthenticatedImage";
+import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { useResolvedImageUrl } from "@/hooks/useResolvedImageUrl";
 import type { NewsItem } from "@/types";
 
 export default function NewsDetail() {

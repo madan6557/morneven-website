@@ -5,7 +5,8 @@ import { getGalleryItem, addComment, addReply, setGalleryReaction } from "@/serv
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import type { GalleryItem } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import MentionInput, { extractMentions, renderWithMentions } from "@/components/MentionInput";
+import MentionInput from "@/components/MentionInput";
+import { extractMentions, renderWithMentions } from "@/lib/mentions";
 import { formatCompactNumber } from "@/lib/formatNumber";
 
 export default function GalleryDetail() {

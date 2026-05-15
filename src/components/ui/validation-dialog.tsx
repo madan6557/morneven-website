@@ -85,7 +85,6 @@ export function showValidation(opts: ValidationDialogOptions) {
 
   if (externalShow) externalShow(opts);
   else if (typeof window !== "undefined") {
-    // eslint-disable-next-line no-console
     console.warn("[validation-dialog] Provider not mounted; falling back to window.alert");
     window.alert(opts.title ? `${opts.title}\n\n${opts.description ?? ""}` : opts.description ?? "");
   }

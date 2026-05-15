@@ -94,6 +94,7 @@ const REALTIME_EVENTS = [
   "chat.message.deleted",
   "chat.conversation.created",
   "chat.conversation.updated",
+  "chat.conversation.deleted",
   "chat.invite.created",
   "chat.invite.resolved",
   "chat.read.updated",
@@ -178,6 +179,19 @@ function ensureRealtimeBridge() {
         && "id" in payload
       ) {
         upsertConversation(payload as Conversation);
+        emitChatChanged();
+        return;
+      }
+
+      if (envelope.event === "chat.conversation.deleted" && payload && typeof payload === "object") {
+        const eventPayload = payload as { id?: string; conversationId?: string };
+        const conversationId = eventPayload.id ?? eventPayload.conversationId;
+        if (conversationId) {
+          conversationCache = conversationCache.filter((item) => item.id !== conversationId);
+          inviteCache = inviteCache.filter((item) => item.id !== conversationId);
+          messageCache.delete(conversationId);
+          delete unreadCountCache[conversationId];
+        }
         emitChatChanged();
         return;
       }
@@ -634,6 +648,19 @@ export async function leaveConversationRemote(conversationId: string): Promise<b
     method: "POST",
   });
   conversationCache = conversationCache.filter((item) => item.id !== conversationId);
+  messageCache.delete(conversationId);
+  delete unreadCountCache[conversationId];
+  invalidateNavigationBadges();
+  emitChatChanged();
+  return true;
+}
+
+export async function deleteConversationRemote(conversationId: string): Promise<boolean> {
+  await apiRequest(`/chat/conversations/${conversationId}`, {
+    method: "DELETE",
+  });
+  conversationCache = conversationCache.filter((item) => item.id !== conversationId);
+  inviteCache = inviteCache.filter((item) => item.id !== conversationId);
   messageCache.delete(conversationId);
   delete unreadCountCache[conversationId];
   invalidateNavigationBadges();

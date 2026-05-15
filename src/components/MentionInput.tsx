@@ -4,7 +4,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { listPersonnel } from "@/services/personnelApi";
-import type { DiscussionMention } from "@/types";
 import { accentSurface, accentText } from "@/lib/themeColor";
 
 interface Props {
@@ -189,50 +188,4 @@ export default function MentionInput({
       )}
     </div>
   );
-}
-
-// Render a string with @mentions as accent-colored chips.
-export function renderWithMentions(
-  text: string,
-  accent: string,
-  className = "",
-): React.ReactNode {
-  const readableAccent = accentText(accent);
-  const softAccentSurface = accentSurface(accent);
-  // Split on @username tokens (word chars, dots, dashes). Preserve surrounding
-  // whitespace so the rendered output reads identically to the source.
-  const parts = text.split(/(@[\w.-]+)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith("@") && part.length > 1) {
-      return (
-        <span
-          key={i}
-          className={`font-heading tracking-wider px-1 rounded-sm ${className}`}
-          style={{ color: readableAccent, backgroundColor: softAccentSurface }}
-        >
-          {part}
-        </span>
-      );
-    }
-    return <span key={i}>{part}</span>;
-  });
-}
-
-export function extractMentions(text: string): DiscussionMention[] {
-  const matches = text.matchAll(/@([\w.-]+)/g);
-  const result: DiscussionMention[] = [];
-
-  for (const m of matches) {
-    const raw = m[0];
-    const username = m[1];
-    const start = m.index ?? -1;
-    if (start < 0) continue;
-    result.push({
-      username,
-      start,
-      end: start + raw.length,
-    });
-  }
-
-  return result;
 }

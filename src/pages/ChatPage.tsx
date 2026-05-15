@@ -15,6 +15,7 @@ import {
   rejectInviteRemote,
   kickMemberRemote,
   leaveConversationRemote,
+  deleteConversationRemote,
   setMemberRoleRemote,
   renameConversationRemote,
   canManage,
@@ -35,7 +36,8 @@ import {
 import { apiUpload } from "@/services/api";
 import { downloadAuthenticatedFile, openAuthenticatedFile } from "@/services/fileProxyService";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
-import { renderWithMentions } from "@/components/MentionInput";
+import { renderWithMentions } from "@/lib/mentions";
+import { showValidation } from "@/components/ui/validation-dialog";
 import type { PersonnelUser } from "@/types";
 import {
   Send,
@@ -852,6 +854,43 @@ export default function ChatPage() {
     await renameConversationRemote(activeConv.id, renameValue.trim());
     setRenameValue("");
     refresh();
+  }
+
+  function handleLeaveConversation() {
+    if (!activeConv) return;
+    showValidation({
+      title: "Leave conversation?",
+      description: "You will leave this group. If no admin remains, the next active member in join order becomes group admin. If no members remain, the group is deleted.",
+      variant: "warning",
+      confirmLabel: "Leave",
+      cancelLabel: "Cancel",
+      critical: true,
+      onConfirm: async () => {
+        await leaveConversationRemote(activeConv.id);
+        setActive(null);
+        closeDialog();
+        refresh();
+      },
+    });
+  }
+
+  function handleDeleteConversation() {
+    if (!activeConv) return;
+    showValidation({
+      title: "Delete group permanently?",
+      description: `This will delete "${activeConv.name}" for every member, including its message history. The original creator and creation timestamp stay preserved until the delete action is executed.`,
+      variant: "error",
+      confirmLabel: "Delete group",
+      cancelLabel: "Cancel",
+      critical: true,
+      confirmDelaySeconds: 3,
+      onConfirm: async () => {
+        await deleteConversationRemote(activeConv.id);
+        setActive(null);
+        closeDialog();
+        refresh();
+      },
+    });
   }
 
   async function handleAcceptInvite(id: string) {
@@ -1874,19 +1913,24 @@ export default function ChatPage() {
               )}
 
               {!activeConv.systemManaged && (
-                <div className="pt-2 border-t border-border">
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      void leaveConversationRemote(activeConv.id);
-                      setActive(null);
-                      closeDialog();
-                    }}
+                    onClick={handleLeaveConversation}
                     className="text-destructive border-destructive/40 hover:bg-destructive/10"
                   >
                     <LogOut className="h-3.5 w-3.5 mr-1" /> Leave Conversation
                   </Button>
+                  {activeConv.kind === "group" && iCanManage && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleDeleteConversation}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete Group
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

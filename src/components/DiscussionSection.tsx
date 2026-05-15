@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import type { DiscussionComment, DiscussionMention } from "@/types";
 import { MessageSquare, Reply, Send, Pencil, Trash2, Check, X } from "lucide-react";
-import MentionInput, { extractMentions, renderWithMentions } from "@/components/MentionInput";
+import MentionInput from "@/components/MentionInput";
+import { extractMentions, renderWithMentions } from "@/lib/mentions";
 import { accentBorder, accentSurface, accentText } from "@/lib/themeColor";
 import { canModerateDiscussions } from "@/lib/pl";
 

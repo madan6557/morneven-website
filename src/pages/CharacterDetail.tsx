@@ -15,7 +15,8 @@ import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen, Info }
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
-import { AuthenticatedImage, useResolvedImageUrl } from "@/components/AuthenticatedImage";
+import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { useResolvedImageUrl } from "@/hooks/useResolvedImageUrl";
 import DocumentationViewer from "@/components/DocumentationViewer";
 import { LoreEngagementBar } from "@/components/LoreEngagementBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

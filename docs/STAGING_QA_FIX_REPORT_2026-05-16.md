@@ -91,23 +91,30 @@ Post-rerun fix coverage added:
 - Gallery image frame dibuat adaptif mengikuti rasio gambar tanpa crop.
 - Gallery video thumbnail dibuat fit-to-frame dengan `object-contain`.
 - QA runner tidak lagi menjadikan `guest@morneven.com` sebagai blocker guest mode, menambahkan check Activity untuk akun guest terdaftar jika seed tersedia, dan memperbaiki ekstraksi ID comment/reply Gallery.
+- Manual chat group sekarang punya hard-delete endpoint untuk group admin dan leave flow dengan successor handoff. Jika anggota habis, group otomatis dihapus.
+- Identitas pembuat group dan waktu pembuatan tetap diserialisasi sebagai `createdBy` dan `createdAt` selama group masih ada, meskipun admin berganti.
+- Backend `package-lock.json` tidak lagi di-ignore agar npm lockfile menjadi canonical untuk repeatable staging build.
+- FE `bun.lockb` stale dihapus karena deployment dan lockfile canonical memakai npm.
+- Browserslist database diperbarui; FE build tidak lagi mengeluarkan stale Browserslist warning.
 
 Current validation after post-rerun fixes:
 
 - Backend build: `npm run build` passed.
 - Frontend build: `npm run build` passed.
-- Frontend lint: `npm run lint` passed with 0 errors and the known 18 warnings.
+- Frontend lint: `npm run lint` passed with 0 errors and 13 accepted warnings.
 - Frontend tests: `npm test` passed, 3 files and 10 tests.
+- Frontend audit high: `npm audit --audit-level=high --json` passed, 0 vulnerabilities.
+- Backend audit high: `npm audit --audit-level=high --json` passed for high and critical, 5 low transitive findings remain accepted for staging.
 - QA runner syntax/help: `node qa/dev-api-qa.mjs --help` passed.
 
 Known validation warnings:
 
-- FE build still warns about stale Browserslist data.
-- FE build still warns about large single bundle. This existed before and is not blocking staging rerun, but remains a production performance risk.
+- FE build still warns about large single bundle. This is accepted for staging and remains a production performance hardening item.
+- FE lint still reports 13 warnings: shadcn/ui fast-refresh export patterns, validation dialog imperative helper exports, AuthContext hook export pattern, and ChatPage scroll hook dependency warnings. These are accepted for staging because they are non-runtime lint guidance and changing them would require broader UI library refactor or risk scroll regression.
 - Vitest emits a Vite recommendation to switch from `@vitejs/plugin-react-swc` to `@vitejs/plugin-react` for performance. Current tests still pass, so this is not a staging blocker.
 - FE local validation runs on Node 22.12 and now warns because project requires Node `>=24`. Staging should use Node 24 or newer.
 - BE local validation runs on Node 22.12 and now warns because project requires Node `>=24`. Staging should use Node 24 or newer.
-- BE audit still has low Google Cloud Storage transitive findings. `@google-cloud/storage` is already at npm latest, and `npm audit fix --force` suggests downgrading to older major, so downgrade is not recommended.
+- BE audit still has low Google Cloud Storage transitive findings. `@google-cloud/storage` is already at npm latest, and `npm audit fix --force` suggests downgrading to older major, so downgrade is not recommended. Accepted risk for staging.
 
 ## Configuration Adjustment Request
 

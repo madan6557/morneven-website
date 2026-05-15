@@ -17,7 +17,8 @@ import LoreMetaPanel from "@/components/LoreMetaPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkillList } from "@/components/SkillCard";
 import DiscussionSection from "@/components/DiscussionSection";
-import { AuthenticatedImage, useResolvedImageUrl } from "@/components/AuthenticatedImage";
+import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { useResolvedImageUrl } from "@/hooks/useResolvedImageUrl";
 import DocumentationViewer from "@/components/DocumentationViewer";
 
 export default function ProjectDetail() {

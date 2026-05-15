@@ -138,13 +138,13 @@ Expected:
 | `npx prisma validate` | PASS |
 | `npm audit --audit-level=high` | PASS or accepted risk |
 
-Current local snapshot on 2026-05-14:
+Current local snapshot on 2026-05-16-r2:
 
 | Command | Current result |
 | --- | --- |
 | `npm run build` | PASS |
 | `npx prisma validate` | PASS with Prisma config deprecation warning |
-| `npm audit --audit-level=high` | FAIL, 6 vulnerabilities, 1 high |
+| `npm audit --audit-level=high` | PASS for high and critical, 5 low Google Cloud Storage transitive findings accepted for staging |
 
 ### Frontend
 
@@ -168,15 +168,15 @@ Expected:
 | Build | PASS |
 | Audit | PASS or accepted risk |
 
-Current local snapshot on 2026-05-14:
+Current local snapshot on 2026-05-16-r2:
 
 | Command | Current result |
 | --- | --- |
 | TypeScript | PASS |
-| `npm run lint` | PASS with 17 warnings |
+| `npm run lint` | PASS with 13 warnings, 0 errors |
 | `npm run test` | PASS, 3 files and 10 tests |
-| `npm run build` | PASS with bundle and Browserslist warnings |
-| `npm audit --audit-level=high` | FAIL, 19 vulnerabilities, 9 high |
+| `npm run build` | PASS with bundle warning only |
+| `npm audit --audit-level=high` | PASS, 0 vulnerabilities |
 
 ## 7. Smoke Test Order
 
@@ -448,7 +448,7 @@ Negative tests:
 | Gallery | `DELETE /api/gallery/:id` |
 | Gallery comments | Delete through supported entity cleanup or delete parent item |
 | Chat message | `DELETE /api/chat/messages/:id` |
-| Manual chat group | No hard-delete endpoint, leave/rename and record residual |
+| Manual chat group | `DELETE /api/chat/conversations/:id` for group admin delete, or `POST /api/chat/conversations/:id/leave` for leave and successor handoff |
 | Management request | Decide as rejected if unresolved, record residual if no hard delete |
 | Notification | `DELETE /api/notifications/:id` or bulk delete |
 | Map | Restore exact pre-test payload |
@@ -632,16 +632,16 @@ Approval:
 
 | Risk | Severity for staging | Required handling |
 | --- | --- | --- |
-| FE dependency audit has high vulnerabilities | P1 risk | Fix or risk-accept before production |
-| BE dependency audit has high vulnerability | P1 risk | Fix or risk-accept before production |
-| FE lint warnings remain | P3 | Document and decide whether cleanup is required |
-| FE bundle size warning remains | P2/P3 performance risk | Monitor browser performance |
-| Browserslist stale warning remains | P3 | Refresh before production hardening |
-| Realtime is process-local | P2 if scaled horizontally | Keep staging single-instance or accept limitation |
-| Uploaded files lack direct delete endpoint | P4 | Record residuals or use storage cleanup |
-| Manual chat group hard-delete missing | P4 | Record residuals |
-| Frontend health endpoints return SPA HTML | P2 for environment checks | Redeploy FE build with generated `/health`, `/ready`, and `/version` artifacts |
-| Backend package-lock is ignored | P2 release repeatability risk | Prefer lockfile policy before production |
+| FE dependency audit high vulnerabilities | Closed | `npm audit --audit-level=high` returns 0 vulnerabilities |
+| BE dependency audit high vulnerability | Closed for high/critical | 0 high and 0 critical; 5 low transitive Google Cloud Storage findings accepted for staging |
+| FE lint warnings remain | Accepted P3 | 13 warnings remain, all fast-refresh library export patterns or ChatPage scroll hook dependency warnings |
+| FE bundle size warning remains | Accepted P2/P3 performance risk | Monitor browser performance; code-splitting can be planned as production hardening |
+| Browserslist stale warning remains | Closed | Browserslist DB refreshed and build no longer emits stale Browserslist warning |
+| Realtime is process-local | Accepted P2 if scaled horizontally | Keep staging single-instance or accept limitation until multi-instance adapter exists |
+| Uploaded files lack direct delete endpoint | Accepted P4 | Use storage cleanup scan/delete flow for orphaned upload objects |
+| Manual chat group hard-delete missing | Closed | Manual groups can be deleted by group admin via `DELETE /api/chat/conversations/:id` |
+| Frontend health endpoints return SPA HTML | Closed after redeploy | FE build generates `/health`, `/ready`, and `/version` artifacts |
+| Backend package-lock is ignored | Closed | Backend `.gitignore` no longer ignores `package-lock.json`; npm lockfile is canonical |
 
 ## 22. Final Staging Acceptance Checklist
 

@@ -190,7 +190,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [saved?.token]);
+  }, [
+    saved?.isAuthenticated,
+    saved?.passwordSnapshot,
+    saved?.personnelLevel,
+    saved?.role,
+    saved?.token,
+    saved?.track,
+    saved?.userId,
+    saved?.username,
+  ]);
 
   // Save to localStorage whenever auth state changes
   useEffect(() => {
