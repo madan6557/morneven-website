@@ -52,7 +52,7 @@ interface NavItem {
   badge?: "chat" | "management";
   // Visibility predicate; receives current PL + track + role.
   // Default: visible to everyone.
-  visible?: (ctx: { role: UserRole; level: PersonnelLevel; track: PersonnelTrack }) => boolean;
+  visible?: (ctx: { role: UserRole; level: PersonnelLevel; track: PersonnelTrack; isAuthenticated: boolean; userId: string | null }) => boolean;
 }
 
 const navItems: NavItem[] = [
@@ -61,7 +61,7 @@ const navItems: NavItem[] = [
     title: "Activity",
     url: "/activity",
     icon: BarChart3,
-    visible: ({ role }) => role !== "guest",
+    visible: ({ isAuthenticated, userId }) => isAuthenticated && userId !== "guest",
   },
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Gallery", url: "/gallery", icon: Image },
@@ -114,7 +114,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
   const location = useLocation();
   const navigate = useNavigate();
   const mobileSidebarRef = useRef<HTMLElement | null>(null);
-  const { role, username, logout, personnelLevel, track, setPersonnelLevel, setTrack } = useAuth();
+  const { isAuthenticated, userId, role, username, logout, personnelLevel, track, setPersonnelLevel, setTrack } = useAuth();
   const [chatBadgeCount, setChatBadgeCount] = useState(0);
   const [managementBadgeCount, setManagementBadgeCount] = useState(0);
   const [isOnline, setIsOnline] = useState(() =>
@@ -123,7 +123,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   const filteredNav = navItems.filter((item) =>
-    item.visible ? item.visible({ role, level: personnelLevel, track }) : true,
+    item.visible ? item.visible({ role, level: personnelLevel, track, isAuthenticated, userId }) : true,
   );
 
   // Authors can preview every tier including the hidden L7 (Full Authority).

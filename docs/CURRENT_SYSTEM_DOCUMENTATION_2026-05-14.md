@@ -330,7 +330,7 @@ SeedPassword123
 
 ### 9.2 Guest access
 
-1. Use the guest option on `/auth` or login as `guest@morneven.com`.
+1. Use the guest option on `/auth` for accountless guest mode. If `guest@morneven.com` is seeded, it behaves as a registered PL0 guest account.
 2. Guest users can browse public surfaces.
 3. Guest users do not see Chat or Management in the sidebar.
 4. Backend protected actions reject guest access.
@@ -636,4 +636,3 @@ There is no general direct uploaded-file delete endpoint. Staging QA must use ap
 | WebSocket | `wss://<backend>/ws/chat?token=<token>` |
 | File upload | `POST /api/files/upload?folder=<folder>` |
 | File read | `GET /api/files/object?path=<objectPath>` |
-

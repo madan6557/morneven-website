@@ -19,6 +19,7 @@ import { sendPresenceHeartbeat } from "@/services/personnelApi";
 
 interface AuthState {
   isAuthenticated: boolean;
+  userId: string | null;
   username: string;
   role: UserRole;
   personnelLevel: PersonnelLevel;
@@ -54,6 +55,7 @@ interface AuthResponse {
 
 interface SavedAuth {
   isAuthenticated: boolean;
+  userId?: string | null;
   username: string;
   role: UserRole;
   personnelLevel?: PersonnelLevel;
@@ -76,6 +78,7 @@ function readSaved(): SavedAuth | null {
 
 function writeSavedAuth(next: {
   isAuthenticated: boolean;
+  userId: string | null;
   username: string;
   role: UserRole;
   personnelLevel: PersonnelLevel;
@@ -97,6 +100,7 @@ function normalizeUser(user: BackendUser) {
       ? "admin"
       : user.role;
   return {
+    userId: user.id,
     username: user.username,
     role: normalizedRole,
     personnelLevel: user.level,
@@ -119,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasDemoToken = Boolean(saved?.token?.startsWith("demo-token-") || saved?.refreshToken?.startsWith("demo-refresh-token"));
 
   const [isAuthenticated, setIsAuthenticated] = useState(saved?.isAuthenticated && !hasDemoToken);
+  const [userId, setUserId] = useState<string | null>(hasDemoToken ? null : (saved?.userId ?? null));
   const [username, setUsername] = useState(hasDemoToken ? "Guest" : (saved?.username ?? "Guest"));
   const [role, setRole] = useState<UserRole>(hasDemoToken ? "guest" : (saved?.role ?? "guest"));
   const [personnelLevel, setPersonnelLevel] = useState<PersonnelLevel>(
@@ -136,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (token?.startsWith("demo-token-")) {
       setIsAuthenticated(false);
+      setUserId(null);
       setUsername("Guest");
       setRole("guest");
       setPersonnelLevel(DEFAULT_PL_BY_ROLE.guest);
@@ -152,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         const next = normalizeUser(user);
         setIsAuthenticated(true);
+        setUserId(next.userId);
         setUsername(next.username);
         setRole(next.role);
         setPersonnelLevel(next.personnelLevel);
@@ -161,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         if (error instanceof ApiError && error.status === 429 && saved?.isAuthenticated) {
           setIsAuthenticated(true);
+          setUserId(saved.userId ?? null);
           setUsername(saved.username);
           setRole(saved.role);
           setPersonnelLevel(saved.personnelLevel ?? DEFAULT_PL_BY_ROLE[saved.role]);
@@ -169,6 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         setIsAuthenticated(false);
+        setUserId(null);
         setUsername("Guest");
         setRole("guest");
         setPersonnelLevel(DEFAULT_PL_BY_ROLE.guest);
@@ -185,8 +194,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Save to localStorage whenever auth state changes
   useEffect(() => {
-    writeSavedAuth({ isAuthenticated, username, role, personnelLevel, track, passwordSnapshot });
-  }, [isAuthenticated, username, role, personnelLevel, track, passwordSnapshot]);
+    writeSavedAuth({ isAuthenticated, userId, username, role, personnelLevel, track, passwordSnapshot });
+  }, [isAuthenticated, userId, username, role, personnelLevel, track, passwordSnapshot]);
 
   useEffect(() => {
     if (hasDemoToken) {
@@ -246,6 +255,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthTokens(data.token, data.refreshToken);
     const next = normalizeUser(data.user);
     setIsAuthenticated(true);
+    setUserId(next.userId);
     setUsername(next.username);
     setRole(next.role);
     setPersonnelLevel(next.personnelLevel);
@@ -288,6 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     apiRequest("/auth/logout", { method: "POST" }).catch(() => undefined);
     disconnectRealtime();
     setIsAuthenticated(false);
+    setUserId(null);
     setUsername("Guest");
     setRole("guest");
     setPersonnelLevel(DEFAULT_PL_BY_ROLE.guest);
@@ -303,6 +314,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         isAuthenticated,
+        userId,
         username,
         role,
         personnelLevel,

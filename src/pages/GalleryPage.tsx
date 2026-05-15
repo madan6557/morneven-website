@@ -134,8 +134,17 @@ export default function GalleryPage() {
         {items.map((item) => (
           <Link key={item.id} to={`/gallery/${item.id}`} className="block group">
             <div className="hud-border-sm bg-card overflow-hidden hover:glow-primary transition-shadow">
-              {item.type === "video" && item.videoUrl ? (
-                <div className="aspect-video bg-muted flex items-center justify-center relative">
+              {item.type === "video" ? (
+                <div className="aspect-video bg-muted overflow-hidden flex items-center justify-center relative">
+                  {item.thumbnail ? (
+                    <AuthenticatedImage
+                      src={item.thumbnail}
+                      alt={item.title}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-contain"
+                    />
+                  ) : null}
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-10 h-10 rounded-full bg-primary/80 flex items-center justify-center">
                       <div className="w-0 h-0 border-l-[8px] border-l-primary-foreground border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent ml-0.5" />
@@ -143,27 +152,20 @@ export default function GalleryPage() {
                   </div>
                 </div>
               ) : item.type === "image" && item.thumbnail ? (
-                <div className="aspect-video bg-muted overflow-hidden">
+                <div className="min-h-32 bg-muted overflow-hidden flex items-center justify-center">
                   <AuthenticatedImage
                     src={item.thumbnail}
                     alt={item.title}
                     loading="lazy"
                     decoding="async"
-                    className="w-full h-full object-cover"
+                    className="block h-auto w-full object-contain"
                   />
                 </div>
               ) : (
-                <div className="aspect-video bg-muted flex items-center justify-center relative">
+                <div className="aspect-video bg-muted flex items-center justify-center">
                   <span className="text-xs text-muted-foreground font-heading tracking-wider">
-                    {item.type === "video" ? "VIDEO" : "IMAGE"}
+                    IMAGE
                   </span>
-                  {item.type === "video" && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-10 h-10 rounded-full bg-primary/80 flex items-center justify-center">
-                        <div className="w-0 h-0 border-l-[8px] border-l-primary-foreground border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent ml-0.5" />
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
               <div className="p-3">

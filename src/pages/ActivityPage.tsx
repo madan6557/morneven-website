@@ -39,6 +39,19 @@ const sortOptions: Array<{ key: ActivitySort; label: string }> = [
   { key: "title", label: "Title" },
 ];
 
+const galleryOnlySorts = new Set<ActivitySort>(["likes", "dislikes"]);
+const loreOnlySorts = new Set<ActivitySort>(["stars"]);
+
+function sortOptionsForCategory(category: ActivityCategory) {
+  if (category === "gallery") {
+    return sortOptions.filter((entry) => !loreOnlySorts.has(entry.key));
+  }
+  if (category !== "all") {
+    return sortOptions.filter((entry) => !galleryOnlySorts.has(entry.key));
+  }
+  return sortOptions;
+}
+
 const summaryMetrics = [
   { key: "views", label: "Views", icon: Eye },
   { key: "likes", label: "Likes", icon: ThumbsUp },
@@ -58,6 +71,13 @@ export default function ActivityPage() {
   const [order, setOrder] = useState<ActivityOrder>("desc");
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
+  const availableSortOptions = sortOptionsForCategory(category);
+
+  useEffect(() => {
+    if (!sortOptionsForCategory(category).some((entry) => entry.key === sort)) {
+      setSort("views");
+    }
+  }, [category, sort]);
 
   useEffect(() => {
     let active = true;
@@ -179,6 +199,7 @@ export default function ActivityPage() {
             sort={sort}
             order={order}
             search={search}
+            sortOptions={availableSortOptions}
             onCategoryChange={setCategory}
             onSortChange={setSort}
             onOrderChange={setOrder}
@@ -231,6 +252,7 @@ function ActivityFilters({
   sort,
   order,
   search,
+  sortOptions,
   onCategoryChange,
   onSortChange,
   onOrderChange,
@@ -240,6 +262,7 @@ function ActivityFilters({
   sort: ActivitySort;
   order: ActivityOrder;
   search: string;
+  sortOptions: Array<{ key: ActivitySort; label: string }>;
   onCategoryChange: (category: ActivityCategory) => void;
   onSortChange: (sort: ActivitySort) => void;
   onOrderChange: (order: ActivityOrder) => void;
@@ -301,6 +324,8 @@ function ActivityFilters({
 }
 
 function ActivityContentRow({ item, compact = false }: { item: ActivityContentItem; compact?: boolean }) {
+  const isGallery = item.entityType === "gallery";
+
   return (
     <Link to={item.url} className="block">
       <div className={`hud-border-sm bg-card transition-shadow hover:glow-primary ${compact ? "p-3" : "p-4"}`}>
@@ -322,9 +347,14 @@ function ActivityContentRow({ item, compact = false }: { item: ActivityContentIt
             </div>
             <div className="flex flex-wrap gap-1.5">
               <ContentMetricPill kind="views" value={item.views} />
-              <ContentMetricPill kind="stars" value={item.stars} />
-              <ContentMetricPill kind="likes" value={item.likes} />
-              <ContentMetricPill kind="dislikes" value={item.dislikes} />
+              {isGallery ? (
+                <>
+                  <ContentMetricPill kind="likes" value={item.likes} />
+                  <ContentMetricPill kind="dislikes" value={item.dislikes} />
+                </>
+              ) : (
+                <ContentMetricPill kind="stars" value={item.stars} />
+              )}
               <ContentMetricPill kind="comments" value={item.comments} />
             </div>
           </div>

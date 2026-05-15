@@ -1,6 +1,7 @@
 # Morneven Staging QA Guide
 
-Last updated: 2026-05-15
+Document version: `2026-05-16-r2`
+Last updated: 2026-05-16
 Timezone: Asia/Singapore
 Scope: full staging QA for the frozen current system version
 
@@ -10,7 +11,7 @@ This document defines the staging QA process for the current Morneven system can
 
 The target of this QA cycle is not active development. Development is paused until QA is complete. Staging QA must validate the exact frontend and backend commits below unless an approved P0 or P1 fix resets the affected scope.
 
-Update label: 2026-05-15
+Update label: 2026-05-16-r2
 
 | Surface | Current staging URL |
 | --- | --- |
@@ -267,8 +268,8 @@ Use these accounts for staging QA after seeding.
 | `h.kato@morneven.com` | `personel` | 5 | logistics | `SeedPassword123` | Mid-level negative author checks |
 | `t.bremmer@morneven.com` | `personel` | 4 | field | `SeedPassword123` | Personnel visibility and review surfaces |
 | `r.alves@morneven.com` | `personel` | 3 | executive | `SeedPassword123` | Restricted content threshold |
-| `guest@morneven.com` | `guest` | 0 | executive | `SeedPassword123` | Guest credential support check |
-| `/api/auth/guest` | `guest` | 0 | executive | N/A | Guest mode without password |
+| `guest@morneven.com` | `guest` | 0 | executive | `SeedPassword123` | Optional registered PL0 guest account. If seeded, must login and access Activity. |
+| `/api/auth/guest` | `guest` | 0 | executive | N/A | Canonical guest mode without password or account |
 | `a.koval@morneven.com` | `personel` | 2 | mechanic | `SeedPassword123` | Low privilege negative checks |
 | `i.stratos@morneven.com` | `personel` | 1 | field | `SeedPassword123` | Low privilege request flows |
 | `y.tanaka@morneven.com` | `personel` | 1 | executive | `SeedPassword123` | Low privilege request flows |

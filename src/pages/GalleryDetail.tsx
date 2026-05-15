@@ -90,18 +90,18 @@ export default function GalleryDetail() {
       {/* Media Display */}
       <div className="hud-border bg-card overflow-hidden">
         {item.type === "video" && item.videoUrl ? (
-          <div className="aspect-video">
+          <div className="aspect-video bg-black/70">
             <iframe
               src={item.videoUrl}
-              className="w-full h-full"
+              className="h-full w-full"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               title={item.title}
             />
           </div>
         ) : item.type === "image" && item.thumbnail ? (
-          <div className="aspect-video bg-muted overflow-hidden">
-            <AuthenticatedImage src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
+          <div className="bg-muted overflow-hidden flex justify-center">
+            <AuthenticatedImage src={item.thumbnail} alt={item.title} className="block h-auto max-h-[75vh] w-full object-contain" />
           </div>
         ) : (
           <div className="aspect-video bg-muted flex items-center justify-center">
