@@ -83,9 +83,9 @@ function ExecutiveGlyph() {
         fill="none"
         strokeWidth={1.6}
       />
-      {/* Inner star */}
+      {/* Inner star — centered on the shield's visual mass */}
       <path
-        d="M32 30 L34 35 L39 35 L35 38 L36.5 43 L32 40 L27.5 43 L29 38 L25 35 L30 35 Z"
+        d="M32 30.5 L33.4 33.6 L36.8 34 L34.3 36.3 L35 39.7 L32 38 L29 39.7 L29.7 36.3 L27.2 34 L30.6 33.6 Z"
         stroke="none"
       />
     </g>
