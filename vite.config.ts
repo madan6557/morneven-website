@@ -68,10 +68,10 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     chunkSizeWarningLimit: 650,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         // Single-bundle output avoids environments that aggressively cap file requests.
-        inlineDynamicImports: true,
+        codeSplitting: false,
       },
     },
   },

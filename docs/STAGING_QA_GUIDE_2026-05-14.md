@@ -58,6 +58,7 @@ Production promotion must not be approved while any P0 is open. P1 issues requir
 | `STAGING_FRONTEND_URL` | `https://morneven.com` | Yes |
 | `STAGING_BACKEND_URL` | `https://morneven-backend-development.up.railway.app` | Yes |
 | `QA_RUN_ID` | `QA-20260515-STAGING` | Yes |
+| `QA_EXTRACTION_KEY` | Match backend `EXTRACTION_KEY` | Required only for extraction QA |
 
 Frontend staging must expose `/health`, `/ready`, and `/version` as JSON routes. If any of these paths return SPA HTML, record it as an environment failure before functional QA.
 
@@ -91,6 +92,7 @@ Frontend staging must expose `/health`, `/ready`, and `/version` as JSON routes.
 | `VITE_API_BASE_URL` | `https://morneven-backend-development.up.railway.app/api` |
 | `VITE_DEMO_FALLBACK` | unset or `false` |
 | `NODE_ENV` | `production` |
+| Node.js runtime | `>=24` |
 | `PORT` | Railway-provided or `8080` |
 | `BUILD_VERSION` | `staging-2026-05-14-28e656c` |
 | `BUILD_COMMIT_SHA` | `28e656c2355887bf1fe99bf30045180137ee1764` |
@@ -265,7 +267,8 @@ Use these accounts for staging QA after seeding.
 | `h.kato@morneven.com` | `personel` | 5 | logistics | `SeedPassword123` | Mid-level negative author checks |
 | `t.bremmer@morneven.com` | `personel` | 4 | field | `SeedPassword123` | Personnel visibility and review surfaces |
 | `r.alves@morneven.com` | `personel` | 3 | executive | `SeedPassword123` | Restricted content threshold |
-| `/api/auth/guest` | `guest` | 0 | executive | N/A | Guest negative checks |
+| `guest@morneven.com` | `guest` | 0 | executive | `SeedPassword123` | Guest credential support check |
+| `/api/auth/guest` | `guest` | 0 | executive | N/A | Guest mode without password |
 | `a.koval@morneven.com` | `personel` | 2 | mechanic | `SeedPassword123` | Low privilege negative checks |
 | `i.stratos@morneven.com` | `personel` | 1 | field | `SeedPassword123` | Low privilege request flows |
 | `y.tanaka@morneven.com` | `personel` | 1 | executive | `SeedPassword123` | Low privilege request flows |

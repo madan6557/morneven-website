@@ -104,10 +104,10 @@ Set this in Railway Variables:
 VITE_API_BASE_URL=https://backend.dev.morneven.com
 ```
 
-If Railway still tries Node 18, add this Railway variable manually:
+If Railway does not follow `package.json` engines, use Node 24 or newer. Do not pin back to Node 20.
 
 ```text
-NODE_VERSION=20
+NODE_VERSION=24
 ```
 
 The FE client accepts either:
