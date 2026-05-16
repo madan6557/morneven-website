@@ -26,7 +26,3 @@ dist-ssr
 # Local backend requirement draft
 
 .env
-
-# Local archive
-Backup/
-
