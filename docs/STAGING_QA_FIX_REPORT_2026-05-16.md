@@ -1,14 +1,16 @@
 # Staging QA Fix Report - 2026-05-16
 
-Document version: `2026-05-16-r3-handoff`
+Document version: `2026-05-16-post-r3-fix`
 Last updated: 2026-05-16
-Status: ready for staging QA rerun after owner confirmed FE redeploy and production runtime env
+Status: ready for staging QA rerun after R3 P1 backend fixes
 
 Referensi:
 
 - `morneven-website/docs/STAGING_QA_REPORT_2026-05-15.md`
 - `morneven-backend/qa/reports/dev-api-qa-QA-20260515-CODEX-STAGING-FULL.md`
 - `morneven-website/docs/STAGING_QA_RERUN_REPORT_2026-05-16-R2.md`
+- `morneven-website/docs/STAGING_QA_RERUN_REPORT_2026-05-16-R3.md`
+- `morneven-website/docs/STAGING_QA_POST_R3_FIX_VALIDATION_2026-05-16.md`
 
 Branch kerja:
 
@@ -21,18 +23,20 @@ Berikan dokumen berikut ke QA untuk rerun berikutnya:
 
 | Priority | Document | Purpose |
 | --- | --- | --- |
+| Required | `morneven-website/docs/STAGING_QA_POST_R3_FIX_VALIDATION_2026-05-16.md` | Dokumen finalisasi R3. Berisi closure `STG-R3-001`, closure `STG-R3-002`, validasi lokal, dan accepted risks. |
 | Required | `morneven-website/docs/STAGING_QA_FIX_REPORT_2026-05-16.md` | Dokumen utama. Berisi perubahan terbaru, status fix, validasi lokal, status konfigurasi terbaru, dan target rerun. |
-| Required | `morneven-website/docs/STAGING_QA_GUIDE_2026-05-14.md` | Runbook staging QA frontend dan full-system acceptance. Sudah diperbarui ke revisi `2026-05-16-r3-handoff`. |
-| Required | `morneven-backend/QA_RAILWAY_TEST_GUIDE.md` | Runbook endpoint QA backend Railway. Sudah diperbarui ke revisi `2026-05-16-r3-handoff`. |
+| Required | `morneven-website/docs/STAGING_QA_GUIDE_2026-05-14.md` | Runbook staging QA frontend dan full-system acceptance. Sudah diperbarui ke revisi `2026-05-16-post-r3-fix`. |
+| Required | `morneven-backend/QA_RAILWAY_TEST_GUIDE.md` | Runbook endpoint QA backend Railway. Sudah diperbarui ke revisi `2026-05-16-post-r3-fix`. |
+| Reference | `morneven-website/docs/STAGING_QA_RERUN_REPORT_2026-05-16-R3.md` | Evidence R3. Dipakai untuk memastikan dua P1 blocker sudah tertutup pada rerun berikutnya. |
 | Reference | `morneven-website/docs/STAGING_QA_RERUN_REPORT_2026-05-16-R2.md` | Evidence R2. Dipakai untuk memastikan blocker release evidence sudah tertutup pada rerun berikutnya. |
 | Reference | `morneven-website/docs/STAGING_QA_REPORT_2026-05-16.md` | Evidence rerun sebelumnya. Dipakai untuk membandingkan defect yang harus tertutup. |
 | Reference | `morneven-backend/qa/reports/dev-api-qa-QA-20260516-CODEX-STAGING-RERUN.md` | Evidence API rerun sebelumnya. Dipakai untuk membandingkan hasil full API runner. |
 
-Dokumen yang paling penting untuk QA adalah `STAGING_QA_FIX_REPORT_2026-05-16.md`; dokumen ini sudah mencatat bahwa guest mode canonical memakai `/api/auth/guest`, sedangkan `guest@morneven.com` hanya akun PL0 terdaftar opsional. Rerun berikutnya harus memperbarui evidence `/version` karena R2 gagal formal acceptance akibat FE belum redeploy dan backend masih melapor `env: development`.
+Dokumen yang paling penting untuk QA berikutnya adalah `STAGING_QA_POST_R3_FIX_VALIDATION_2026-05-16.md`; dokumen ini mencatat dua P1 R3 yang sudah diperbaiki dan scope rerun minimal.
 
 ## Summary
 
-Status perbaikan lokal: siap rerun staging. Owner sudah mengonfirmasi FE sudah redeploy dan semua instance terkait memakai `NODE_ENV=production`.
+Status perbaikan lokal: siap rerun staging setelah backend redeploy dari branch `Stagging`.
 
 Update 2026-05-16:
 
@@ -42,6 +46,8 @@ Update 2026-05-16:
 - Semua active instance sudah dikonfirmasi owner memakai `NODE_ENV=production`.
 - Target migration untuk rerun berikutnya adalah `https://morneven-backend-staging.up.railway.app`.
 - Target migration staging tersebut juga sudah dikonfirmasi owner memakai `NODE_ENV=production`.
+- R3 menemukan dua P1 blocker: migration asset parity untuk dua internal lore links, dan WebSocket yang tidak tertutup setelah revoke session.
+- Dua P1 blocker R3 sudah diperbaiki di backend code.
 - Guest mode produksi menggunakan `POST /api/auth/guest` dan tidak membutuhkan akun credential.
 - `guest@morneven.com` adalah akun PL0 terdaftar opsional. Jika seed tersedia, akun ini harus bisa login dan mengakses menu Activity.
 - Major dependency upgrade disetujui.
@@ -74,6 +80,8 @@ Perbaikan utama:
 | STG-007 FE health/version returns SPA HTML | Fixed for generated static deploy | Vite build menulis extensionless JSON files, dan Vercel route config sekarang memberi prioritas filesystem sebelum SPA rewrite. |
 | STG-008 Missing token console noise | Partially fixed | File proxy tidak lagi `console.error` ketika token tidak ada atau object fetch gagal, sehingga unauthenticated route tidak menghasilkan noise dari asset fetch. Noise lain di luar file proxy perlu diverifikasi pada rerun browser QA. |
 | STG-009 Extraction payload missing `secretKey` | Fixed in runner and docs | QA runner mengirim `secretKey` dari `QA_EXTRACTION_KEY` atau `EXTRACTION_KEY`. Jika env tidak tersedia, runner menandai extraction sebagai blocked dengan alasan konfigurasi. |
+| STG-R3-001 Full migration fails uploaded asset parity | Fixed in backend code | Internal app routes seperti `/lore/characters/char-007` dan `/lore/characters/char-011` tidak lagi diklasifikasikan sebagai storage object path, sehingga migration tidak mencoba menarik route link sebagai asset binary. |
+| STG-R3-002 Revoked security session does not close active WebSocket | Fixed in backend code | Revoke security session sekarang mengirim `auth.session.invalidated` dan menutup realtime client yang `sessionId`-nya sama dengan session yang dicabut. |
 
 ## Validation
 
@@ -112,6 +120,11 @@ Current validation after post-rerun fixes:
 - Backend audit high: `npm audit --audit-level=high --json` passed for high and critical, 5 low transitive findings remain accepted for staging.
 - QA runner syntax/help: `node qa/dev-api-qa.mjs --help` passed.
 
+Current validation after R3 P1 fixes:
+
+- Backend build: `npm run build` passed.
+- Backend diff whitespace check: `git diff --check` passed.
+
 Known validation warnings:
 
 - FE build still warns about large single bundle. This is accepted for staging and remains a production performance hardening item.
@@ -136,13 +149,13 @@ Owner-confirmed status before rerun:
 8. If a CDN or proxy sits in front of FE, do not cache `/health`, `/ready`, or `/version`.
 9. Full migration transfer may target `https://morneven-backend-staging.up.railway.app` only if QA has approval to overwrite that staging target data.
 
-R2 blockers that must be rechecked:
+R3 blockers that must be rechecked:
 
-| R2 blocker | Expected R3 evidence |
+| R3 blocker | Expected next-run evidence |
 | --- | --- |
-| FE `/version` exposed an older commit | FE `/version` returns the redeployed `Stagging` candidate commit and `env: production`. |
-| BE `/version` reported `env: development` | BE `/version` and `/api/version` return `env: production`. |
-| QA guide frozen table listed old development commits | QA uses the updated `2026-05-16-r3-handoff` guide and records deployed commit evidence from `/version`. |
+| Full migration failed uploaded asset parity for `lore/characters/char-007` and `lore/characters/char-011` | Full migration report returns `uploadedAssetsMatch=true` and `failedAssets=0`. |
+| Revoked security session did not close active WebSocket | WebSocket receives `auth.session.invalidated` or closes after `/api/security/sessions/:id/revoke`. |
+| Release evidence from R3 must remain valid | FE, active backend, and migration target `/version` return expected commit and `env: production`. |
 
 ## Information Needed
 

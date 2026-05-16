@@ -1,6 +1,6 @@
 # Morneven Staging QA Guide
 
-Document version: `2026-05-16-r3-handoff`
+Document version: `2026-05-16-post-r3-fix`
 Last updated: 2026-05-16
 Timezone: Asia/Singapore
 Scope: full staging QA for the frozen current system version
@@ -11,7 +11,7 @@ This document defines the staging QA process for the current Morneven system can
 
 The target of this QA cycle is not active development. Development is paused until QA is complete. Staging QA must validate the deployed frontend and backend commits captured from `/version` unless an approved P0 or P1 fix resets the affected scope.
 
-Update label: 2026-05-16-r3-handoff
+Update label: 2026-05-16-post-r3-fix
 
 | Surface | Current staging URL |
 | --- | --- |
@@ -22,10 +22,11 @@ Update label: 2026-05-16-r3-handoff
 
 | Component | Candidate source | Branch | Required evidence |
 | --- | --- | --- | --- |
-| Frontend | Latest redeployed staging candidate after R2 | `Stagging` | `/version` must return the deployed `Stagging` commit and `env: production` |
-| Backend | Active staging backend candidate | `Stagging` | `/version` and `/api/version` must return the deployed backend commit and `env: production` |
+| Frontend | Latest redeployed staging candidate after R3 | `Stagging` | `/version` must return the deployed `Stagging` commit and `env: production` |
+| Backend | Active staging backend candidate after R3 P1 fixes | `Stagging` | `/version` and `/api/version` must return the deployed backend commit and `env: production` |
 
 R2 failed formal acceptance because the frontend deployment was older than the local `Stagging` candidate and the backend reported `env: development`. Owner has since confirmed FE redeploy and `NODE_ENV=production` for all relevant instances. Rerun must capture fresh version evidence instead of reusing R2 values.
+R3 failed formal acceptance because full migration transfer failed uploaded asset parity for internal lore route links and revoked sessions did not close active WebSocket clients. Both R3 blockers are fixed in backend code and must be rechecked after backend redeploy.
 
 ## 2. QA Verdict Model
 
@@ -61,7 +62,7 @@ Production promotion must not be approved while any P0 is open. P1 issues requir
 | `STAGING_FRONTEND_URL` | `https://morneven.com` | Yes |
 | `STAGING_BACKEND_URL` | `https://morneven-backend-development.up.railway.app` | Yes |
 | `STAGING_MIGRATION_TARGET_URL` | `https://morneven-backend-staging.up.railway.app` | Required only for full migration transfer QA |
-| `QA_RUN_ID` | `QA-20260516-STAGING-R3` | Yes |
+| `QA_RUN_ID` | `QA-20260516-STAGING-R4` | Yes |
 | `QA_EXTRACTION_KEY` | Match backend `EXTRACTION_KEY` | Required only for extraction QA |
 
 Frontend staging must expose `/health`, `/ready`, and `/version` as JSON routes. If any of these paths return SPA HTML, record it as an environment failure before functional QA.
@@ -142,7 +143,7 @@ Expected:
 | `npx prisma validate` | PASS |
 | `npm audit --audit-level=high` | PASS or accepted risk |
 
-Current local snapshot on 2026-05-16-r3-handoff:
+Current local snapshot on 2026-05-16-post-r3-fix:
 
 | Command | Current result |
 | --- | --- |
@@ -172,7 +173,7 @@ Expected:
 | Build | PASS |
 | Audit | PASS or accepted risk |
 
-Current local snapshot on 2026-05-16-r3-handoff:
+Current local snapshot on 2026-05-16-post-r3-fix:
 
 | Command | Current result |
 | --- | --- |
@@ -212,7 +213,7 @@ Run this order exactly. Stop at the first P0 environment blocker.
 $env:STAGING_BACKEND_URL="https://morneven-backend-development.up.railway.app"
 $env:STAGING_FRONTEND_URL="https://morneven.com"
 $env:STAGING_MIGRATION_TARGET_URL="https://morneven-backend-staging.up.railway.app"
-$env:QA_RUN_ID="QA-20260516-STAGING-R3"
+$env:QA_RUN_ID="QA-20260516-STAGING-R4"
 $env:QA_SEED_PASSWORD="SeedPassword123"
 ```
 
