@@ -399,7 +399,7 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*", a
       {isUrlMode ? (
         <input type="text" value={value || ""} onChange={(e) => onChange(e.target.value)} className={inputClass} placeholder="https://..." />
       ) : (
-        <div className="flex gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center">
           <input ref={fileRef} type="file" accept={mode === "image" ? "image/*" : mode === "video" ? "video/*" : accept} onChange={handleFile} className="hidden" />
           <button type="button" onClick={() => fileRef.current?.click()}
             disabled={uploading}
