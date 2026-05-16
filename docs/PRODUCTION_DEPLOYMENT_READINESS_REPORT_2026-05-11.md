@@ -5,6 +5,8 @@ Timezone: Asia/Singapore
 Scope: `morneven-website` and `morneven-backend`
 Assessment type: local code validation, public endpoint smoke, existing QA report review, and non-destructive API checks
 
+Superseded notice: this report is retained as historical evidence. The active production-readiness baseline after staging R4 is `morneven-website/docs/PRODUCTION_READINESS_HARDENING_PLAN_2026-05-16.md`, with staging sign-off recorded in `morneven-website/docs/STAGING_SIGN_OFF_2026-05-16.md`.
+
 ## Executive Verdict
 
 | Area | Verdict | Reason |
