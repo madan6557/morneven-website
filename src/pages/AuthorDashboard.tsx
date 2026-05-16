@@ -1852,7 +1852,6 @@ export default function AuthorDashboard() {
           <EditorSection
             title="Core Fields"
             description="Identity, media, status, and type-specific fields."
-            defaultOpen
           >
           <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(280px,1fr))] [&>*]:min-w-0">
             {/* Title/Name */}
@@ -2227,7 +2226,6 @@ export default function AuthorDashboard() {
           <EditorSection
             title={editing.caption !== undefined ? "Caption & Tags" : "Descriptions"}
             description="Primary text shown on list and detail views."
-            defaultOpen
           >
             <div className="space-y-4">
               {/* Short Description / Caption */}
