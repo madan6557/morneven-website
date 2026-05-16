@@ -76,12 +76,27 @@ export interface ChatTeamRoster {
 }
 
 export interface ChatReconciliationReport {
+  directConversations: number;
+  personnelGroups: number;
   instituteGroups: number;
   divisionGroups: number;
   teamGroups: number;
   activeMemberships: number;
   removedMemberships: number;
   ranAt: string;
+}
+
+export type ChatResetScope = "conversations" | "personnel_groups" | "system_groups" | "team_groups";
+
+export interface ChatResetResult {
+  deleted: number;
+  deletedByScope: {
+    conversations: number;
+    personnelGroups: number;
+    systemGroups: number;
+    teamGroups: number;
+  };
+  report: ChatReconciliationReport;
 }
 
 export const CHAT_READ_KEY = "morneven_chat_last_read_v1";
@@ -263,6 +278,8 @@ function normalizeReconciliationReport(
         : (payload as Partial<ChatReconciliationReport> | null | undefined);
 
   return {
+    directConversations: Number(report?.directConversations ?? 0),
+    personnelGroups: Number(report?.personnelGroups ?? 0),
     instituteGroups: Number(report?.instituteGroups ?? 0),
     divisionGroups: Number(report?.divisionGroups ?? 0),
     teamGroups: Number(report?.teamGroups ?? 0),
@@ -749,6 +766,8 @@ export function getSystemChatSnapshot(): ChatReconciliationReport {
 
 export function getSystemChatSnapshotFromConversations(source: Conversation[]): ChatReconciliationReport {
   return {
+    directConversations: source.filter((conversation) => conversation.kind === "dm").length,
+    personnelGroups: source.filter((conversation) => conversation.kind === "group" && !conversation.systemManaged).length,
     instituteGroups: source.filter((conversation) => conversation.systemManaged && conversation.kind === "institute").length,
     divisionGroups: source.filter((conversation) => conversation.systemManaged && conversation.kind === "division").length,
     teamGroups: source.filter((conversation) => conversation.systemManaged && conversation.kind === "team").length,
@@ -770,6 +789,34 @@ export async function getSystemChatSnapshotRemote(): Promise<ChatReconciliationR
 export function reconcileSystemChatGroupsRemote(): Promise<ChatReconciliationReport> {
   return apiRequest<Partial<ChatReconciliationReport>>("/chat/reconcile", { method: "POST" })
     .then((data) => normalizeReconciliationReport(data));
+}
+
+export function resetChatRemote(scopes: ChatResetScope[]): Promise<ChatResetResult> {
+  return apiRequest<{
+    deleted?: number;
+    deletedByScope?: Partial<ChatResetResult["deletedByScope"]>;
+    report?: Partial<ChatReconciliationReport>;
+  }>("/chat/reset", {
+    method: "POST",
+    body: { scopes },
+  }).then((data) => {
+    conversationCache = [];
+    inviteCache = [];
+    messageCache.clear();
+    unreadCountCache = {};
+    invalidateNavigationBadges();
+    emitChatChanged();
+    return {
+      deleted: Number(data.deleted ?? 0),
+      deletedByScope: {
+        conversations: Number(data.deletedByScope?.conversations ?? 0),
+        personnelGroups: Number(data.deletedByScope?.personnelGroups ?? 0),
+        systemGroups: Number(data.deletedByScope?.systemGroups ?? 0),
+        teamGroups: Number(data.deletedByScope?.teamGroups ?? 0),
+      },
+      report: normalizeReconciliationReport(data.report),
+    };
+  });
 }
 
 export function reconcileAutoMemberships(
