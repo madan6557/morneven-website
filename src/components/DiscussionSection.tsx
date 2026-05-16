@@ -6,15 +6,16 @@ import MentionInput from "@/components/MentionInput";
 import { extractMentions, renderWithMentions } from "@/lib/mentions";
 import { accentBorder, accentSurface, accentText } from "@/lib/themeColor";
 import { canModerateDiscussions } from "@/lib/pl";
+import { useValidationDialog } from "@/components/ui/validation-dialog";
 
 interface Props {
   comments: DiscussionComment[];
   onAddComment: (author: string, text: string, mentions?: DiscussionMention[]) => void | Promise<void>;
   onAddReply: (commentId: string, author: string, text: string, mentions?: DiscussionMention[]) => void | Promise<void>;
   onEditComment?: (commentId: string, text: string, mentions?: DiscussionMention[]) => void | Promise<void>;
-  onDeleteComment?: (commentId: string) => void;
+  onDeleteComment?: (commentId: string) => void | Promise<void>;
   onEditReply?: (commentId: string, replyId: string, text: string, mentions?: DiscussionMention[]) => void | Promise<void>;
-  onDeleteReply?: (commentId: string, replyId: string) => void;
+  onDeleteReply?: (commentId: string, replyId: string) => void | Promise<void>;
   accentColor?: string;
   commentLimit?: number;
   replyLimit?: number;
@@ -33,6 +34,7 @@ export default function DiscussionSection({
   replyLimit = 5,
 }: Props) {
   const { role, username, personnelLevel, track } = useAuth();
+  const validation = useValidationDialog();
   const [newComment, setNewComment] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -46,7 +48,11 @@ export default function DiscussionSection({
   const canComment = role !== "guest";
   const canModerate = canModerateDiscussions(personnelLevel, track);
 
-  const canModify = (commentAuthor: string) => canModerate || commentAuthor === username;
+  const isOwner = (author: string) => author.toLowerCase() === (username || "").toLowerCase();
+  const canEditComment = (author: string) => Boolean(onEditComment && username && isOwner(author));
+  const canEditReply = (author: string) => Boolean(onEditReply && username && isOwner(author));
+  const canDeleteComment = (author: string) => Boolean(onDeleteComment && username && (isOwner(author) || canModerate));
+  const canDeleteReply = (author: string) => Boolean(onDeleteReply && username && (isOwner(author) || canModerate));
 
   const handleSubmitComment = () => {
     if (!newComment.trim()) return;
@@ -95,6 +101,32 @@ export default function DiscussionSection({
     setEditingComment(null);
     setEditingReply(null);
     setEditText("");
+  };
+
+  const requestDeleteComment = (commentId: string) => {
+    validation.show({
+      title: "Delete discussion comment",
+      description: "This permanently removes the comment and its replies from this content discussion.",
+      variant: "warning",
+      critical: true,
+      confirmDelaySeconds: 5,
+      confirmLabel: "Delete Comment",
+      cancelLabel: "Cancel",
+      onConfirm: () => onDeleteComment?.(commentId),
+    });
+  };
+
+  const requestDeleteReply = (commentId: string, replyId: string) => {
+    validation.show({
+      title: "Delete discussion reply",
+      description: "This permanently removes the reply from this content discussion.",
+      variant: "warning",
+      critical: true,
+      confirmDelaySeconds: 5,
+      confirmLabel: "Delete Reply",
+      cancelLabel: "Cancel",
+      onConfirm: () => onDeleteReply?.(commentId, replyId),
+    });
   };
 
   const accent = accentColor || "hsl(var(--primary))";
@@ -163,22 +195,26 @@ export default function DiscussionSection({
                 <span className="text-xs font-heading tracking-wider" style={{ color: readableAccent }}>{c.author}</span>
                 <span className="text-[10px] text-muted-foreground font-body">{c.date}</span>
               </div>
-              {canModify(c.author) && editingComment !== c.id && (
+              {(canEditComment(c.author) || canDeleteComment(c.author)) && editingComment !== c.id && (
                 <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => startEditComment(c.id, c.text)}
-                    className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-                    title="Edit"
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => onDeleteComment?.(c.id)}
-                    className="p-1 text-muted-foreground hover:text-destructive transition-colors"
-                    title="Delete"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+                  {canEditComment(c.author) && (
+                    <button
+                      onClick={() => startEditComment(c.id, c.text)}
+                      className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                      title="Edit"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  )}
+                  {canDeleteComment(c.author) && (
+                    <button
+                      onClick={() => requestDeleteComment(c.id)}
+                      className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -214,22 +250,26 @@ export default function DiscussionSection({
                         <span className="text-[10px] font-heading tracking-wider text-muted-foreground">{r.author}</span>
                         <span className="text-[10px] text-muted-foreground/60 font-body">{r.date}</span>
                       </div>
-                      {canModify(r.author) && editingReply !== r.id && (
+                      {(canEditReply(r.author) || canDeleteReply(r.author)) && editingReply !== r.id && (
                         <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => startEditReply(r.id, r.text)}
-                            className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
-                            title="Edit"
-                          >
-                            <Pencil className="h-2.5 w-2.5" />
-                          </button>
-                          <button
-                            onClick={() => onDeleteReply?.(c.id, r.id)}
-                            className="p-0.5 text-muted-foreground hover:text-destructive transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-2.5 w-2.5" />
-                          </button>
+                          {canEditReply(r.author) && (
+                            <button
+                              onClick={() => startEditReply(r.id, r.text)}
+                              className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                              title="Edit"
+                            >
+                              <Pencil className="h-2.5 w-2.5" />
+                            </button>
+                          )}
+                          {canDeleteReply(r.author) && (
+                            <button
+                              onClick={() => requestDeleteReply(c.id, r.id)}
+                              className="p-0.5 text-muted-foreground hover:text-destructive transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-2.5 w-2.5" />
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

@@ -272,9 +272,9 @@ export function canEnterAuthorPanel(level: PersonnelLevel, track: PersonnelTrack
   return level >= 6;
 }
 
-export function canModerateDiscussions(level: PersonnelLevel, track: PersonnelTrack): boolean {
+export function canModerateDiscussions(level: PersonnelLevel, _track: PersonnelTrack): boolean {
   if (level >= PL_FULL_AUTHORITY) return true;
-  return level >= 6 && track === "executive";
+  return level >= 6;
 }
 
 export function canManagePersonnel(level: PersonnelLevel): boolean {
