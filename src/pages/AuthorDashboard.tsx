@@ -1852,7 +1852,6 @@ export default function AuthorDashboard() {
           <EditorSection
             title="Core Fields"
             description="Identity, media, status, and type-specific fields."
-            defaultOpen
           >
           <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(280px,1fr))] [&>*]:min-w-0">
             {/* Title/Name */}
