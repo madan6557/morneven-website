@@ -378,7 +378,7 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*", a
   return (
     <div className="space-y-2">
       <label className={labelClass}>{label}</label>
-      <div className="flex gap-1 mt-1">
+      <div className="flex flex-wrap gap-1 mt-1">
         <button type="button" onClick={() => setMode("image")}
           className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "image" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
           <Image className="h-3 w-3" /> Image
@@ -399,7 +399,7 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*", a
       {isUrlMode ? (
         <input type="text" value={value || ""} onChange={(e) => onChange(e.target.value)} className={inputClass} placeholder="https://..." />
       ) : (
-        <div className="flex gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center">
           <input ref={fileRef} type="file" accept={mode === "image" ? "image/*" : mode === "video" ? "video/*" : accept} onChange={handleFile} className="hidden" />
           <button type="button" onClick={() => fileRef.current?.click()}
             disabled={uploading}
@@ -1854,7 +1854,7 @@ export default function AuthorDashboard() {
             description="Identity, media, status, and type-specific fields."
             defaultOpen
           >
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             {/* Title/Name */}
             <div>
               <label className={labelClass}>{editing.title !== undefined ? "Title" : "Name"}</label>
