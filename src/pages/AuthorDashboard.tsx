@@ -2226,7 +2226,6 @@ export default function AuthorDashboard() {
           <EditorSection
             title={editing.caption !== undefined ? "Caption & Tags" : "Descriptions"}
             description="Primary text shown on list and detail views."
-            defaultOpen
           >
             <div className="space-y-4">
               {/* Short Description / Caption */}
