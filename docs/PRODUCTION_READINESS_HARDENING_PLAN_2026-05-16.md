@@ -29,6 +29,19 @@ This plan supersedes the blocker state in `PRODUCTION_DEPLOYMENT_READINESS_REPOR
 | Frontend | `Stagging` | `2cb3462c53b13af645290cb06bdd425ce93977f2` | `NODE_ENV=production`, Node `>=24` |
 | Backend | `Stagging` | `a53aea5abe44b01130c9a3d35b720237c8908af8` | `NODE_ENV=production`, Node `>=24` |
 
+## Branch Policy
+
+Staging has already been signed off, so do not continue hardening directly on the staging baseline.
+
+| Branch | Purpose | Rule |
+| --- | --- | --- |
+| `Stagging` | Signed staging candidate evidence | Keep frozen unless a staging-only hotfix is required. |
+| `development` | Synced integration baseline | Keep aligned with signed staging/main baseline before hardening merges. |
+| `main` | Release baseline | Do not change directly except through approved promotion. |
+| `production-hardening` | Current hardening work | Use this branch for production env docs, hardening fixes, smoke scripts, and release notes. |
+
+Production-hardening changes should merge forward only after local validation passes and the owner approves the hardening scope.
+
 ## Hardening Workstreams
 
 | ID | Workstream | Priority | Required action | Exit criteria |
@@ -43,6 +56,56 @@ This plan supersedes the blocker state in `PRODUCTION_DEPLOYMENT_READINESS_REPOR
 | PH-008 | BE low audit findings | P4 | Monitor Google Cloud Storage transitive chain and avoid unsafe downgrade. | 0 high/critical remains; low findings accepted or patched by safe upstream release. |
 | PH-009 | Uploaded object deletion | P4 | Decide whether direct per-object delete endpoint is needed or storage cleanup is sufficient. | Product owner accepts storage cleanup workflow or endpoint is added and QA-tested. |
 | PH-010 | CI/runtime Node parity | P3 | Ensure CI, FE deploy, and BE deploy use Node `>=24`. | Build logs confirm Node `>=24`. |
+
+## Recommended Production Environment Values
+
+These values are the recommended starting point for the first production candidate. They assume a small private user base, authenticated REST usage, file proxy traffic, and WebSocket chat.
+
+### Backend Core
+
+| Variable | Recommended value | Reason |
+| --- | --- | --- |
+| `NODE_ENV` | `production` | Required for production runtime evidence and secure cookie behavior if cookies are enabled later. |
+| `PORT` | Platform-provided | Railway or hosting platform should inject this. |
+| `CORS_ORIGIN` | `https://morneven.com` | Keep production allowlist tight. Add staging URL only if the same backend must serve staging temporarily. |
+| `MAX_UPLOAD_MB` | `20` | Matches staging and current QA coverage. Increase only after upload performance and storage cost review. |
+| `SECURITY_LEVEL` | `5` | Enables full security posture. |
+| `SECURITY_BLOCK_TTL_MS` | `900000` | 15 minute default block TTL. |
+| `SECURITY_RETENTION_DAYS` | `90` | Keeps audit/security history long enough for review without indefinite growth. |
+| `FILE_SCAN_PROVIDER` | `none` | Current safe baseline unless Security Manager adds a real scanner. |
+| `AUTH_COOKIE_ENABLED` | `false` | Current FE uses bearer token. Enable cookies only after dedicated cookie QA. |
+
+### Rate Limits
+
+| Profile | Variable | Recommended value |
+| --- | --- | --- |
+| Balanced production | `RATE_LIMIT_WINDOW_MS` | `900000` |
+| Balanced production | `RATE_LIMIT_MAX` | `1200` |
+| Balanced production | `AUTH_RATE_LIMIT_WINDOW_MS` | `900000` |
+| Balanced production | `AUTH_RATE_LIMIT_MAX` | `100` |
+
+Use the balanced profile for launch. It matches the staging values that passed R4 and avoids false positives from image/file proxy, activity reads, chat, and responsive browser checks.
+
+If abuse appears after launch, tighten in this order:
+
+| Profile | `RATE_LIMIT_MAX` | `AUTH_RATE_LIMIT_MAX` | Use when |
+| --- | ---: | ---: | --- |
+| Conservative | `600` | `50` | Public traffic grows and normal usage stays below threshold. |
+| Balanced | `1200` | `100` | Recommended launch default. |
+| Lenient incident bypass | `2000` | `150` | Temporary mitigation if legitimate users hit 429 during launch. |
+
+Do not reduce auth below `50` per 15 minutes until password reset, token refresh, and repeated failed login UX are separately tested. Do not reduce global below `600` while protected asset proxy and responsive image loading remain active.
+
+### Storage And Migration
+
+| Variable | Recommended value | Reason |
+| --- | --- | --- |
+| `STORAGE_DRIVER` | `gcs` or `s3` | Production should not depend on ephemeral local storage. |
+| `GCS_BUCKET_NAME` or `S3_BUCKET_NAME` | Production bucket | Use a bucket separate from staging. |
+| `MIGRATION_KEY` | Secret, 16+ chars | Required for migration receive/assets. Keep different from staging if possible. |
+| `EXTRACTION_KEY` | Secret, 16+ chars | Required for extraction/backup. Keep different from staging if possible. |
+
+For the current owner-provided shared key used in staging, rotate to a production-only value before production launch if operationally possible.
 
 ## Production Release Gates
 
