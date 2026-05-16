@@ -110,6 +110,23 @@ export async function decideRequest(
   return decided;
 }
 
+export async function deleteRequestHistoryItem(id: string): Promise<void> {
+  await apiRequest<{ deleted: boolean }>(`/management/requests/${id}`, {
+    method: "DELETE",
+  });
+  invalidateNavigationBadges();
+  emitManagementChanged();
+}
+
+export async function clearMyRequestHistory(): Promise<{ deleted: number }> {
+  const cleared = await apiRequest<{ deleted: number }>("/management/requests/mine/history", {
+    method: "DELETE",
+  });
+  invalidateNavigationBadges();
+  emitManagementChanged();
+  return cleared;
+}
+
 export async function listTeams(filter?: { leader?: string; member?: string }): Promise<Team[]> {
   return unwrapPageItems(
     await apiRequest<Team[] | BackendPage<Team>>(`/management/teams${buildQuery(filter)}`),

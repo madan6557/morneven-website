@@ -15,6 +15,7 @@ import {
   Send,
   ShieldCheck,
   Target,
+  Trash2,
   UserPlus,
   Users,
   XCircle,
@@ -24,6 +25,8 @@ import {
   listRequests,
   createRequest,
   decideRequest,
+  deleteRequestHistoryItem,
+  clearMyRequestHistory,
   listTeams,
   createTeam,
   getQuota,
@@ -153,6 +156,7 @@ export default function ManagementPage() {
   }, [requests, personnelLevel, track, username]);
   const pendingRequests = useMemo(() => requests.filter((r) => r.status === "pending"), [requests]);
   const myPendingRequests = useMemo(() => myRequests.filter((r) => r.status === "pending"), [myRequests]);
+  const myHistoryRequests = useMemo(() => myRequests.filter((r) => r.status !== "pending"), [myRequests]);
   const myTeams = useMemo(() => teams.filter((t) => t.leader === username), [teams, username]);
 
   const decide = async (id: string, decision: "approved" | "rejected", note: string) => {
@@ -216,6 +220,62 @@ export default function ManagementPage() {
     } finally {
       setBusyAction(null);
     }
+  };
+
+  const deleteHistoryItem = (request: MgmtRequest) => {
+    showValidation({
+      variant: "error",
+      title: "Delete management history",
+      description: "This removes the selected resolved request from your Mine history. Pending requests cannot be deleted.",
+      confirmLabel: "Delete History",
+      cancelLabel: "Cancel",
+      critical: true,
+      confirmDelaySeconds: 3,
+      onConfirm: async () => {
+        setBusyAction(`delete-${request.id}`);
+        try {
+          await deleteRequestHistoryItem(request.id);
+          toast({ title: "History item deleted" });
+          refresh();
+        } catch (error) {
+          toast({
+            title: "Delete failed",
+            description: error instanceof Error ? error.message : "Backend rejected the delete request.",
+            variant: "destructive",
+          });
+        } finally {
+          setBusyAction(null);
+        }
+      },
+    });
+  };
+
+  const clearHistory = () => {
+    showValidation({
+      variant: "error",
+      title: "Clear management history",
+      description: `This removes ${myHistoryRequests.length} resolved request${myHistoryRequests.length === 1 ? "" : "s"} from your Mine history. Pending requests remain visible.`,
+      confirmLabel: "Clear History",
+      cancelLabel: "Cancel",
+      critical: true,
+      confirmDelaySeconds: 5,
+      onConfirm: async () => {
+        setBusyAction("clear-history");
+        try {
+          const result = await clearMyRequestHistory();
+          toast({ title: "History cleared", description: `${result.deleted} resolved request${result.deleted === 1 ? "" : "s"} removed.` });
+          refresh();
+        } catch (error) {
+          toast({
+            title: "Clear failed",
+            description: error instanceof Error ? error.message : "Backend rejected the clear request.",
+            variant: "destructive",
+          });
+        } finally {
+          setBusyAction(null);
+        }
+      },
+    });
   };
 
   if (role === "guest") {
@@ -377,7 +437,14 @@ export default function ManagementPage() {
         </TabsContent>
 
         <TabsContent value="mine" className="mt-4">
-          <RequestList list={myRequests} viewer={{ level: personnelLevel, track, username }} />
+          <RequestList
+            list={myRequests}
+            viewer={{ level: personnelLevel, track, username }}
+            busyAction={busyAction}
+            onDeleteHistoryItem={deleteHistoryItem}
+            onClearHistory={myHistoryRequests.length > 0 ? clearHistory : undefined}
+            clearHistoryCount={myHistoryRequests.length}
+          />
         </TabsContent>
 
         <TabsContent value="reset" className="mt-4">
@@ -967,11 +1034,17 @@ function RequestList({
   viewer,
   busyAction,
   onDecide,
+  onDeleteHistoryItem,
+  onClearHistory,
+  clearHistoryCount = 0,
 }: {
   list: MgmtRequest[];
   viewer: { level: PersonnelLevel; track: PersonnelTrack; username: string };
   busyAction?: string | null;
   onDecide?: (id: string, d: "approved" | "rejected", note: string) => void;
+  onDeleteHistoryItem?: (request: MgmtRequest) => void;
+  onClearHistory?: () => void;
+  clearHistoryCount?: number;
 }) {
   const [notes, setNotes] = useState<Record<string, string>>({});
 
@@ -991,10 +1064,31 @@ function RequestList({
 
   return (
     <div className="space-y-3">
+      {onClearHistory && (
+        <Card className="hud-border flex flex-col gap-3 bg-card/95 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className={labelClass}>Mine History Control</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {clearHistoryCount} resolved request{clearHistoryCount === 1 ? "" : "s"} can be removed from your personal history.
+            </p>
+          </div>
+          <Button
+            variant="destructive"
+            onClick={onClearHistory}
+            isLoading={busyAction === "clear-history"}
+            loadingText="Clearing..."
+            className="w-full sm:w-auto"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Clear History
+          </Button>
+        </Card>
+      )}
       {list.map((r) => {
         const reviewer = reviewerForRequest(r);
         const canDecide = canDecideRequest(r, viewer);
         const isOwn = r.requester === viewer.username;
+        const canDeleteHistory = isOwn && r.status !== "pending" && !!onDeleteHistoryItem;
         const KindIcon = KIND_ICON[r.kind];
         const status = STATUS_META[r.status];
         const StatusIcon = status.icon;
@@ -1023,6 +1117,19 @@ function RequestList({
                   <StatusIcon className="h-3 w-3" />
                   {status.label}
                 </Badge>
+                {canDeleteHistory && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[10px] text-destructive hover:text-destructive"
+                    isLoading={busyAction === `delete-${r.id}`}
+                    loadingText="Deleting..."
+                    onClick={() => onDeleteHistoryItem?.(r)}
+                  >
+                    <Trash2 className="mr-1.5 h-3 w-3" />
+                    Delete
+                  </Button>
+                )}
               </div>
             </div>
 
