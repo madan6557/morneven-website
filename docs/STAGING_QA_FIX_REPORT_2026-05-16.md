@@ -1,13 +1,14 @@
 # Staging QA Fix Report - 2026-05-16
 
-Document version: `2026-05-16-r2`
+Document version: `2026-05-16-r3-handoff`
 Last updated: 2026-05-16
-Status: ready for staging QA rerun after FE and BE redeploy from branch `Stagging`
+Status: ready for staging QA rerun after owner confirmed FE redeploy and production runtime env
 
 Referensi:
 
 - `morneven-website/docs/STAGING_QA_REPORT_2026-05-15.md`
 - `morneven-backend/qa/reports/dev-api-qa-QA-20260515-CODEX-STAGING-FULL.md`
+- `morneven-website/docs/STAGING_QA_RERUN_REPORT_2026-05-16-R2.md`
 
 Branch kerja:
 
@@ -20,23 +21,27 @@ Berikan dokumen berikut ke QA untuk rerun berikutnya:
 
 | Priority | Document | Purpose |
 | --- | --- | --- |
-| Required | `morneven-website/docs/STAGING_QA_FIX_REPORT_2026-05-16.md` | Dokumen utama. Berisi perubahan terbaru, status fix, validasi lokal, dan configuration adjustment request. |
-| Required | `morneven-website/docs/STAGING_QA_GUIDE_2026-05-14.md` | Runbook staging QA frontend dan full-system acceptance. Sudah diperbarui ke revisi 2026-05-16. |
-| Required | `morneven-backend/QA_RAILWAY_TEST_GUIDE.md` | Runbook endpoint QA backend Railway. Sudah diperbarui ke revisi 2026-05-16. |
+| Required | `morneven-website/docs/STAGING_QA_FIX_REPORT_2026-05-16.md` | Dokumen utama. Berisi perubahan terbaru, status fix, validasi lokal, status konfigurasi terbaru, dan target rerun. |
+| Required | `morneven-website/docs/STAGING_QA_GUIDE_2026-05-14.md` | Runbook staging QA frontend dan full-system acceptance. Sudah diperbarui ke revisi `2026-05-16-r3-handoff`. |
+| Required | `morneven-backend/QA_RAILWAY_TEST_GUIDE.md` | Runbook endpoint QA backend Railway. Sudah diperbarui ke revisi `2026-05-16-r3-handoff`. |
+| Reference | `morneven-website/docs/STAGING_QA_RERUN_REPORT_2026-05-16-R2.md` | Evidence R2. Dipakai untuk memastikan blocker release evidence sudah tertutup pada rerun berikutnya. |
 | Reference | `morneven-website/docs/STAGING_QA_REPORT_2026-05-16.md` | Evidence rerun sebelumnya. Dipakai untuk membandingkan defect yang harus tertutup. |
 | Reference | `morneven-backend/qa/reports/dev-api-qa-QA-20260516-CODEX-STAGING-RERUN.md` | Evidence API rerun sebelumnya. Dipakai untuk membandingkan hasil full API runner. |
 
-Dokumen yang paling penting untuk QA adalah `STAGING_QA_FIX_REPORT_2026-05-16.md`; dokumen ini sudah mencatat bahwa guest mode canonical memakai `/api/auth/guest`, sedangkan `guest@morneven.com` hanya akun PL0 terdaftar opsional.
+Dokumen yang paling penting untuk QA adalah `STAGING_QA_FIX_REPORT_2026-05-16.md`; dokumen ini sudah mencatat bahwa guest mode canonical memakai `/api/auth/guest`, sedangkan `guest@morneven.com` hanya akun PL0 terdaftar opsional. Rerun berikutnya harus memperbarui evidence `/version` karena R2 gagal formal acceptance akibat FE belum redeploy dan backend masih melapor `env: development`.
 
 ## Summary
 
-Status perbaikan lokal: siap rerun staging setelah redeploy FE dan BE dari branch `Stagging`.
+Status perbaikan lokal: siap rerun staging. Owner sudah mengonfirmasi FE sudah redeploy dan semua instance terkait memakai `NODE_ENV=production`.
 
 Update 2026-05-16:
 
 - Staging FE URL dikonfirmasi tetap `https://morneven.com`.
 - Staging BE URL dikonfirmasi tetap `https://morneven-backend-development.up.railway.app`.
-- Redeploy sudah dilakukan oleh owner, QA tetap perlu menangkap `/version` untuk commit evidence.
+- Redeploy FE sudah dilakukan oleh owner setelah R2. QA tetap perlu menangkap `/version` untuk commit evidence.
+- Semua active instance sudah dikonfirmasi owner memakai `NODE_ENV=production`.
+- Target migration untuk rerun berikutnya adalah `https://morneven-backend-staging.up.railway.app`.
+- Target migration staging tersebut juga sudah dikonfirmasi owner memakai `NODE_ENV=production`.
 - Guest mode produksi menggunakan `POST /api/auth/guest` dan tidak membutuhkan akun credential.
 - `guest@morneven.com` adalah akun PL0 terdaftar opsional. Jika seed tersedia, akun ini harus bisa login dan mengakses menu Activity.
 - Major dependency upgrade disetujui.
@@ -116,22 +121,32 @@ Known validation warnings:
 - BE local validation runs on Node 22.12 and now warns because project requires Node `>=24`. Staging should use Node 24 or newer.
 - BE audit still has low Google Cloud Storage transitive findings. `@google-cloud/storage` is already at npm latest, and `npm audit fix --force` suggests downgrading to older major, so downgrade is not recommended. Accepted risk for staging.
 
-## Configuration Adjustment Request
+## Configuration Status For Rerun
 
-Before rerun staging QA:
+Owner-confirmed status before rerun:
 
-1. Redeploy backend from branch `Stagging`.
-2. Redeploy frontend from branch `Stagging`.
-3. Keep staging backend env aligned with the provided values:
+1. Frontend has been redeployed after R2.
+2. All active instances have `NODE_ENV=production`.
+3. Staging backend env should remain aligned with the provided values:
    `RATE_LIMIT_WINDOW_MS=900000`, `RATE_LIMIT_MAX=1200`, `AUTH_RATE_LIMIT_WINDOW_MS=900000`, `AUTH_RATE_LIMIT_MAX=100`, `MAX_UPLOAD_MB=20`.
-4. Ensure backend has `MIGRATION_KEY` and `EXTRACTION_KEY` set to the owner-provided secret value.
+4. Backend should have `MIGRATION_KEY` and `EXTRACTION_KEY` set to the owner-provided secret value.
 5. For extraction QA, run with `QA_EXTRACTION_KEY` equal to backend `EXTRACTION_KEY`.
 6. Use Node.js `>=24` for both FE and BE builds/runtime.
-7. Ensure frontend deploy receives a commit env, preferably `VERCEL_GIT_COMMIT_SHA` from Vercel or `BUILD_COMMIT_SHA` if deployed elsewhere.
+7. Frontend deploy should receive a commit env, preferably `VERCEL_GIT_COMMIT_SHA` from Vercel or `BUILD_COMMIT_SHA` if deployed elsewhere.
 8. If a CDN or proxy sits in front of FE, do not cache `/health`, `/ready`, or `/version`.
+9. Full migration transfer may target `https://morneven-backend-staging.up.railway.app` only if QA has approval to overwrite that staging target data.
+
+R2 blockers that must be rechecked:
+
+| R2 blocker | Expected R3 evidence |
+| --- | --- |
+| FE `/version` exposed an older commit | FE `/version` returns the redeployed `Stagging` candidate commit and `env: production`. |
+| BE `/version` reported `env: development` | BE `/version` and `/api/version` return `env: production`. |
+| QA guide frozen table listed old development commits | QA uses the updated `2026-05-16-r3-handoff` guide and records deployed commit evidence from `/version`. |
 
 ## Information Needed
 
-- Commit SHA deployed for FE and BE after branch `Stagging` redeploy. QA should capture this from `/version`.
-- Confirmation that staging env has been updated to Node.js `>=24`.
+- Commit SHA deployed for FE and BE after the latest redeploy. QA should capture this from `/version`.
+- Confirmation from QA evidence that FE and BE `/version` both report `env: production`.
+- Confirmation from QA evidence that the migration target `https://morneven-backend-staging.up.railway.app` reports `env: production` before any full migration transfer.
 - Confirmation that `MIGRATION_KEY`, `EXTRACTION_KEY`, and QA-side `QA_EXTRACTION_KEY` are set without exposing the secret value in reports.

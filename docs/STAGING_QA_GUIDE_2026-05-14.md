@@ -1,6 +1,6 @@
 # Morneven Staging QA Guide
 
-Document version: `2026-05-16-r2`
+Document version: `2026-05-16-r3-handoff`
 Last updated: 2026-05-16
 Timezone: Asia/Singapore
 Scope: full staging QA for the frozen current system version
@@ -9,9 +9,9 @@ Scope: full staging QA for the frozen current system version
 
 This document defines the staging QA process for the current Morneven system candidate.
 
-The target of this QA cycle is not active development. Development is paused until QA is complete. Staging QA must validate the exact frontend and backend commits below unless an approved P0 or P1 fix resets the affected scope.
+The target of this QA cycle is not active development. Development is paused until QA is complete. Staging QA must validate the deployed frontend and backend commits captured from `/version` unless an approved P0 or P1 fix resets the affected scope.
 
-Update label: 2026-05-16-r2
+Update label: 2026-05-16-r3-handoff
 
 | Surface | Current staging URL |
 | --- | --- |
@@ -20,10 +20,12 @@ Update label: 2026-05-16-r2
 | API base | `https://morneven-backend-development.up.railway.app/api` |
 | Chat WebSocket | `wss://morneven-backend-development.up.railway.app/ws/chat?token=<token>` |
 
-| Component | Frozen commit | Branch |
-| --- | --- | --- |
-| Frontend | `28e656c2355887bf1fe99bf30045180137ee1764` | `development` |
-| Backend | `f7731a9f373d3e4612a8542cf075b4bd82cb41d3` | `development` |
+| Component | Candidate source | Branch | Required evidence |
+| --- | --- | --- | --- |
+| Frontend | Latest redeployed staging candidate after R2 | `Stagging` | `/version` must return the deployed `Stagging` commit and `env: production` |
+| Backend | Active staging backend candidate | `Stagging` | `/version` and `/api/version` must return the deployed backend commit and `env: production` |
+
+R2 failed formal acceptance because the frontend deployment was older than the local `Stagging` candidate and the backend reported `env: development`. Owner has since confirmed FE redeploy and `NODE_ENV=production` for all relevant instances. Rerun must capture fresh version evidence instead of reusing R2 values.
 
 ## 2. QA Verdict Model
 
@@ -58,10 +60,12 @@ Production promotion must not be approved while any P0 is open. P1 issues requir
 | --- | --- | --- |
 | `STAGING_FRONTEND_URL` | `https://morneven.com` | Yes |
 | `STAGING_BACKEND_URL` | `https://morneven-backend-development.up.railway.app` | Yes |
-| `QA_RUN_ID` | `QA-20260515-STAGING` | Yes |
+| `STAGING_MIGRATION_TARGET_URL` | `https://morneven-backend-staging.up.railway.app` | Required only for full migration transfer QA |
+| `QA_RUN_ID` | `QA-20260516-STAGING-R3` | Yes |
 | `QA_EXTRACTION_KEY` | Match backend `EXTRACTION_KEY` | Required only for extraction QA |
 
 Frontend staging must expose `/health`, `/ready`, and `/version` as JSON routes. If any of these paths return SPA HTML, record it as an environment failure before functional QA.
+The migration target must expose `/health`, `/ready`, and `/version` with `env: production` before any full migration transfer is attempted.
 
 ### 4.2 Backend variables
 
@@ -83,8 +87,8 @@ Frontend staging must expose `/health`, `/ready`, and `/version` as JSON routes.
 | `LOCAL_STORAGE_PATH` | `/data/storage` if using Railway volume |
 | `LOCAL_STORAGE_BASE_PATH` | `/storage` |
 | `MIGRATION_KEY` | Secret, 16+ chars |
-| `BUILD_VERSION` | `staging-2026-05-14-f7731a9` |
-| `BUILD_COMMIT_SHA` | `f7731a9f373d3e4612a8542cf075b4bd82cb41d3` |
+| `BUILD_VERSION` | Staging build label from deploy |
+| `BUILD_COMMIT_SHA` | Deployed backend commit SHA |
 
 ### 4.3 Frontend variables
 
@@ -95,8 +99,8 @@ Frontend staging must expose `/health`, `/ready`, and `/version` as JSON routes.
 | `NODE_ENV` | `production` |
 | Node.js runtime | `>=24` |
 | `PORT` | Railway-provided or `8080` |
-| `BUILD_VERSION` | `staging-2026-05-14-28e656c` |
-| `BUILD_COMMIT_SHA` | `28e656c2355887bf1fe99bf30045180137ee1764` |
+| `BUILD_VERSION` | Staging build label from deploy |
+| `BUILD_COMMIT_SHA` | Deployed frontend commit SHA, preferably from `VERCEL_GIT_COMMIT_SHA` |
 
 ## 5. Pre-QA Setup Checklist
 
@@ -138,7 +142,7 @@ Expected:
 | `npx prisma validate` | PASS |
 | `npm audit --audit-level=high` | PASS or accepted risk |
 
-Current local snapshot on 2026-05-16-r2:
+Current local snapshot on 2026-05-16-r3-handoff:
 
 | Command | Current result |
 | --- | --- |
@@ -168,7 +172,7 @@ Expected:
 | Build | PASS |
 | Audit | PASS or accepted risk |
 
-Current local snapshot on 2026-05-16-r2:
+Current local snapshot on 2026-05-16-r3-handoff:
 
 | Command | Current result |
 | --- | --- |
@@ -207,7 +211,8 @@ Run this order exactly. Stop at the first P0 environment blocker.
 ```powershell
 $env:STAGING_BACKEND_URL="https://morneven-backend-development.up.railway.app"
 $env:STAGING_FRONTEND_URL="https://morneven.com"
-$env:QA_RUN_ID="QA-20260515-STAGING"
+$env:STAGING_MIGRATION_TARGET_URL="https://morneven-backend-staging.up.railway.app"
+$env:QA_RUN_ID="QA-20260516-STAGING-R3"
 $env:QA_SEED_PASSWORD="SeedPassword123"
 ```
 
@@ -221,6 +226,9 @@ curl.exe -i "$env:STAGING_BACKEND_URL/api/version"
 curl.exe -i "$env:STAGING_FRONTEND_URL/health"
 curl.exe -i "$env:STAGING_FRONTEND_URL/ready"
 curl.exe -i "$env:STAGING_FRONTEND_URL/version"
+curl.exe -i "$env:STAGING_MIGRATION_TARGET_URL/health"
+curl.exe -i "$env:STAGING_MIGRATION_TARGET_URL/ready"
+curl.exe -i "$env:STAGING_MIGRATION_TARGET_URL/version"
 ```
 
 ```powershell
@@ -436,7 +444,7 @@ Negative tests:
 | Migration | Approval required and must target disposable staging only |
 | Storage cleanup | Report-only first, execute only after object list review |
 | Security blocks | Use QA-only subject values and short TTL |
-| Chat groups | Manual group hard-delete does not exist; record residuals |
+| Chat groups | Manual group can be hard-deleted by group owner/admin; leave flow must promote the next active member by join order or delete the empty group |
 
 ## 15. Cleanup Guide
 
