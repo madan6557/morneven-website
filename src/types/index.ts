@@ -386,6 +386,7 @@ export interface GalleryItem {
   type: "image" | "video";
   title: string;
   thumbnail: string;
+  mediaUrl?: string;
   videoUrl?: string;
   caption: string;
   tags: string[];

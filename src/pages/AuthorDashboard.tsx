@@ -104,6 +104,7 @@ type EditableState = {
   stats?: Character["stats"] | Creature["stats"];
   type?: GalleryItem["type"] | string;
   category?: string;
+  mediaUrl?: string;
   videoUrl?: string;
   caption?: string;
   tags?: string[];
@@ -942,7 +943,7 @@ export default function AuthorDashboard() {
         setEditing({ title: "", category: "World Systems", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
       }
     } else {
-      setEditing({ type: "image", title: "", thumbnail: "", videoUrl: "", caption: "", tags: [], date: new Date().toISOString().split("T")[0], comments: [] });
+      setEditing({ type: "image", title: "", thumbnail: "", mediaUrl: "", videoUrl: "", caption: "", tags: [], date: new Date().toISOString().split("T")[0], comments: [] });
     }
   };
 
@@ -1147,6 +1148,7 @@ export default function AuthorDashboard() {
           type: (editing.type as GalleryItem["type"]) ?? "image",
           title: editing.title ?? "",
           thumbnail: editing.thumbnail ?? "",
+          mediaUrl: editing.mediaUrl,
           videoUrl: editing.videoUrl,
           caption: editing.caption ?? "",
           tags: editing.tags ?? [],
@@ -1363,6 +1365,7 @@ export default function AuthorDashboard() {
         type: galleryItem.type,
         title: galleryItem.title,
         thumbnail: galleryItem.thumbnail,
+        mediaUrl: galleryItem.mediaUrl,
         videoUrl: galleryItem.videoUrl,
         caption: galleryItem.caption,
         date: galleryItem.date,
@@ -2203,6 +2206,15 @@ export default function AuthorDashboard() {
                     <option value="video">Video</option>
                   </select>
                 </div>
+                {editing.type === "image" && (
+                  <FileUploadField
+                    label="Gallery Image"
+                    value={editing.mediaUrl || ""}
+                    onChange={(url) => setEditing({ ...editing, mediaUrl: url })}
+                    accept="image/*"
+                    folder="gallery"
+                  />
+                )}
                 {editing.type === "video" && (
                   <div>
                     <label className={labelClass}>Video Embed URL</label>

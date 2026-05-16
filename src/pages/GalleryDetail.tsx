@@ -78,6 +78,8 @@ export default function GalleryDetail() {
     setItem((current) => current ? { ...current, ...metrics } : current);
   };
 
+  const imageSrc = item.mediaUrl || item.videoUrl || item.thumbnail;
+
   return (
     <div className="space-y-0">
       {/* Header with back link */}
@@ -100,9 +102,9 @@ export default function GalleryDetail() {
               title={item.title}
             />
           </div>
-        ) : item.type === "image" && item.thumbnail ? (
+        ) : item.type === "image" && imageSrc ? (
           <div className="bg-muted overflow-hidden flex justify-center">
-            <AuthenticatedImage src={item.thumbnail} alt={item.title} className="block h-auto max-h-[75vh] w-full object-contain" />
+            <AuthenticatedImage src={imageSrc} alt={item.title} className="block h-auto max-h-[75vh] w-full object-contain" />
           </div>
         ) : (
           <div className="aspect-video bg-muted flex items-center justify-center">

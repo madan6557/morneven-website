@@ -131,53 +131,45 @@ export default function GalleryPage() {
 
       {/* Grid */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {items.map((item) => (
-          <Link key={item.id} to={`/gallery/${item.id}`} className="block group">
-            <div className="hud-border-sm bg-card overflow-hidden hover:glow-primary transition-shadow">
-              {item.type === "video" ? (
+        {items.map((item) => {
+          const thumbnailSrc = item.thumbnail || (item.type === "image" ? item.mediaUrl || item.videoUrl : "");
+
+          return (
+            <Link key={item.id} to={`/gallery/${item.id}`} className="block group">
+              <div className="hud-border-sm bg-card overflow-hidden hover:glow-primary transition-shadow">
                 <div className="aspect-video bg-muted overflow-hidden flex items-center justify-center relative">
-                  {item.thumbnail ? (
+                  {thumbnailSrc ? (
                     <AuthenticatedImage
-                      src={item.thumbnail}
+                      src={thumbnailSrc}
                       alt={item.title}
                       loading="lazy"
                       decoding="async"
-                      className="h-full w-full object-contain"
+                      className="h-full w-full object-cover"
                     />
-                  ) : null}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-10 h-10 rounded-full bg-primary/80 flex items-center justify-center">
-                      <div className="w-0 h-0 border-l-[8px] border-l-primary-foreground border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent ml-0.5" />
+                  ) : (
+                    <span className="text-xs text-muted-foreground font-heading tracking-wider">
+                      {item.type === "video" ? "VIDEO" : "IMAGE"}
+                    </span>
+                  )}
+                  {item.type === "video" && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-primary/80 flex items-center justify-center">
+                        <div className="w-0 h-0 border-l-[8px] border-l-primary-foreground border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent ml-0.5" />
+                      </div>
                     </div>
+                  )}
+                </div>
+                <div className="p-3">
+                  <h3 className="text-sm font-heading text-foreground truncate group-hover:text-primary transition-colors">{item.title}</h3>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <p className="text-[10px] text-muted-foreground font-body">{item.date}</p>
+                    <ContentMetricPill kind="views" value={item.views} label="Views" />
                   </div>
                 </div>
-              ) : item.type === "image" && item.thumbnail ? (
-                <div className="min-h-32 bg-muted overflow-hidden flex items-center justify-center">
-                  <AuthenticatedImage
-                    src={item.thumbnail}
-                    alt={item.title}
-                    loading="lazy"
-                    decoding="async"
-                    className="block h-auto w-full object-contain"
-                  />
-                </div>
-              ) : (
-                <div className="aspect-video bg-muted flex items-center justify-center">
-                  <span className="text-xs text-muted-foreground font-heading tracking-wider">
-                    IMAGE
-                  </span>
-                </div>
-              )}
-              <div className="p-3">
-                <h3 className="text-sm font-heading text-foreground truncate group-hover:text-primary transition-colors">{item.title}</h3>
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  <p className="text-[10px] text-muted-foreground font-body">{item.date}</p>
-                  <ContentMetricPill kind="views" value={item.views} label="Views" />
-                </div>
               </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
 
       {!isLoading && items.length === 0 && (
