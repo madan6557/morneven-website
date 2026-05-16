@@ -1854,7 +1854,7 @@ export default function AuthorDashboard() {
             description="Identity, media, status, and type-specific fields."
             defaultOpen
           >
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             {/* Title/Name */}
             <div>
               <label className={labelClass}>{editing.title !== undefined ? "Title" : "Name"}</label>
@@ -1904,7 +1904,7 @@ export default function AuthorDashboard() {
                   <label className={labelClass}>Height</label>
                   <input type="text" value={editing.height || ""} onChange={(e) => setEditing({ ...editing, height: e.target.value })} className={inputClass} placeholder="e.g. 180 cm" />
                 </div>
-                <div className="md:col-span-2">
+                <div className="sm:col-span-2">
                   <label className={labelClass}>Occupation</label>
                   <input type="text" value={editing.occupation || ""} onChange={(e) => setEditing({ ...editing, occupation: e.target.value })} className={inputClass} placeholder="e.g. Chief Tactician - Field Division" />
                 </div>
@@ -1962,7 +1962,7 @@ export default function AuthorDashboard() {
                     <option value={5}>DL-5 - Existential</option>
                   </select>
                 </div>
-                <div className="md:col-span-2">
+                <div className="sm:col-span-2">
                   <label className={labelClass}>Habitat</label>
                   <input type="text" value={editing.habitat || ""} onChange={(e) => setEditing({ ...editing, habitat: e.target.value })} className={inputClass} placeholder="e.g. Scorched Wastes - crystalline canyons" />
                 </div>
@@ -2032,11 +2032,11 @@ export default function AuthorDashboard() {
                   <label className={labelClass}>Scope</label>
                   <input type="text" value={editing.scope || ""} onChange={(e) => setEditing({ ...editing, scope: e.target.value })} className={inputClass} placeholder="e.g. Institute-wide, Regional" />
                 </div>
-                <div className="md:col-span-2">
+                <div className="sm:col-span-2">
                   <label className={labelClass}>Impact Level</label>
                   <input type="text" value={editing.impactLevel || ""} onChange={(e) => setEditing({ ...editing, impactLevel: e.target.value })} className={inputClass} placeholder="e.g. High, Critical, Contained" />
                 </div>
-                <div className="md:col-span-2">
+                <div className="sm:col-span-2">
                   <label className={labelClass}>Consequences (comma-separated)</label>
                   <input
                     type="text"
@@ -2049,7 +2049,7 @@ export default function AuthorDashboard() {
                     placeholder="e.g. Archive lockdown, Team redeployment"
                   />
                 </div>
-                <div className="md:col-span-2 space-y-3">
+                <div className="sm:col-span-2 space-y-3">
                   <div className="flex items-center justify-between">
                     <label className={labelClass}>Related Links</label>
                     <button
@@ -2121,7 +2121,7 @@ export default function AuthorDashboard() {
               ]);
 
               return (
-                <div className="md:col-span-2 space-y-3 p-3 border border-border rounded-sm bg-muted/20">
+                <div className="sm:col-span-2 space-y-3 p-3 border border-border rounded-sm bg-muted/20">
                   <div className="flex items-center justify-between gap-3">
                     <label className={labelClass}>Stat Breakdown</label>
                     <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
@@ -2155,7 +2155,7 @@ export default function AuthorDashboard() {
               ]);
 
               return (
-                <div className="md:col-span-2 space-y-3 p-3 border border-border rounded-sm bg-muted/20">
+                <div className="sm:col-span-2 space-y-3 p-3 border border-border rounded-sm bg-muted/20">
                   <div className="flex items-center justify-between gap-3">
                     <label className={labelClass}>Threat Breakdown</label>
                     <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">
