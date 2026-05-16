@@ -378,7 +378,7 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*", a
   return (
     <div className="space-y-2">
       <label className={labelClass}>{label}</label>
-      <div className="flex gap-1 mt-1">
+      <div className="flex flex-wrap gap-1 mt-1">
         <button type="button" onClick={() => setMode("image")}
           className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "image" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
           <Image className="h-3 w-3" /> Image
