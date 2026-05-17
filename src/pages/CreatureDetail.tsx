@@ -413,7 +413,7 @@ export default function CreatureDetail() {
           </TabsList>
 
           <TabsContent value="overview" className="mt-6 space-y-6">
-            <div className="max-w-3xl space-y-4">
+            <div className="space-y-4">
               <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Field Report</h2>
               <p className="text-sm font-body text-foreground/90 italic border-l-2 pl-4" style={{ borderColor: accentReadable }}>
                 {creature.shortDesc}
@@ -424,7 +424,7 @@ export default function CreatureDetail() {
           </TabsContent>
 
           <TabsContent value="habitat" className="mt-6 space-y-6">
-            <div className="max-w-3xl space-y-4">
+            <div className="space-y-4">
               <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Operational Environment</h2>
               <div className="hud-border bg-card p-5 space-y-3" style={{ borderColor: accentSoftBorder }}>
                 <div className="flex items-start gap-3">
@@ -435,7 +435,7 @@ export default function CreatureDetail() {
                   </div>
                 </div>
               </div>
-              <p className="text-sm font-body text-foreground/70 leading-relaxed">
+              <p className="text-sm font-body text-foreground/70 leading-relaxed text-justify hyphens-auto">
                 Field teams operating within this range must observe <span className="text-foreground font-semibold">{dangerLabel[creature.dangerLevel]}</span> engagement doctrine.
                 {doctrine && <> Morneven standing protocol for {creature.classification}-class entities is <span className="text-foreground font-semibold">{doctrine.protocol}</span>.</>}
               </p>
@@ -449,7 +449,7 @@ export default function CreatureDetail() {
           </TabsContent>
 
           <TabsContent value="notes" className="mt-6 space-y-6">
-            <div className="max-w-3xl space-y-4">
+            <div className="space-y-4">
                 <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Field Notes & Observations</h2>
                 <FieldNoteList title="Field Notes" items={creature.fieldNotes ?? []} accent={accent} />
                 <FieldNoteList title="Observations" items={creature.observations ?? []} accent={accent} />

@@ -174,9 +174,9 @@ export default function TechDetail() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="overview" className="mt-6">
-            <div className="max-w-3xl space-y-4">
+            <div className="space-y-4">
               <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Technical Specifications</h2>
-              <RedactedBlock fullDesc={tech.fullDesc} paragraphClass="text-sm font-body text-foreground/80 leading-relaxed" />
+              <RedactedBlock fullDesc={tech.fullDesc} paragraphClass="text-sm font-body text-foreground/80 leading-relaxed text-justify hyphens-auto whitespace-pre-line" />
             </div>
           </TabsContent>
           <TabsContent value="metadata" className="mt-6">
