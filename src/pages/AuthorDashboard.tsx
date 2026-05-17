@@ -1856,7 +1856,7 @@ export default function AuthorDashboard() {
             title="Core Fields"
             description="Identity, media, status, and type-specific fields."
           >
-          <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(280px,1fr))] [&>*]:min-w-0">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 [&>*]:min-w-0">
             {/* Title/Name */}
             <div>
               <label className={labelClass}>{editing.title !== undefined ? "Title" : "Name"}</label>
