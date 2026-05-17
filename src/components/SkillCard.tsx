@@ -443,7 +443,7 @@ export function SkillList({ title, items, accent, variant = "skill", className, 
           No {variant === "skill" ? "skills" : "features"} match this filter.
         </p>
       ) : (
-        <div className={cn("grid grid-cols-1 gap-3 lg:grid-cols-2", gridClassName)}>
+        <div className={cn("grid grid-cols-1 gap-3 xl:grid-cols-2", gridClassName)}>
           {filtered.map((item) => (
             <SkillCard key={item.id} item={item} accent={accent} variant={variant} />
           ))}
