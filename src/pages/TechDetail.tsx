@@ -183,7 +183,7 @@ export default function TechDetail() {
               }
             >
               <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Technical Specifications</h2>
-              <RedactedBlock fullDesc={tech.fullDesc} paragraphClass="text-sm font-body text-foreground/80 leading-relaxed text-justify" />
+              <RedactedBlock fullDesc={tech.fullDesc} paragraphClass="text-sm font-body text-foreground/80 leading-relaxed text-justify hyphens-auto whitespace-pre-line" />
             </DetailAdaptiveSection>
           </TabsContent>
           <TabsContent value="metadata" className="mt-6">

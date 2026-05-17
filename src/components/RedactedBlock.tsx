@@ -18,7 +18,7 @@ interface RedactedBlockProps {
  */
 export default function RedactedBlock({
   fullDesc,
-  paragraphClass = "text-sm font-body text-foreground/80 leading-relaxed text-justify whitespace-pre-line",
+  paragraphClass = "text-sm font-body text-foreground/80 leading-relaxed whitespace-pre-line text-justify hyphens-auto",
 }: RedactedBlockProps) {
   const { personnelLevel } = useAuth();
   const segments = splitRestricted(fullDesc);

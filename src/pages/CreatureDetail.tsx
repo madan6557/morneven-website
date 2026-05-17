@@ -426,7 +426,7 @@ export default function CreatureDetail() {
               <TabsContent value="overview" className="mt-6 space-y-4">
                 <div className="space-y-4">
                   <h2 className="font-heading text-lg tracking-wider text-foreground uppercase border-b pb-2" style={{ borderColor: `${accent}30` }}>Field Brief</h2>
-                  <p className="text-sm font-body text-foreground/90 text-justify italic border-l-2 pl-4" style={{ borderColor: accentReadable }}>
+                  <p className="text-sm font-body text-foreground/90 text-justify hyphens-auto italic border-l-2 pl-4" style={{ borderColor: accentReadable }}>
                     {creature.shortDesc}
                   </p>
                 </div>
@@ -436,7 +436,7 @@ export default function CreatureDetail() {
               <TabsContent value="background" className="mt-6 space-y-6">
                 <div className="space-y-4">
                   <h2 className="font-heading text-lg tracking-wider text-foreground uppercase border-b pb-2" style={{ borderColor: `${accent}30` }}>Background</h2>
-                  <RedactedBlock fullDesc={creature.fullDesc} paragraphClass="text-sm font-body text-foreground/80 leading-relaxed text-justify" />
+                  <RedactedBlock fullDesc={creature.fullDesc} paragraphClass="text-sm font-body text-foreground/80 leading-relaxed text-justify hyphens-auto" />
                 </div>
               </TabsContent>
 
@@ -453,7 +453,7 @@ export default function CreatureDetail() {
                       </div>
                     </div>
                   </div>
-                  <p className="text-sm font-body text-foreground/70 leading-relaxed text-justify">
+                  <p className="text-sm font-body text-foreground/70 leading-relaxed text-justify hyphens-auto">
                     Field teams operating within this range must observe <span className="text-foreground font-semibold">{dangerLabel[creature.dangerLevel]}</span> engagement doctrine.
                     {doctrine && <> Morneven standing protocol for {creature.classification}-class entities is <span className="text-foreground font-semibold">{doctrine.protocol}</span>.</>}
                   </p>
@@ -479,7 +479,7 @@ export default function CreatureDetail() {
                         </span>
                         <span className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Protocol / {doctrine.protocol}</span>
                       </div>
-                      <p className="text-sm font-body text-foreground/80 leading-relaxed text-justify">{doctrine.summary}</p>
+                      <p className="text-sm font-body text-foreground/80 leading-relaxed text-justify hyphens-auto">{doctrine.summary}</p>
                       <Link
                         to={`/lore/other/${GEC_LORE_ID}`}
                         className="inline-flex items-center gap-1.5 text-xs font-heading tracking-wider uppercase text-muted-foreground hover:text-foreground transition-colors pt-1"
@@ -544,7 +544,7 @@ function FieldNoteList({ title, items, accent }: { title: string; items: LoreFie
             <h3 className="font-heading text-sm tracking-wider text-foreground uppercase">{item.title}</h3>
             {item.date && <span className="text-[10px] font-display tracking-wider text-muted-foreground">{item.date}</span>}
           </div>
-          <p className="text-sm font-body text-foreground/80 leading-relaxed text-justify whitespace-pre-line">{item.body}</p>
+          <p className="text-sm font-body text-foreground/80 leading-relaxed text-justify hyphens-auto whitespace-pre-line">{item.body}</p>
         </div>
       ))}
     </div>
