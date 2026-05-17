@@ -332,7 +332,7 @@ export default function LorePage() {
                 <div className="p-4 space-y-1">
                   <h3 className="text-sm font-heading text-foreground group-hover:text-primary transition-colors">{p.name}</h3>
                   <p className="text-[10px] text-muted-foreground font-display tracking-wider uppercase">{p.type}</p>
-                  <p className="text-xs text-muted-foreground font-body line-clamp-2 mt-1">{p.shortDesc}</p>
+                  <p className="text-xs text-muted-foreground font-body text-justify line-clamp-2 mt-1">{p.shortDesc}</p>
                   <ContentMetricPill kind="stars" value={p.stars} active={p.viewerStarred} label="Stars" />
                 </div>
               </div>
@@ -360,7 +360,7 @@ export default function LorePage() {
                 <div className="p-4 space-y-1">
                   <h3 className="text-sm font-heading text-foreground group-hover:text-primary transition-colors">{t.name}</h3>
                   <p className="text-[10px] text-muted-foreground font-display tracking-wider uppercase">{t.category}</p>
-                  <p className="text-xs text-muted-foreground font-body line-clamp-2 mt-1">{t.shortDesc}</p>
+                  <p className="text-xs text-muted-foreground font-body text-justify line-clamp-2 mt-1">{t.shortDesc}</p>
                   <ContentMetricPill kind="stars" value={t.stars} active={t.viewerStarred} label="Stars" />
                 </div>
               </div>
@@ -402,7 +402,7 @@ export default function LorePage() {
                   >
                     {c.classification}
                   </Link>
-                  <p className="text-xs text-muted-foreground font-body line-clamp-2 mt-1">{c.shortDesc}</p>
+                  <p className="text-xs text-muted-foreground font-body text-justify line-clamp-2 mt-1">{c.shortDesc}</p>
                   <ContentMetricPill kind="stars" value={c.stars} active={c.viewerStarred} label="Stars" />
                 </div>
               </div>
@@ -440,7 +440,7 @@ export default function LorePage() {
                   {e.dateLabel && (
                     <p className="text-[10px] text-muted-foreground font-body italic truncate">{e.dateLabel}</p>
                   )}
-                  <p className="text-xs text-muted-foreground font-body line-clamp-2 mt-1">{e.shortDesc}</p>
+                  <p className="text-xs text-muted-foreground font-body text-justify line-clamp-2 mt-1">{e.shortDesc}</p>
                   <ContentMetricPill kind="stars" value={e.stars} active={e.viewerStarred} label="Stars" />
                 </div>
               </div>
@@ -468,7 +468,7 @@ export default function LorePage() {
                 <div className="p-4 space-y-1">
                   <h3 className="text-sm font-heading text-foreground group-hover:text-primary transition-colors">{o.title}</h3>
                   <p className="text-[10px] text-muted-foreground font-display tracking-wider uppercase">{o.category}</p>
-                  <p className="text-xs text-muted-foreground font-body line-clamp-2 mt-1">{o.shortDesc}</p>
+                  <p className="text-xs text-muted-foreground font-body text-justify line-clamp-2 mt-1">{o.shortDesc}</p>
                   <ContentMetricPill kind="stars" value={o.stars} active={o.viewerStarred} label="Stars" />
                 </div>
               </div>

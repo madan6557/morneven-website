@@ -20,6 +20,7 @@ import { useResolvedImageUrl } from "@/hooks/useResolvedImageUrl";
 import DocumentationViewer from "@/components/DocumentationViewer";
 import { LoreEngagementBar } from "@/components/LoreEngagementBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DetailAdaptiveSection } from "@/components/DetailAdaptiveSection";
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
@@ -168,16 +169,20 @@ export default function EventDetail() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="overview" className="mt-6">
-            <div className="max-w-3xl space-y-4">
+            <DetailAdaptiveSection
+              aside={
+                item.features.length > 0 ? (
+                  <SkillList items={item.features} variant="feature" gridClassName="lg:grid-cols-1" />
+                ) : null
+              }
+            >
               <RedactedBlock fullDesc={item.fullDesc} />
-            </div>
+            </DetailAdaptiveSection>
           </TabsContent>
           <TabsContent value="metadata" className="mt-6">
             <LoreMetaPanel meta={item.meta} fallbackCreator={item.contributor} />
           </TabsContent>
         </Tabs>
-
-        <SkillList items={item.features} variant="feature" />
 
         {item.consequences && item.consequences.length > 0 && (
           <div className="space-y-3">

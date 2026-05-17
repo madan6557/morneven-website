@@ -118,7 +118,7 @@ export default function LoreMetaPanel({ meta, fallbackCreator, accentColor }: Lo
                   <span className="font-display text-xs tracking-wider text-foreground">v{p.version}</span>
                   <span className="text-[10px] font-display tracking-wider text-muted-foreground">{p.date}</span>
                 </div>
-                <p className="text-xs font-body text-foreground/80 leading-relaxed whitespace-pre-wrap">{p.notes}</p>
+                <p className="text-xs font-body text-foreground/80 leading-relaxed text-justify whitespace-pre-wrap">{p.notes}</p>
               </li>
             ))}
           </ul>

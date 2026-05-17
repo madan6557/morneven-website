@@ -103,7 +103,7 @@ export default function RequestPayloadPreview({ req }: { req: MgmtRequest }) {
             </p>
             <p className="text-sm font-heading text-foreground truncate">{item.title ?? "(untitled)"}</p>
             {item.caption && (
-              <p className="text-xs font-body text-foreground/80 line-clamp-2">{item.caption}</p>
+              <p className="text-xs font-body text-foreground/80 text-justify line-clamp-2">{item.caption}</p>
             )}
             {item.tags && item.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 pt-1">
@@ -142,7 +142,7 @@ export default function RequestPayloadPreview({ req }: { req: MgmtRequest }) {
             </p>
             <p className="text-sm font-heading text-foreground truncate">{project.title ?? "(untitled)"}</p>
             {project.shortDesc && (
-              <p className="text-xs font-body text-foreground/80 line-clamp-2">{project.shortDesc}</p>
+              <p className="text-xs font-body text-foreground/80 text-justify line-clamp-2">{project.shortDesc}</p>
             )}
             <Link
               to="/projects"

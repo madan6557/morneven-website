@@ -20,6 +20,7 @@ import DiscussionSection from "@/components/DiscussionSection";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import { useResolvedImageUrl } from "@/hooks/useResolvedImageUrl";
 import DocumentationViewer from "@/components/DocumentationViewer";
+import { DetailAdaptiveSection } from "@/components/DetailAdaptiveSection";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -167,10 +168,16 @@ export default function ProjectDetail() {
           </TabsList>
 
           <TabsContent value="overview" className="mt-6 space-y-4">
-            <div className="max-w-3xl space-y-4">
+            <DetailAdaptiveSection
+              aside={
+                project.features.length > 0 ? (
+                  <SkillList items={project.features} variant="feature" gridClassName="lg:grid-cols-1" />
+                ) : null
+              }
+            >
               <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Description</h2>
               <RedactedBlock fullDesc={project.fullDesc} />
-            </div>
+            </DetailAdaptiveSection>
           </TabsContent>
 
           <TabsContent value="patches" className="mt-6 space-y-4">
@@ -213,8 +220,6 @@ export default function ProjectDetail() {
             <LoreMetaPanel meta={project.meta} fallbackCreator={project.contributor} />
           </TabsContent>
         </Tabs>
-
-        <SkillList items={project.features} variant="feature" />
 
         <div className="space-y-4">
           <div className="mecha-line" />

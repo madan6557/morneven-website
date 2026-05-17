@@ -116,7 +116,7 @@ export default function RestrictedMarkerTool({
           Wrap / Insert
         </button>
       </div>
-      <p className="text-[10px] font-body text-muted-foreground leading-relaxed">
+      <p className="text-[10px] font-body text-muted-foreground leading-relaxed text-justify">
         Select text in the description and click <em>Wrap / Insert</em> to mark it as
         restricted. With nothing selected, a placeholder block is added at the caret.
         Output format: <code className="text-foreground/70">{`[L${threshold}+${track ? ` track=${track}` : ""}]…[/L${threshold}+]`}</code>

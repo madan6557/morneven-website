@@ -20,6 +20,7 @@ import { useResolvedImageUrl } from "@/hooks/useResolvedImageUrl";
 import DocumentationViewer from "@/components/DocumentationViewer";
 import { LoreEngagementBar } from "@/components/LoreEngagementBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DetailAdaptiveSection } from "@/components/DetailAdaptiveSection";
 
 export default function TechDetail() {
   const { id } = useParams<{ id: string }>();
@@ -174,17 +175,22 @@ export default function TechDetail() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="overview" className="mt-6">
-            <div className="max-w-3xl space-y-4">
+            <DetailAdaptiveSection
+              aside={
+                tech.features.length > 0 ? (
+                  <SkillList items={tech.features} variant="feature" gridClassName="lg:grid-cols-1" />
+                ) : null
+              }
+            >
               <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">Technical Specifications</h2>
-              <RedactedBlock fullDesc={tech.fullDesc} paragraphClass="text-sm font-body text-foreground/80 leading-relaxed" />
-            </div>
+              <RedactedBlock fullDesc={tech.fullDesc} paragraphClass="text-sm font-body text-foreground/80 leading-relaxed text-justify" />
+            </DetailAdaptiveSection>
           </TabsContent>
           <TabsContent value="metadata" className="mt-6">
             <LoreMetaPanel meta={tech.meta} fallbackCreator={tech.contributor} />
           </TabsContent>
         </Tabs>
 
-        <SkillList items={tech.features} variant="feature" />
         <DocumentationViewer docs={tech.docs} itemLabel={tech.name} />
 
         <div className="mecha-line" />

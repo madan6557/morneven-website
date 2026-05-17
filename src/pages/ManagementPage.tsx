@@ -556,7 +556,7 @@ function FormHeader({
       </div>
       <div>
         <h2 className="font-display text-base uppercase tracking-[0.16em] text-foreground">{title}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        <p className="mt-1 text-sm text-muted-foreground text-justify">{description}</p>
       </div>
     </div>
   );

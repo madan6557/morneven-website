@@ -18,7 +18,7 @@ interface RedactedBlockProps {
  */
 export default function RedactedBlock({
   fullDesc,
-  paragraphClass = "text-sm font-body text-foreground/80 leading-relaxed whitespace-pre-line",
+  paragraphClass = "text-sm font-body text-foreground/80 leading-relaxed text-justify whitespace-pre-line",
 }: RedactedBlockProps) {
   const { personnelLevel } = useAuth();
   const segments = splitRestricted(fullDesc);
@@ -37,10 +37,10 @@ export default function RedactedBlock({
                 <Lock className="h-3.5 w-3.5" />
                 <span className="text-[10px] font-display tracking-[0.15em] uppercase">
                   Restricted - Clearance L{seg.threshold}+ Required
-                  {seg.track ? ` · ${seg.track.toUpperCase()} track` : ""}
+                  {seg.track ? ` / ${seg.track.toUpperCase()} track` : ""}
                 </span>
               </div>
-              <p className="text-xs font-body text-muted-foreground leading-relaxed">
+              <p className="text-xs font-body text-muted-foreground leading-relaxed text-justify">
                 The remainder of this section contains operational detail above
                 your current Personnel Level (L{personnelLevel}). A redacted
                 summary is on file; full text is sealed pending clearance

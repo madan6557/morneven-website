@@ -61,7 +61,7 @@ export function ContentState({
 
       <div className="space-y-1.5">
         <p className="font-heading text-sm tracking-[0.12em] text-foreground uppercase">{title}</p>
-        <p className="mx-auto max-w-xl text-sm leading-6 text-muted-foreground">{description}</p>
+        <p className="mx-auto max-w-xl text-sm leading-6 text-muted-foreground text-justify">{description}</p>
       </div>
 
       {actionLabel && onAction && (

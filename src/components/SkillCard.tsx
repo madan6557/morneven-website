@@ -205,7 +205,7 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
           {variant === "feature" && feature ? (
             <>
               {!expanded && (
-                <p className="text-sm font-body text-foreground/80 line-clamp-2">
+                <p className="text-sm font-body text-foreground/80 text-justify line-clamp-2">
                   {feature.summary || "No summary provided."}
                 </p>
               )}
@@ -285,7 +285,7 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
                     {restrictionLabel(feature.restriction)}
                   </p>
                 ) : null}
-                <p className="text-sm font-body text-foreground/85">
+                <p className="text-sm font-body text-foreground/85 text-justify">
                   {feature.summary || "No summary provided."}
                 </p>
               </section>
@@ -294,7 +294,7 @@ export function SkillCard({ item, accent, variant = "skill" }: SkillCardProps) {
                   <h4 className="text-[10px] font-display tracking-[0.18em] uppercase text-muted-foreground">
                     Details
                   </h4>
-                  <p className="text-sm font-body text-foreground/80 whitespace-pre-line">
+                  <p className="text-sm font-body text-foreground/80 text-justify whitespace-pre-line">
                     {feature.details}
                   </p>
                 </section>
@@ -323,6 +323,8 @@ interface SkillListProps {
   items: Array<Skill | Feature> | undefined;
   accent?: string;
   variant?: "skill" | "feature";
+  className?: string;
+  gridClassName?: string;
 }
 
 function itemHasAttr(item: Skill, key: SkillAttribute) {
@@ -345,7 +347,7 @@ function compareDisplayItems(a: Skill | Feature, b: Skill | Feature, variant: "s
   return ((a as Feature).title || "").trim().toLowerCase().localeCompare(((b as Feature).title || "").trim().toLowerCase());
 }
 
-export function SkillList({ title, items, accent, variant = "skill" }: SkillListProps) {
+export function SkillList({ title, items, accent, variant = "skill", className, gridClassName }: SkillListProps) {
   const list = useMemo(
     () => [...(items ?? [])].sort((left, right) => compareDisplayItems(left, right, variant)),
     [items, variant],
@@ -371,7 +373,7 @@ export function SkillList({ title, items, accent, variant = "skill" }: SkillList
   const softAccentSurface = accentSurface(accentColor);
 
   return (
-    <div className="space-y-3">
+    <div className={cn("space-y-3", className)}>
       <div
         className="flex items-center justify-between gap-3 border-b pb-2"
         style={{ borderColor: softAccentBorder }}
@@ -441,7 +443,7 @@ export function SkillList({ title, items, accent, variant = "skill" }: SkillList
           No {variant === "skill" ? "skills" : "features"} match this filter.
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className={cn("grid grid-cols-1 gap-3 lg:grid-cols-2", gridClassName)}>
           {filtered.map((item) => (
             <SkillCard key={item.id} item={item} accent={accent} variant={variant} />
           ))}

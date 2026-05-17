@@ -62,13 +62,13 @@ export default function PersonnelLevelPage() {
                 What Personnel Means
               </h2>
             </div>
-            <p className="text-sm font-body text-foreground/80 leading-relaxed">
+            <p className="text-sm font-body text-foreground/80 leading-relaxed text-justify">
               In Morneven, <span className="text-foreground font-semibold">personnel</span> refers to every authenticated
               institute-affiliated operator who can be assigned clearance, doctrine scope, and a functional division.
               Personnel are not grouped by prestige, but by the kind of institutional burden they carry and the access
               required to carry it safely.
             </p>
-            <p className="text-sm font-body text-foreground/80 leading-relaxed">
+            <p className="text-sm font-body text-foreground/80 leading-relaxed text-justify">
               The page below should be read as two systems working together:
               the <span className="text-foreground font-semibold">division</span> explains what kind of work a person is
               expected to perform, while the <span className="text-foreground font-semibold">Personnel Level</span> explains
@@ -100,7 +100,7 @@ export default function PersonnelLevelPage() {
               Doctrine
             </h2>
           </div>
-          <p className="text-sm font-body text-foreground/80 leading-relaxed">
+          <p className="text-sm font-body text-foreground/80 leading-relaxed text-justify">
             Personnel Level (PL) governs facility access, intel visibility, and
             operational authority. It is <span className="text-foreground font-semibold">not</span> a
             social caste, salary band, or measure of personal worth. Each of
@@ -151,7 +151,7 @@ export default function PersonnelLevelPage() {
             <h2 className="font-heading text-sm tracking-[0.15em] uppercase text-foreground">
               Division Registry
             </h2>
-            <p className="text-sm font-body text-foreground/75 leading-relaxed max-w-4xl">
+            <p className="text-sm font-body text-foreground/75 leading-relaxed text-justify max-w-4xl">
               Each division below describes a different operational philosophy inside Morneven. The emblem is treated as
               a doctrinal shorthand, not decoration, and is meant to communicate the type of pressure, responsibility, and
               institutional logic that division carries.
@@ -181,7 +181,7 @@ export default function PersonnelLevelPage() {
                       {trackInfo.short}
                     </span>
                   </div>
-                  <p className="text-sm font-body leading-relaxed text-foreground/90">
+                  <p className="text-sm font-body leading-relaxed text-justify text-foreground/90">
                     {trackInfo.summary}
                   </p>
                 </div>
@@ -192,7 +192,7 @@ export default function PersonnelLevelPage() {
                   <p className="font-heading text-sm tracking-[0.15em] uppercase text-foreground">
                     Division Brief
                   </p>
-                  <p className="text-sm font-body leading-relaxed text-foreground/80">
+                  <p className="text-sm font-body leading-relaxed text-justify text-foreground/80">
                     {trackInfo.description}
                   </p>
                 </div>
@@ -204,7 +204,7 @@ export default function PersonnelLevelPage() {
                   <p className="text-[10px] font-display tracking-[0.12em] uppercase text-accent-orange">
                     {trackInfo.emblemTitle}
                   </p>
-                  <p className="text-sm font-body leading-relaxed text-muted-foreground">
+                  <p className="text-sm font-body leading-relaxed text-justify text-muted-foreground">
                     {trackInfo.emblemDescription}
                   </p>
                 </div>

@@ -331,7 +331,7 @@ export default function CharacterDetail() {
               {/* Overview */}
               <TabsContent value="overview" className="mt-6 space-y-4">
                 <h2 className="font-heading text-lg tracking-wider text-foreground uppercase border-b pb-2" style={{ borderColor: `${accentColor}30` }}>Field Brief</h2>
-                <p className="text-sm font-body text-foreground/90 italic border-l-2 pl-4" style={{ borderColor: accentColor }}>
+                <p className="text-sm font-body text-foreground/90 text-justify italic border-l-2 pl-4" style={{ borderColor: accentColor }}>
                   {char.shortDesc}
                 </p>
               </TabsContent>
@@ -340,7 +340,7 @@ export default function CharacterDetail() {
               <TabsContent value="background" className="mt-6 space-y-6">
                 <div className="space-y-4">
                   <h2 className="font-heading text-lg tracking-wider text-foreground uppercase border-b pb-2" style={{ borderColor: `${accentColor}30` }}>Background</h2>
-                  <RedactedBlock fullDesc={char.fullDesc} paragraphClass="text-sm font-body text-foreground/80 leading-relaxed" />
+                  <RedactedBlock fullDesc={char.fullDesc} paragraphClass="text-sm font-body text-foreground/80 leading-relaxed text-justify" />
                 </div>
               </TabsContent>
 
@@ -364,7 +364,7 @@ export default function CharacterDetail() {
                           <h3 className="font-heading text-sm tracking-wider text-foreground uppercase">{c.title}</h3>
                           {c.date && <span className="text-[10px] font-display tracking-wider text-muted-foreground whitespace-nowrap">{c.date}</span>}
                         </div>
-                        <p className="text-sm font-body text-foreground/80 leading-relaxed">{c.description}</p>
+                        <p className="text-sm font-body text-foreground/80 leading-relaxed text-justify">{c.description}</p>
                       </div>
                     ))}
                   </div>
@@ -430,7 +430,7 @@ function FieldNoteList({ title, items, accent }: { title: string; items: LoreFie
             <h3 className="font-heading text-sm tracking-wider text-foreground uppercase">{item.title}</h3>
             {item.date && <span className="text-[10px] font-display tracking-wider text-muted-foreground">{item.date}</span>}
           </div>
-          <p className="text-sm font-body text-foreground/80 leading-relaxed whitespace-pre-line">{item.body}</p>
+          <p className="text-sm font-body text-foreground/80 leading-relaxed text-justify whitespace-pre-line">{item.body}</p>
         </div>
       ))}
     </div>

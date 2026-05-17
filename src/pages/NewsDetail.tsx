@@ -57,7 +57,7 @@ export default function NewsDetail() {
         {item.body ? (
           <div className="space-y-4">
             {item.body.split("\n\n").map((p, i) => (
-              <p key={i} className="text-sm font-body text-foreground/85 leading-relaxed whitespace-pre-line">
+              <p key={i} className="text-sm font-body text-foreground/85 leading-relaxed text-justify whitespace-pre-line">
                 {p}
               </p>
             ))}
@@ -97,7 +97,7 @@ export default function NewsDetail() {
                   )}
                   {(a.type === "image" || a.type === "video") && a.caption && (
                     <div className="p-3">
-                      <p className="text-xs font-body text-muted-foreground">{a.caption}</p>
+                      <p className="text-xs font-body text-muted-foreground text-justify">{a.caption}</p>
                     </div>
                   )}
                 </div>

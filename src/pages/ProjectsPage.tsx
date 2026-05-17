@@ -181,7 +181,7 @@ export default function ProjectsPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground font-body line-clamp-2">{p.shortDesc}</p>
+                <p className="text-xs text-muted-foreground font-body text-justify line-clamp-2">{p.shortDesc}</p>
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span className={`inline-block text-[10px] font-display tracking-wider uppercase ${p.status === "On Progress" ? "text-accent-yellow" :
                       p.status === "Planning" ? "text-primary" :

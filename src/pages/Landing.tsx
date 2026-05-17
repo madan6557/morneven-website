@@ -175,12 +175,12 @@ export default function Landing() {
                 </h2>
                 <div className="mecha-line w-24 mt-3" />
               </div>
-              <p className="font-body text-sm text-muted-foreground leading-relaxed">
+              <p className="font-body text-sm text-muted-foreground leading-relaxed text-justify">
                 Founded in the aftermath of the Great Convergence, the Morneven Institute serves as Gemora's
                 foremost center for interspecies collaboration. Here, Jewerlian crystal-engineers work alongside
                 Human physicists and Demi-human bio-architects to push the boundaries of what's possible.
               </p>
-              <p className="font-body text-sm text-muted-foreground leading-relaxed">
+              <p className="font-body text-sm text-muted-foreground leading-relaxed text-justify">
                 Our mission extends beyond mere research - we seek to preserve the forgotten histories buried
                 beneath Gemora's surface and build a future where all species can thrive together.
               </p>
@@ -229,7 +229,7 @@ export default function Landing() {
                     <f.icon className="h-5 w-5 text-primary" />
                   </div>
                   <h3 className="font-heading text-sm tracking-wide text-foreground">{f.title}</h3>
-                  <p className="font-body text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
+                  <p className="font-body text-xs text-muted-foreground leading-relaxed text-justify">{f.desc}</p>
                 </motion.div>
               ))}
             </div>

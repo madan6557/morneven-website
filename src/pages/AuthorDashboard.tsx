@@ -166,7 +166,7 @@ function EditorSection({
               </span>
             ) : null}
           </span>
-          {description ? <span className="block text-xs leading-5 text-muted-foreground">{description}</span> : null}
+          {description ? <span className="block text-xs leading-5 text-muted-foreground text-justify">{description}</span> : null}
         </span>
         <ChevronDown
           className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}

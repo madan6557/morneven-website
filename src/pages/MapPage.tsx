@@ -243,7 +243,7 @@ export default function MapPage() {
               <span className={`h-2 w-2 rounded-full ${STATUS_STYLES[activeMarker.status].color}`} />
               <span className="text-[10px] font-display tracking-wider uppercase text-muted-foreground">{STATUS_STYLES[activeMarker.status].label} Zone</span>
             </div>
-            <p className="text-xs font-body text-foreground/80">{activeMarker.description}</p>
+            <p className="text-xs font-body text-foreground/80 text-justify">{activeMarker.description}</p>
             {activeMarker.loreLink && (
               <Link data-map-control="true" to={activeMarker.loreLink} className="inline-flex items-center gap-1 text-xs font-heading text-primary hover:underline">
                 Open Wiki Entry <ExternalLink className="h-3 w-3" />

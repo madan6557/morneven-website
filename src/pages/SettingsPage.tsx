@@ -2136,7 +2136,7 @@ function SummaryTile({
       </div>
       <div className="space-y-1">
         <p className="font-display text-base tracking-[0.08em] text-primary break-words sm:text-xl">{value}</p>
-        <p className="line-clamp-2 text-[11px] leading-4 text-muted-foreground sm:text-sm sm:leading-5">{description}</p>
+        <p className="line-clamp-2 text-[11px] leading-4 text-muted-foreground text-justify sm:text-sm sm:leading-5">{description}</p>
       </div>
     </div>
   );
@@ -2175,7 +2175,7 @@ function SectionCard({
             <Icon className={cn("h-4 w-4", accentClass)} />
             <h3 className={cn("min-w-0 break-words font-heading text-sm tracking-[0.15em] uppercase", accentClass)}>{title}</h3>
           </div>
-          <p className="text-sm leading-5 sm:leading-6 text-muted-foreground">{description}</p>
+          <p className="text-sm leading-5 sm:leading-6 text-muted-foreground text-justify">{description}</p>
         </div>
         <ChevronDown
           className={cn(

@@ -228,7 +228,7 @@ export default function HomePage() {
                       <p className="text-sm font-heading text-foreground group-hover:text-primary transition-colors truncate">
                         {p.title}
                       </p>
-                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground sm:text-xs">{p.shortDesc}</p>
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground text-justify sm:text-xs">{p.shortDesc}</p>
                     </div>
                     <span className={`text-[10px] sm:text-xs font-display tracking-wider uppercase flex-shrink-0 ${statusColor[p.status] || "text-muted-foreground"}`}>
                       {p.status}
@@ -423,7 +423,7 @@ export default function HomePage() {
                     className="block p-2 rounded-md hover:bg-background/50 transition-colors group"
                   >
                     <p className="text-sm font-heading text-foreground group-hover:text-primary transition-colors truncate">{p.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{p.type} / {p.shortDesc}</p>
+                    <p className="text-xs text-muted-foreground text-justify mt-0.5 line-clamp-2">{p.type} / {p.shortDesc}</p>
                   </Link>
                 ))}
               </div>
