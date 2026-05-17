@@ -169,7 +169,7 @@ export default function OtherDetail() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="overview" className="mt-6">
-            <div className="max-w-3xl space-y-4">
+            <div className="space-y-4">
               <RedactedBlock fullDesc={item.fullDesc} />
             </div>
           </TabsContent>
