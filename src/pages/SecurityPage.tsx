@@ -48,6 +48,8 @@ import {
 
 const EVENTS_PAGE_SIZE = 6;
 const SESSIONS_PAGE_SIZE = 6;
+const BLOCKS_PAGE_SIZE = 6;
+const SCANS_PAGE_SIZE = 8;
 
 const panelClass = "hud-border bg-card/95";
 const metricClass = "hud-border-sm bg-background/50 p-4 space-y-2";
@@ -93,7 +95,9 @@ export default function SecurityPage() {
   const [state, setState] = useState<LoadState>(initialState);
   const [actionId, setActionId] = useState<string | null>(null);
   const [eventsPage, setEventsPage] = useState(1);
+  const [blocksPage, setBlocksPage] = useState(1);
   const [sessionsPage, setSessionsPage] = useState(1);
+  const [scansPage, setScansPage] = useState(1);
   const [pendingRevoke, setPendingRevoke] = useState<SecuritySession | null>(null);
 
   useEffect(() => {
@@ -103,6 +107,14 @@ export default function SecurityPage() {
   useEffect(() => {
     setSessionsPage(1);
   }, [state.sessions.length]);
+
+  useEffect(() => {
+    setBlocksPage(1);
+  }, [state.blocks.length]);
+
+  useEffect(() => {
+    setScansPage(1);
+  }, [state.scans.length]);
 
   const accessAllowed = canAccessSecurityConsole(personnelLevel, role);
 
@@ -330,28 +342,72 @@ export default function SecurityPage() {
               <CardDescription>Temporary deny rules created by active defense or security operators.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {state.blocks.length ? state.blocks.map((block) => (
-                <div key={block.id} className="rounded-sm border border-border/70 bg-background/45 p-3">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="font-heading text-sm text-foreground">{block.subjectType} / {shortHash(block.subjectHash)}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{block.reason}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Expires {formatDate(block.expiresAt)}</p>
+              {state.blocks.length ? (() => {
+                const totalPages = Math.max(1, Math.ceil(state.blocks.length / BLOCKS_PAGE_SIZE));
+                const safePage = Math.min(blocksPage, totalPages);
+                const start = (safePage - 1) * BLOCKS_PAGE_SIZE;
+                const pageBlocks = state.blocks.slice(start, start + BLOCKS_PAGE_SIZE);
+                return (
+                  <>
+                    <div className="space-y-3">
+                      {pageBlocks.map((block) => (
+                        <div key={block.id} className="rounded-sm border border-border/70 bg-background/45 p-3">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="font-heading text-sm text-foreground">{block.subjectType} / {shortHash(block.subjectHash)}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">{block.reason}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">Expires {formatDate(block.expiresAt)}</p>
+                            </div>
+                            {!block.revokedAt && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => void handleRevokeBlock(block)}
+                                disabled={actionId === block.id}
+                              >
+                                Revoke
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    {!block.revokedAt && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => void handleRevokeBlock(block)}
-                        disabled={actionId === block.id}
-                      >
-                        Revoke
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )) : (
+                    <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+                      <span>
+                        {start + 1}-{Math.min(start + BLOCKS_PAGE_SIZE, state.blocks.length)} of {state.blocks.length}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 px-2"
+                          onClick={() => setBlocksPage((p) => Math.max(1, p - 1))}
+                          disabled={safePage <= 1}
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                          Prev
+                        </Button>
+                        <span className="px-1 font-display tracking-[0.1em]">
+                          {safePage}/{totalPages}
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 px-2"
+                          onClick={() => setBlocksPage((p) => Math.min(totalPages, p + 1))}
+                          disabled={safePage >= totalPages}
+                        >
+                          Next
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                );
+              })() : (
                 <EmptyState text={state.loading ? "Loading blocks." : "No blocks recorded."} />
               )}
             </CardContent>
@@ -451,19 +507,63 @@ export default function SecurityPage() {
               <CardDescription>Upload scan abstraction, MIME validation, signature check, and hash evidence.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {state.scans.length ? state.scans.slice(0, 20).map((scan) => (
-                  <div key={scan.id} className="grid gap-3 rounded-sm border border-border/70 bg-background/45 p-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.8fr)_auto_minmax(0,0.8fr)]">
-                  <div className="min-w-0">
-                    <p className="truncate font-heading text-sm text-foreground">{scan.objectPath}</p>
-                    <p className="mt-1 break-all font-mono text-[11px] text-muted-foreground">{shortHash(scan.sha256)}</p>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{scan.mime}</p>
-                  <Badge variant="outline" className={cn("w-fit text-[10px] font-display uppercase tracking-wider", severityClass(scan.verdict === "clean" ? "low" : "high"))}>
-                    {scan.verdict}
-                  </Badge>
-                  <p className="text-sm text-muted-foreground">{formatDate(scan.createdAt)}</p>
-                </div>
-              )) : (
+              {state.scans.length ? (() => {
+                const totalPages = Math.max(1, Math.ceil(state.scans.length / SCANS_PAGE_SIZE));
+                const safePage = Math.min(scansPage, totalPages);
+                const start = (safePage - 1) * SCANS_PAGE_SIZE;
+                const pageScans = state.scans.slice(start, start + SCANS_PAGE_SIZE);
+                return (
+                  <>
+                    <div className="space-y-3">
+                      {pageScans.map((scan) => (
+                        <div key={scan.id} className="grid gap-3 rounded-sm border border-border/70 bg-background/45 p-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.8fr)_auto_minmax(0,0.8fr)]">
+                          <div className="min-w-0">
+                            <p className="truncate font-heading text-sm text-foreground">{scan.objectPath}</p>
+                            <p className="mt-1 break-all font-mono text-[11px] text-muted-foreground">{shortHash(scan.sha256)}</p>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{scan.mime}</p>
+                          <Badge variant="outline" className={cn("w-fit text-[10px] font-display uppercase tracking-wider", severityClass(scan.verdict === "clean" ? "low" : "high"))}>
+                            {scan.verdict}
+                          </Badge>
+                          <p className="text-sm text-muted-foreground">{formatDate(scan.createdAt)}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+                      <span>
+                        {start + 1}â€“{Math.min(start + SCANS_PAGE_SIZE, state.scans.length)} of {state.scans.length}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 px-2"
+                          onClick={() => setScansPage((p) => Math.max(1, p - 1))}
+                          disabled={safePage <= 1}
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                          Prev
+                        </Button>
+                        <span className="px-1 font-display tracking-[0.1em]">
+                          {safePage}/{totalPages}
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 px-2"
+                          onClick={() => setScansPage((p) => Math.min(totalPages, p + 1))}
+                          disabled={safePage >= totalPages}
+                        >
+                          Next
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                );
+              })() : (
                 <EmptyState text={state.loading ? "Loading scan records." : "No file scans recorded."} />
               )}
             </CardContent>
