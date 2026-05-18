@@ -172,7 +172,7 @@ export default function HomePage() {
 
       {/* Stat Cards */}
       {settings.showStats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard icon={FolderKanban} label="Total Projects" value={snapshotStatus === "loading" ? "..." : snapshotStatus === "error" ? "--" : stats.totalProjects} color="bg-primary/20 text-primary" delay={0.05} />
           <StatCard icon={Activity} label="In Progress" value={snapshotStatus === "loading" ? "..." : snapshotStatus === "error" ? "--" : stats.activeProjects} color="bg-green-500/20 text-green-400" delay={0.1} />
           <StatCard icon={BookOpen} label="Lore Entries" value={snapshotStatus === "loading" ? "..." : snapshotStatus === "error" ? "--" : stats.totalLore} color="bg-secondary/20 text-secondary" delay={0.15} />
@@ -182,9 +182,9 @@ export default function HomePage() {
 
       {/* Main Grid */}
       {(settings.showProjects || settings.showNews) && (
-        <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
           {settings.showProjects && (
-            <motion.div {...fadeUp(0.1)} className="md:col-span-2 hud-border bg-card p-4 sm:p-5 space-y-4 glow-primary min-w-0">
+            <motion.div {...fadeUp(0.1)} className="lg:col-span-2 hud-border bg-card p-4 sm:p-5 space-y-4 glow-primary min-w-0">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-heading text-xs sm:text-sm tracking-[0.15em] text-accent-orange uppercase flex items-center gap-2">
                   <FolderKanban className="h-4 w-4" /> Project Status
@@ -315,7 +315,7 @@ export default function HomePage() {
 
       {/* Second Row */}
       {(settings.showCharacters || settings.showPlaces || settings.showTechnology) && (
-        <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
           {settings.showCharacters && (
             <motion.div {...fadeUp(0.2)} className="hud-border bg-card p-4 sm:p-5 space-y-4 glow-primary">
               <div className="flex items-center justify-between gap-2">
@@ -493,7 +493,7 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="mecha-line" />
-          <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3">
             {snapshotStatus === "loading" ? (
               <div className="col-span-full">
                 <ContentState
@@ -553,7 +553,7 @@ export default function HomePage() {
             <TrendingUp className="h-4 w-4" /> Quick Navigation
           </h3>
           <div className="mecha-line" />
-          <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3">
             {[
               { label: "Projects", to: "/projects", icon: FolderKanban, desc: "View all projects" },
               { label: "Gallery", to: "/gallery", icon: Image, desc: "Browse artwork" },

@@ -1680,7 +1680,7 @@ export default function AuthorDashboard() {
                 </p>
               </div>
             ) : (
-              <div className="grid gap-2 md:grid-cols-2">
+              <div className="grid gap-2 lg:grid-cols-2">
                 {[...ccPresets]
                   .sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.presetName.localeCompare(b.presetName))
                   .map((preset) => (
@@ -1789,7 +1789,7 @@ export default function AuthorDashboard() {
 
             <div>
               <p className={labelClass + " mb-2"}>Visible Sections</p>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2 lg:grid-cols-2">
                 {([
                   ["showStats", "Stat Cards"],
                   ["showProjects", "Project Status"],
