@@ -169,7 +169,7 @@ export default function CommandCenterSelectionPanel({ settings, onChange }: Comm
       <p className="text-[11px] font-body text-muted-foreground italic">
         Set how many items each section shows. Manually pick items to override the limit and order. Leave selection empty for automatic ordering.
       </p>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2">
         {SECTIONS.map((s) => {
           const manual = settings.manualSelections[s.key] ?? [];
           const limit = settings.itemLimits[s.key] ?? 0;
