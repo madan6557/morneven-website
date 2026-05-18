@@ -493,7 +493,7 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="mecha-line" />
-          <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 md:gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3">
             {snapshotStatus === "loading" ? (
               <div className="col-span-full">
                 <ContentState
