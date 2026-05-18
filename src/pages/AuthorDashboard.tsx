@@ -1680,7 +1680,7 @@ export default function AuthorDashboard() {
                 </p>
               </div>
             ) : (
-              <div className="grid gap-2 md:grid-cols-2">
+              <div className="grid gap-2 lg:grid-cols-2">
                 {[...ccPresets]
                   .sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.presetName.localeCompare(b.presetName))
                   .map((preset) => (
