@@ -206,7 +206,7 @@ export default function CharacterDetail() {
 
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Left: Stats & Info (always visible sidebar) */}
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0">
             {/* Stats bars */}
             <div className="hud-border bg-card p-5 space-y-4" style={{ borderColor: accentSoftBorder }}>
               {(() => {
