@@ -11,10 +11,15 @@ export function AppLayout() {
   const [expanded, setExpanded] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Default: minimized on tablet/phone, expanded on desktop
+  // Default: minimized on tablet/narrow desktops (<1024), expanded on wide desktops
   useEffect(() => {
-    setExpanded(!isMobile);
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(min-width: 1024px)");
+    const apply = () => setExpanded(mql.matches);
+    apply();
+    mql.addEventListener("change", apply);
     setMobileOpen(false);
+    return () => mql.removeEventListener("change", apply);
   }, [isMobile]);
 
   return (

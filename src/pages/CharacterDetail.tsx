@@ -206,7 +206,7 @@ export default function CharacterDetail() {
 
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Left: Stats & Info (always visible sidebar) */}
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0">
             {/* Stats bars */}
             <div className="hud-border bg-card p-5 space-y-4" style={{ borderColor: accentSoftBorder }}>
               {(() => {
@@ -305,7 +305,7 @@ export default function CharacterDetail() {
           </div>
 
           {/* Right: Tabbed sections */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 min-w-0">
             <Tabs defaultValue="overview" className="w-full">
               <TabsList
                 className="grid h-auto w-full grid-cols-2 gap-1 rounded-sm p-1.5 sm:inline-flex sm:h-auto sm:w-auto sm:grid-cols-5 [&>[data-state=active]]:text-[color:var(--char-accent)] [&>[data-state=active]]:shadow-[inset_0_-2px_0_0_var(--char-accent)]"
