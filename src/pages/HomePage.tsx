@@ -553,7 +553,7 @@ export default function HomePage() {
             <TrendingUp className="h-4 w-4" /> Quick Navigation
           </h3>
           <div className="mecha-line" />
-          <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3">
             {[
               { label: "Projects", to: "/projects", icon: FolderKanban, desc: "View all projects" },
               { label: "Gallery", to: "/gallery", icon: Image, desc: "Browse artwork" },
