@@ -130,6 +130,7 @@ export default function DocumentationViewer({
               {sortedDocs.map((doc, index) => {
                 const Icon = typeIcon[doc.type] ?? FileText;
                 const label = docFallbackName(doc, index, itemLabel);
+                const previewUrl = doc.thumbnail || (doc.type === "image" ? doc.url : "");
                 return (
                   <button
                     key={`${doc.type}-${doc.url}-${index}`}
@@ -139,9 +140,9 @@ export default function DocumentationViewer({
                     style={accentColor ? { borderColor: `${accentColor}24` } : undefined}
                   >
                     <div className="relative aspect-video bg-muted">
-                      {doc.type === "image" && doc.url ? (
+                      {previewUrl ? (
                         <AuthenticatedImage
-                          src={doc.url}
+                          src={previewUrl}
                           alt={label}
                           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                         />

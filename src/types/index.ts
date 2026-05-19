@@ -44,6 +44,7 @@ export interface ContentMetrics {
 export interface DocItem {
   type: "image" | "video" | "file";
   url: string;
+  thumbnail?: string;
   caption: string;
   date?: string;
 }

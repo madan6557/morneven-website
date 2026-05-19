@@ -17,6 +17,7 @@ export const normalizeDocsForSave = (docs: DocItem[] = [], fallbackDate: string)
     docs.map((doc) => ({
       type: doc.type,
       url: doc.url,
+      thumbnail: doc.thumbnail || "",
       caption: doc.caption,
       date: doc.date || fallbackDate,
     })),

@@ -28,7 +28,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useToast } from "@/hooks/use-toast";
 import { showValidation } from "@/components/ui/validation-dialog";
 import SkillFeatureEditor from "@/components/SkillFeatureEditor";
+import { ThumbnailCropDialog } from "@/components/ThumbnailCropDialog";
 import { normalizeDocsForEditor, normalizeDocsForSave } from "@/lib/documentation";
+import { compressThumbnailImage } from "@/lib/thumbnailCompression";
 import {
   averageScore,
   createDefaultCharacterStats,
@@ -42,6 +44,8 @@ const loreSubs = ["characters", "places", "technology", "creatures", "events", "
 const inputClass = "w-full mt-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 const labelClass = "font-heading text-xs tracking-wider text-muted-foreground uppercase";
 const DASHBOARD_LIST_PAGE_SIZE = 25;
+const defaultUploadModes: AttachmentMode[] = ["image", "video", "file", "url"];
+const thumbnailUploadModes: AttachmentMode[] = ["image", "url"];
 
 const todayStr = () => new Date().toISOString().split("T")[0];
 const editableFingerprint = (value: EditableState | null) =>
@@ -371,6 +375,8 @@ function FileUploadField({
   attachmentType = "image",
   folder = "uploads",
   onAttachmentTypeChange,
+  enableThumbnailCrop = false,
+  allowedModes = defaultUploadModes,
 }: {
   label: string;
   value: string;
@@ -379,6 +385,8 @@ function FileUploadField({
   attachmentType?: Exclude<AttachmentMode, "url">;
   folder?: string;
   onAttachmentTypeChange?: (type: Exclude<AttachmentMode, "url">) => void;
+  enableThumbnailCrop?: boolean;
+  allowedModes?: AttachmentMode[];
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const looksLikeManualUrl = /^https?:\/\//i.test(value) && !/storage|blob:|object|assets/i.test(value);
@@ -386,6 +394,8 @@ function FileUploadField({
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [cropPreviewUrl, setCropPreviewUrl] = useState("");
   const isUrlMode = mode === "url";
   const isUploadedValue = value && !isUrlMode;
   const selectedType = mode === "file" ? "file" : mode;
@@ -394,14 +404,26 @@ function FileUploadField({
     if (mode !== "url") setMode(attachmentType);
   }, [attachmentType, mode]);
 
+  useEffect(() => {
+    if (!allowedModes.includes(mode)) setMode(allowedModes[0] ?? "image");
+  }, [allowedModes, mode]);
+
   const setUploadMode = (nextMode: AttachmentMode) => {
     setMode(nextMode);
     if (nextMode !== "url") onAttachmentTypeChange?.(nextMode);
   };
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const clearCropFile = () => {
+    if (cropPreviewUrl) URL.revokeObjectURL(cropPreviewUrl);
+    setCropFile(null);
+    setCropPreviewUrl("");
+  };
+
+  useEffect(() => () => {
+    if (cropPreviewUrl) URL.revokeObjectURL(cropPreviewUrl);
+  }, [cropPreviewUrl]);
+
+  const uploadSelectedFile = async (file: File) => {
     setUploadError("");
     setUploading(true);
     setUploadProgress(0);
@@ -422,26 +444,58 @@ function FileUploadField({
     }
   };
 
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (enableThumbnailCrop && file.type.startsWith("image/")) {
+      if (cropPreviewUrl) URL.revokeObjectURL(cropPreviewUrl);
+      setCropFile(file);
+      setCropPreviewUrl(URL.createObjectURL(file));
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+    await uploadSelectedFile(file);
+  };
+
+  const handleCropConfirm = async (settings: Parameters<typeof compressThumbnailImage>[1]) => {
+    if (!cropFile) return;
+    try {
+      const compressed = await compressThumbnailImage(cropFile, settings);
+      clearCropFile();
+      await uploadSelectedFile(compressed);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Thumbnail compression failed");
+    }
+  };
+
   return (
     <div className="space-y-2">
       {label ? <label className={labelClass}>{label}</label> : null}
       <div className="flex flex-wrap gap-1 mt-1">
-        <button type="button" onClick={() => setUploadMode("image")}
-          className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "image" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
-          <Image className="h-3 w-3" /> Image
-        </button>
-        <button type="button" onClick={() => setUploadMode("video")}
-          className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "video" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
-          <Video className="h-3 w-3" /> Video
-        </button>
-        <button type="button" onClick={() => setUploadMode("file")}
-          className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "file" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
-          <FileIcon className="h-3 w-3" /> File
-        </button>
-        <button type="button" onClick={() => setUploadMode("url")}
-          className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "url" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
-          <LinkIcon className="h-3 w-3" /> URL
-        </button>
+        {allowedModes.includes("image") ? (
+          <button type="button" onClick={() => setUploadMode("image")}
+            className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "image" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
+            <Image className="h-3 w-3" /> Image
+          </button>
+        ) : null}
+        {allowedModes.includes("video") ? (
+          <button type="button" onClick={() => setUploadMode("video")}
+            className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "video" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
+            <Video className="h-3 w-3" /> Video
+          </button>
+        ) : null}
+        {allowedModes.includes("file") ? (
+          <button type="button" onClick={() => setUploadMode("file")}
+            className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "file" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
+            <FileIcon className="h-3 w-3" /> File
+          </button>
+        ) : null}
+        {allowedModes.includes("url") ? (
+          <button type="button" onClick={() => setUploadMode("url")}
+            className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "url" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
+            <LinkIcon className="h-3 w-3" /> URL
+          </button>
+        ) : null}
       </div>
       {isUrlMode ? (
         <input type="text" value={value || ""} onChange={(e) => onChange(e.target.value)} className={inputClass} placeholder="https://..." />
@@ -473,6 +527,15 @@ function FileUploadField({
           ) : null}
         </div>
       )}
+      <ThumbnailCropDialog
+        open={Boolean(cropFile)}
+        imageUrl={cropPreviewUrl}
+        fileName={cropFile?.name}
+        onOpenChange={(open) => {
+          if (!open) clearCropFile();
+        }}
+        onConfirm={handleCropConfirm}
+      />
     </div>
   );
 }
@@ -1490,7 +1553,7 @@ export default function AuthorDashboard() {
     // Prepend so newest doc appears at the top of the list, right under
     // the ADD DOC button - keeps the editing context next to the action.
     const docs = [
-      { type: "image" as const, url: "", caption: "", date: todayStr(), _key: key } as DocItem & { _key?: string },
+      { type: "image" as const, url: "", thumbnail: "", caption: "", date: todayStr(), _key: key } as DocItem & { _key?: string },
       ...(editing.docs || []),
     ];
     setEditing({ ...editing, docs });
@@ -2151,6 +2214,8 @@ export default function AuthorDashboard() {
               onChange={(url) => setEditing({ ...editing, thumbnail: url })}
               accept="image/*"
               folder={isProject ? "projects" : isGallery ? "gallery" : "lore"}
+              enableThumbnailCrop
+              allowedModes={thumbnailUploadModes}
             />
 
             {!isGallery && editing.fullDesc !== undefined && (
@@ -2593,7 +2658,7 @@ export default function AuthorDashboard() {
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_180px]">
+                  <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(220px,300px)_180px]">
                     <div className="min-w-0">
                       <FileUploadField
                         label="Attachment"
@@ -2603,6 +2668,18 @@ export default function AuthorDashboard() {
                         attachmentType={doc.type}
                         onAttachmentTypeChange={(type) => updateDoc(idx, "type", type)}
                         folder={isProject ? "projects" : isGallery ? "gallery" : "lore"}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <FileUploadField
+                        label="Preview Thumbnail"
+                        value={doc.thumbnail || ""}
+                        onChange={(url) => updateDoc(idx, "thumbnail", url)}
+                        accept="image/*"
+                        attachmentType="image"
+                        folder={isProject ? "projects" : isGallery ? "gallery" : "lore"}
+                        enableThumbnailCrop
+                        allowedModes={thumbnailUploadModes}
                       />
                     </div>
                     <div>
@@ -2619,7 +2696,7 @@ export default function AuthorDashboard() {
                       value={doc.caption}
                       onChange={(e) => updateDoc(idx, "caption", e.target.value)}
                       placeholder="Caption"
-                      className="w-full rounded-sm border border-border bg-background px-2 py-1 text-xs font-body text-foreground md:col-span-2"
+                      className="w-full rounded-sm border border-border bg-background px-2 py-1 text-xs font-body text-foreground md:col-span-3"
                     />
                   </div>
                 </div>
