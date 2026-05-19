@@ -101,6 +101,9 @@ export default function ActivityPage() {
     setIsLoading(true);
     setItems([]);
     setPageInfo(null);
+    setSelectedItem(null);
+    setDetail(null);
+    setDetailError(null);
     void getActivityContent({
       page: 1,
       pageSize: 24,
@@ -226,23 +229,28 @@ export default function ActivityPage() {
             onOrderChange={setOrder}
             onSearchChange={setSearch}
           />
-          {selectedItem && (
-            <ActivityContentInspector
-              item={selectedItem}
-              detail={detail}
-              loading={detailLoading}
-              error={detailError}
-              onClose={() => {
-                setSelectedItem(null);
-                setDetail(null);
-                setDetailError(null);
-              }}
-            />
-          )}
           <div className="space-y-3">
-            {items.map((item) => (
-              <ActivityContentRow key={`${item.entityType}:${item.id}`} item={item} onSelect={selectContentItem} />
-            ))}
+            {items.map((item) => {
+              const selected = selectedItem?.id === item.id && selectedItem.entityType === item.entityType;
+              return (
+                <div key={`${item.entityType}:${item.id}`} className="space-y-2">
+                  <ActivityContentRow item={item} selected={selected} onSelect={selectContentItem} />
+                  {selected && (
+                    <ActivityContentInspector
+                      item={item}
+                      detail={detail}
+                      loading={detailLoading}
+                      error={detailError}
+                      onClose={() => {
+                        setSelectedItem(null);
+                        setDetail(null);
+                        setDetailError(null);
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            })}
             {!isLoading && items.length === 0 && (
               <p className="py-10 text-center text-sm text-muted-foreground">No activity data found.</p>
             )}
@@ -373,10 +381,10 @@ function ActivityContentInspector({
   const current = detail ?? item;
 
   return (
-    <div className="hud-border bg-card p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 gap-3">
-          <div className="h-24 w-32 flex-shrink-0 overflow-hidden rounded-sm bg-muted">
+    <div className="hud-border bg-card p-3 sm:p-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
+          <div className="h-40 w-full flex-shrink-0 overflow-hidden rounded-sm bg-muted sm:h-24 sm:w-32">
             {current.thumbnail ? (
               <AuthenticatedImage src={current.thumbnail} alt={current.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
             ) : (
@@ -387,7 +395,7 @@ function ActivityContentInspector({
           </div>
           <div className="min-w-0 space-y-2">
             <p className="text-[10px] font-display uppercase tracking-[0.1em] text-accent-orange">{current.category}</p>
-            <h2 className="font-heading text-lg text-foreground">{current.title}</h2>
+            <h2 className="break-words font-heading text-base text-foreground sm:text-lg">{current.title}</h2>
             <p className="line-clamp-2 text-xs text-muted-foreground">{current.subtitle}</p>
             <div className="flex flex-wrap gap-1.5">
               <ContentMetricPill kind="views" value={current.views} />
@@ -403,10 +411,10 @@ function ActivityContentInspector({
             </div>
           </div>
         </div>
-        <div className="flex flex-shrink-0 items-center gap-2">
+        <div className="grid grid-cols-[1fr_auto] gap-2 md:flex md:flex-shrink-0 md:items-center">
           <Link
             to={current.url}
-            className="rounded-sm border border-primary/60 px-3 py-2 text-[10px] font-display uppercase tracking-[0.1em] text-primary hover:bg-primary hover:text-primary-foreground"
+            className="inline-flex items-center justify-center rounded-sm border border-primary/60 px-3 py-2 text-[10px] font-display uppercase tracking-[0.1em] text-primary hover:bg-primary hover:text-primary-foreground"
           >
             Go to page
           </Link>
@@ -421,13 +429,13 @@ function ActivityContentInspector({
       ) : error ? (
         <p className="mt-4 text-sm text-destructive">{error}</p>
       ) : detail ? (
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <div className="mt-4 grid gap-2 sm:gap-3 xl:grid-cols-2">
           <ActivityInspectorSection title="Viewers" count={detail.viewers.length} defaultOpen>
             <div className="space-y-2">
               {detail.viewers.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No viewer records yet.</p>
               ) : detail.viewers.map((viewer) => (
-                <p key={`${viewer.kind}:${viewer.label}`} className="rounded-sm border border-border/60 bg-background/45 px-3 py-2 text-sm text-foreground">
+                <p key={`${viewer.kind}:${viewer.label}`} className="break-words rounded-sm border border-border/60 bg-background/45 px-3 py-2 text-sm text-foreground">
                   {viewer.label} viewed {formatCompactNumber(viewer.count)} time{viewer.count === 1 ? "" : "s"}
                 </p>
               ))}
@@ -452,7 +460,7 @@ function ActivityContentInspector({
                     <span className="font-heading text-foreground">{comment.author}</span>
                     <span>{comment.date}</span>
                   </div>
-                  <p className="mt-1 text-sm text-foreground">{comment.text}</p>
+                  <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">{comment.text}</p>
                   {comment.replies.length > 0 && (
                     <div className="mt-3 space-y-2 border-l border-border pl-3">
                       {comment.replies.map((reply) => (
@@ -461,7 +469,7 @@ function ActivityContentInspector({
                             <span className="font-heading text-foreground">{reply.author}</span>
                             <span>{reply.date}</span>
                           </div>
-                          <p className="mt-1 text-xs text-foreground">{reply.text}</p>
+                          <p className="mt-1 whitespace-pre-wrap break-words text-xs text-foreground">{reply.text}</p>
                         </div>
                       ))}
                     </div>
@@ -496,7 +504,7 @@ function ActivityInspectorSection({
         onClick={() => setOpen((value) => !value)}
         className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left"
       >
-        <span className="text-[10px] font-display uppercase tracking-[0.12em] text-foreground">
+        <span className="min-w-0 break-words text-[10px] font-display uppercase tracking-[0.12em] text-foreground">
           {title} ({formatCompactNumber(count)})
         </span>
         <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
@@ -511,7 +519,7 @@ function ActivityUserList({ items, empty }: { items: Array<{ username: string; d
   return (
     <div className="flex flex-wrap gap-2">
       {items.map((item, index) => (
-        <span key={`${item.username}:${item.date ?? index}`} className="rounded-sm border border-border/60 bg-background/45 px-2 py-1 text-xs text-foreground">
+        <span key={`${item.username}:${item.date ?? index}`} className="max-w-full break-words rounded-sm border border-border/60 bg-background/45 px-2 py-1 text-xs text-foreground">
           {item.username}
         </span>
       ))}
@@ -522,15 +530,17 @@ function ActivityUserList({ items, empty }: { items: Array<{ username: string; d
 function ActivityContentRow({
   item,
   compact = false,
+  selected = false,
   onSelect,
 }: {
   item: ActivityContentItem;
   compact?: boolean;
+  selected?: boolean;
   onSelect?: (item: ActivityContentItem) => void;
 }) {
   const isGallery = item.entityType === "gallery";
   const content = (
-    <div className={`hud-border-sm bg-card transition-shadow hover:glow-primary ${compact ? "p-3" : "p-4"}`}>
+    <div className={`hud-border-sm bg-card transition-shadow hover:glow-primary ${selected ? "ring-1 ring-primary/45" : ""} ${compact ? "p-3" : "p-4"}`}>
       <div className="flex gap-3">
         <div className={`${compact ? "h-16 w-24" : "h-20 w-28"} flex-shrink-0 overflow-hidden rounded-sm bg-muted`}>
           {item.thumbnail ? (
