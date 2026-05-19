@@ -10,6 +10,7 @@ import { AuthorRoute } from "@/components/AuthorRoute";
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { lazy, Suspense } from "react";
+import { applyTheme, resolveInitialTheme } from "@/lib/theme";
 
 const queryClient = new QueryClient();
 
@@ -51,15 +52,8 @@ function RouteFallback() {
 }
 
 function App() {
-  // Sync theme on mount
   useEffect(() => {
-    const THEME_KEY = "theme";
-    const saved = typeof window !== "undefined" ? localStorage.getItem(THEME_KEY) : null;
-    let dark = false;
-    if (saved === "dark") dark = true;
-    else if (saved === "light") dark = false;
-    else if (typeof window !== "undefined") dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    document.documentElement.classList.toggle("dark", dark);
+    applyTheme(resolveInitialTheme());
   }, []);
 
   return (
