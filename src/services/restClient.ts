@@ -51,6 +51,7 @@ export class ApiError extends Error {
 const DEFAULT_PRODUCTION_BASE_URL = "https://morneven-backend-production.up.railway.app/api";
 const DEFAULT_LOCAL_BASE_URL = "http://localhost:3000/api";
 const DEFAULT_REQUEST_TIMEOUT_MS = 10000;
+const DEFAULT_UPLOAD_TIMEOUT_MS = 300000;
 const TOKEN_KEY = "morneven_api_token";
 const REFRESH_TOKEN_KEY = "morneven_api_refresh_token";
 
@@ -61,6 +62,7 @@ export interface ApiRequestOptions extends Omit<RequestInit, "body" | "method"> 
   body?: unknown;
   auth?: boolean;
   retryOnUnauthorized?: boolean;
+  timeoutMs?: number;
 }
 
 function inferDefaultBaseUrl(): string {
@@ -182,6 +184,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     body,
     auth = true,
     retryOnUnauthorized = true,
+    timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
     headers,
     ...init
   } = options;
@@ -209,7 +212,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   const timeoutId = globalThis.setTimeout(() => {
     timedOut = true;
     timeoutController.abort();
-  }, DEFAULT_REQUEST_TIMEOUT_MS);
+  }, timeoutMs);
 
   let response: Response;
   try {
@@ -258,7 +261,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 export async function apiUpload<T>(path: string, file: File, fieldName = "file"): Promise<T> {
   const form = new FormData();
   form.append(fieldName, file);
-  return apiRequest<T>(path, { method: "POST", body: form });
+  return apiRequest<T>(path, { method: "POST", body: form, timeoutMs: DEFAULT_UPLOAD_TIMEOUT_MS });
 }
 
 export async function withDemoFallback<T>(request: () => Promise<T>, fallback: () => Promise<T> | T): Promise<T> {
