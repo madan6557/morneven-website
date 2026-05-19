@@ -78,6 +78,8 @@ export interface FileScanRecord {
   createdAt: string;
 }
 
+export type SecurityHistorySection = "events" | "blocks" | "sessions" | "file-scans";
+
 export function getSecurityStatus() {
   return apiRequest<SecurityStatus>("/security/status");
 }
@@ -109,5 +111,11 @@ export function revokeSecuritySession(id: string, reason = "Manual session revok
   return apiRequest<{ count: number }>(`/security/sessions/${id}/revoke`, {
     method: "POST",
     body: { reason },
+  });
+}
+
+export function clearSecurityHistory(section: SecurityHistorySection) {
+  return apiRequest<{ deleted: number }>(`/security/${section}/history`, {
+    method: "DELETE",
   });
 }

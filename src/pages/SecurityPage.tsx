@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   ShieldOff,
   Siren,
+  Trash2,
   UserX,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -32,6 +33,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { canAccessSecurityConsole } from "@/lib/pl";
 import { cn } from "@/lib/utils";
 import {
+  clearSecurityHistory,
   getFileScanRecords,
   getSecurityBlocks,
   getSecurityEvents,
@@ -42,6 +44,7 @@ import {
   type FileScanRecord,
   type SecurityBlock,
   type SecurityEvent,
+  type SecurityHistorySection,
   type SecuritySession,
   type SecurityStatus,
 } from "@/services/securityApi";
@@ -74,6 +77,13 @@ const initialState: LoadState = {
   error: null,
 };
 
+type PendingClearHistory = {
+  section: SecurityHistorySection;
+  label: string;
+  description: string;
+  count: number;
+};
+
 const severityClass = (severity: string) => {
   if (severity === "critical") return "border-destructive/60 bg-destructive/15 text-destructive";
   if (severity === "high") return "border-accent-orange/60 bg-accent-orange/15 text-accent-orange";
@@ -99,6 +109,7 @@ export default function SecurityPage() {
   const [sessionsPage, setSessionsPage] = useState(1);
   const [scansPage, setScansPage] = useState(1);
   const [pendingRevoke, setPendingRevoke] = useState<SecuritySession | null>(null);
+  const [pendingClear, setPendingClear] = useState<PendingClearHistory | null>(null);
 
   useEffect(() => {
     setEventsPage(1);
@@ -122,14 +133,49 @@ export default function SecurityPage() {
     () => state.blocks.filter((block) => !block.revokedAt && new Date(block.expiresAt).getTime() > Date.now()),
     [state.blocks],
   );
+  const inactiveBlocks = useMemo(
+    () => state.blocks.filter((block) => block.revokedAt || new Date(block.expiresAt).getTime() <= Date.now()),
+    [state.blocks],
+  );
   const activeSessions = useMemo(
     () => state.sessions.filter((session) => !session.revokedAt),
+    [state.sessions],
+  );
+  const revokedSessions = useMemo(
+    () => state.sessions.filter((session) => session.revokedAt),
     [state.sessions],
   );
   const blockedScans = useMemo(
     () => state.scans.filter((scan) => scan.verdict === "blocked" || scan.verdict === "quarantined"),
     [state.scans],
   );
+
+  const clearTargets: Record<SecurityHistorySection, PendingClearHistory> = {
+    events: {
+      section: "events",
+      label: "security event",
+      description: "This permanently removes security event history. Audit log history is kept.",
+      count: state.events.length,
+    },
+    blocks: {
+      section: "blocks",
+      label: "inactive block",
+      description: "This removes revoked or expired block history only. Active defense blocks are kept.",
+      count: inactiveBlocks.length,
+    },
+    sessions: {
+      section: "sessions",
+      label: "revoked session",
+      description: "This removes revoked session history only. Active sessions are kept.",
+      count: revokedSessions.length,
+    },
+    "file-scans": {
+      section: "file-scans",
+      label: "file scan",
+      description: "This permanently removes upload scan history. Stored files are not deleted.",
+      count: state.scans.length,
+    },
+  };
 
   const loadSecurity = async () => {
     setState((current) => ({ ...current, loading: true, error: null }));
@@ -170,6 +216,17 @@ export default function SecurityPage() {
     setActionId(session.id);
     try {
       await revokeSecuritySession(session.id, "Revoked from security console");
+      await loadSecurity();
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const handleClearHistory = async (target: PendingClearHistory) => {
+    const id = `clear-${target.section}`;
+    setActionId(id);
+    try {
+      await clearSecurityHistory(target.section);
       await loadSecurity();
     } finally {
       setActionId(null);
@@ -241,9 +298,16 @@ export default function SecurityPage() {
 
         <section className="grid gap-4 2xl:grid-cols-[1.2fr_0.8fr]">
           <Card className={panelClass}>
-            <CardHeader>
-              <CardTitle className="font-display text-xl uppercase tracking-[0.12em] text-primary">Recent security events</CardTitle>
-              <CardDescription>Latest deny, rate-limit, auth, upload, and risk engine events.</CardDescription>
+            <CardHeader className="gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-1.5">
+                <CardTitle className="font-display text-xl uppercase tracking-[0.12em] text-primary">Recent security events</CardTitle>
+                <CardDescription>Latest deny, rate-limit, auth, upload, and risk engine events.</CardDescription>
+              </div>
+              <ClearHistoryButton
+                target={clearTargets.events}
+                disabled={state.loading || actionId === "clear-events"}
+                onClick={setPendingClear}
+              />
             </CardHeader>
             <CardContent className="space-y-3">
               {state.events.length ? (() => {
@@ -270,14 +334,14 @@ export default function SecurityPage() {
                             </div>
                           </div>
                           <p className="mt-1 truncate text-[11px] text-muted-foreground">
-                            {formatDate(event.createdAt)} · {event.actorUsername ?? "anonymous"} · risk {event.riskScore}
+                            {formatDate(event.createdAt)} - {event.actorUsername ?? "anonymous"} - risk {event.riskScore}
                           </p>
                         </li>
                       ))}
                     </ul>
                     <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
                       <span>
-                        {start + 1}–{Math.min(start + EVENTS_PAGE_SIZE, state.events.length)} of {state.events.length}
+                        {start + 1}-{Math.min(start + EVENTS_PAGE_SIZE, state.events.length)} of {state.events.length}
                       </span>
                       <div className="flex items-center gap-1">
                         <Button
@@ -337,9 +401,16 @@ export default function SecurityPage() {
 
         <section className="grid gap-4 xl:grid-cols-2">
           <Card className={panelClass}>
-            <CardHeader>
-              <CardTitle className="font-display text-xl uppercase tracking-[0.12em] text-primary">Active defense blocks</CardTitle>
-              <CardDescription>Temporary deny rules created by active defense or security operators.</CardDescription>
+            <CardHeader className="gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-1.5">
+                <CardTitle className="font-display text-xl uppercase tracking-[0.12em] text-primary">Active defense blocks</CardTitle>
+                <CardDescription>Temporary deny rules created by active defense or security operators.</CardDescription>
+              </div>
+              <ClearHistoryButton
+                target={clearTargets.blocks}
+                disabled={state.loading || actionId === "clear-blocks"}
+                onClick={setPendingClear}
+              />
             </CardHeader>
             <CardContent className="space-y-3">
               {state.blocks.length ? (() => {
@@ -414,9 +485,16 @@ export default function SecurityPage() {
           </Card>
 
           <Card className={panelClass}>
-            <CardHeader>
-              <CardTitle className="font-display text-xl uppercase tracking-[0.12em] text-primary">Sessions</CardTitle>
-              <CardDescription>Security sessions are revocable without deleting the account.</CardDescription>
+            <CardHeader className="gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-1.5">
+                <CardTitle className="font-display text-xl uppercase tracking-[0.12em] text-primary">Sessions</CardTitle>
+                <CardDescription>Security sessions are revocable without deleting the account.</CardDescription>
+              </div>
+              <ClearHistoryButton
+                target={clearTargets.sessions}
+                disabled={state.loading || actionId === "clear-sessions"}
+                onClick={setPendingClear}
+              />
             </CardHeader>
             <CardContent className="space-y-3">
               {state.sessions.length ? (() => {
@@ -435,7 +513,7 @@ export default function SecurityPage() {
                                 {session.user?.username ?? session.userId}
                               </p>
                               <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                                {session.user?.role ?? "unknown"} · L{session.user?.level ?? "?"} · risk {session.riskScore} · {formatDate(session.lastSeenAt)}
+                                {session.user?.role ?? "unknown"} - L{session.user?.level ?? "?"} - risk {session.riskScore} - {formatDate(session.lastSeenAt)}
                               </p>
                             </div>
                             {!session.revokedAt && (
@@ -457,7 +535,7 @@ export default function SecurityPage() {
                     </ul>
                     <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
                       <span>
-                        {start + 1}–{Math.min(start + SESSIONS_PAGE_SIZE, state.sessions.length)} of {state.sessions.length}
+                        {start + 1}-{Math.min(start + SESSIONS_PAGE_SIZE, state.sessions.length)} of {state.sessions.length}
                       </span>
                       <div className="flex items-center gap-1">
                         <Button
@@ -499,12 +577,19 @@ export default function SecurityPage() {
 
         <section>
           <Card className={panelClass}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-display text-xl uppercase tracking-[0.12em] text-primary">
-                <AlertTriangle className="h-5 w-5" />
-                File scan records
-              </CardTitle>
-              <CardDescription>Upload scan abstraction, MIME validation, signature check, and hash evidence.</CardDescription>
+            <CardHeader className="gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-1.5">
+                <CardTitle className="flex items-center gap-2 font-display text-xl uppercase tracking-[0.12em] text-primary">
+                  <AlertTriangle className="h-5 w-5" />
+                  File scan records
+                </CardTitle>
+                <CardDescription>Upload scan abstraction, MIME validation, signature check, and hash evidence.</CardDescription>
+              </div>
+              <ClearHistoryButton
+                target={clearTargets["file-scans"]}
+                disabled={state.loading || actionId === "clear-file-scans"}
+                onClick={setPendingClear}
+              />
             </CardHeader>
             <CardContent className="space-y-3">
               {state.scans.length ? (() => {
@@ -531,7 +616,7 @@ export default function SecurityPage() {
                     </div>
                     <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
                       <span>
-                        {start + 1}â€“{Math.min(start + SCANS_PAGE_SIZE, state.scans.length)} of {state.scans.length}
+                        {start + 1}-{Math.min(start + SCANS_PAGE_SIZE, state.scans.length)} of {state.scans.length}
                       </span>
                       <div className="flex items-center gap-1">
                         <Button
@@ -607,7 +692,65 @@ export default function SecurityPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={pendingClear !== null} onOpenChange={(open) => !open && setPendingClear(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear {pendingClear?.label} history?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingClear ? (
+                <>
+                  {pendingClear.description} This will affect {pendingClear.count} record
+                  {pendingClear.count === 1 ? "" : "s"} and cannot be undone.
+                </>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pendingClear ? actionId === `clear-${pendingClear.section}` : false}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={pendingClear ? actionId === `clear-${pendingClear.section}` : false}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!pendingClear) return;
+                const target = pendingClear;
+                await handleClearHistory(target);
+                setPendingClear(null);
+              }}
+            >
+              Clear history
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+  );
+}
+
+function ClearHistoryButton({
+  target,
+  disabled,
+  onClick,
+}: {
+  target: PendingClearHistory;
+  disabled?: boolean;
+  onClick: (target: PendingClearHistory) => void;
+}) {
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      className="shrink-0 gap-2 border-destructive/50 text-destructive hover:bg-destructive/10"
+      disabled={disabled || target.count === 0}
+      onClick={() => onClick(target)}
+    >
+      <Trash2 className="h-3.5 w-3.5" />
+      Clear History
+    </Button>
   );
 }
 

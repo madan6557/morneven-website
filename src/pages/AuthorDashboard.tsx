@@ -45,6 +45,13 @@ const DASHBOARD_LIST_PAGE_SIZE = 25;
 const todayStr = () => new Date().toISOString().split("T")[0];
 const editableFingerprint = (value: EditableState | null) =>
   value ? JSON.stringify(value, (key, current) => (key.startsWith("_") ? undefined : current)) : null;
+const editSessionHasUnsavedChanges = (session: EditSession) =>
+  editableFingerprint(session.draft) !== session.baseline;
+const editSessionTitle = (session: EditSession) => {
+  const title = session.draft.title ?? session.draft.name ?? (session.creating ? "New content" : "Untitled");
+  const section = session.tab === "lore" ? session.loreSub.slice(0, -1) : session.tab.slice(0, -1);
+  return `${session.creating ? "Create" : "Edit"} ${section}: ${title}`;
+};
 
 // Auto-increment patch version. Strips/preserves a leading "v" and increments the
 // last numeric segment by 1 (so 0.1 -> 0.2, v1.2 -> v1.3). Empty -> "0.1".
@@ -85,6 +92,14 @@ function highestVersion(versions: string[]): string {
 type DashboardTab = typeof dashTabs[number];
 type LoreSub = typeof loreSubs[number];
 type DashboardItem = Project | Character | Place | Technology | GalleryItem | Creature | LoreEvent | OtherLore;
+type EditSession = {
+  key: string;
+  tab: DashboardTab;
+  loreSub: LoreSub;
+  draft: EditableState;
+  baseline: string | null;
+  creating: boolean;
+};
 type EditableState = {
   id?: string;
   title?: string;
@@ -523,9 +538,8 @@ export default function AuthorDashboard() {
   const [dashboardPageInfo, setDashboardPageInfo] = useState<PageInfo | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
 
-  const [editing, setEditing] = useState<EditableState | null>(null);
-  const [editBaseline, setEditBaseline] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  const [editSessions, setEditSessions] = useState<EditSession[]>([]);
+  const [activeEditSessionKey, setActiveEditSessionKey] = useState<string | null>(null);
   const [contentSaving, setContentSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [mapSaving, setMapSaving] = useState(false);
@@ -536,20 +550,69 @@ export default function AuthorDashboard() {
   const [ccSettingsSaving, setCcSettingsSaving] = useState(false);
   const fullDescRef = useRef<HTMLTextAreaElement>(null);
   const editFormRef = useRef<HTMLDivElement>(null);
+  const activeEditSession = useMemo(
+    () => editSessions.find((session) => session.key === activeEditSessionKey) ?? null,
+    [activeEditSessionKey, editSessions],
+  );
+  const editing = activeEditSession?.draft ?? null;
+  const editBaseline = activeEditSession?.baseline ?? null;
+  const isCreating = activeEditSession?.creating ?? false;
   const currentEditFingerprint = useMemo(() => editableFingerprint(editing), [editing]);
-  const hasUnsavedChanges = Boolean(editing && editBaseline && currentEditFingerprint !== editBaseline);
+  const hasActiveUnsavedChanges = Boolean(editing && editBaseline && currentEditFingerprint !== editBaseline);
+  const hasUnsavedChanges = editSessions.some(editSessionHasUnsavedChanges);
 
-  const resetEditSession = useCallback(() => {
-    setEditing(null);
-    setIsCreating(false);
-    setEditBaseline(null);
+  const setEditing = useCallback((next: EditableState) => {
+    if (!activeEditSessionKey) return;
+    setEditSessions((sessions) =>
+      sessions.map((session) =>
+        session.key === activeEditSessionKey ? { ...session, draft: next } : session,
+      ),
+    );
+  }, [activeEditSessionKey]);
+
+  const resetEditSession = useCallback((key?: string) => {
+    const targetKey = key ?? activeEditSessionKey;
+    if (!targetKey) return;
+
+    setEditSessions((sessions) => {
+      const targetIndex = sessions.findIndex((session) => session.key === targetKey);
+      const nextSessions = sessions.filter((session) => session.key !== targetKey);
+      setActiveEditSessionKey((current) => {
+        if (current !== targetKey) return current;
+        const nextIndex = targetIndex >= 0 ? Math.min(targetIndex, nextSessions.length - 1) : nextSessions.length - 1;
+        return nextSessions[nextIndex]?.key ?? null;
+      });
+      return nextSessions;
+    });
+  }, [activeEditSessionKey]);
+
+  const resetAllEditSessions = useCallback(() => {
+    setEditSessions([]);
+    setActiveEditSessionKey(null);
   }, []);
 
   const beginEditSession = useCallback((draft: EditableState, creating: boolean) => {
-    setEditing(draft);
-    setIsCreating(creating);
-    setEditBaseline(editableFingerprint(draft));
-  }, []);
+    const key = creating
+      ? `${activeTab}:${loreSub}:create:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      : `${activeTab}:${loreSub}:edit:${draft.id ?? "draft"}`;
+
+    setEditSessions((sessions) => {
+      const existing = sessions.find((session) => session.key === key);
+      if (existing) return sessions;
+      return [
+        {
+          key,
+          tab: activeTab,
+          loreSub,
+          draft,
+          baseline: editableFingerprint(draft),
+          creating,
+        },
+        ...sessions,
+      ];
+    });
+    setActiveEditSessionKey(key);
+  }, [activeTab, loreSub]);
 
   const confirmUnsavedChanges = useCallback((onConfirm: () => void) => {
     if (!hasUnsavedChanges) {
@@ -567,9 +630,25 @@ export default function AuthorDashboard() {
     });
   }, [hasUnsavedChanges]);
 
-  const requestCloseEditSession = useCallback(() => {
-    confirmUnsavedChanges(resetEditSession);
-  }, [confirmUnsavedChanges, resetEditSession]);
+  const requestCloseEditSession = useCallback((key?: string) => {
+    const targetKey = key ?? activeEditSessionKey;
+    const target = editSessions.find((session) => session.key === targetKey);
+    if (!target) return;
+
+    if (!editSessionHasUnsavedChanges(target)) {
+      resetEditSession(target.key);
+      return;
+    }
+
+    showValidation({
+      variant: "warning",
+      title: "Unsaved changes",
+      description: "This edit form has changes that have not been saved. Save first if you want to keep them.",
+      confirmLabel: "Discard changes",
+      cancelLabel: "Back to editing",
+      onConfirm: () => resetEditSession(target.key),
+    });
+  }, [activeEditSessionKey, editSessions, resetEditSession]);
 
   useEffect(() => {
     if (!hasUnsavedChanges) return;
@@ -616,7 +695,7 @@ export default function AuthorDashboard() {
         confirmLabel: "Discard changes",
         cancelLabel: "Back to editing",
         onConfirm: () => {
-          resetEditSession();
+          resetAllEditSessions();
           navigate(`${destination.pathname}${destination.search}${destination.hash}`);
         },
       });
@@ -624,7 +703,7 @@ export default function AuthorDashboard() {
 
     document.addEventListener("click", handleInternalLinkClick, true);
     return () => document.removeEventListener("click", handleInternalLinkClick, true);
-  }, [hasUnsavedChanges, navigate, resetEditSession]);
+  }, [hasUnsavedChanges, navigate, resetAllEditSessions]);
   // Key of the most-recently-added inline list item (doc/contribution/patch).
   // On phone layouts we intentionally do not focus the new field because the
   // mobile keyboard/visual viewport can force-scroll the page.
@@ -640,9 +719,7 @@ export default function AuthorDashboard() {
     setPendingFocusKey(null);
   };
 
-  const editSessionKey = editing
-    ? `${activeTab}:${loreSub}:${isCreating ? "create" : editing.id ?? "draft"}`
-    : null;
+  const editSessionKey = activeEditSession?.key ?? null;
 
   // Scroll only when a new edit/create session opens. Do not react to every
   // field/list update, otherwise adding inline rows jumps back to the form top.
@@ -891,22 +968,22 @@ export default function AuthorDashboard() {
     setActiveTabRaw("projects");
   }, [params]);
 
-  const loadDashboardItems = async (reset = false) => {
-    if (activeTab === "homepage" || activeTab === "map" || activeTab === "news") return;
-    if (!canAccess(activeTab, loreSub)) return;
+  const loadDashboardItemsFor = async (tab: DashboardTab, sub: LoreSub, reset = false) => {
+    if (tab === "homepage" || tab === "map" || tab === "news") return;
+    if (!canAccess(tab, sub)) return;
 
     const page = reset ? 1 : (dashboardPageInfo?.page ?? 1) + 1;
     setDashboardLoading(true);
 
     try {
-      if (activeTab === "projects") {
+      if (tab === "projects") {
         const response = await getProjectsPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
         setProjects((current) => reset ? response.items : [...current, ...response.items]);
         setDashboardPageInfo(response.pageInfo);
         return;
       }
 
-      if (activeTab === "gallery") {
+      if (tab === "gallery") {
         const response = await getGalleryPage({
           page,
           pageSize: DASHBOARD_LIST_PAGE_SIZE,
@@ -917,23 +994,23 @@ export default function AuthorDashboard() {
         return;
       }
 
-      if (loreSub === "characters") {
+      if (sub === "characters") {
         const response = await getCharactersPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
         setCharacters((current) => reset ? response.items : [...current, ...response.items]);
         setDashboardPageInfo(response.pageInfo);
-      } else if (loreSub === "places") {
+      } else if (sub === "places") {
         const response = await getPlacesPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
         setPlaces((current) => reset ? response.items : [...current, ...response.items]);
         setDashboardPageInfo(response.pageInfo);
-      } else if (loreSub === "technology") {
+      } else if (sub === "technology") {
         const response = await getTechnologyPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
         setTech((current) => reset ? response.items : [...current, ...response.items]);
         setDashboardPageInfo(response.pageInfo);
-      } else if (loreSub === "creatures") {
+      } else if (sub === "creatures") {
         const response = await getCreaturesPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
         setCreatures((current) => reset ? response.items : [...current, ...response.items]);
         setDashboardPageInfo(response.pageInfo);
-      } else if (loreSub === "events") {
+      } else if (sub === "events") {
         const response = await getEventsPage({ page, pageSize: DASHBOARD_LIST_PAGE_SIZE });
         setEvents((current) => reset ? response.items : [...current, ...response.items]);
         setDashboardPageInfo(response.pageInfo);
@@ -945,6 +1022,10 @@ export default function AuthorDashboard() {
     } finally {
       setDashboardLoading(false);
     }
+  };
+
+  const loadDashboardItems = async (reset = false) => {
+    await loadDashboardItemsFor(activeTab, loreSub, reset);
   };
 
   const hasAnyAccess = canEnterAuthorPanel(personnelLevel, track);
@@ -1044,7 +1125,7 @@ export default function AuthorDashboard() {
       beginEditSession(draft, true);
     };
 
-    confirmUnsavedChanges(openCreateSession);
+    openCreateSession();
   };
 
   const requireText = (value: string | undefined, label: string) => {
@@ -1058,9 +1139,11 @@ export default function AuthorDashboard() {
   };
 
   const validateEditing = () => {
-    if (!editing) return false;
+    if (!editing || !activeEditSession) return false;
+    const sessionTab = activeEditSession.tab;
+    const sessionLoreSub = activeEditSession.loreSub;
 
-    if (activeTab === "projects") {
+    if (sessionTab === "projects") {
       return (
         requireText(editing.title, "Project title") &&
         requireText(editing.shortDesc, "Project short description") &&
@@ -1068,17 +1151,17 @@ export default function AuthorDashboard() {
       );
     }
 
-    if (activeTab === "gallery") {
+    if (sessionTab === "gallery") {
       return (
         requireText(editing.title, "Gallery title") &&
         requireText(editing.caption, "Gallery caption")
       );
     }
 
-    if (activeTab === "lore") {
-      const label = loreSub === "other" || loreSub === "events" ? "Lore title" : "Lore name";
+    if (sessionTab === "lore") {
+      const label = sessionLoreSub === "other" || sessionLoreSub === "events" ? "Lore title" : "Lore name";
       return (
-        requireText(loreSub === "other" || loreSub === "events" ? editing.title : editing.name, label) &&
+        requireText(sessionLoreSub === "other" || sessionLoreSub === "events" ? editing.title : editing.name, label) &&
         requireText(editing.shortDesc, "Lore short description") &&
         requireText(editing.fullDesc, "Lore full description")
       );
@@ -1088,12 +1171,13 @@ export default function AuthorDashboard() {
   };
 
   const handleSave = async () => {
-    if (!editing) return;
+    if (!editing || !activeEditSession) return;
     if (!validateEditing()) return;
+    const session = activeEditSession;
 
     setContentSaving(true);
     try {
-      if (activeTab === "projects") {
+      if (session.tab === "projects") {
         const payload: Omit<Project, "id"> = {
           title: editing.title ?? "",
           status: (editing.status as Project["status"]) ?? "Planning",
@@ -1107,11 +1191,11 @@ export default function AuthorDashboard() {
           meta: editing.meta,
         };
 
-        if (isCreating) await createProject(payload);
+        if (session.creating) await createProject(payload);
         else if (editing.id) await updateProject(editing.id, payload);
-        await loadDashboardItems(true);
-      } else if (activeTab === "lore") {
-        if (loreSub === "characters") {
+        await loadDashboardItemsFor(session.tab, session.loreSub, true);
+      } else if (session.tab === "lore") {
+        if (session.loreSub === "characters") {
           const normalizedStats = normalizeCharacterStatsForEditor(editing.stats as Partial<Character["stats"]>);
           const payload: Omit<Character, "id"> = {
             name: editing.name ?? "",
@@ -1135,10 +1219,10 @@ export default function AuthorDashboard() {
             meta: editing.meta,
           };
 
-          if (isCreating) await createCharacter(payload);
+          if (session.creating) await createCharacter(payload);
           else if (editing.id) await updateCharacter(editing.id, payload);
-          await loadDashboardItems(true);
-        } else if (loreSub === "places") {
+          await loadDashboardItemsFor(session.tab, session.loreSub, true);
+        } else if (session.loreSub === "places") {
           const payload: Omit<Place, "id"> = {
             name: editing.name ?? "",
             type: editing.type ?? "",
@@ -1153,10 +1237,10 @@ export default function AuthorDashboard() {
             meta: editing.meta,
           };
 
-          if (isCreating) await createPlace(payload);
+          if (session.creating) await createPlace(payload);
           else if (editing.id) await updatePlace(editing.id, payload);
-          await loadDashboardItems(true);
-        } else if (loreSub === "technology") {
+          await loadDashboardItemsFor(session.tab, session.loreSub, true);
+        } else if (session.loreSub === "technology") {
           const payload: Omit<Technology, "id"> = {
             name: editing.name ?? "",
             category: editing.category ?? "",
@@ -1171,10 +1255,10 @@ export default function AuthorDashboard() {
             meta: editing.meta,
           };
 
-          if (isCreating) await createTech(payload);
+          if (session.creating) await createTech(payload);
           else if (editing.id) await updateTech(editing.id, payload);
-          await loadDashboardItems(true);
-        } else if (loreSub === "creatures") {
+          await loadDashboardItemsFor(session.tab, session.loreSub, true);
+        } else if (session.loreSub === "creatures") {
           const normalizedStats = normalizeCreatureStatsForEditor(editing.stats as Partial<Creature["stats"]>);
           const payload: Omit<Creature, "id"> = {
             name: editing.name ?? "",
@@ -1197,10 +1281,10 @@ export default function AuthorDashboard() {
             meta: editing.meta,
           };
 
-          if (isCreating) await createCreature(payload);
+          if (session.creating) await createCreature(payload);
           else if (editing.id) await updateCreature(editing.id, payload);
-          await loadDashboardItems(true);
-        } else if (loreSub === "events") {
+          await loadDashboardItemsFor(session.tab, session.loreSub, true);
+        } else if (session.loreSub === "events") {
           const payload: Omit<LoreEvent, "id"> = {
             title: editing.title ?? "",
             category: editing.category ?? "Institute Milestone",
@@ -1221,9 +1305,9 @@ export default function AuthorDashboard() {
             meta: editing.meta,
           };
 
-          if (isCreating) await createEvent(payload);
+          if (session.creating) await createEvent(payload);
           else if (editing.id) await updateEvent(editing.id, payload);
-          await loadDashboardItems(true);
+          await loadDashboardItemsFor(session.tab, session.loreSub, true);
         } else {
           const payload: Omit<OtherLore, "id"> = {
             title: editing.title ?? "",
@@ -1239,9 +1323,9 @@ export default function AuthorDashboard() {
             meta: editing.meta,
           };
 
-          if (isCreating) await createOther(payload);
+          if (session.creating) await createOther(payload);
           else if (editing.id) await updateOther(editing.id, payload);
-          await loadDashboardItems(true);
+          await loadDashboardItemsFor(session.tab, session.loreSub, true);
         }
       } else {
         const payload: Omit<GalleryItem, "id"> = {
@@ -1256,17 +1340,17 @@ export default function AuthorDashboard() {
           comments: editing.comments ?? [],
           // Stamp the uploader on creation; preserve on edit so ownership
           // doesn't transfer when an author edits someone else's upload.
-        uploadedBy: isCreating
+        uploadedBy: session.creating
           ? (personnelLevel >= 7 ? undefined : username)
           : ((editing as EditableState & { uploadedBy?: string }).uploadedBy ?? username),
         };
 
-        if (isCreating) await createGalleryItem(payload);
+        if (session.creating) await createGalleryItem(payload);
         else if (editing.id) await updateGalleryItem(editing.id, payload);
-        await loadDashboardItems(true);
+        await loadDashboardItemsFor(session.tab, session.loreSub, true);
       }
-      toast({ title: isCreating ? "Content created" : "Content updated" });
-      resetEditSession();
+      toast({ title: session.creating ? "Content created" : "Content updated" });
+      resetEditSession(session.key);
     } catch (error) {
       toast({
         title: "Save failed",
@@ -1553,7 +1637,7 @@ export default function AuthorDashboard() {
       }, false);
     };
 
-    confirmUnsavedChanges(openExistingEditSession);
+    openExistingEditSession();
   };
 
   const updateCharacterStatDetail = (category: string, key: string, value: number) => {
@@ -1590,14 +1674,16 @@ export default function AuthorDashboard() {
     setEditing({ ...editing, stats: nextStats });
   };
 
-  const isCharacter = activeTab === "lore" && loreSub === "characters";
-  const isPlace = activeTab === "lore" && loreSub === "places";
-  const isTech = activeTab === "lore" && loreSub === "technology";
-  const isCreature = activeTab === "lore" && loreSub === "creatures";
-  const isEvent = activeTab === "lore" && loreSub === "events";
-  const isOther = activeTab === "lore" && loreSub === "other";
-  const isProject = activeTab === "projects";
-  const isGallery = activeTab === "gallery";
+  const editorTab = activeEditSession?.tab ?? activeTab;
+  const editorLoreSub = activeEditSession?.loreSub ?? loreSub;
+  const isCharacter = editorTab === "lore" && editorLoreSub === "characters";
+  const isPlace = editorTab === "lore" && editorLoreSub === "places";
+  const isTech = editorTab === "lore" && editorLoreSub === "technology";
+  const isCreature = editorTab === "lore" && editorLoreSub === "creatures";
+  const isEvent = editorTab === "lore" && editorLoreSub === "events";
+  const isOther = editorTab === "lore" && editorLoreSub === "other";
+  const isProject = editorTab === "projects";
+  const isGallery = editorTab === "gallery";
   const isMap = activeTab === "map";
   const hasDocs = isProject || isCharacter || isPlace || isTech || isCreature || isEvent || isOther;
 
@@ -1615,10 +1701,7 @@ export default function AuthorDashboard() {
             <button
               onClick={() => {
                 if (!allowed) return;
-                confirmUnsavedChanges(() => {
-                  setActiveTab(t);
-                  resetEditSession();
-                });
+                setActiveTab(t);
               }}
               disabled={!allowed}
               className={`px-3 md:px-4 py-1.5 text-xs font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${
@@ -1650,10 +1733,7 @@ export default function AuthorDashboard() {
               <button
                 onClick={() => {
                   if (!allowed) return;
-                  confirmUnsavedChanges(() => {
-                    setLoreSub(s);
-                    resetEditSession();
-                  });
+                  setLoreSub(s);
                 }}
                 disabled={!allowed}
                 className={`px-3 py-1 text-[10px] font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${
@@ -1937,21 +2017,76 @@ export default function AuthorDashboard() {
         </div>
       )}
 
+      {editSessions.length > 0 && (
+        <div className="hud-border bg-card p-3 space-y-3 sm:p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="font-heading text-xs tracking-wider text-accent-orange uppercase">
+              Open Edit Forms <span className="text-muted-foreground">({editSessions.length})</span>
+            </p>
+            <button
+              type="button"
+              onClick={() => confirmUnsavedChanges(resetAllEditSessions)}
+              className="text-[10px] font-display uppercase tracking-wider text-muted-foreground transition-colors hover:text-destructive"
+            >
+              Close All
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {editSessions.map((session) => {
+              const active = session.key === activeEditSessionKey;
+              const dirty = editSessionHasUnsavedChanges(session);
+              return (
+                <div
+                  key={session.key}
+                  className={`group inline-flex max-w-full items-center rounded-sm border text-[10px] font-display uppercase tracking-wider transition-colors ${
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-background/60 text-muted-foreground hover:border-primary/60 hover:text-foreground"
+                  }`}
+                  title={editSessionTitle(session)}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setActiveEditSessionKey(session.key)}
+                    className="inline-flex min-w-0 flex-1 items-center gap-2 px-3 py-1.5 text-left"
+                  >
+                    <span className="max-w-[220px] truncate">{editSessionTitle(session)}</span>
+                    {dirty && (
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${active ? "bg-primary-foreground" : "bg-accent-orange"}`} />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className={`mr-1 rounded-sm p-0.5 transition-colors ${
+                      active ? "text-primary-foreground/80 hover:bg-primary-foreground/15" : "text-muted-foreground hover:bg-muted hover:text-destructive"
+                    }`}
+                    onClick={() => requestCloseEditSession(session.key)}
+                    aria-label={`Close ${editSessionTitle(session)}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Edit Form */}
-      {editing && canAccess(activeTab, loreSub) && (
+      {editing && activeEditSession && canAccess(activeEditSession.tab, activeEditSession.loreSub) && (
         <div ref={editFormRef} className="hud-border bg-card p-4 space-y-3 scroll-mt-4 sm:p-6 sm:space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase">
-                {isCreating ? "Create New" : "Edit"} {activeTab === "lore" ? loreSub.slice(0, -1) : activeTab.slice(0, -1)}
+                {isCreating ? "Create New" : "Edit"} {activeEditSession.tab === "lore" ? activeEditSession.loreSub.slice(0, -1) : activeEditSession.tab.slice(0, -1)}
               </h3>
-              {hasUnsavedChanges && (
+              {hasActiveUnsavedChanges && (
                 <span className="rounded-sm border border-accent-orange/50 bg-accent-orange/10 px-2 py-0.5 text-[10px] font-display uppercase tracking-wider text-accent-orange">
                   Unsaved changes
                 </span>
               )}
             </div>
-            <button onClick={requestCloseEditSession} className="text-muted-foreground hover:text-foreground">
+            <button onClick={() => requestCloseEditSession()} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -2577,7 +2712,7 @@ export default function AuthorDashboard() {
           )}
 
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={requestCloseEditSession} disabled={contentSaving} className="px-4 py-2 text-xs font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors disabled:cursor-wait disabled:opacity-60">CANCEL</button>
+            <button type="button" onClick={() => requestCloseEditSession()} disabled={contentSaving} className="px-4 py-2 text-xs font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors disabled:cursor-wait disabled:opacity-60">CANCEL</button>
             <button
               type="button"
               onPointerDown={(event) => event.preventDefault()}

@@ -11,10 +11,10 @@ const teamLabel = (team: LoreMeta["team"]) => {
 export function projectCredit(project: Pick<Project, "meta" | "contributor">) {
   const meta = project.meta ?? {};
   return firstValue([
-    teamLabel(meta.team),
-    meta.owner,
     meta.creator,
+    meta.owner,
     meta.designer,
+    teamLabel(meta.team),
     project.contributor,
   ]);
 }
