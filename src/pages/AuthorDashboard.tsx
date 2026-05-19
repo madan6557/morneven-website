@@ -363,7 +363,23 @@ function StatEditorCard({
   );
 }
 
-function FileUploadField({ label, value, onChange, accept = "image/*,video/*", attachmentType = "image", folder = "uploads" }: { label: string; value: string; onChange: (url: string) => void; accept?: string; attachmentType?: Exclude<AttachmentMode, "url">; folder?: string }) {
+function FileUploadField({
+  label,
+  value,
+  onChange,
+  accept = "image/*,video/*",
+  attachmentType = "image",
+  folder = "uploads",
+  onAttachmentTypeChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (url: string) => void;
+  accept?: string;
+  attachmentType?: Exclude<AttachmentMode, "url">;
+  folder?: string;
+  onAttachmentTypeChange?: (type: Exclude<AttachmentMode, "url">) => void;
+}) {
   const fileRef = useRef<HTMLInputElement>(null);
   const looksLikeManualUrl = /^https?:\/\//i.test(value) && !/storage|blob:|object|assets/i.test(value);
   const [mode, setMode] = useState<AttachmentMode>(looksLikeManualUrl ? "url" : attachmentType);
@@ -376,6 +392,11 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*", a
   useEffect(() => {
     if (mode !== "url") setMode(attachmentType);
   }, [attachmentType, mode]);
+
+  const setUploadMode = (nextMode: AttachmentMode) => {
+    setMode(nextMode);
+    if (nextMode !== "url") onAttachmentTypeChange?.(nextMode);
+  };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -396,21 +417,21 @@ function FileUploadField({ label, value, onChange, accept = "image/*,video/*", a
 
   return (
     <div className="space-y-2">
-      <label className={labelClass}>{label}</label>
+      {label ? <label className={labelClass}>{label}</label> : null}
       <div className="flex flex-wrap gap-1 mt-1">
-        <button type="button" onClick={() => setMode("image")}
+        <button type="button" onClick={() => setUploadMode("image")}
           className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "image" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
           <Image className="h-3 w-3" /> Image
         </button>
-        <button type="button" onClick={() => setMode("video")}
+        <button type="button" onClick={() => setUploadMode("video")}
           className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "video" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
           <Video className="h-3 w-3" /> Video
         </button>
-        <button type="button" onClick={() => setMode("file")}
+        <button type="button" onClick={() => setUploadMode("file")}
           className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "file" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
           <FileIcon className="h-3 w-3" /> File
         </button>
-        <button type="button" onClick={() => setMode("url")}
+        <button type="button" onClick={() => setUploadMode("url")}
           className={`flex items-center gap-1 px-2 py-1 text-[10px] font-display tracking-wider rounded-sm border transition-colors ${mode === "url" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
           <LinkIcon className="h-3 w-3" /> URL
         </button>
@@ -2560,11 +2581,12 @@ export default function AuthorDashboard() {
                   <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_180px]">
                     <div className="min-w-0">
                       <FileUploadField
-                        label=""
+                        label="Attachment"
                         value={doc.url}
                         onChange={(url) => updateDoc(idx, "url", url)}
                         accept={doc.type === "video" ? "video/*" : doc.type === "image" ? "image/*" : "*/*"}
                         attachmentType={doc.type}
+                        onAttachmentTypeChange={(type) => updateDoc(idx, "type", type)}
                         folder={isProject ? "projects" : isGallery ? "gallery" : "lore"}
                       />
                     </div>
