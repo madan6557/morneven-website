@@ -1,12 +1,15 @@
 import { useDeferredValue, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpDown, BarChart3, Eye, MessageCircle, Search, Star, ThumbsDown, ThumbsUp } from "lucide-react";
+import { ArrowUpDown, BarChart3, ChevronDown, Eye, MessageCircle, Search, Star, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import { ContentMetricPill } from "@/components/ContentMetricPill";
 import {
   getActivityContent,
+  getActivityContentDetail,
   getActivityOverview,
   type ActivityCategory,
+  type ActivityContentDetail,
   type ActivityContentItem,
   type ActivityOrder,
   type ActivityOverview,
@@ -70,6 +73,10 @@ export default function ActivityPage() {
   const [sort, setSort] = useState<ActivitySort>("views");
   const [order, setOrder] = useState<ActivityOrder>("desc");
   const [search, setSearch] = useState("");
+  const [selectedItem, setSelectedItem] = useState<ActivityContentItem | null>(null);
+  const [detail, setDetail] = useState<ActivityContentDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
   const availableSortOptions = sortOptionsForCategory(category);
 
@@ -131,6 +138,20 @@ export default function ActivityPage() {
       setPageInfo(response.pageInfo);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const selectContentItem = async (item: ActivityContentItem) => {
+    setSelectedItem(item);
+    setDetail(null);
+    setDetailError(null);
+    setDetailLoading(true);
+    try {
+      setDetail(await getActivityContentDetail(item.entityType, item.id));
+    } catch (error) {
+      setDetailError(error instanceof Error ? error.message : "Content activity detail could not be loaded.");
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -205,9 +226,22 @@ export default function ActivityPage() {
             onOrderChange={setOrder}
             onSearchChange={setSearch}
           />
+          {selectedItem && (
+            <ActivityContentInspector
+              item={selectedItem}
+              detail={detail}
+              loading={detailLoading}
+              error={detailError}
+              onClose={() => {
+                setSelectedItem(null);
+                setDetail(null);
+                setDetailError(null);
+              }}
+            />
+          )}
           <div className="space-y-3">
             {items.map((item) => (
-              <ActivityContentRow key={`${item.entityType}:${item.id}`} item={item} />
+              <ActivityContentRow key={`${item.entityType}:${item.id}`} item={item} onSelect={selectContentItem} />
             ))}
             {!isLoading && items.length === 0 && (
               <p className="py-10 text-center text-sm text-muted-foreground">No activity data found.</p>
@@ -323,43 +357,224 @@ function ActivityFilters({
   );
 }
 
-function ActivityContentRow({ item, compact = false }: { item: ActivityContentItem; compact?: boolean }) {
-  const isGallery = item.entityType === "gallery";
+function ActivityContentInspector({
+  item,
+  detail,
+  loading,
+  error,
+  onClose,
+}: {
+  item: ActivityContentItem;
+  detail: ActivityContentDetail | null;
+  loading: boolean;
+  error: string | null;
+  onClose: () => void;
+}) {
+  const current = detail ?? item;
 
   return (
-    <Link to={item.url} className="block">
-      <div className={`hud-border-sm bg-card transition-shadow hover:glow-primary ${compact ? "p-3" : "p-4"}`}>
-        <div className="flex gap-3">
-          <div className={`${compact ? "h-16 w-24" : "h-20 w-28"} flex-shrink-0 overflow-hidden rounded-sm bg-muted`}>
-            {item.thumbnail ? (
-              <AuthenticatedImage src={item.thumbnail} alt={item.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+    <div className="hud-border bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 gap-3">
+          <div className="h-24 w-32 flex-shrink-0 overflow-hidden rounded-sm bg-muted">
+            {current.thumbnail ? (
+              <AuthenticatedImage src={current.thumbnail} alt={current.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-[10px] font-display uppercase tracking-wider text-muted-foreground">
-                {item.category}
+                {current.category}
               </div>
             )}
           </div>
-          <div className="min-w-0 flex-1 space-y-2">
-            <div>
-              <p className="text-[10px] font-display uppercase tracking-[0.1em] text-accent-orange">{item.category}</p>
-              <h3 className="truncate text-sm font-heading text-foreground">{item.title}</h3>
-              {!compact && <p className="line-clamp-1 text-xs text-muted-foreground">{item.subtitle}</p>}
-            </div>
+          <div className="min-w-0 space-y-2">
+            <p className="text-[10px] font-display uppercase tracking-[0.1em] text-accent-orange">{current.category}</p>
+            <h2 className="font-heading text-lg text-foreground">{current.title}</h2>
+            <p className="line-clamp-2 text-xs text-muted-foreground">{current.subtitle}</p>
             <div className="flex flex-wrap gap-1.5">
-              <ContentMetricPill kind="views" value={item.views} />
-              {isGallery ? (
+              <ContentMetricPill kind="views" value={current.views} />
+              {current.entityType === "gallery" ? (
                 <>
-                  <ContentMetricPill kind="likes" value={item.likes} />
-                  <ContentMetricPill kind="dislikes" value={item.dislikes} />
+                  <ContentMetricPill kind="likes" value={current.likes} />
+                  <ContentMetricPill kind="dislikes" value={current.dislikes} />
                 </>
               ) : (
-                <ContentMetricPill kind="stars" value={item.stars} />
+                <ContentMetricPill kind="stars" value={current.stars} />
               )}
-              <ContentMetricPill kind="comments" value={item.comments} />
+              <ContentMetricPill kind="comments" value={current.comments} />
             </div>
           </div>
         </div>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          <Link
+            to={current.url}
+            className="rounded-sm border border-primary/60 px-3 py-2 text-[10px] font-display uppercase tracking-[0.1em] text-primary hover:bg-primary hover:text-primary-foreground"
+          >
+            Go to page
+          </Link>
+          <button type="button" onClick={onClose} className="rounded-sm border border-border p-2 text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
+
+      {loading ? (
+        <p className="mt-4 text-sm text-muted-foreground">Loading content activity detail...</p>
+      ) : error ? (
+        <p className="mt-4 text-sm text-destructive">{error}</p>
+      ) : detail ? (
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          <ActivityInspectorSection title="Viewers" count={detail.viewers.length} defaultOpen>
+            <div className="space-y-2">
+              {detail.viewers.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No viewer records yet.</p>
+              ) : detail.viewers.map((viewer) => (
+                <p key={`${viewer.kind}:${viewer.label}`} className="rounded-sm border border-border/60 bg-background/45 px-3 py-2 text-sm text-foreground">
+                  {viewer.label} viewed {formatCompactNumber(viewer.count)} time{viewer.count === 1 ? "" : "s"}
+                </p>
+              ))}
+            </div>
+          </ActivityInspectorSection>
+          <ActivityInspectorSection title="Liked by" count={detail.likedBy.length}>
+            <ActivityUserList items={detail.likedBy} empty="No likes recorded." />
+          </ActivityInspectorSection>
+          <ActivityInspectorSection title="Disliked by" count={detail.dislikedBy.length}>
+            <ActivityUserList items={detail.dislikedBy} empty="No dislikes recorded." />
+          </ActivityInspectorSection>
+          <ActivityInspectorSection title="Starred by" count={detail.starredBy.length}>
+            <ActivityUserList items={detail.starredBy} empty="No stars recorded." />
+          </ActivityInspectorSection>
+          <ActivityInspectorSection title="Discussion" count={detail.discussion.reduce((count, comment) => count + 1 + comment.replies.length, 0)} defaultOpen>
+            <div className="space-y-2">
+              {detail.discussion.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No comments or discussion yet.</p>
+              ) : detail.discussion.map((comment) => (
+                <div key={comment.id} className="rounded-sm border border-border/60 bg-background/45 p-3">
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                    <span className="font-heading text-foreground">{comment.author}</span>
+                    <span>{comment.date}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-foreground">{comment.text}</p>
+                  {comment.replies.length > 0 && (
+                    <div className="mt-3 space-y-2 border-l border-border pl-3">
+                      {comment.replies.map((reply) => (
+                        <div key={reply.id}>
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                            <span className="font-heading text-foreground">{reply.author}</span>
+                            <span>{reply.date}</span>
+                          </div>
+                          <p className="mt-1 text-xs text-foreground">{reply.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </ActivityInspectorSection>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ActivityInspectorSection({
+  title,
+  count,
+  children,
+  defaultOpen = false,
+}: {
+  title: string;
+  count: number;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section className="rounded-sm border border-border bg-background/35">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left"
+      >
+        <span className="text-[10px] font-display uppercase tracking-[0.12em] text-foreground">
+          {title} ({formatCompactNumber(count)})
+        </span>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <div className="border-t border-border/60 p-3">{children}</div>}
+    </section>
+  );
+}
+
+function ActivityUserList({ items, empty }: { items: Array<{ username: string; date?: string }>; empty: string }) {
+  if (items.length === 0) return <p className="text-xs text-muted-foreground">{empty}</p>;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {items.map((item, index) => (
+        <span key={`${item.username}:${item.date ?? index}`} className="rounded-sm border border-border/60 bg-background/45 px-2 py-1 text-xs text-foreground">
+          {item.username}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function ActivityContentRow({
+  item,
+  compact = false,
+  onSelect,
+}: {
+  item: ActivityContentItem;
+  compact?: boolean;
+  onSelect?: (item: ActivityContentItem) => void;
+}) {
+  const isGallery = item.entityType === "gallery";
+  const content = (
+    <div className={`hud-border-sm bg-card transition-shadow hover:glow-primary ${compact ? "p-3" : "p-4"}`}>
+      <div className="flex gap-3">
+        <div className={`${compact ? "h-16 w-24" : "h-20 w-28"} flex-shrink-0 overflow-hidden rounded-sm bg-muted`}>
+          {item.thumbnail ? (
+            <AuthenticatedImage src={item.thumbnail} alt={item.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-[10px] font-display uppercase tracking-wider text-muted-foreground">
+              {item.category}
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1 space-y-2">
+          <div>
+            <p className="text-[10px] font-display uppercase tracking-[0.1em] text-accent-orange">{item.category}</p>
+            <h3 className="truncate text-sm font-heading text-foreground">{item.title}</h3>
+            {!compact && <p className="line-clamp-1 text-xs text-muted-foreground">{item.subtitle}</p>}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <ContentMetricPill kind="views" value={item.views} />
+            {isGallery ? (
+              <>
+                <ContentMetricPill kind="likes" value={item.likes} />
+                <ContentMetricPill kind="dislikes" value={item.dislikes} />
+              </>
+            ) : (
+              <ContentMetricPill kind="stars" value={item.stars} />
+            )}
+            <ContentMetricPill kind="comments" value={item.comments} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (onSelect) {
+    return (
+      <button type="button" onClick={() => onSelect(item)} className="block w-full text-left">
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link to={item.url} className="block">
+      {content}
     </Link>
   );
 }

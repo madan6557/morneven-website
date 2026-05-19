@@ -30,6 +30,42 @@ export interface ActivityContentItem {
   comments: number;
 }
 
+export interface ActivityEngagementUser {
+  username: string;
+  date?: string;
+}
+
+export interface ActivityViewerSummary {
+  label: string;
+  count: number;
+  kind: string;
+}
+
+export interface ActivityDiscussionReply {
+  id: string;
+  author: string;
+  authorStatus?: string;
+  text: string;
+  date: string;
+}
+
+export interface ActivityDiscussionComment {
+  id: string;
+  author: string;
+  authorStatus?: string;
+  text: string;
+  date: string;
+  replies: ActivityDiscussionReply[];
+}
+
+export interface ActivityContentDetail extends ActivityContentItem {
+  viewers: ActivityViewerSummary[];
+  likedBy: ActivityEngagementUser[];
+  dislikedBy: ActivityEngagementUser[];
+  starredBy: ActivityEngagementUser[];
+  discussion: ActivityDiscussionComment[];
+}
+
 export interface ActivityOverview {
   totals: {
     content: number;
@@ -61,4 +97,11 @@ export async function getActivityContent(
     `/activity/content${buildQuery({ ...params, q: params.search })}`,
   );
   return toPageResponse(data, params);
+}
+
+export async function getActivityContentDetail(
+  entityType: ActivityContentItem["entityType"],
+  id: string,
+): Promise<ActivityContentDetail> {
+  return apiRequest<ActivityContentDetail>(`/activity/content/${entityType}/${encodeURIComponent(id)}`);
 }

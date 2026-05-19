@@ -34,9 +34,21 @@ function trackMeta(track: PersonnelTrack) {
 }
 
 function formatPresenceText(person: PersonnelUser) {
-  if (person.online || person.status !== "active") return "";
-  if (person.lastSeenAt) return `Last seen ${new Date(person.lastSeenAt).toLocaleString()}`;
-  return "";
+  if (person.online && person.status === "active") return "Last online: now";
+  if (!person.lastSeenAt) return "Last online: never";
+
+  const date = new Date(person.lastSeenAt);
+  if (Number.isNaN(date.getTime())) return "Last online: unknown";
+
+  const ageMs = Date.now() - date.getTime();
+  if (ageMs > 24 * 60 * 60 * 1000) {
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    return `Last online: ${day}/${month}/${date.getFullYear()}`;
+  }
+  if (ageMs < 60 * 1000) return "Last online: just now";
+  if (ageMs < 60 * 60 * 1000) return `Last online: ${Math.max(1, Math.floor(ageMs / 60000))}m ago`;
+  return `Last online: ${Math.max(1, Math.floor(ageMs / 3600000))}h ago`;
 }
 
 function statusTone(person: PersonnelUser) {
@@ -65,7 +77,7 @@ function statusLabel(person: PersonnelUser) {
 }
 
 function formatRestrictionExpiry(person: PersonnelUser) {
-  if (person.status !== "suspended" && person.status !== "banned") return formatPresenceText(person);
+  if (person.status !== "suspended" && person.status !== "banned") return "";
   if (person.statusExpiresAt) return `Until ${new Date(person.statusExpiresAt).toLocaleString()}`;
   return "Until manual restore";
 }
@@ -941,6 +953,7 @@ export default function PersonnelManagementPage() {
                       {formatRestrictionExpiry(p) ? (
                         <p className="mt-1 text-[10px] text-muted-foreground">{formatRestrictionExpiry(p)}</p>
                       ) : null}
+                      <p className="mt-1 text-[10px] text-muted-foreground">{formatPresenceText(p)}</p>
                     </td>
                     <td className="p-3 align-top text-xs font-body text-muted-foreground">{p.email}</td>
                     <td className="p-3 align-top">
@@ -1162,6 +1175,7 @@ export default function PersonnelManagementPage() {
                         </span>
                       </div>
                       <p className="text-[11px] text-muted-foreground font-body break-all">{p.email}</p>
+                      <p className="text-[10px] text-muted-foreground font-body">{formatPresenceText(p)}</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-1 border-t border-border/50 pt-2">
