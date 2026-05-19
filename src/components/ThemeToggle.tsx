@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Circle,
   Cloud,
   CloudLightning,
   CloudRain,
+  CloudSnow,
   Moon,
+  MoonStar,
   Sparkles,
   Star,
   Sun,
@@ -22,7 +25,7 @@ import {
 import {
   APP_THEMES,
   getActiveTheme,
-  getNextTheme,
+  getNextCompactTheme,
   setAppTheme,
   subscribeThemeChange,
   type AppTheme,
@@ -37,8 +40,10 @@ const themeIcons = {
   dawn: Sunrise,
   rainy: CloudRain,
   foggy: Cloud,
+  blizzard: CloudSnow,
   starfall: Star,
   tornado: Wind,
+  eclipse: MoonStar,
 } satisfies Record<AppTheme, typeof Sun>;
 
 type ThemeToggleProps = {
@@ -56,21 +61,27 @@ export function ThemeToggle({ variant = "compact" }: ThemeToggleProps) {
   );
   const ActiveIcon = themeIcons[activeTheme.value];
 
-  const applyNextTheme = (nextTheme: AppTheme) => {
+  const applyNextTheme = (nextTheme: AppTheme, preservePreference = false) => {
     setTheme(nextTheme);
-    setAppTheme(nextTheme);
+    setAppTheme(nextTheme, { preservePreference });
   };
 
   if (variant === "compact") {
     return (
       <button
         type="button"
-        onClick={() => applyNextTheme(getNextTheme(theme))}
+        onClick={() => applyNextTheme(getNextCompactTheme(theme), true)}
         className="flex h-10 w-10 items-center justify-center rounded-md border border-border/70 bg-background/70 text-primary transition-colors hover:bg-muted"
         aria-label={`Switch theme preset. Current: ${activeTheme.label}`}
         title={`Theme: ${activeTheme.label}`}
       >
-        <ActiveIcon className="h-4 w-4" />
+        {theme === "dark" ? (
+          <Sun className="h-4 w-4" />
+        ) : theme === "light" ? (
+          <Moon className="h-4 w-4" />
+        ) : (
+          <Circle className="h-4 w-4" />
+        )}
       </button>
     );
   }

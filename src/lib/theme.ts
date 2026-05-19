@@ -1,7 +1,14 @@
 export const THEME_KEY = "theme";
+export const THEME_PREFERENCE_KEY = "theme-preference";
 export const APP_THEME_EVENT = "morneven-theme-change";
 
 export const APP_THEMES = [
+  {
+    value: "light",
+    label: "Light",
+    description: "Neutral bright canvas tuned for long reading sessions.",
+    tone: "light",
+  },
   {
     value: "dark",
     label: "Dark",
@@ -9,9 +16,15 @@ export const APP_THEMES = [
     tone: "dark",
   },
   {
-    value: "light",
-    label: "Light",
-    description: "Neutral bright canvas tuned for long reading sessions.",
+    value: "dawn",
+    label: "Dawn",
+    description: "Soft bright console with peach, gold, and steel blue balance.",
+    tone: "light",
+  },
+  {
+    value: "foggy",
+    label: "Foggy",
+    description: "Muted pale console with soft mist-gray separation.",
     tone: "light",
   },
   {
@@ -33,22 +46,16 @@ export const APP_THEMES = [
     tone: "dark",
   },
   {
-    value: "dawn",
-    label: "Dawn",
-    description: "Soft bright console with peach, gold, and steel blue balance.",
-    tone: "light",
-  },
-  {
     value: "rainy",
     label: "Rainy",
     description: "Cool blue-gray console with rainglass contrast.",
     tone: "dark",
   },
   {
-    value: "foggy",
-    label: "Foggy",
-    description: "Muted pale console with soft mist-gray separation.",
-    tone: "light",
+    value: "blizzard",
+    label: "Blizzard",
+    description: "Frosted dark console with icy blue highlights.",
+    tone: "dark",
   },
   {
     value: "starfall",
@@ -60,6 +67,12 @@ export const APP_THEMES = [
     value: "tornado",
     label: "Tornado",
     description: "Wind-torn steel console with sharp teal contrast.",
+    tone: "dark",
+  },
+  {
+    value: "eclipse",
+    label: "Eclipse",
+    description: "Shadowed obsidian console with lunar silver accents.",
     tone: "dark",
   },
 ] as const;
@@ -74,10 +87,21 @@ export function isDarkTheme(theme: AppTheme) {
   return APP_THEMES.find((item) => item.value === theme)?.tone === "dark";
 }
 
+export function isDefaultTheme(theme: AppTheme) {
+  return theme === "light" || theme === "dark";
+}
+
 export function getStoredTheme(): AppTheme | null {
   if (typeof window === "undefined") return null;
   const stored = window.localStorage.getItem(THEME_KEY);
   return isAppTheme(stored) ? stored : null;
+}
+
+export function getStoredThemePreference(): AppTheme | null {
+  if (typeof window === "undefined") return null;
+  const stored = window.localStorage.getItem(THEME_PREFERENCE_KEY);
+  if (!isAppTheme(stored) || isDefaultTheme(stored)) return null;
+  return stored;
 }
 
 export function resolveInitialTheme(): AppTheme {
@@ -96,10 +120,14 @@ export function applyTheme(theme: AppTheme) {
   root.classList.toggle("dark", isDarkTheme(theme));
 }
 
-export function setAppTheme(theme: AppTheme) {
+export function setAppTheme(theme: AppTheme, options?: { preservePreference?: boolean }) {
   if (typeof window === "undefined") return;
   applyTheme(theme);
   window.localStorage.setItem(THEME_KEY, theme);
+  if (!options?.preservePreference) {
+    if (isDefaultTheme(theme)) window.localStorage.removeItem(THEME_PREFERENCE_KEY);
+    else window.localStorage.setItem(THEME_PREFERENCE_KEY, theme);
+  }
   window.dispatchEvent(new CustomEvent<AppTheme>(APP_THEME_EVENT, { detail: theme }));
 }
 
@@ -115,6 +143,21 @@ export function getNextTheme(theme: AppTheme): AppTheme {
   const index = APP_THEMES.findIndex((item) => item.value === theme);
   if (index === -1) return APP_THEMES[0].value;
   return APP_THEMES[(index + 1) % APP_THEMES.length].value;
+}
+
+export function getCompactThemeSequence(theme: AppTheme) {
+  const preference = getStoredThemePreference();
+  const sequence: AppTheme[] = ["light", "dark"];
+  if (preference && !sequence.includes(preference)) sequence.push(preference);
+  if (!isDefaultTheme(theme) && !sequence.includes(theme)) sequence.push(theme);
+  return sequence;
+}
+
+export function getNextCompactTheme(theme: AppTheme): AppTheme {
+  const sequence = getCompactThemeSequence(theme);
+  const index = sequence.indexOf(theme);
+  if (index === -1) return sequence[0];
+  return sequence[(index + 1) % sequence.length];
 }
 
 export function subscribeThemeChange(callback: (theme: AppTheme) => void) {

@@ -308,6 +308,49 @@
     --hud-glow: 206 72% 54%;
   }
 
+  .dark[data-theme="blizzard"] {
+    --background: 214 18% 9%;
+    --foreground: 204 28% 94%;
+
+    --card: 214 16% 13%;
+    --card-foreground: 204 28% 94%;
+
+    --popover: 214 16% 11%;
+    --popover-foreground: 204 28% 94%;
+
+    --primary: 198 76% 72%;
+    --primary-foreground: 214 32% 10%;
+
+    --secondary: 214 18% 48%;
+    --secondary-foreground: 204 28% 96%;
+
+    --muted: 214 12% 18%;
+    --muted-foreground: 206 12% 71%;
+
+    --accent: 192 84% 78%;
+    --accent-foreground: 214 32% 10%;
+
+    --destructive: 2 74% 60%;
+    --destructive-foreground: 204 28% 96%;
+
+    --border: 214 12% 25%;
+    --input: 214 12% 23%;
+    --ring: 198 60% 58%;
+
+    --sidebar-background: 214 18% 10%;
+    --sidebar-foreground: 204 26% 93%;
+    --sidebar-primary: 198 76% 72%;
+    --sidebar-primary-foreground: 214 32% 10%;
+    --sidebar-accent: 214 12% 19%;
+    --sidebar-accent-foreground: 204 26% 94%;
+    --sidebar-border: 214 12% 21%;
+    --sidebar-ring: 198 60% 58%;
+
+    --accent-orange: 198 76% 72%;
+    --accent-yellow: 192 84% 78%;
+    --hud-glow: 198 76% 66%;
+  }
+
   [data-theme="foggy"]:not(.dark) {
     --background: 210 20% 93%;
     --foreground: 220 16% 22%;
@@ -435,6 +478,49 @@
     --accent-orange: 184 62% 58%;
     --accent-yellow: 170 70% 62%;
     --hud-glow: 184 62% 52%;
+  }
+
+  .dark[data-theme="eclipse"] {
+    --background: 258 20% 7%;
+    --foreground: 240 20% 94%;
+
+    --card: 258 18% 11%;
+    --card-foreground: 240 20% 94%;
+
+    --popover: 258 18% 9%;
+    --popover-foreground: 240 20% 94%;
+
+    --primary: 232 16% 82%;
+    --primary-foreground: 258 28% 10%;
+
+    --secondary: 266 20% 42%;
+    --secondary-foreground: 240 20% 96%;
+
+    --muted: 256 12% 16%;
+    --muted-foreground: 238 10% 69%;
+
+    --accent: 280 46% 70%;
+    --accent-foreground: 258 28% 10%;
+
+    --destructive: 356 74% 60%;
+    --destructive-foreground: 240 20% 96%;
+
+    --border: 256 12% 23%;
+    --input: 256 12% 21%;
+    --ring: 232 16% 70%;
+
+    --sidebar-background: 258 20% 9%;
+    --sidebar-foreground: 240 18% 93%;
+    --sidebar-primary: 232 16% 82%;
+    --sidebar-primary-foreground: 258 28% 10%;
+    --sidebar-accent: 256 12% 17%;
+    --sidebar-accent-foreground: 240 18% 94%;
+    --sidebar-border: 256 12% 19%;
+    --sidebar-ring: 232 16% 70%;
+
+    --accent-orange: 232 16% 82%;
+    --accent-yellow: 280 46% 70%;
+    --hud-glow: 232 16% 74%;
   }
 }
 
