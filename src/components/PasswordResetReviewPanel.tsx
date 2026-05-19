@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Inbox,
   KeyRound,
+  Trash2,
 } from "lucide-react";
 
 import { ContentState } from "@/components/ContentState";
@@ -15,10 +16,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { showValidation } from "@/components/ui/validation-dialog";
 import {
+  clearPasswordResetHistory,
   listPasswordResetRequests,
   reviewPasswordResetRequest,
   type PasswordResetRequestRecord,
+  type PasswordResetRequestSummary,
 } from "@/services/accountApi";
+import type { PageInfo } from "@/services/pagination";
 import { cn } from "@/lib/utils";
 
 type ReviewDraft = {
@@ -27,6 +31,12 @@ type ReviewDraft = {
 };
 
 const PAGE_SIZE = 6;
+const emptySummary: PasswordResetRequestSummary = {
+  total: 0,
+  pending: 0,
+  completed: 0,
+  clearable: 0,
+};
 
 const inputClass =
   "w-full rounded-sm border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:ring-1 focus:ring-primary";
@@ -54,23 +64,40 @@ export default function PasswordResetReviewPanel({ enabled }: Props) {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
+  const [summary, setSummary] = useState<PasswordResetRequestSummary>(emptySummary);
 
-  const load = async () => {
+  const load = async (targetPage = page) => {
     if (!enabled) return;
     setLoading(true);
     setError(null);
     try {
-      const items = await listPasswordResetRequests();
-      setRequests(items);
+      const response = await listPasswordResetRequests({ page: targetPage, pageSize: PAGE_SIZE });
+      if (
+        response.items.length === 0 &&
+        response.pageInfo.total > 0 &&
+        response.pageInfo.page > response.pageInfo.totalPages
+      ) {
+        setPage(response.pageInfo.totalPages);
+        await load(response.pageInfo.totalPages);
+        return;
+      }
+
+      setRequests(response.items);
+      setPageInfo(response.pageInfo);
+      setSummary(response.summary);
+      setPage(response.pageInfo.page);
       setDrafts((current) => {
         const next = { ...current };
-        items.forEach((item) => {
+        response.items.forEach((item) => {
           next[item.id] ??= { status: "approved", reviewNote: "" };
         });
         return next;
       });
     } catch (err) {
       setRequests([]);
+      setPageInfo(null);
+      setSummary(emptySummary);
       setError(toUserFacingError(err, "Password reset requests could not be loaded."));
     } finally {
       setLoading(false);
@@ -83,30 +110,14 @@ export default function PasswordResetReviewPanel({ enabled }: Props) {
       setDrafts({});
       setLoading(false);
       setError(null);
+      setPage(1);
+      setPageInfo(null);
+      setSummary(emptySummary);
       return;
     }
-    void load();
+    void load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
-
-  const pendingCount = useMemo(
-    () => requests.filter((item) => item.status === "pending").length,
-    [requests],
-  );
-  const completedCount = useMemo(
-    () => requests.filter((item) => item.status === "completed").length,
-    [requests],
-  );
-
-  const totalPages = Math.max(1, Math.ceil(requests.length / PAGE_SIZE));
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
-
-  const pageItems = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return requests.slice(start, start + PAGE_SIZE);
-  }, [requests, page]);
 
   const updateDraft = (id: string, patch: Partial<ReviewDraft>) => {
     setDrafts((current) => ({
@@ -144,15 +155,22 @@ export default function PasswordResetReviewPanel({ enabled }: Props) {
 
   const handleReview = async (request: PasswordResetRequestRecord) => {
     const draft = drafts[request.id] ?? { status: "approved" as const, reviewNote: "" };
-    const reviewed = await reviewPasswordResetRequest(request.id, {
+    await reviewPasswordResetRequest(request.id, {
       status: draft.status,
       reviewNote: draft.reviewNote.trim() || undefined,
     });
-    setRequests((current) => current.map((item) => (item.id === reviewed.id ? reviewed : item)));
+    setExpanded(null);
     setDrafts((current) => ({
       ...current,
       [request.id]: { status: "approved", reviewNote: "" },
     }));
+    await load(page);
+  };
+
+  const handleClearHistory = async () => {
+    await clearPasswordResetHistory();
+    setExpanded(null);
+    await load(1);
   };
 
   if (!enabled) {
@@ -183,15 +201,47 @@ export default function PasswordResetReviewPanel({ enabled }: Props) {
               </p>
             </div>
           </div>
-          <Button type="button" size="sm" variant="outline" onClick={() => void load()} disabled={loading}>
-            Refresh
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => void load(page)} disabled={loading}>
+              Refresh
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              disabled={loading || summary.clearable === 0}
+              isLoading={busyAction === "clear-password-reset-history"}
+              loadingText="Clearing..."
+              onClick={() =>
+                showValidation({
+                  variant: "error",
+                  title: "Clear password reset history",
+                  description: `This will permanently remove ${summary.clearable} rejected or completed password reset request${summary.clearable === 1 ? "" : "s"}. Pending and approved requests stay active.`,
+                  confirmLabel: "Clear history",
+                  cancelLabel: "Cancel",
+                  critical: true,
+                  confirmDelaySeconds: 5,
+                  onConfirm: async () => {
+                    await runWithFeedback(
+                      "clear-password-reset-history",
+                      handleClearHistory,
+                      "Password reset history cleared",
+                      "Password reset history clear failed",
+                    );
+                  },
+                })
+              }
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Clear History
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <Metric icon={Inbox} label="Total requests" value={requests.length} />
-          <Metric icon={AlertTriangle} label="Pending review" value={pendingCount} />
-          <Metric icon={CheckCircle2} label="Completed" value={completedCount} />
+          <Metric icon={Inbox} label="Total requests" value={summary.total} />
+          <Metric icon={AlertTriangle} label="Pending review" value={summary.pending} />
+          <Metric icon={CheckCircle2} label="Completed" value={summary.completed} />
         </div>
       </div>
 
@@ -208,10 +258,10 @@ export default function PasswordResetReviewPanel({ enabled }: Props) {
           title="Password reset review unavailable"
           description={error}
           actionLabel="Retry"
-          onAction={() => void load()}
+          onAction={() => void load(page)}
           compact
         />
-      ) : requests.length === 0 ? (
+      ) : summary.total === 0 ? (
         <ContentState
           kind="empty"
           title="No password reset requests"
@@ -221,7 +271,7 @@ export default function PasswordResetReviewPanel({ enabled }: Props) {
       ) : (
         <div className="space-y-2">
           <ul className="space-y-2">
-            {pageItems.map((request) => {
+            {requests.map((request) => {
               const draft = drafts[request.id] ?? { status: "approved" as const, reviewNote: "" };
               const isOpen = expanded === request.id;
               const requiresCriticalConfirm = draft.status === "approved";
@@ -253,7 +303,7 @@ export default function PasswordResetReviewPanel({ enabled }: Props) {
                         </span>
                       </div>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {request.email} · {new Date(request.createdAt).toLocaleString()}
+                        {request.email} - {new Date(request.createdAt).toLocaleString()}
                       </p>
                     </div>
                     <ChevronDown
@@ -394,35 +444,37 @@ export default function PasswordResetReviewPanel({ enabled }: Props) {
             })}
           </ul>
 
-          {totalPages > 1 && (
+          {pageInfo && (
             <div className="flex items-center justify-between border-t border-border/60 pt-3 text-xs text-muted-foreground">
               <span>
-                {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, requests.length)} of{" "}
-                {requests.length}
+                {(pageInfo.page - 1) * pageInfo.pageSize + 1}-{Math.min(pageInfo.page * pageInfo.pageSize, pageInfo.total)} of{" "}
+                {pageInfo.total}
               </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-                <span className="px-2 font-display tracking-wider">
-                  {page} / {totalPages}
-                </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              {pageInfo.totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void load(Math.max(1, pageInfo.page - 1))}
+                    disabled={loading || pageInfo.page <= 1}
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="px-2 font-display tracking-wider">
+                    {pageInfo.page} / {pageInfo.totalPages}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void load(Math.min(pageInfo.totalPages, pageInfo.page + 1))}
+                    disabled={loading || pageInfo.page >= pageInfo.totalPages}
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

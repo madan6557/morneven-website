@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef, type ReactNode } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState, useRef, type ReactNode } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiUpload, getProjectsPage, createProject, updateProject, deleteProject, getCharactersPage, createCharacter, updateCharacter, deleteCharacter, getPlacesPage, createPlace, updatePlace, deletePlace, getTechnologyPage, createTech, updateTech, deleteTech, getGalleryPage, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreaturesPage, createCreature, updateCreature, deleteCreature, getEventsPage, createEvent, updateEvent, deleteEvent, getOthersPage, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImageRemote, setMapImageRemote, type PageInfo } from "@/services/api";
 import {
@@ -43,6 +43,8 @@ const labelClass = "font-heading text-xs tracking-wider text-muted-foreground up
 const DASHBOARD_LIST_PAGE_SIZE = 25;
 
 const todayStr = () => new Date().toISOString().split("T")[0];
+const editableFingerprint = (value: EditableState | null) =>
+  value ? JSON.stringify(value, (key, current) => (key.startsWith("_") ? undefined : current)) : null;
 
 // Auto-increment patch version. Strips/preserves a leading "v" and increments the
 // last numeric segment by 1 (so 0.1 -> 0.2, v1.2 -> v1.3). Empty -> "0.1".
@@ -469,6 +471,7 @@ function FieldEntryEditor({
 export default function AuthorDashboard() {
   const { role, username, personnelLevel, track } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [activeTab, setActiveTabRaw] = useState<DashboardTab>(() => {
     const tab = params.get("tab");
@@ -521,6 +524,7 @@ export default function AuthorDashboard() {
   const [dashboardLoading, setDashboardLoading] = useState(false);
 
   const [editing, setEditing] = useState<EditableState | null>(null);
+  const [editBaseline, setEditBaseline] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [contentSaving, setContentSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -532,6 +536,95 @@ export default function AuthorDashboard() {
   const [ccSettingsSaving, setCcSettingsSaving] = useState(false);
   const fullDescRef = useRef<HTMLTextAreaElement>(null);
   const editFormRef = useRef<HTMLDivElement>(null);
+  const currentEditFingerprint = useMemo(() => editableFingerprint(editing), [editing]);
+  const hasUnsavedChanges = Boolean(editing && editBaseline && currentEditFingerprint !== editBaseline);
+
+  const resetEditSession = useCallback(() => {
+    setEditing(null);
+    setIsCreating(false);
+    setEditBaseline(null);
+  }, []);
+
+  const beginEditSession = useCallback((draft: EditableState, creating: boolean) => {
+    setEditing(draft);
+    setIsCreating(creating);
+    setEditBaseline(editableFingerprint(draft));
+  }, []);
+
+  const confirmUnsavedChanges = useCallback((onConfirm: () => void) => {
+    if (!hasUnsavedChanges) {
+      onConfirm();
+      return;
+    }
+
+    showValidation({
+      variant: "warning",
+      title: "Unsaved changes",
+      description: "There are author panel changes that have not been saved. Save first if you want to keep them.",
+      confirmLabel: "Discard changes",
+      cancelLabel: "Back to editing",
+      onConfirm,
+    });
+  }, [hasUnsavedChanges]);
+
+  const requestCloseEditSession = useCallback(() => {
+    confirmUnsavedChanges(resetEditSession);
+  }, [confirmUnsavedChanges, resetEditSession]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    const handleInternalLinkClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = event.target instanceof Element ? event.target : null;
+      const anchor = target?.closest("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      if (anchor.target && anchor.target !== "_self") return;
+      if (anchor.hasAttribute("download")) return;
+
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#")) return;
+
+      const destination = new URL(anchor.href, window.location.href);
+      if (destination.origin !== window.location.origin) return;
+      if (
+        destination.pathname === window.location.pathname &&
+        destination.search === window.location.search &&
+        destination.hash === window.location.hash
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      showValidation({
+        variant: "warning",
+        title: "Unsaved changes",
+        description: "There are author panel changes that have not been saved. Save first if you want to keep them.",
+        confirmLabel: "Discard changes",
+        cancelLabel: "Back to editing",
+        onConfirm: () => {
+          resetEditSession();
+          navigate(`${destination.pathname}${destination.search}${destination.hash}`);
+        },
+      });
+    };
+
+    document.addEventListener("click", handleInternalLinkClick, true);
+    return () => document.removeEventListener("click", handleInternalLinkClick, true);
+  }, [hasUnsavedChanges, navigate, resetEditSession]);
   // Key of the most-recently-added inline list item (doc/contribution/patch).
   // On phone layouts we intentionally do not focus the new field because the
   // mobile keyboard/visual viewport can force-scroll the page.
@@ -871,80 +964,87 @@ export default function AuthorDashboard() {
   }
 
   const startCreate = () => {
-    setIsCreating(true);
-    if (activeTab === "projects") {
-      setEditing({ title: "", status: "Planning", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", patches: [], docs: [], features: [] });
-    } else if (activeTab === "lore") {
-      if (loreSub === "characters") {
-        setEditing({
-          name: "",
-          race: "",
-          occupation: "",
-          height: "",
-          traits: [],
-          likes: [],
-          dislikes: [],
-          accentColor: "#4A90D9",
-          thumbnail: "",
-          headerImage: "",
-          shortDesc: "",
-          fullDesc: "",
-          stats: createDefaultCharacterStats(),
-          docs: [],
-          fieldNotes: [],
-          observations: [],
-          contributions: [],
-          skills: [],
-        });
-      } else if (loreSub === "places") {
-        setEditing({ name: "", type: "", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
-      } else if (loreSub === "technology") {
-        setEditing({ name: "", category: "", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
-      } else if (loreSub === "creatures") {
-        setEditing({
-          name: "",
-          classification: "Amorphous",
-          dangerLevel: 1,
-          habitat: "",
-          traits: [],
-          instincts: [],
-          aversions: [],
-          accentColor: "#7DD3FC",
-          thumbnail: "",
-          headerImage: "",
-          shortDesc: "",
-          fullDesc: "",
-          stats: createDefaultCreatureStats(),
-          docs: [],
-          fieldNotes: [],
-          observations: [],
-          skills: [],
-        });
-      } else if (loreSub === "events") {
-        setEditing({
-          title: "",
-          category: "Institute Milestone",
-          era: "",
-          dateLabel: "",
-          scope: "",
-          impactLevel: "",
-          thumbnail: "",
-          headerImage: "",
-          shortDesc: "",
-          fullDesc: "",
-          consequences: [],
-          relatedLinks: [],
-          docs: [],
-          fieldNotes: [],
-          observations: [],
-          features: [],
-        });
+    const openCreateSession = () => {
+      let draft: EditableState;
+
+      if (activeTab === "projects") {
+        draft = { title: "", status: "Planning", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", patches: [], docs: [], features: [] };
+      } else if (activeTab === "lore") {
+        if (loreSub === "characters") {
+          draft = {
+            name: "",
+            race: "",
+            occupation: "",
+            height: "",
+            traits: [],
+            likes: [],
+            dislikes: [],
+            accentColor: "#4A90D9",
+            thumbnail: "",
+            headerImage: "",
+            shortDesc: "",
+            fullDesc: "",
+            stats: createDefaultCharacterStats(),
+            docs: [],
+            fieldNotes: [],
+            observations: [],
+            contributions: [],
+            skills: [],
+          };
+        } else if (loreSub === "places") {
+          draft = { name: "", type: "", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] };
+        } else if (loreSub === "technology") {
+          draft = { name: "", category: "", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] };
+        } else if (loreSub === "creatures") {
+          draft = {
+            name: "",
+            classification: "Amorphous",
+            dangerLevel: 1,
+            habitat: "",
+            traits: [],
+            instincts: [],
+            aversions: [],
+            accentColor: "#7DD3FC",
+            thumbnail: "",
+            headerImage: "",
+            shortDesc: "",
+            fullDesc: "",
+            stats: createDefaultCreatureStats(),
+            docs: [],
+            fieldNotes: [],
+            observations: [],
+            skills: [],
+          };
+        } else if (loreSub === "events") {
+          draft = {
+            title: "",
+            category: "Institute Milestone",
+            era: "",
+            dateLabel: "",
+            scope: "",
+            impactLevel: "",
+            thumbnail: "",
+            headerImage: "",
+            shortDesc: "",
+            fullDesc: "",
+            consequences: [],
+            relatedLinks: [],
+            docs: [],
+            fieldNotes: [],
+            observations: [],
+            features: [],
+          };
+        } else {
+          draft = { title: "", category: "World Systems", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] };
+        }
       } else {
-        setEditing({ title: "", category: "World Systems", thumbnail: "", headerImage: "", shortDesc: "", fullDesc: "", docs: [], fieldNotes: [], observations: [], features: [] });
+        draft = { type: "image", title: "", thumbnail: "", mediaUrl: "", videoUrl: "", caption: "", tags: [], date: new Date().toISOString().split("T")[0], comments: [] };
       }
-    } else {
-      setEditing({ type: "image", title: "", thumbnail: "", mediaUrl: "", videoUrl: "", caption: "", tags: [], date: new Date().toISOString().split("T")[0], comments: [] });
-    }
+
+      beginEditSession(draft, true);
+    };
+
+    confirmUnsavedChanges(openCreateSession);
   };
 
   const requireText = (value: string | undefined, label: string) => {
@@ -1166,8 +1266,7 @@ export default function AuthorDashboard() {
         await loadDashboardItems(true);
       }
       toast({ title: isCreating ? "Content created" : "Content updated" });
-      setEditing(null);
-      setIsCreating(false);
+      resetEditSession();
     } catch (error) {
       toast({
         title: "Save failed",
@@ -1346,119 +1445,115 @@ export default function AuthorDashboard() {
   };
 
   const beginEdit = (item: DashboardItem) => {
-    if (activeTab === "projects") {
-      const project = item as Project;
-      setEditing({
-        ...project,
-        docs: project.docs ?? [],
-        features: project.features ?? [],
-        patches: project.patches ?? [],
-      });
-      setIsCreating(false);
-      return;
-    }
+    const openExistingEditSession = () => {
+      if (activeTab === "projects") {
+        const project = item as Project;
+        beginEditSession({
+          ...project,
+          docs: project.docs ?? [],
+          features: project.features ?? [],
+          patches: project.patches ?? [],
+        }, false);
+        return;
+      }
 
-    if (activeTab === "gallery") {
-      const galleryItem = item as GalleryItem;
-      setEditing({
-        id: galleryItem.id,
-        type: galleryItem.type,
-        title: galleryItem.title,
-        thumbnail: galleryItem.thumbnail,
-        mediaUrl: galleryItem.mediaUrl,
-        videoUrl: galleryItem.videoUrl,
-        caption: galleryItem.caption,
-        date: galleryItem.date,
-        uploadedBy: galleryItem.uploadedBy,
-        comments: galleryItem.comments ?? [],
-        tags: galleryItem.tags ?? [],
-      });
-      setIsCreating(false);
-      return;
-    }
+      if (activeTab === "gallery") {
+        const galleryItem = item as GalleryItem;
+        beginEditSession({
+          id: galleryItem.id,
+          type: galleryItem.type,
+          title: galleryItem.title,
+          thumbnail: galleryItem.thumbnail,
+          mediaUrl: galleryItem.mediaUrl,
+          videoUrl: galleryItem.videoUrl,
+          caption: galleryItem.caption,
+          date: galleryItem.date,
+          uploadedBy: galleryItem.uploadedBy,
+          comments: galleryItem.comments ?? [],
+          tags: galleryItem.tags ?? [],
+        }, false);
+        return;
+      }
 
-    if (loreSub === "characters") {
-      const character = item as Character;
-      setEditing({
-        ...character,
-        docs: character.docs ?? [],
-        fieldNotes: character.fieldNotes ?? [],
-        observations: character.observations ?? [],
-        contributions: character.contributions ?? [],
-        skills: character.skills ?? [],
-        stats: normalizeCharacterStatsForEditor(character.stats),
-      });
-      setIsCreating(false);
-      return;
-    }
+      if (loreSub === "characters") {
+        const character = item as Character;
+        beginEditSession({
+          ...character,
+          docs: character.docs ?? [],
+          fieldNotes: character.fieldNotes ?? [],
+          observations: character.observations ?? [],
+          contributions: character.contributions ?? [],
+          skills: character.skills ?? [],
+          stats: normalizeCharacterStatsForEditor(character.stats),
+        }, false);
+        return;
+      }
 
-    if (loreSub === "creatures") {
-      const creature = item as Creature;
-      setEditing({
-        ...creature,
-        docs: creature.docs ?? [],
-        fieldNotes: creature.fieldNotes ?? [],
-        observations: creature.observations ?? [],
-        traits: creature.traits ?? [],
-        instincts: creature.instincts ?? [],
-        aversions: creature.aversions ?? [],
-        skills: creature.skills ?? [],
-        stats: normalizeCreatureStatsForEditor(creature.stats),
-      });
-      setIsCreating(false);
-      return;
-    }
+      if (loreSub === "creatures") {
+        const creature = item as Creature;
+        beginEditSession({
+          ...creature,
+          docs: creature.docs ?? [],
+          fieldNotes: creature.fieldNotes ?? [],
+          observations: creature.observations ?? [],
+          traits: creature.traits ?? [],
+          instincts: creature.instincts ?? [],
+          aversions: creature.aversions ?? [],
+          skills: creature.skills ?? [],
+          stats: normalizeCreatureStatsForEditor(creature.stats),
+        }, false);
+        return;
+      }
 
-    if (loreSub === "events") {
-      const event = item as LoreEvent;
-      setEditing({
-        ...event,
-        docs: event.docs ?? [],
-        fieldNotes: event.fieldNotes ?? [],
-        observations: event.observations ?? [],
-        features: event.features ?? [],
-        consequences: event.consequences ?? [],
-        relatedLinks: event.relatedLinks ?? [],
-      });
-      setIsCreating(false);
-      return;
-    }
+      if (loreSub === "events") {
+        const event = item as LoreEvent;
+        beginEditSession({
+          ...event,
+          docs: event.docs ?? [],
+          fieldNotes: event.fieldNotes ?? [],
+          observations: event.observations ?? [],
+          features: event.features ?? [],
+          consequences: event.consequences ?? [],
+          relatedLinks: event.relatedLinks ?? [],
+        }, false);
+        return;
+      }
 
-    if (loreSub === "places") {
-      const place = item as Place;
-      setEditing({
-        ...place,
-        docs: place.docs ?? [],
-        fieldNotes: place.fieldNotes ?? [],
-        observations: place.observations ?? [],
-        features: place.features ?? [],
-      });
-      setIsCreating(false);
-      return;
-    }
+      if (loreSub === "places") {
+        const place = item as Place;
+        beginEditSession({
+          ...place,
+          docs: place.docs ?? [],
+          fieldNotes: place.fieldNotes ?? [],
+          observations: place.observations ?? [],
+          features: place.features ?? [],
+        }, false);
+        return;
+      }
 
-    if (loreSub === "technology") {
-      const technology = item as Technology;
-      setEditing({
-        ...technology,
-        docs: technology.docs ?? [],
-        fieldNotes: technology.fieldNotes ?? [],
-        observations: technology.observations ?? [],
-        features: technology.features ?? [],
-      });
-      setIsCreating(false);
-      return;
-    }
+      if (loreSub === "technology") {
+        const technology = item as Technology;
+        beginEditSession({
+          ...technology,
+          docs: technology.docs ?? [],
+          fieldNotes: technology.fieldNotes ?? [],
+          observations: technology.observations ?? [],
+          features: technology.features ?? [],
+        }, false);
+        return;
+      }
 
-    const other = item as OtherLore;
-    setEditing({
-      ...other,
-      docs: other.docs ?? [],
-      fieldNotes: other.fieldNotes ?? [],
-      observations: other.observations ?? [],
-      features: other.features ?? [],
-    });
-    setIsCreating(false);
+      const other = item as OtherLore;
+      beginEditSession({
+        ...other,
+        docs: other.docs ?? [],
+        fieldNotes: other.fieldNotes ?? [],
+        observations: other.observations ?? [],
+        features: other.features ?? [],
+      }, false);
+    };
+
+    confirmUnsavedChanges(openExistingEditSession);
   };
 
   const updateCharacterStatDetail = (category: string, key: string, value: number) => {
@@ -1520,9 +1615,10 @@ export default function AuthorDashboard() {
             <button
               onClick={() => {
                 if (!allowed) return;
-                setActiveTab(t);
-                setEditing(null);
-                setIsCreating(false);
+                confirmUnsavedChanges(() => {
+                  setActiveTab(t);
+                  resetEditSession();
+                });
               }}
               disabled={!allowed}
               className={`px-3 md:px-4 py-1.5 text-xs font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${
@@ -1554,9 +1650,10 @@ export default function AuthorDashboard() {
               <button
                 onClick={() => {
                   if (!allowed) return;
-                  setLoreSub(s);
-                  setEditing(null);
-                  setIsCreating(false);
+                  confirmUnsavedChanges(() => {
+                    setLoreSub(s);
+                    resetEditSession();
+                  });
                 }}
                 disabled={!allowed}
                 className={`px-3 py-1 text-[10px] font-display tracking-[0.1em] uppercase border rounded-sm transition-colors ${
@@ -1844,10 +1941,17 @@ export default function AuthorDashboard() {
       {editing && canAccess(activeTab, loreSub) && (
         <div ref={editFormRef} className="hud-border bg-card p-4 space-y-3 scroll-mt-4 sm:p-6 sm:space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase">
-              {isCreating ? "Create New" : "Edit"} {activeTab === "lore" ? loreSub.slice(0, -1) : activeTab.slice(0, -1)}
-            </h3>
-            <button onClick={() => { setEditing(null); setIsCreating(false); }} className="text-muted-foreground hover:text-foreground">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase">
+                {isCreating ? "Create New" : "Edit"} {activeTab === "lore" ? loreSub.slice(0, -1) : activeTab.slice(0, -1)}
+              </h3>
+              {hasUnsavedChanges && (
+                <span className="rounded-sm border border-accent-orange/50 bg-accent-orange/10 px-2 py-0.5 text-[10px] font-display uppercase tracking-wider text-accent-orange">
+                  Unsaved changes
+                </span>
+              )}
+            </div>
+            <button onClick={requestCloseEditSession} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -2473,7 +2577,7 @@ export default function AuthorDashboard() {
           )}
 
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => { setEditing(null); setIsCreating(false); }} disabled={contentSaving} className="px-4 py-2 text-xs font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors disabled:cursor-wait disabled:opacity-60">CANCEL</button>
+            <button type="button" onClick={requestCloseEditSession} disabled={contentSaving} className="px-4 py-2 text-xs font-display tracking-wider border border-border rounded-sm text-muted-foreground hover:bg-muted transition-colors disabled:cursor-wait disabled:opacity-60">CANCEL</button>
             <button
               type="button"
               onPointerDown={(event) => event.preventDefault()}

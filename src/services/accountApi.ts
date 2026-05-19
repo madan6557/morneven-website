@@ -1,4 +1,5 @@
-import { apiRequest } from "@/services/restClient";
+import { apiRequest, buildQuery, toPageResponse, type BackendPage } from "@/services/restClient";
+import type { PageInfo } from "@/services/pagination";
 
 export async function requestPasswordReset(email: string): Promise<void> {
   await apiRequest("/auth/forgot-password", {
@@ -39,6 +40,19 @@ export interface PasswordResetRequestRecord {
   };
 }
 
+export interface PasswordResetRequestSummary {
+  total: number;
+  pending: number;
+  completed: number;
+  clearable: number;
+}
+
+export interface PasswordResetRequestPage {
+  items: PasswordResetRequestRecord[];
+  pageInfo: PageInfo;
+  summary: PasswordResetRequestSummary;
+}
+
 export async function submitPasswordResetRequest(input: {
   email: string;
   username: string;
@@ -66,8 +80,33 @@ export async function confirmApprovedPasswordReset(input: {
   });
 }
 
-export async function listPasswordResetRequests(): Promise<PasswordResetRequestRecord[]> {
-  return apiRequest("/auth/password-reset/requests");
+export async function listPasswordResetRequests(params: { page?: number; pageSize?: number } = {}): Promise<PasswordResetRequestPage> {
+  const data = await apiRequest<
+    | PasswordResetRequestRecord[]
+    | (BackendPage<PasswordResetRequestRecord> & { summary?: Partial<PasswordResetRequestSummary> })
+  >(`/auth/password-reset/requests${buildQuery(params)}`);
+  const page = toPageResponse(data, params);
+  const fallbackSummary = page.items.reduce<PasswordResetRequestSummary>(
+    (summary, item) => {
+      summary.total += 1;
+      if (item.status === "pending") summary.pending += 1;
+      if (item.status === "completed") summary.completed += 1;
+      if (item.status === "rejected" || item.status === "completed") summary.clearable += 1;
+      return summary;
+    },
+    { total: 0, pending: 0, completed: 0, clearable: 0 },
+  );
+  const summary = Array.isArray(data) ? fallbackSummary : data.summary;
+
+  return {
+    ...page,
+    summary: {
+      total: summary?.total ?? page.pageInfo.total,
+      pending: summary?.pending ?? fallbackSummary.pending,
+      completed: summary?.completed ?? fallbackSummary.completed,
+      clearable: summary?.clearable ?? fallbackSummary.clearable,
+    },
+  };
 }
 
 export async function reviewPasswordResetRequest(
@@ -77,6 +116,12 @@ export async function reviewPasswordResetRequest(
   return apiRequest(`/auth/password-reset/requests/${id}/review`, {
     method: "POST",
     body: input,
+  });
+}
+
+export async function clearPasswordResetHistory(): Promise<{ deleted: number }> {
+  return apiRequest("/auth/password-reset/requests/history", {
+    method: "DELETE",
   });
 }
 

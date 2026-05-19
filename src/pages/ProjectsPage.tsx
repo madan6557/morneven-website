@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Archive, Plus, Search } from "lucide-react";
 import { ContentState } from "@/components/ContentState";
 import { canAccessAuthorPanel } from "@/lib/pl";
+import { projectCredit } from "@/lib/contentIdentity";
 
 const tabs = ["All", "Planning", "On Progress", "On Hold", "Completed", "Canceled", "Archived"] as const;
 type Tab = typeof tabs[number];
@@ -160,45 +161,49 @@ export default function ProjectsPage() {
             />
           </div>
         )}
-        {projects.map((p) => (
-          <Link key={p.id} to={`/projects/${p.id}`} className="block">
-            <div className={`hud-border bg-card overflow-hidden hover:glow-primary transition-shadow ${p.archived ? "opacity-70" : ""}`}>
-              {p.thumbnail ? (
-                <div className="aspect-video bg-muted rounded-sm overflow-hidden">
-                  <AuthenticatedImage src={p.thumbnail} alt={p.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                </div>
-              ) : (
-                <div className="aspect-video bg-muted rounded-sm flex items-center justify-center">
-                  <span className="text-xs text-muted-foreground font-heading tracking-wider">NO IMAGE</span>
-                </div>
-              )}
-              <div className="p-5 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-heading text-base text-foreground">{p.title}</h3>
-                  {p.archived && (
-                    <span className="text-[9px] font-display tracking-wider uppercase border border-muted-foreground/40 text-muted-foreground px-1.5 py-0.5 rounded-sm flex items-center gap-1">
-                      <Archive className="h-2.5 w-2.5" /> Archived
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground font-body text-justify line-clamp-2">{p.shortDesc}</p>
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className={`inline-block text-[10px] font-display tracking-wider uppercase ${p.status === "On Progress" ? "text-accent-yellow" :
-                      p.status === "Planning" ? "text-primary" :
-                        p.status === "On Hold" ? "text-accent-orange" :
-                          p.status === "Completed" ? "text-emerald-600 dark:text-emerald-400" :
-                            "text-destructive"
-                    }`}>{p.status}</span>
-                  {p.contributor && (
-                    <span className="text-[9px] font-display tracking-wider uppercase text-muted-foreground">
-                      by {p.contributor}
-                    </span>
-                  )}
+        {projects.map((p) => {
+          const credit = projectCredit(p);
+
+          return (
+            <Link key={p.id} to={`/projects/${p.id}`} className="block">
+              <div className={`hud-border bg-card overflow-hidden hover:glow-primary transition-shadow ${p.archived ? "opacity-70" : ""}`}>
+                {p.thumbnail ? (
+                  <div className="aspect-video bg-muted rounded-sm overflow-hidden">
+                    <AuthenticatedImage src={p.thumbnail} alt={p.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="aspect-video bg-muted rounded-sm flex items-center justify-center">
+                    <span className="text-xs text-muted-foreground font-heading tracking-wider">NO IMAGE</span>
+                  </div>
+                )}
+                <div className="p-5 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-heading text-base text-foreground">{p.title}</h3>
+                    {p.archived && (
+                      <span className="text-[9px] font-display tracking-wider uppercase border border-muted-foreground/40 text-muted-foreground px-1.5 py-0.5 rounded-sm flex items-center gap-1">
+                        <Archive className="h-2.5 w-2.5" /> Archived
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground font-body text-justify line-clamp-2">{p.shortDesc}</p>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className={`inline-block text-[10px] font-display tracking-wider uppercase ${p.status === "On Progress" ? "text-accent-yellow" :
+                        p.status === "Planning" ? "text-primary" :
+                          p.status === "On Hold" ? "text-accent-orange" :
+                            p.status === "Completed" ? "text-emerald-600 dark:text-emerald-400" :
+                              "text-destructive"
+                      }`}>{p.status}</span>
+                    {credit && (
+                      <span className="text-[9px] font-display tracking-wider uppercase text-muted-foreground">
+                        by {credit}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
 
       <div className="flex flex-col items-center gap-3 pt-2">

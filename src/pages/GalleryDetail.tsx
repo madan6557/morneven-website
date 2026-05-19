@@ -117,6 +117,11 @@ export default function GalleryDetail() {
         <h1 className="font-display text-xl tracking-[0.1em] text-primary">{item.title.toUpperCase()}</h1>
         <div className="mecha-line w-32" />
         <p className="text-sm font-body text-foreground/80 leading-relaxed text-justify">{item.caption}</p>
+        {item.uploadedBy && (
+          <p className="text-[10px] font-display uppercase tracking-[0.12em] text-muted-foreground">
+            Published by <span className="text-foreground">{item.uploadedBy}</span>
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-sm border border-border/70 bg-background/50 px-2 py-1 text-[10px] font-display uppercase tracking-[0.08em] text-muted-foreground">
             <Eye className="h-3 w-3" />

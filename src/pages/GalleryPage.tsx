@@ -162,7 +162,14 @@ export default function GalleryPage() {
                 <div className="p-3">
                   <h3 className="text-sm font-heading text-foreground truncate group-hover:text-primary transition-colors">{item.title}</h3>
                   <div className="mt-2 flex items-center justify-between gap-2">
-                    <p className="text-[10px] text-muted-foreground font-body">{item.date}</p>
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-muted-foreground font-body">{item.date}</p>
+                      {item.uploadedBy && (
+                        <p className="mt-0.5 truncate text-[9px] font-display uppercase tracking-wider text-muted-foreground">
+                          by {item.uploadedBy}
+                        </p>
+                      )}
+                    </div>
                     <ContentMetricPill kind="views" value={item.views} label="Views" />
                   </div>
                 </div>

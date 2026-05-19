@@ -169,6 +169,7 @@ export default function ProjectDetail() {
 
           <TabsContent value="overview" className="mt-6 space-y-4">
             <DetailAdaptiveSection
+              className="xl:grid-cols-[minmax(0,0.72fr)_minmax(320px,0.5fr)] 2xl:grid-cols-[minmax(0,0.68fr)_minmax(380px,0.52fr)]"
               aside={
                 project.features.length > 0 ? (
                   <SkillList items={project.features} variant="feature" gridClassName="lg:grid-cols-1" />
