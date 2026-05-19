@@ -42,6 +42,28 @@ export async function startMigrationRemote(payload: {
   });
 }
 
+export async function startMigrationFromBackupRemote(payload: {
+  backupFile: File;
+  newBaseUrl?: string;
+  migrationUrl?: string;
+  password: string;
+  secretKey: string;
+  confirmText: "MIGRATION";
+}): Promise<MigrationJob> {
+  const form = new FormData();
+  form.append("backup", payload.backupFile);
+  if (payload.newBaseUrl) form.append("newBaseUrl", payload.newBaseUrl);
+  if (payload.migrationUrl) form.append("migrationUrl", payload.migrationUrl);
+  form.append("password", payload.password);
+  form.append("secretKey", payload.secretKey);
+  form.append("confirmText", payload.confirmText);
+  return apiRequest<MigrationJob>("/settings/migrations/from-backup", {
+    method: "POST",
+    body: form,
+    timeoutMs: 300000,
+  });
+}
+
 export async function getMigrationJobRemote(id: string): Promise<MigrationJob> {
   return apiRequest<MigrationJob>(`/settings/migrations/${id}`);
 }

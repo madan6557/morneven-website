@@ -49,6 +49,7 @@ import {
 import {
   downloadMigrationReport,
   listMigrationHistoryRemote,
+  startMigrationFromBackupRemote,
   startMigrationRemote,
   type MigrationJob,
 } from "@/services/migrationService";
@@ -186,6 +187,8 @@ export default function SettingsPage() {
   const [migrationSecretKey, setMigrationSecretKey] = useState("");
   const [migrationBaseUrl, setMigrationBaseUrl] = useState("");
   const [migrationEndpoint, setMigrationEndpoint] = useState("");
+  const [migrationMode, setMigrationMode] = useState<"live" | "backup">("live");
+  const [migrationBackupFile, setMigrationBackupFile] = useState<File | null>(null);
   const [showExtractionPassword, setShowExtractionPassword] = useState(false);
   const [showExtractionSecretKey, setShowExtractionSecretKey] = useState(false);
   const [showMigrationPassword, setShowMigrationPassword] = useState(false);
@@ -499,7 +502,8 @@ export default function SettingsPage() {
     verifyPassword(migrationPassword) &&
     migrationSecretKey.trim().length >= 16 &&
     Boolean(migrationBaseUrl.trim() || migrationEndpoint.trim()) &&
-    !(migrationBaseUrl.trim() && migrationEndpoint.trim());
+    !(migrationBaseUrl.trim() && migrationEndpoint.trim()) &&
+    (migrationMode === "live" || Boolean(migrationBackupFile));
   const pendingReviewCount = useMemo(
     () => reviewQueue.filter((item) => item.status === "open").length,
     [reviewQueue],
@@ -834,11 +838,7 @@ export default function SettingsPage() {
             title="Appearance"
             description="Adjust interface presentation and active theme."
           >
-            <div className="flex items-center justify-between gap-4 rounded-sm border border-border/70 bg-background/45 p-3">
-              <div className="space-y-1">
-                <p className="font-heading text-sm tracking-[0.12em] text-foreground uppercase">Theme</p>
-                <p className="text-sm text-muted-foreground">Switch between light and dark interface presets.</p>
-              </div>
+            <div className="rounded-sm border border-border/70 bg-background/45 p-3">
               <ThemeToggle />
             </div>
           </SectionCard>
@@ -1706,9 +1706,9 @@ export default function SettingsPage() {
                   loadingText="Starting..."
                   onClick={() => showValidation({
                     variant: "warning",
-                    title: "Start data backup",
+                    title: "Create backup",
                     description: "This creates a backend backup job with SQL database export and selected attachment sources.",
-                    confirmLabel: "Start backup",
+                    confirmLabel: "Create backup",
                     cancelLabel: "Cancel",
                     critical: true,
                     confirmDelaySeconds: 5,
@@ -1726,7 +1726,7 @@ export default function SettingsPage() {
                     },
                   })}
                 >
-                  Start Backup
+                  Create Backup
                 </Button>
               </div>
 
@@ -1931,9 +1931,30 @@ export default function SettingsPage() {
             >
               <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                 <p className="text-sm text-muted-foreground">
-                  Use Base URL for a clone backend, or a custom migration endpoint when the destination translates payloads into a different environment.
+                  Use Base URL for a clone backend, a custom migration endpoint for translated payloads, or a backup ZIP created from Data Backup.
                 </p>
                 {migrationProcessing && <p className="text-sm text-muted-foreground">Migration in progress...</p>}
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setMigrationMode("live")}
+                  className={`rounded-sm border px-3 py-2 text-left text-xs font-heading uppercase tracking-[0.12em] ${
+                    migrationMode === "live" ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"
+                  }`}
+                >
+                  Live backend payload
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMigrationMode("backup")}
+                  className={`rounded-sm border px-3 py-2 text-left text-xs font-heading uppercase tracking-[0.12em] ${
+                    migrationMode === "backup" ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"
+                  }`}
+                >
+                  From backup file
+                </button>
               </div>
 
               <div className="grid gap-3 lg:grid-cols-2">
@@ -1948,10 +1969,25 @@ export default function SettingsPage() {
                   label="Migration Path"
                   value={migrationEndpoint}
                   onChange={setMigrationEndpoint}
-                  placeholder="https://new-backend.example.com/migration"
+                  placeholder={migrationMode === "backup" ? "https://new-backend.example.com/api/settings/migration/receive-backup" : "https://new-backend.example.com/api/settings/migration/receive"}
                   className={inputClass}
                 />
               </div>
+
+              {migrationMode === "backup" && (
+                <label className="block space-y-2 rounded-sm border border-border/70 bg-background/35 p-3">
+                  <span className="text-xs font-heading uppercase tracking-[0.12em] text-muted-foreground">Backup ZIP</span>
+                  <input
+                    type="file"
+                    accept=".zip,application/zip"
+                    onChange={(event) => setMigrationBackupFile(event.target.files?.[0] ?? null)}
+                    className={inputClass}
+                  />
+                  <span className="block text-xs text-muted-foreground">
+                    {migrationBackupFile ? `${migrationBackupFile.name} (${Math.round(migrationBackupFile.size / 1024 / 1024)} MB)` : "Choose a backup_ddbbyyhhss.zip archive."}
+                  </span>
+                </label>
+              )}
 
               <div className="grid gap-3 lg:grid-cols-3 lg:items-end">
                 <PasswordField
@@ -1990,20 +2026,25 @@ export default function SettingsPage() {
                 onClick={() => showValidation({
                   variant: "warning",
                   title: "Start backend migration",
-                  description: "This sends the full migration payload to the destination backend and generates a verification report.",
+                  description: migrationMode === "backup"
+                    ? "This sends the selected backup ZIP to the destination backend and generates a verification report."
+                    : "This sends the full migration payload to the destination backend and generates a verification report.",
                   confirmLabel: "Start migration",
                   cancelLabel: "Cancel",
                   critical: true,
                   confirmDelaySeconds: 5,
                   onConfirm: async () => {
                     await runWithFeedback("start-migration", async () => {
-                      const job = await startMigrationRemote({
+                      const commonPayload = {
                         newBaseUrl: migrationBaseUrl.trim() || undefined,
                         migrationUrl: migrationEndpoint.trim() || undefined,
                         password: migrationPassword,
                         secretKey: migrationSecretKey,
-                        confirmText: "MIGRATION",
-                      });
+                        confirmText: "MIGRATION" as const,
+                      };
+                      const job = migrationMode === "backup" && migrationBackupFile
+                        ? await startMigrationFromBackupRemote({ ...commonPayload, backupFile: migrationBackupFile })
+                        : await startMigrationRemote(commonPayload);
                       setMigrationHistory((current) => [job, ...current]);
                       setShouldPollMigration(job.status === "processing");
                     }, "Migration started", "Migration failed");
