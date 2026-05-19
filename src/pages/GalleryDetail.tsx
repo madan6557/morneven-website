@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Eye, MessageCircle, Reply, ThumbsDown, ThumbsUp } from "lucide-react";
 import { getGalleryItem, addComment, addReply, setGalleryReaction } from "@/services/api";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { AuthenticatedVideo } from "@/components/AuthenticatedVideo";
 import type { GalleryItem } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import MentionInput from "@/components/MentionInput";
@@ -94,11 +95,9 @@ export default function GalleryDetail() {
       <div className="hud-border bg-card overflow-hidden">
         {item.type === "video" && item.videoUrl ? (
           <div className="aspect-video bg-black/70">
-            <iframe
+            <AuthenticatedVideo
               src={item.videoUrl}
               className="h-full w-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
               title={item.title}
             />
           </div>

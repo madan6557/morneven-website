@@ -33,9 +33,10 @@ import {
   type MemberRole,
   type ReplyPreview,
 } from "@/services/chatApi";
-import { apiUpload } from "@/services/api";
+import { apiUpload, type UploadProgress } from "@/services/api";
 import { downloadAuthenticatedFile, openAuthenticatedFile } from "@/services/fileProxyService";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { AuthenticatedVideo } from "@/components/AuthenticatedVideo";
 import { renderWithMentions } from "@/lib/mentions";
 import { showValidation } from "@/components/ui/validation-dialog";
 import type { PersonnelUser } from "@/types";
@@ -90,13 +91,17 @@ import { personnelLevelBadgeStyle, personnelLevelPanelStyle } from "@/lib/person
 import { cn } from "@/lib/utils";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
-async function fileToAttachmentRemote(file: File): Promise<ChatAttachment> {
+function uploadKeyForFile(file: File, index: number) {
+  return `${file.name}:${file.size}:${file.lastModified}:${index}`;
+}
+
+async function fileToAttachmentRemote(file: File, onProgress?: (progress: UploadProgress) => void): Promise<ChatAttachment> {
   const uploaded = await apiUpload<{
     url?: string;
     objectPath?: string;
     contentType?: string;
     size?: number;
-  }>(`/files/upload?folder=chat`, file);
+  }>(`/files/upload?folder=chat`, file, { onProgress });
 
   return {
     id: uploaded.objectPath ?? `att-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -187,6 +192,8 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [sendInFlightCount, setSendInFlightCount] = useState(0);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [personnel, setPersonnel] = useState<PersonnelUser[]>([]);
   const [mentionOpen, setMentionOpen] = useState(false);
   const [mentionQuery, setMentionQuery] = useState("");
@@ -779,6 +786,7 @@ export default function ChatPage() {
     const draftText = input.trim();
     const draftFiles = pendingFiles;
     if (!draftText && draftFiles.length === 0) return;
+    const uploadKeys = draftFiles.map(uploadKeyForFile);
 
     const draftReplyTo = replyTo;
     shouldScrollToLatestRef.current = true;
@@ -791,10 +799,25 @@ export default function ChatPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
 
     setSendInFlightCount((c) => c + 1);
+    if (draftFiles.length) {
+      setUploadingFiles(draftFiles);
+      setUploadProgress((current) => ({
+        ...current,
+        ...Object.fromEntries(uploadKeys.map((key) => [key, 0])),
+      }));
+    }
     try {
       let attachments: ChatAttachment[] | undefined;
       if (draftFiles.length) {
-        attachments = await Promise.all(draftFiles.map(fileToAttachmentRemote));
+        attachments = await Promise.all(
+          draftFiles.map((file, index) =>
+            fileToAttachmentRemote(file, ({ percent }) => {
+              if (typeof percent !== "number") return;
+              const key = uploadKeyForFile(file, index);
+              setUploadProgress((current) => ({ ...current, [key]: percent }));
+            }),
+          ),
+        );
       }
       await sendMessageRemote(active, draftText, attachments, draftReplyTo ?? undefined);
       refresh();
@@ -806,6 +829,14 @@ export default function ChatPage() {
       });
     } finally {
       setSendInFlightCount((c) => Math.max(0, c - 1));
+      if (draftFiles.length) {
+        setUploadingFiles([]);
+        setUploadProgress((current) => {
+          const next = { ...current };
+          uploadKeys.forEach((key) => delete next[key]);
+          return next;
+        });
+      }
     }
   }
 
@@ -1248,10 +1279,12 @@ export default function ChatPage() {
                                     ) : null}
                                     {isVideo ? (
                                       <div className={`${isCompact ? "min-h-[96px]" : "min-h-[180px]"} relative flex items-center justify-center bg-black/35 p-2`}>
-                                        <video
+                                        <AuthenticatedVideo
                                           src={a.dataUrl}
                                           preload="metadata"
                                           muted
+                                          controls={false}
+                                          title={visualLabel}
                                           className={`${isCompact ? "max-h-24" : "max-h-72"} mx-auto w-full rounded-sm bg-black object-contain`}
                                         />
                                         <div className="absolute inset-0 flex items-center justify-center">
@@ -1310,26 +1343,49 @@ export default function ChatPage() {
               </div>
 
               {/* Pending attachments preview */}
-              {pendingFiles.length > 0 && (
+              {(pendingFiles.length > 0 || uploadingFiles.length > 0) && (
                 <div className="border-t border-border/70 bg-background/25 px-4 py-3">
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Pending Attachments</p>
-                    <p className="text-[10px] text-muted-foreground">{pendingFiles.length} item{pendingFiles.length === 1 ? "" : "s"}</p>
+                    <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase">Attachments</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {pendingFiles.length + uploadingFiles.length} item{pendingFiles.length + uploadingFiles.length === 1 ? "" : "s"}
+                    </p>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                  {pendingFiles.map((f, i) => (
+                    {pendingFiles.map((f, i) => (
                       <div key={i} className="flex items-center gap-1.5 rounded-sm border border-border/70 bg-background/60 px-2 py-1 text-[10px] font-body">
-                      <Paperclip className="h-3 w-3" />
-                      <span className="max-w-[160px] truncate">{f.name}</span>
-                      <span className="text-muted-foreground">{formatBytes(f.size)}</span>
-                      <button
-                        onClick={() => setPendingFiles((p) => p.filter((_, j) => j !== i))}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
+                        <Paperclip className="h-3 w-3" />
+                        <span className="max-w-[160px] truncate">{f.name}</span>
+                        <span className="text-muted-foreground">{formatBytes(f.size)}</span>
+                        <button
+                          onClick={() => setPendingFiles((p) => p.filter((_, j) => j !== i))}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {uploadingFiles.map((f, i) => {
+                      const progress = uploadProgress[uploadKeyForFile(f, i)] ?? 0;
+                      return (
+                        <div
+                          key={`uploading-${uploadKeyForFile(f, i)}`}
+                          className="min-w-[220px] rounded-sm border border-primary/40 bg-primary/10 px-2 py-1.5 text-[10px] font-body"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <Paperclip className="h-3 w-3 text-primary" />
+                            <span className="max-w-[140px] truncate">{f.name}</span>
+                            <span className="ml-auto font-display text-primary">{progress}%</span>
+                          </div>
+                          <div className="mt-1 h-1.5 overflow-hidden rounded-full border border-primary/30 bg-background">
+                            <div
+                              className="h-full bg-primary transition-all duration-200"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1583,10 +1639,11 @@ export default function ChatPage() {
                       className="max-h-[72vh] w-full object-contain"
                     />
                   ) : activeAttachmentItem.attachment.mimeType.startsWith("video/") ? (
-                    <video
+                    <AuthenticatedVideo
                       src={activeAttachmentItem.attachment.dataUrl}
                       controls
                       preload="metadata"
+                      title={activeAttachmentItem.attachment.name}
                       className="max-h-[72vh] w-full rounded-sm bg-black object-contain"
                     />
                   ) : (

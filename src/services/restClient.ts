@@ -16,6 +16,20 @@ export interface ApiSuccessPayload<T> {
   data: T;
 }
 
+export interface UploadProgress {
+  loaded: number;
+  total?: number;
+  percent?: number;
+}
+
+export interface ApiUploadOptions {
+  fieldName?: string;
+  onProgress?: (progress: UploadProgress) => void;
+  auth?: boolean;
+  retryOnUnauthorized?: boolean;
+  timeoutMs?: number;
+}
+
 export interface BackendPage<T> {
   items: T[];
   page?: number;
@@ -156,6 +170,26 @@ async function parsePayload(response: Response): Promise<unknown> {
   }
 }
 
+function parseRawPayload(text: string, contentType: string): unknown {
+  if (!contentType.includes("application/json")) return text;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function unwrapPayload<T>(payload: unknown, status: number): T {
+  if (payload && typeof payload === "object" && "success" in payload) {
+    const envelope = payload as ApiSuccessPayload<T> | ApiErrorPayload;
+    if (envelope.success === false) throw new ApiError(status, envelope);
+    return envelope.data as T;
+  }
+
+  return payload as T;
+}
+
 async function refreshAccessToken(): Promise<boolean> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return false;
@@ -249,19 +283,89 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     throw new ApiError(response.status, payload as ApiErrorPayload | null);
   }
 
-  if (payload && typeof payload === "object" && "success" in payload) {
-    const envelope = payload as ApiSuccessPayload<T> | ApiErrorPayload;
-    if (envelope.success === false) throw new ApiError(response.status, envelope);
-    return envelope.data as T;
-  }
-
-  return payload as T;
+  return unwrapPayload<T>(payload, response.status);
 }
 
-export async function apiUpload<T>(path: string, file: File, fieldName = "file"): Promise<T> {
+export async function apiUpload<T>(
+  path: string,
+  file: File,
+  fieldNameOrOptions: string | ApiUploadOptions = "file",
+): Promise<T> {
+  const options: ApiUploadOptions =
+    typeof fieldNameOrOptions === "string" ? { fieldName: fieldNameOrOptions } : fieldNameOrOptions;
+
+  if (typeof XMLHttpRequest === "undefined") {
+    const form = new FormData();
+    form.append(options.fieldName ?? "file", file);
+    return apiRequest<T>(path, {
+      method: "POST",
+      body: form,
+      auth: options.auth,
+      retryOnUnauthorized: options.retryOnUnauthorized,
+      timeoutMs: options.timeoutMs ?? DEFAULT_UPLOAD_TIMEOUT_MS,
+    });
+  }
+
+  const {
+    fieldName = "file",
+    onProgress,
+    auth = true,
+    retryOnUnauthorized = true,
+    timeoutMs = DEFAULT_UPLOAD_TIMEOUT_MS,
+  } = options;
   const form = new FormData();
   form.append(fieldName, file);
-  return apiRequest<T>(path, { method: "POST", body: form, timeoutMs: DEFAULT_UPLOAD_TIMEOUT_MS });
+
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${getApiBaseUrl()}${path}`);
+    xhr.withCredentials = true;
+    xhr.timeout = timeoutMs;
+
+    if (auth) {
+      const token = getAccessToken();
+      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    }
+
+    xhr.upload.onprogress = (event) => {
+      const total = event.lengthComputable && event.total > 0 ? event.total : file.size || undefined;
+      const percent = total ? Math.min(100, Math.max(0, Math.round((event.loaded / total) * 100))) : undefined;
+      onProgress?.({ loaded: event.loaded, total, percent });
+    };
+
+    xhr.onload = async () => {
+      const payload = parseRawPayload(xhr.responseText, xhr.getResponseHeader("content-type") || "");
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        if (xhr.status === 401 && auth && retryOnUnauthorized) {
+          try {
+            const refreshed = await refreshAccessToken();
+            if (refreshed) {
+              resolve(apiUpload<T>(path, file, { ...options, retryOnUnauthorized: false }));
+              return;
+            }
+          } catch {
+            // Fall through to the original unauthorized response.
+          }
+        }
+
+        reject(new ApiError(xhr.status, payload as ApiErrorPayload | null));
+        return;
+      }
+
+      onProgress?.({ loaded: file.size, total: file.size, percent: 100 });
+      try {
+        resolve(unwrapPayload<T>(payload, xhr.status));
+      } catch (error) {
+        reject(error);
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Upload failed due to a network error."));
+    xhr.ontimeout = () => reject(new Error("Upload timed out."));
+    xhr.onabort = () => reject(new Error("Upload was aborted."));
+    xhr.send(form);
+  });
 }
 
 export async function withDemoFallback<T>(request: () => Promise<T>, fallback: () => Promise<T> | T): Promise<T> {

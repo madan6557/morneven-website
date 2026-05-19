@@ -385,6 +385,7 @@ function FileUploadField({
   const [mode, setMode] = useState<AttachmentMode>(looksLikeManualUrl ? "url" : attachmentType);
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const isUrlMode = mode === "url";
   const isUploadedValue = value && !isUrlMode;
   const selectedType = mode === "file" ? "file" : mode;
@@ -403,14 +404,20 @@ function FileUploadField({
     if (!file) return;
     setUploadError("");
     setUploading(true);
+    setUploadProgress(0);
     try {
-      const uploaded = await apiUpload<{ url?: string }>(`/files/upload?folder=${folder}`, file);
+      const uploaded = await apiUpload<{ url?: string }>(`/files/upload?folder=${folder}`, file, {
+        onProgress: ({ percent }) => {
+          if (typeof percent === "number") setUploadProgress(percent);
+        },
+      });
       if (!uploaded.url) throw new Error("Upload response did not include a file URL");
       onChange(uploaded.url);
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Upload failed");
     } finally {
       setUploading(false);
+      setUploadProgress(null);
       if (fileRef.current) fileRef.current.value = "";
     }
   };
@@ -444,7 +451,7 @@ function FileUploadField({
           <button type="button" onClick={() => fileRef.current?.click()}
             disabled={uploading}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-display tracking-wider border border-dashed border-primary/40 rounded-sm text-primary hover:bg-primary/10 transition-colors">
-            <Upload className="h-3.5 w-3.5" /> {uploading ? "Uploading" : `Choose ${selectedType}`}
+            <Upload className="h-3.5 w-3.5" /> {uploading ? `Uploading ${uploadProgress ?? 0}%` : `Choose ${selectedType}`}
           </button>
           {isUploadedValue && (
             <span className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-muted px-2 py-1 text-[10px] font-display uppercase tracking-wider text-foreground">
@@ -456,6 +463,14 @@ function FileUploadField({
             </span>
           )}
           {uploadError && <span className="text-[10px] text-destructive">{uploadError}</span>}
+          {uploading ? (
+            <div className="h-1.5 w-full overflow-hidden rounded-full border border-primary/30 bg-background">
+              <div
+                className="h-full bg-primary transition-all duration-200"
+                style={{ width: `${uploadProgress ?? 0}%` }}
+              />
+            </div>
+          ) : null}
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, ExternalLink } from "lucide-react";
 import { getNewsItem } from "@/services/newsApi";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { AuthenticatedVideo } from "@/components/AuthenticatedVideo";
 import { useResolvedImageUrl } from "@/hooks/useResolvedImageUrl";
 import type { NewsItem } from "@/types";
 
@@ -78,7 +79,7 @@ export default function NewsDetail() {
                     </div>
                   ) : a.type === "video" && a.url ? (
                     <div className="aspect-video bg-muted">
-                      <iframe src={a.url} className="w-full h-full" allowFullScreen title={a.caption || "video"} />
+                      <AuthenticatedVideo src={a.url} className="h-full w-full" title={a.caption || "video"} />
                     </div>
                   ) : a.type === "link" && a.url ? (
                     <Link

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Download, ExternalLink, FileText, Image as ImageIcon, Play } from "lucide-react";
 import type { DocItem } from "@/types";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { AuthenticatedVideo } from "@/components/AuthenticatedVideo";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { downloadAuthenticatedFile, openAuthenticatedFile } from "@/services/fileProxyService";
@@ -185,7 +186,7 @@ export default function DocumentationViewer({
                     </DialogDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {activeDoc.url && activeDoc.type !== "video" && (
+                    {activeDoc.url && (
                       <Button
                         type="button"
                         size="sm"
@@ -217,11 +218,9 @@ export default function DocumentationViewer({
                       className="max-h-[70vh] w-full object-contain"
                     />
                   ) : activeDoc.type === "video" && activeDoc.url ? (
-                    <iframe
+                    <AuthenticatedVideo
                       src={activeDoc.url}
                       className="aspect-video h-full max-h-[70vh] w-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
                       title={docFallbackName(activeDoc, activeIndex, itemLabel)}
                     />
                   ) : (

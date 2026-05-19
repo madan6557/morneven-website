@@ -115,8 +115,17 @@ export async function downloadAuthenticatedFile(url: string, filename?: string):
 }
 
 export async function openAuthenticatedFile(url: string): Promise<void> {
+  const openedWindow = window.open("about:blank", "_blank");
+  if (openedWindow) openedWindow.opener = null;
   const fileUrl = await getAuthenticatedFileUrl(url, "*/*");
-  if (!fileUrl) return;
+  if (!fileUrl) {
+    openedWindow?.close();
+    return;
+  }
+  if (openedWindow) {
+    openedWindow.location.href = fileUrl;
+    return;
+  }
   window.open(fileUrl, "_blank", "noopener,noreferrer");
 }
 

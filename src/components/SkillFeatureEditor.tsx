@@ -27,6 +27,7 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
   const refs = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [uploadError, setUploadError] = useState<Record<string, string>>({});
   const [iconPickerTarget, setIconPickerTarget] = useState<{ id: string; idx: number } | null>(null);
   const [iconQuery, setIconQuery] = useState("");
@@ -148,9 +149,16 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
   const uploadSkillIcon = async (skillId: string, idx: number, file?: File | null) => {
     if (!file) return;
     setUploadingId(skillId);
+    setUploadProgress((current) => ({ ...current, [skillId]: 0 }));
     setUploadError((current) => ({ ...current, [skillId]: "" }));
     try {
-      const uploaded = await apiUpload<{ url?: string }>("/files/upload?folder=lore", file);
+      const uploaded = await apiUpload<{ url?: string }>("/files/upload?folder=lore", file, {
+        onProgress: ({ percent }) => {
+          if (typeof percent === "number") {
+            setUploadProgress((current) => ({ ...current, [skillId]: percent }));
+          }
+        },
+      });
       if (!uploaded.url) throw new Error("Upload response did not include a file URL");
       if (variant === "skill") {
         updateSkill(idx, "icon", uploaded.url);
@@ -164,6 +172,11 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
       }));
     } finally {
       setUploadingId(null);
+      setUploadProgress((current) => {
+        const next = { ...current };
+        delete next[skillId];
+        return next;
+      });
       if (fileRefs.current[skillId]) fileRefs.current[skillId]!.value = "";
     }
   };
@@ -367,10 +380,11 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                       <button
                         type="button"
                         onClick={() => fileRefs.current[item.id]?.click()}
+                        disabled={uploadingId === item.id}
                         className="inline-flex items-center gap-1.5 rounded-sm border border-dashed border-primary/40 px-3 py-2 text-[10px] font-display tracking-wider text-primary hover:bg-primary/10 transition-colors"
                       >
                         <Upload className="h-3.5 w-3.5" />
-                        {uploadingId === item.id ? "UPLOADING" : "UPLOAD ICON"}
+                        {uploadingId === item.id ? `UPLOADING ${uploadProgress[item.id] ?? 0}%` : "UPLOAD ICON"}
                       </button>
                       {item.icon ? (
                         <span className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-muted px-2 py-1 text-[10px] font-display uppercase tracking-wider text-foreground">
@@ -381,6 +395,14 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                     <p className="text-[10px] font-body text-muted-foreground">
                       Icon requirement: 1:1 ratio. Recommended resolution 512x512 or higher.
                     </p>
+                    {uploadProgress[item.id] !== undefined ? (
+                      <div className="h-1.5 overflow-hidden rounded-full border border-primary/30 bg-background">
+                        <div
+                          className="h-full bg-primary transition-all duration-200"
+                          style={{ width: `${uploadProgress[item.id]}%` }}
+                        />
+                      </div>
+                    ) : null}
                     {uploadError[item.id] ? (
                       <p className="text-[10px] font-body text-destructive">{uploadError[item.id]}</p>
                     ) : null}
