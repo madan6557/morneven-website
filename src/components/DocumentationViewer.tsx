@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { downloadAuthenticatedFile, openAuthenticatedFile } from "@/services/fileProxyService";
 import { cn } from "@/lib/utils";
 import { ContentState } from "@/components/ContentState";
+import { sortDocsByDateDesc } from "@/lib/documentation";
 
 type DocumentationViewerProps = {
   docs?: DocItem[];
@@ -38,31 +39,32 @@ export default function DocumentationViewer({
   showEmpty = false,
 }: DocumentationViewerProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const activeDoc = activeIndex === null ? null : docs[activeIndex] ?? null;
-  const hasDocs = docs.length > 0;
+  const sortedDocs = useMemo(() => sortDocsByDateDesc(docs), [docs]);
+  const activeDoc = activeIndex === null ? null : sortedDocs[activeIndex] ?? null;
+  const hasDocs = sortedDocs.length > 0;
   const sectionStyle = useMemo(
     () => (accentColor ? { borderColor: `${accentColor}30` } : undefined),
     [accentColor],
   );
   const counts = useMemo(() => {
-    return docs.reduce(
+    return sortedDocs.reduce(
       (summary, doc) => {
         summary[doc.type] += 1;
         return summary;
       },
       { image: 0, video: 0, file: 0 } as Record<DocItem["type"], number>,
     );
-  }, [docs]);
+  }, [sortedDocs]);
 
   const openDoc = (index: number) => setActiveIndex(index);
   const closeDoc = () => setActiveIndex(null);
   const goPrevious = useCallback(
-    () => setActiveIndex((current) => (current === null ? current : (current - 1 + docs.length) % docs.length)),
-    [docs.length],
+    () => setActiveIndex((current) => (current === null ? current : (current - 1 + sortedDocs.length) % sortedDocs.length)),
+    [sortedDocs.length],
   );
   const goNext = useCallback(
-    () => setActiveIndex((current) => (current === null ? current : (current + 1) % docs.length)),
-    [docs.length],
+    () => setActiveIndex((current) => (current === null ? current : (current + 1) % sortedDocs.length)),
+    [sortedDocs.length],
   );
 
   useEffect(() => {
@@ -83,7 +85,7 @@ export default function DocumentationViewer({
         <h2 className="font-heading text-lg tracking-wider text-foreground uppercase">{title}</h2>
         {hasDocs && (
           <span className="rounded-sm border border-border bg-muted px-2 py-1 text-[10px] font-heading tracking-wider text-muted-foreground uppercase">
-            {docs.length} item{docs.length === 1 ? "" : "s"}
+            {sortedDocs.length} item{sortedDocs.length === 1 ? "" : "s"}
           </span>
         )}
       </div>
@@ -124,7 +126,7 @@ export default function DocumentationViewer({
         <div className="rounded-sm border border-border/70 bg-card/55 p-3">
           <div className="max-h-[420px] overflow-y-auto pr-1">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {docs.map((doc, index) => {
+              {sortedDocs.map((doc, index) => {
                 const Icon = typeIcon[doc.type] ?? FileText;
                 const label = docFallbackName(doc, index, itemLabel);
                 return (
@@ -156,7 +158,7 @@ export default function DocumentationViewer({
                       <div className="flex items-center justify-between gap-3 pt-1">
                         <p className="text-[10px] font-heading tracking-wider text-muted-foreground uppercase">Open preview</p>
                         <span className="text-[10px] font-heading tracking-wider text-foreground/70 uppercase">
-                          {doc.type === "file" ? "Preview or download" : "Inspect asset"}
+                          {doc.date || (doc.type === "file" ? "Preview or download" : "Inspect asset")}
                         </span>
                       </div>
                     </div>
@@ -179,7 +181,7 @@ export default function DocumentationViewer({
                       {docFallbackName(activeDoc, activeIndex, itemLabel)}
                     </DialogTitle>
                     <DialogDescription className="font-body text-xs text-muted-foreground">
-                      {activeDoc.type.toUpperCase()} {activeIndex + 1} of {docs.length}
+                      {activeDoc.type.toUpperCase()} {activeIndex + 1} of {sortedDocs.length}
                     </DialogDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -256,7 +258,7 @@ export default function DocumentationViewer({
                   )}
                 </div>
 
-                {docs.length > 1 && (
+                {sortedDocs.length > 1 && (
                   <>
                     <Button
                       type="button"
@@ -285,10 +287,10 @@ export default function DocumentationViewer({
                   {activeDoc.caption || "No caption provided."}
                 </p>
                 <div className="flex shrink-0 items-center gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={goPrevious} disabled={docs.length < 2}>
+                  <Button type="button" variant="outline" size="sm" onClick={goPrevious} disabled={sortedDocs.length < 2}>
                     Previous
                   </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={goNext} disabled={docs.length < 2}>
+                  <Button type="button" variant="outline" size="sm" onClick={goNext} disabled={sortedDocs.length < 2}>
                     Next
                   </Button>
                 </div>

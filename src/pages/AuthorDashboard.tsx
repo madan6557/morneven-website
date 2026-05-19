@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useToast } from "@/hooks/use-toast";
 import { showValidation } from "@/components/ui/validation-dialog";
 import SkillFeatureEditor from "@/components/SkillFeatureEditor";
+import { normalizeDocsForEditor, normalizeDocsForSave } from "@/lib/documentation";
 import {
   averageScore,
   createDefaultCharacterStats,
@@ -1186,7 +1187,7 @@ export default function AuthorDashboard() {
           shortDesc: editing.shortDesc ?? "",
           fullDesc: editing.fullDesc ?? "",
           patches: editing.patches ?? [],
-          docs: editing.docs ?? [],
+          docs: docsForSave(editing.docs),
           features: editing.features ?? [],
           meta: editing.meta,
         };
@@ -1211,7 +1212,7 @@ export default function AuthorDashboard() {
             shortDesc: editing.shortDesc ?? "",
             fullDesc: editing.fullDesc ?? "",
             stats: normalizedStats,
-            docs: editing.docs ?? [],
+            docs: docsForSave(editing.docs),
             fieldNotes: editing.fieldNotes ?? [],
             observations: editing.observations ?? [],
             contributions: editing.contributions ?? [],
@@ -1230,7 +1231,7 @@ export default function AuthorDashboard() {
             headerImage: editing.headerImage ?? "",
             shortDesc: editing.shortDesc ?? "",
             fullDesc: editing.fullDesc ?? "",
-            docs: editing.docs ?? [],
+            docs: docsForSave(editing.docs),
             fieldNotes: editing.fieldNotes ?? [],
             observations: editing.observations ?? [],
             features: editing.features ?? [],
@@ -1248,7 +1249,7 @@ export default function AuthorDashboard() {
             headerImage: editing.headerImage ?? "",
             shortDesc: editing.shortDesc ?? "",
             fullDesc: editing.fullDesc ?? "",
-            docs: editing.docs ?? [],
+            docs: docsForSave(editing.docs),
             fieldNotes: editing.fieldNotes ?? [],
             observations: editing.observations ?? [],
             features: editing.features ?? [],
@@ -1273,7 +1274,7 @@ export default function AuthorDashboard() {
             headerImage: editing.headerImage ?? "",
             shortDesc: editing.shortDesc ?? "",
             fullDesc: editing.fullDesc ?? "",
-            docs: editing.docs ?? [],
+            docs: docsForSave(editing.docs),
             fieldNotes: editing.fieldNotes ?? [],
             observations: editing.observations ?? [],
             stats: normalizedStats,
@@ -1298,7 +1299,7 @@ export default function AuthorDashboard() {
             fullDesc: editing.fullDesc ?? "",
             consequences: editing.consequences ?? [],
             relatedLinks: editing.relatedLinks ?? [],
-            docs: editing.docs ?? [],
+            docs: docsForSave(editing.docs),
             fieldNotes: editing.fieldNotes ?? [],
             observations: editing.observations ?? [],
             features: editing.features ?? [],
@@ -1316,7 +1317,7 @@ export default function AuthorDashboard() {
             headerImage: editing.headerImage ?? "",
             shortDesc: editing.shortDesc ?? "",
             fullDesc: editing.fullDesc ?? "",
-            docs: editing.docs ?? [],
+            docs: docsForSave(editing.docs),
             fieldNotes: editing.fieldNotes ?? [],
             observations: editing.observations ?? [],
             features: editing.features ?? [],
@@ -1444,19 +1445,25 @@ export default function AuthorDashboard() {
     return item.shortDesc || "";
   };
 
+  const docsForEditor = (docs: DocItem[] = []) => normalizeDocsForEditor(docs, todayStr());
+  const docsForSave = (docs: DocItem[] = []) => normalizeDocsForSave(docs, todayStr());
+
   // Doc management helpers
   const addDoc = () => {
     const key = `doc-${Date.now()}`;
     // Prepend so newest doc appears at the top of the list, right under
     // the ADD DOC button - keeps the editing context next to the action.
-    const docs = [{ type: "image" as const, url: "", caption: "", _key: key } as DocItem & { _key?: string }, ...(editing.docs || [])];
+    const docs = [
+      { type: "image" as const, url: "", caption: "", date: todayStr(), _key: key } as DocItem & { _key?: string },
+      ...(editing.docs || []),
+    ];
     setEditing({ ...editing, docs });
     setPendingFocusKey(key);
   };
   const updateDoc = (idx: number, field: keyof DocItem, value: string) => {
     const docs = [...(editing.docs || [])];
     docs[idx] = { ...docs[idx], [field]: value };
-    setEditing({ ...editing, docs });
+    setEditing({ ...editing, docs: docsForEditor(docs) });
   };
   const removeDoc = (idx: number) => {
     if (!editing) return;
@@ -1534,7 +1541,7 @@ export default function AuthorDashboard() {
         const project = item as Project;
         beginEditSession({
           ...project,
-          docs: project.docs ?? [],
+          docs: docsForEditor(project.docs ?? []),
           features: project.features ?? [],
           patches: project.patches ?? [],
         }, false);
@@ -1563,7 +1570,7 @@ export default function AuthorDashboard() {
         const character = item as Character;
         beginEditSession({
           ...character,
-          docs: character.docs ?? [],
+          docs: docsForEditor(character.docs ?? []),
           fieldNotes: character.fieldNotes ?? [],
           observations: character.observations ?? [],
           contributions: character.contributions ?? [],
@@ -1577,7 +1584,7 @@ export default function AuthorDashboard() {
         const creature = item as Creature;
         beginEditSession({
           ...creature,
-          docs: creature.docs ?? [],
+          docs: docsForEditor(creature.docs ?? []),
           fieldNotes: creature.fieldNotes ?? [],
           observations: creature.observations ?? [],
           traits: creature.traits ?? [],
@@ -1593,7 +1600,7 @@ export default function AuthorDashboard() {
         const event = item as LoreEvent;
         beginEditSession({
           ...event,
-          docs: event.docs ?? [],
+          docs: docsForEditor(event.docs ?? []),
           fieldNotes: event.fieldNotes ?? [],
           observations: event.observations ?? [],
           features: event.features ?? [],
@@ -1607,7 +1614,7 @@ export default function AuthorDashboard() {
         const place = item as Place;
         beginEditSession({
           ...place,
-          docs: place.docs ?? [],
+          docs: docsForEditor(place.docs ?? []),
           fieldNotes: place.fieldNotes ?? [],
           observations: place.observations ?? [],
           features: place.features ?? [],
@@ -1619,7 +1626,7 @@ export default function AuthorDashboard() {
         const technology = item as Technology;
         beginEditSession({
           ...technology,
-          docs: technology.docs ?? [],
+          docs: docsForEditor(technology.docs ?? []),
           fieldNotes: technology.fieldNotes ?? [],
           observations: technology.observations ?? [],
           features: technology.features ?? [],
@@ -1630,7 +1637,7 @@ export default function AuthorDashboard() {
       const other = item as OtherLore;
       beginEditSession({
         ...other,
-        docs: other.docs ?? [],
+        docs: docsForEditor(other.docs ?? []),
         fieldNotes: other.fieldNotes ?? [],
         observations: other.observations ?? [],
         features: other.features ?? [],
@@ -2512,7 +2519,7 @@ export default function AuthorDashboard() {
           {hasDocs && (
             <EditorSection
               title="Documentation"
-              description="Images, videos, files, and captions attached to this content."
+              description="Images, videos, files, captions, and document dates. Newest dates are shown first."
               badge={`${(editing.docs || []).length} item${(editing.docs || []).length === 1 ? "" : "s"}`}
             >
             <div className="space-y-3">
@@ -2550,16 +2557,33 @@ export default function AuthorDashboard() {
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <div className="space-y-2">
-                    <FileUploadField
-                      label=""
-                      value={doc.url}
-                      onChange={(url) => updateDoc(idx, "url", url)}
-                      accept={doc.type === "video" ? "video/*" : doc.type === "image" ? "image/*" : "*/*"}
-                      attachmentType={doc.type}
-                      folder={isProject ? "projects" : isGallery ? "gallery" : "lore"}
+                  <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_180px]">
+                    <div className="min-w-0">
+                      <FileUploadField
+                        label=""
+                        value={doc.url}
+                        onChange={(url) => updateDoc(idx, "url", url)}
+                        accept={doc.type === "video" ? "video/*" : doc.type === "image" ? "image/*" : "*/*"}
+                        attachmentType={doc.type}
+                        folder={isProject ? "projects" : isGallery ? "gallery" : "lore"}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-heading tracking-wider text-muted-foreground uppercase">Date</label>
+                      <input
+                        type="date"
+                        value={doc.date || todayStr()}
+                        onChange={(e) => updateDoc(idx, "date", e.target.value)}
+                        className="mt-1 w-full rounded-sm border border-border bg-background px-2 py-1 text-xs font-body text-foreground"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={doc.caption}
+                      onChange={(e) => updateDoc(idx, "caption", e.target.value)}
+                      placeholder="Caption"
+                      className="w-full rounded-sm border border-border bg-background px-2 py-1 text-xs font-body text-foreground md:col-span-2"
                     />
-                    <input type="text" value={doc.caption} onChange={(e) => updateDoc(idx, "caption", e.target.value)} placeholder="Caption" className="w-full px-2 py-1 bg-background border border-border rounded-sm text-xs font-body text-foreground" />
                   </div>
                 </div>
                 );
@@ -2568,7 +2592,7 @@ export default function AuthorDashboard() {
             </EditorSection>
           )}
 
-          {activeTab === "lore" && (
+          {editorTab === "lore" && (
             <EditorSection
               title="Field Records"
               description="Internal notes and observations displayed on lore detail pages."

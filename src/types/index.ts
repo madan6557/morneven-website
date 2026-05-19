@@ -45,6 +45,7 @@ export interface DocItem {
   type: "image" | "video" | "file";
   url: string;
   caption: string;
+  date?: string;
 }
 
 export interface LoreFieldNote {
