@@ -839,7 +839,7 @@ export default function SettingsPage() {
             description="Adjust interface presentation and active theme."
           >
             <div className="rounded-sm border border-border/70 bg-background/45 p-3">
-              <ThemeToggle />
+              <ThemeToggle variant="full" />
             </div>
           </SectionCard>
 

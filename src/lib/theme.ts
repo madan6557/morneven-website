@@ -20,6 +20,24 @@ export const APP_THEMES = [
     description: "Cool night console with cyan and violet accents.",
     tone: "dark",
   },
+  {
+    value: "ember",
+    label: "Ember",
+    description: "Industrial dark preset with amber and copper emphasis.",
+    tone: "dark",
+  },
+  {
+    value: "sunset",
+    label: "Sunset",
+    description: "Warm twilight console with rose and tangerine accents.",
+    tone: "dark",
+  },
+  {
+    value: "dawn",
+    label: "Dawn",
+    description: "Soft bright console with peach, gold, and steel blue balance.",
+    tone: "light",
+  },
 ] as const;
 
 export type AppTheme = (typeof APP_THEMES)[number]["value"];
@@ -67,6 +85,12 @@ export function getActiveTheme(): AppTheme {
     if (isAppTheme(applied)) return applied;
   }
   return resolveInitialTheme();
+}
+
+export function getNextTheme(theme: AppTheme): AppTheme {
+  const index = APP_THEMES.findIndex((item) => item.value === theme);
+  if (index === -1) return APP_THEMES[0].value;
+  return APP_THEMES[(index + 1) % APP_THEMES.length].value;
 }
 
 export function subscribeThemeChange(callback: (theme: AppTheme) => void) {

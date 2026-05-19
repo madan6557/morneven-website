@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Moon, Sparkles, Sun } from "lucide-react";
+import { Flame, Moon, Sparkles, Sun, Sunrise, Sunset } from "lucide-react";
 
 import {
   Select,
@@ -11,6 +11,7 @@ import {
 import {
   APP_THEMES,
   getActiveTheme,
+  getNextTheme,
   setAppTheme,
   subscribeThemeChange,
   type AppTheme,
@@ -20,9 +21,16 @@ const themeIcons = {
   dark: Moon,
   light: Sun,
   aurora: Sparkles,
+  ember: Flame,
+  sunset: Sunset,
+  dawn: Sunrise,
 } satisfies Record<AppTheme, typeof Sun>;
 
-export function ThemeToggle() {
+type ThemeToggleProps = {
+  variant?: "compact" | "full";
+};
+
+export function ThemeToggle({ variant = "compact" }: ThemeToggleProps) {
   const [theme, setTheme] = useState<AppTheme>(() => getActiveTheme());
 
   useEffect(() => subscribeThemeChange(setTheme), []);
@@ -32,6 +40,25 @@ export function ThemeToggle() {
     [theme],
   );
   const ActiveIcon = themeIcons[activeTheme.value];
+
+  const applyNextTheme = (nextTheme: AppTheme) => {
+    setTheme(nextTheme);
+    setAppTheme(nextTheme);
+  };
+
+  if (variant === "compact") {
+    return (
+      <button
+        type="button"
+        onClick={() => applyNextTheme(getNextTheme(theme))}
+        className="flex h-10 w-10 items-center justify-center rounded-md border border-border/70 bg-background/70 text-primary transition-colors hover:bg-muted"
+        aria-label={`Switch theme preset. Current: ${activeTheme.label}`}
+        title={`Theme: ${activeTheme.label}`}
+      >
+        <ActiveIcon className="h-4 w-4" />
+      </button>
+    );
+  }
 
   return (
     <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -46,9 +73,7 @@ export function ThemeToggle() {
         <Select
           value={theme}
           onValueChange={(value) => {
-            const nextTheme = value as AppTheme;
-            setTheme(nextTheme);
-            setAppTheme(nextTheme);
+            applyNextTheme(value as AppTheme);
           }}
         >
           <SelectTrigger
