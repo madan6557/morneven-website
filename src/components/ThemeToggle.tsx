@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { Flame, Moon, Sparkles, Sun, Sunrise, Sunset } from "lucide-react";
+import {
+  Cloud,
+  CloudLightning,
+  CloudRain,
+  Moon,
+  Sparkles,
+  Star,
+  Sun,
+  Sunrise,
+  Sunset,
+  Wind,
+} from "lucide-react";
 
 import {
   Select,
@@ -21,9 +32,13 @@ const themeIcons = {
   dark: Moon,
   light: Sun,
   aurora: Sparkles,
-  ember: Flame,
+  storm: CloudLightning,
   sunset: Sunset,
   dawn: Sunrise,
+  rainy: CloudRain,
+  foggy: Cloud,
+  starfall: Star,
+  tornado: Wind,
 } satisfies Record<AppTheme, typeof Sun>;
 
 type ThemeToggleProps = {

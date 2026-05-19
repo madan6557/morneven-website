@@ -21,9 +21,9 @@ export const APP_THEMES = [
     tone: "dark",
   },
   {
-    value: "ember",
-    label: "Ember",
-    description: "Industrial dark preset with amber and copper emphasis.",
+    value: "storm",
+    label: "Storm",
+    description: "Deep slate console with electric cyan highlights.",
     tone: "dark",
   },
   {
@@ -37,6 +37,30 @@ export const APP_THEMES = [
     label: "Dawn",
     description: "Soft bright console with peach, gold, and steel blue balance.",
     tone: "light",
+  },
+  {
+    value: "rainy",
+    label: "Rainy",
+    description: "Cool blue-gray console with rainglass contrast.",
+    tone: "dark",
+  },
+  {
+    value: "foggy",
+    label: "Foggy",
+    description: "Muted pale console with soft mist-gray separation.",
+    tone: "light",
+  },
+  {
+    value: "starfall",
+    label: "Starfall",
+    description: "Indigo night console with silver and violet shimmer.",
+    tone: "dark",
+  },
+  {
+    value: "tornado",
+    label: "Tornado",
+    description: "Wind-torn steel console with sharp teal contrast.",
+    tone: "dark",
   },
 ] as const;
 
