@@ -22,6 +22,12 @@ export const APP_THEMES = [
     tone: "light",
   },
   {
+    value: "noon",
+    label: "Noon",
+    description: "Clean bright console with sunlit amber and sky-blue accents.",
+    tone: "light",
+  },
+  {
     value: "foggy",
     label: "Foggy",
     description: "Muted pale console with soft mist-gray separation.",
@@ -31,6 +37,12 @@ export const APP_THEMES = [
     value: "aurora",
     label: "Aurora",
     description: "Cool night console with cyan and violet accents.",
+    tone: "dark",
+  },
+  {
+    value: "midnight",
+    label: "Midnight",
+    description: "Deep navy console with quiet lunar contrast.",
     tone: "dark",
   },
   {
@@ -137,12 +149,6 @@ export function getActiveTheme(): AppTheme {
     if (isAppTheme(applied)) return applied;
   }
   return resolveInitialTheme();
-}
-
-export function getNextTheme(theme: AppTheme): AppTheme {
-  const index = APP_THEMES.findIndex((item) => item.value === theme);
-  if (index === -1) return APP_THEMES[0].value;
-  return APP_THEMES[(index + 1) % APP_THEMES.length].value;
 }
 
 export function getCompactThemeSequence(theme: AppTheme) {

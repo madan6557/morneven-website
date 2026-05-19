@@ -265,6 +265,49 @@
     --hud-glow: 18 68% 48%;
   }
 
+  [data-theme="noon"]:not(.dark) {
+    --background: 42 46% 94%;
+    --foreground: 218 22% 18%;
+
+    --card: 42 40% 98%;
+    --card-foreground: 218 22% 18%;
+
+    --popover: 42 40% 98%;
+    --popover-foreground: 218 22% 18%;
+
+    --primary: 28 78% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 206 26% 46%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 40 24% 88%;
+    --muted-foreground: 218 10% 42%;
+
+    --accent: 44 88% 50%;
+    --accent-foreground: 218 22% 18%;
+
+    --destructive: 0 72% 48%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 34 22% 79%;
+    --input: 34 22% 84%;
+    --ring: 28 78% 48%;
+
+    --sidebar-background: 220 22% 13%;
+    --sidebar-foreground: 220 18% 93%;
+    --sidebar-primary: 28 78% 54%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 18% 20%;
+    --sidebar-accent-foreground: 220 18% 94%;
+    --sidebar-border: 222 14% 24%;
+    --sidebar-ring: 28 78% 48%;
+
+    --accent-orange: 28 78% 48%;
+    --accent-yellow: 44 88% 50%;
+    --hud-glow: 28 78% 48%;
+  }
+
   .dark[data-theme="rainy"] {
     --background: 212 22% 10%;
     --foreground: 208 24% 92%;
@@ -435,6 +478,49 @@
     --accent-orange: 256 88% 72%;
     --accent-yellow: 210 88% 74%;
     --hud-glow: 256 88% 66%;
+  }
+
+  .dark[data-theme="midnight"] {
+    --background: 228 28% 7%;
+    --foreground: 226 28% 94%;
+
+    --card: 228 24% 11%;
+    --card-foreground: 226 28% 94%;
+
+    --popover: 228 24% 9%;
+    --popover-foreground: 226 28% 94%;
+
+    --primary: 224 56% 72%;
+    --primary-foreground: 228 32% 10%;
+
+    --secondary: 234 22% 42%;
+    --secondary-foreground: 226 28% 96%;
+
+    --muted: 228 14% 15%;
+    --muted-foreground: 226 12% 70%;
+
+    --accent: 244 58% 66%;
+    --accent-foreground: 228 32% 10%;
+
+    --destructive: 356 74% 60%;
+    --destructive-foreground: 226 28% 96%;
+
+    --border: 228 14% 22%;
+    --input: 228 14% 20%;
+    --ring: 224 48% 58%;
+
+    --sidebar-background: 228 28% 9%;
+    --sidebar-foreground: 226 26% 93%;
+    --sidebar-primary: 224 56% 72%;
+    --sidebar-primary-foreground: 228 32% 10%;
+    --sidebar-accent: 228 14% 16%;
+    --sidebar-accent-foreground: 226 26% 94%;
+    --sidebar-border: 228 14% 18%;
+    --sidebar-ring: 224 48% 58%;
+
+    --accent-orange: 224 56% 72%;
+    --accent-yellow: 244 58% 66%;
+    --hud-glow: 224 56% 66%;
   }
 
   .dark[data-theme="tornado"] {
