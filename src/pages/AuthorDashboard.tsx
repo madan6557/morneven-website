@@ -2883,7 +2883,8 @@ export default function AuthorDashboard() {
               {contentSaving ? "SAVING..." : "SAVE"}
             </button>
           </div>
-        </div>
+        </div>,
+        editFormSlot,
       )}
 
       {/* Map management */}
