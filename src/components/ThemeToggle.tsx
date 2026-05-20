@@ -88,16 +88,13 @@ export function ThemeToggle({ variant = "compact" }: ThemeToggleProps) {
   }
 
   return (
-    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="space-y-1">
-        <p className="font-heading text-sm tracking-[0.12em] text-foreground uppercase">Theme preset</p>
-        <p className="text-sm text-muted-foreground">{activeTheme.description}</p>
-      </div>
+    <div className="w-full space-y-3">
+      <p className="font-heading text-sm tracking-[0.12em] text-foreground uppercase">Theme preset</p>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex w-full items-center justify-between gap-3 rounded-md border border-border/70 bg-background/70 px-3 py-2 text-left transition-colors hover:bg-muted/60 sm:w-auto sm:min-w-[16rem]"
+            className="flex w-full items-center justify-between gap-3 rounded-md border border-border/70 bg-background/70 px-3 py-2 text-left transition-colors hover:bg-muted/60"
             aria-label="Select theme preset"
           >
             <div className="flex min-w-0 items-center gap-2">
@@ -148,6 +145,7 @@ export function ThemeToggle({ variant = "compact" }: ThemeToggleProps) {
           </div>
         </PopoverContent>
       </Popover>
+      <p className="text-sm leading-relaxed text-muted-foreground">{activeTheme.description}</p>
     </div>
   );
 }
