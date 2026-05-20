@@ -826,13 +826,13 @@ export default function AuthorDashboard() {
   // Scroll only when a new edit/create session opens. Do not react to every
   // field/list update, otherwise adding inline rows jumps back to the form top.
   useEffect(() => {
-    if (!editSessionKey) return;
-    // Defer to next frame so the form has rendered.
+    if (!editSessionKey || !editFormSlot) return;
+    // Defer to next frame so the portal content has rendered into the slot.
     const id = window.requestAnimationFrame(() => {
-      editFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      (editFormRef.current ?? editFormSlot).scrollIntoView({ behavior: "smooth", block: "start" });
     });
     return () => window.cancelAnimationFrame(id);
-  }, [editSessionKey]);
+  }, [editSessionKey, editFormSlot]);
 
   useEffect(() => {
     if (activeTab === "homepage" || activeTab === "map" || activeTab === "news") {
