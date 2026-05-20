@@ -14,6 +14,7 @@ import {
   Sparkles,
   Star,
   Sun,
+  SunDim,
   SunMedium,
   Sunrise,
   Sunset,
@@ -34,7 +35,7 @@ import { cn } from "@/lib/utils";
 const themeIcons = {
   dark: Moon,
   light: Sun,
-  noon: SunMedium,
+  noon: SunDim,
   aurora: Sparkles,
   midnight: MoonStar,
   supermoon: Disc3,
