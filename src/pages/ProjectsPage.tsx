@@ -13,6 +13,21 @@ const tabs = ["All", "Planning", "On Progress", "On Hold", "Completed", "Cancele
 type Tab = typeof tabs[number];
 const PROJECT_PAGE_SIZE = 24;
 
+function projectStatusClass(status: Project["status"]) {
+  switch (status) {
+    case "Planning":
+      return "text-primary";
+    case "On Progress":
+      return "text-accent";
+    case "On Hold":
+      return "text-accent-orange";
+    case "Completed":
+      return "text-accent-yellow";
+    default:
+      return "text-destructive";
+  }
+}
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
@@ -95,7 +110,7 @@ export default function ProjectsPage() {
               key={t}
               onClick={() => setActive(t)}
               className={`flex min-w-[6.5rem] items-center justify-center gap-1 rounded-sm border px-4 py-2 text-xs font-display uppercase tracking-[0.1em] transition-colors
-                ${active === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-foreground/80 hover:bg-muted"}`}
+                ${active === t ? "bg-primary text-primary-foreground border-primary" : "adaptive-surface-interactive text-foreground/80 hover:text-foreground"}`}
             >
               {t === "Archived" && <Archive className="h-3 w-3" />}
               {t}
@@ -111,7 +126,7 @@ export default function ProjectsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search projects..."
-          className="w-full rounded-sm border border-border bg-card py-2 pl-10 pr-3 text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="adaptive-surface-soft w-full rounded-sm border py-2 pl-10 pr-3 text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
         />
       </div>
 
@@ -166,13 +181,13 @@ export default function ProjectsPage() {
 
           return (
             <Link key={p.id} to={`/projects/${p.id}`} className="block">
-              <div className={`hud-border bg-card overflow-hidden hover:glow-primary transition-shadow ${p.archived ? "opacity-70" : ""}`}>
+              <div className={`hud-border adaptive-surface-interactive overflow-hidden hover:glow-primary transition-shadow ${p.archived ? "opacity-70" : ""}`}>
                 {p.thumbnail ? (
-                  <div className="aspect-video bg-muted rounded-sm overflow-hidden">
+                  <div className="adaptive-surface-muted aspect-video rounded-sm overflow-hidden">
                     <AuthenticatedImage src={p.thumbnail} alt={p.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                 ) : (
-                  <div className="aspect-video bg-muted rounded-sm flex items-center justify-center">
+                  <div className="adaptive-surface-muted aspect-video rounded-sm flex items-center justify-center">
                     <span className="text-xs text-muted-foreground font-heading tracking-wider">NO IMAGE</span>
                   </div>
                 )}
@@ -187,12 +202,7 @@ export default function ProjectsPage() {
                   </div>
                   <p className="text-xs text-muted-foreground font-body text-justify line-clamp-2">{p.shortDesc}</p>
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className={`inline-block text-[10px] font-display tracking-wider uppercase ${p.status === "On Progress" ? "text-accent-yellow" :
-                        p.status === "Planning" ? "text-primary" :
-                          p.status === "On Hold" ? "text-accent-orange" :
-                            p.status === "Completed" ? "text-emerald-600 dark:text-emerald-400" :
-                              "text-destructive"
-                      }`}>{p.status}</span>
+                    <span className={`inline-block text-[10px] font-display tracking-wider uppercase ${projectStatusClass(p.status)}`}>{p.status}</span>
                     {credit && (
                       <span className="text-[9px] font-display tracking-wider uppercase text-muted-foreground">
                         by {credit}
