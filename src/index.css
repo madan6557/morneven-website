@@ -48,6 +48,10 @@
     --accent-orange: 26 72% 46%;
     --accent-yellow: 43 78% 39%;
     --hud-glow: 356 52% 43%;
+    --canvas-gradient:
+      radial-gradient(circle at top left, hsla(212, 38%, 98%, 0.9) 0%, transparent 44%),
+      linear-gradient(180deg, hsla(214, 28%, 92%, 0.32) 0%, transparent 58%),
+      linear-gradient(135deg, hsla(220, 24%, 90%, 0.16) 0%, transparent 64%);
   }
 
   .dark {
@@ -91,6 +95,7 @@
     --accent-orange: 18 76% 54%;
     --accent-yellow: 48 91% 60%;
     --hud-glow: 0 48% 40%;
+    --canvas-gradient: none;
   }
 
   .dark[data-theme="aurora"] {
@@ -177,6 +182,10 @@
     --accent-orange: 194 82% 60%;
     --accent-yellow: 202 90% 64%;
     --hud-glow: 194 82% 52%;
+    --canvas-gradient:
+      linear-gradient(135deg, hsla(198, 58%, 62%, 0.12) 0%, transparent 38%),
+      linear-gradient(225deg, hsla(220, 22%, 72%, 0.08) 6%, transparent 48%),
+      radial-gradient(circle at 78% 12%, hsla(204, 38%, 80%, 0.08) 0%, transparent 34%);
   }
 
   .dark[data-theme="sunset"] {
@@ -263,6 +272,10 @@
     --accent-orange: 18 68% 48%;
     --accent-yellow: 42 86% 48%;
     --hud-glow: 18 68% 48%;
+    --canvas-gradient:
+      radial-gradient(circle at 12% 16%, hsla(86, 58%, 78%, 0.24) 0%, transparent 34%),
+      linear-gradient(180deg, hsla(52, 44%, 90%, 0.26) 0%, transparent 56%),
+      linear-gradient(135deg, hsla(142, 32%, 86%, 0.18) 0%, transparent 58%);
   }
 
   [data-theme="noon"]:not(.dark) {
@@ -306,6 +319,10 @@
     --accent-orange: 28 78% 48%;
     --accent-yellow: 44 88% 50%;
     --hud-glow: 28 78% 48%;
+    --canvas-gradient:
+      radial-gradient(circle at 80% 10%, hsla(202, 74%, 82%, 0.26) 0%, transparent 36%),
+      linear-gradient(180deg, hsla(204, 44%, 88%, 0.24) 0%, transparent 54%),
+      linear-gradient(135deg, hsla(48, 36%, 90%, 0.12) 0%, transparent 60%);
   }
 
   .dark[data-theme="rainy"] {
@@ -349,6 +366,10 @@
     --accent-orange: 206 72% 62%;
     --accent-yellow: 196 80% 66%;
     --hud-glow: 206 72% 54%;
+    --canvas-gradient:
+      linear-gradient(180deg, hsla(206, 42%, 72%, 0.14) 0%, transparent 42%),
+      linear-gradient(135deg, hsla(214, 18%, 62%, 0.08) 0%, transparent 58%),
+      radial-gradient(circle at 76% 14%, hsla(198, 32%, 78%, 0.08) 0%, transparent 30%);
   }
 
   .dark[data-theme="blizzard"] {
@@ -392,6 +413,10 @@
     --accent-orange: 198 76% 72%;
     --accent-yellow: 192 84% 78%;
     --hud-glow: 198 76% 66%;
+    --canvas-gradient:
+      radial-gradient(circle at 82% 10%, hsla(196, 62%, 84%, 0.12) 0%, transparent 34%),
+      linear-gradient(180deg, hsla(204, 28%, 82%, 0.1) 0%, transparent 46%),
+      linear-gradient(135deg, hsla(214, 14%, 68%, 0.06) 0%, transparent 58%);
   }
 
   [data-theme="foggy"]:not(.dark) {
@@ -435,6 +460,10 @@
     --accent-orange: 214 34% 44%;
     --accent-yellow: 200 28% 54%;
     --hud-glow: 214 34% 44%;
+    --canvas-gradient:
+      radial-gradient(circle at 22% 14%, hsla(208, 22%, 98%, 0.62) 0%, transparent 38%),
+      linear-gradient(180deg, hsla(208, 18%, 84%, 0.22) 0%, transparent 52%),
+      linear-gradient(135deg, hsla(214, 10%, 80%, 0.14) 0%, transparent 64%);
   }
 
   .dark[data-theme="starfall"] {
@@ -521,6 +550,10 @@
     --accent-orange: 224 56% 72%;
     --accent-yellow: 244 58% 66%;
     --hud-glow: 224 56% 66%;
+    --canvas-gradient:
+      radial-gradient(circle at 78% 12%, hsla(222, 42%, 68%, 0.12) 0%, transparent 34%),
+      linear-gradient(180deg, hsla(228, 24%, 28%, 0.24) 0%, transparent 44%),
+      linear-gradient(135deg, hsla(236, 18%, 22%, 0.16) 0%, transparent 60%);
   }
 
   .dark[data-theme="supermoon"] {
@@ -564,6 +597,10 @@
     --accent-orange: 214 44% 80%;
     --accent-yellow: 204 58% 72%;
     --hud-glow: 214 44% 74%;
+    --canvas-gradient:
+      radial-gradient(circle at 74% 10%, hsla(212, 42%, 82%, 0.16) 0%, transparent 34%),
+      radial-gradient(circle at 20% 24%, hsla(224, 24%, 52%, 0.08) 0%, transparent 38%),
+      linear-gradient(180deg, hsla(224, 20%, 24%, 0.18) 0%, transparent 48%);
   }
 
   .dark[data-theme="tornado"] {
@@ -607,6 +644,10 @@
     --accent-orange: 184 62% 58%;
     --accent-yellow: 170 70% 62%;
     --hud-glow: 184 62% 52%;
+    --canvas-gradient:
+      linear-gradient(145deg, hsla(184, 30%, 56%, 0.08) 0%, transparent 34%),
+      linear-gradient(220deg, hsla(202, 14%, 58%, 0.08) 6%, transparent 42%),
+      radial-gradient(circle at 86% 18%, hsla(188, 26%, 72%, 0.06) 0%, transparent 28%);
   }
 
   .dark[data-theme="eclipse"] {
@@ -650,6 +691,10 @@
     --accent-orange: 232 16% 82%;
     --accent-yellow: 280 46% 70%;
     --hud-glow: 232 16% 74%;
+    --canvas-gradient:
+      radial-gradient(circle at 50% 18%, hsla(268, 24%, 34%, 0.16) 0%, transparent 36%),
+      linear-gradient(180deg, hsla(248, 18%, 20%, 0.22) 0%, transparent 46%),
+      linear-gradient(135deg, hsla(232, 14%, 36%, 0.12) 0%, transparent 58%);
   }
 
   .dark[data-theme="redmoon"] {
@@ -702,6 +747,9 @@
   }
   body {
     @apply bg-background text-foreground font-body antialiased;
+    background-image: var(--canvas-gradient);
+    background-repeat: no-repeat;
+    background-size: cover;
     scrollbar-color: hsl(var(--muted-foreground) / 0.45) hsl(var(--muted));
     scrollbar-width: thin;
   }
