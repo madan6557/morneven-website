@@ -651,6 +651,7 @@ export default function AuthorDashboard() {
   const [ccSettingsSaving, setCcSettingsSaving] = useState(false);
   const fullDescRef = useRef<HTMLTextAreaElement>(null);
   const editFormRef = useRef<HTMLDivElement>(null);
+  const [editFormSlot, setEditFormSlot] = useState<HTMLDivElement | null>(null);
   const activeEditSession = useMemo(
     () => editSessions.find((session) => session.key === activeEditSessionKey) ?? null,
     [activeEditSessionKey, editSessions],
