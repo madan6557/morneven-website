@@ -46,6 +46,12 @@ export const APP_THEMES = [
     tone: "dark",
   },
   {
+    value: "supermoon",
+    label: "Supermoon",
+    description: "Lunar dark console with pale silver-blue emphasis.",
+    tone: "dark",
+  },
+  {
     value: "storm",
     label: "Storm",
     description: "Deep slate console with electric cyan highlights.",
@@ -85,6 +91,12 @@ export const APP_THEMES = [
     value: "eclipse",
     label: "Eclipse",
     description: "Shadowed obsidian console with lunar silver accents.",
+    tone: "dark",
+  },
+  {
+    value: "redmoon",
+    label: "Redmoon",
+    description: "Crimson night console with restrained blood-red glow.",
     tone: "dark",
   },
 ] as const;
