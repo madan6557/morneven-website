@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Circle,
   Cloud,
   CloudLightning,
   CloudRain,
@@ -33,6 +32,7 @@ const themeIcons = {
   noon: Sun,
   aurora: Sparkles,
   midnight: Moon,
+  supermoon: MoonStar,
   storm: CloudLightning,
   sunset: Sunset,
   dawn: Sunrise,
@@ -42,6 +42,7 @@ const themeIcons = {
   starfall: Star,
   tornado: Wind,
   eclipse: MoonStar,
+  redmoon: Moon,
 } satisfies Record<AppTheme, typeof Sun>;
 
 type ThemeToggleProps = {
@@ -80,7 +81,7 @@ export function ThemeToggle({ variant = "compact" }: ThemeToggleProps) {
         ) : theme === "light" ? (
           <Moon className="h-4 w-4" />
         ) : (
-          <Circle className="h-4 w-4" />
+          <ActiveIcon className="h-4 w-4" />
         )}
       </button>
     );
