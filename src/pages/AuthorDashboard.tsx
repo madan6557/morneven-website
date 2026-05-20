@@ -3020,7 +3020,9 @@ export default function AuthorDashboard() {
                     </TooltipContent>
                   </Tooltip>
                 )}
+                </div>
               </div>
+              {isEditingThis && <div ref={setEditFormSlot} />}
             </div>
             );
           })}
