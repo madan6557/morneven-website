@@ -2132,7 +2132,7 @@ export default function AuthorDashboard() {
         </div>
       )}
 
-      {editSessions.length > 0 && (
+      {false && editSessions.length > 0 && (
         <div className="hud-border bg-card p-3 space-y-3 sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="font-heading text-xs tracking-wider text-accent-orange uppercase">
