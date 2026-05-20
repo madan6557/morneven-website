@@ -2985,6 +2985,9 @@ export default function AuthorDashboard() {
       {/* Items List */}
       {activeTab !== "homepage" && activeTab !== "map" && activeTab !== "news" && canAccess(activeTab, loreSub) && (
         <div className="space-y-2">
+          {activeEditSession && (isCreating || !getItems().some((it) => it.id === activeEditSession.draft?.id)) && (
+            <div ref={setEditFormSlot} />
+          )}
           {getItems().length === 0 && !dashboardLoading && (
             <p className="text-sm text-muted-foreground font-body italic">No items found.</p>
           )}
@@ -2992,6 +2995,10 @@ export default function AuthorDashboard() {
             // For Gallery, gate edit/delete by per-item ownership.
             const canModify =
               activeTab !== "gallery" || canModifyGalleryItem(item as GalleryItem);
+            const isEditingThis = !isCreating && activeEditSession?.draft?.id === item.id;
+            if (isEditingThis) {
+              return <div key={item.id} ref={setEditFormSlot} />;
+            }
             return (
             <div key={item.id} className="hud-border-sm bg-card p-4 flex items-center justify-between gap-4">
               <div className="flex-1 min-w-0">
