@@ -2985,6 +2985,7 @@ export default function AuthorDashboard() {
             const isEditingThis = !isCreating && activeEditSession?.draft?.id === item.id;
             return (
             <div key={item.id} className="space-y-2">
+              <div className="hud-border-sm bg-card p-4 flex items-center justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <h3 className="font-heading text-sm text-foreground truncate">{getItemTitle(item)}</h3>
                 <p className="text-xs text-muted-foreground font-body truncate">{getItemDesc(item)}</p>
