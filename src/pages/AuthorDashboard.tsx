@@ -1739,6 +1739,18 @@ export default function AuthorDashboard() {
       }, false);
     };
 
+    // If switching from another item with unsaved changes, prompt first.
+    if (activeEditSession && hasActiveUnsavedChanges && activeEditSession.draft?.id !== item.id) {
+      showValidation({
+        variant: "warning",
+        title: "Unsaved changes",
+        description: "The currently open form has unsaved changes. Opening another item will discard them.",
+        confirmLabel: "Discard & open",
+        cancelLabel: "Keep editing",
+        onConfirm: openExistingEditSession,
+      });
+      return;
+    }
     openExistingEditSession();
   };
 
