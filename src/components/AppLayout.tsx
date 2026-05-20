@@ -24,7 +24,7 @@ export function AppLayout() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full">
         <AppSidebar
           expanded={expanded}
           onToggleExpand={() => setExpanded((e) => !e)}
@@ -32,7 +32,7 @@ export function AppLayout() {
           onClose={() => setMobileOpen(false)}
           isMobile={isMobile}
         />
-        <main className="flex-1 min-w-0 overflow-x-hidden">
+        <main className="flex-1 min-w-0 overflow-x-hidden bg-transparent">
           {/* Mobile header with hamburger */}
           {isMobile ? (
             <div className="sticky top-0 z-30 h-12 flex items-center px-4 border-b border-border bg-background/80 backdrop-blur-sm">
