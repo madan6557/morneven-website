@@ -31,7 +31,7 @@ import { showValidation } from "@/components/ui/validation-dialog";
 import SkillFeatureEditor from "@/components/SkillFeatureEditor";
 import { ThumbnailCropDialog } from "@/components/ThumbnailCropDialog";
 import { normalizeDocsForEditor, normalizeDocsForSave } from "@/lib/documentation";
-import { compressImageForUpload, compressThumbnailImage } from "@/lib/thumbnailCompression";
+import { compressThumbnailImage } from "@/lib/thumbnailCompression";
 import {
   averageScore,
   createDefaultCharacterStats,
@@ -209,10 +209,9 @@ const isDashboardTab = (value: string | null): value is DashboardTab => {
 };
 
 type AttachmentMode = "url" | "image" | "video" | "file";
-type UploadStage = "compressing" | "uploading" | "finalizing";
+type UploadStage = "uploading" | "finalizing";
 
 function uploadLabel(stage: UploadStage | null, progress: number | null) {
-  if (stage === "compressing") return "Compressing image";
   if (stage === "finalizing") return "Finalizing upload";
   return `Uploading ${progress ?? 0}%`;
 }
@@ -432,18 +431,13 @@ function FileUploadField({
     if (cropPreviewUrl) URL.revokeObjectURL(cropPreviewUrl);
   }, [cropPreviewUrl]);
 
-  const uploadSelectedFile = async (file: File, options: { compressImage?: boolean } = {}) => {
+  const uploadSelectedFile = async (file: File) => {
     setUploadError("");
     setUploading(true);
     setUploadProgress(0);
-    setUploadStage(options.compressImage === false ? "uploading" : "compressing");
+    setUploadStage("uploading");
     try {
-      const uploadFile =
-        options.compressImage === false || mode !== "image" || !file.type.startsWith("image/")
-          ? file
-          : await compressImageForUpload(file);
-      setUploadStage("uploading");
-      const uploaded = await apiUpload<{ url?: string }>(`/files/upload?folder=${folder}`, uploadFile, {
+      const uploaded = await apiUpload<{ url?: string }>(`/files/upload?folder=${folder}`, file, {
         onProgress: ({ percent }) => {
           if (typeof percent === "number") {
             setUploadProgress(percent);
@@ -481,7 +475,7 @@ function FileUploadField({
     try {
       const compressed = await compressThumbnailImage(cropFile, settings);
       clearCropFile();
-      await uploadSelectedFile(compressed, { compressImage: false });
+      await uploadSelectedFile(compressed);
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Thumbnail compression failed");
     }

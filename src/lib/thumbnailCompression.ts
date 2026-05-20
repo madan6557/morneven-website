@@ -6,11 +6,8 @@ export type ThumbnailCropSettings = {
 
 const THUMBNAIL_WIDTH = 1280;
 const THUMBNAIL_ASPECT_RATIO = 16 / 9;
-const THUMBNAIL_QUALITIES = [0.82, 0.74, 0.66];
-const UPLOAD_COMPRESS_THRESHOLD_BYTES = 5 * 1024 * 1024;
-const UPLOAD_MAX_EDGE = 1920;
-const UPLOAD_TARGET_BYTES = 5 * 1024 * 1024;
-const UPLOAD_QUALITIES = [0.88, 0.8, 0.72, 0.64];
+const THUMBNAIL_TARGET_BYTES = 280 * 1024;
+const THUMBNAIL_QUALITIES = [0.78, 0.68, 0.58, 0.5];
 
 function loadImage(file: File) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -44,14 +41,31 @@ function canvasToBlob(canvas: HTMLCanvasElement, quality: number, mime = "image/
   });
 }
 
-function thumbnailName(file: File) {
+function thumbnailName(file: File, extension: "webp" | "jpg") {
   const baseName = file.name.replace(/\.[^.]+$/, "") || "thumbnail";
-  return `${baseName}-thumbnail.jpg`;
+  return `${baseName}-thumbnail.${extension}`;
 }
 
-function uploadImageName(file: File) {
-  const baseName = file.name.replace(/\.[^.]+$/, "") || "image";
-  return `${baseName}-compressed.jpg`;
+async function encodeThumbnail(canvas: HTMLCanvasElement) {
+  let mime = "image/webp";
+  let extension: "webp" | "jpg" = "webp";
+  let bestBlob: Blob;
+
+  try {
+    bestBlob = await canvasToBlob(canvas, THUMBNAIL_QUALITIES[0], mime);
+    if (bestBlob.type && bestBlob.type !== mime) throw new Error("WebP canvas encoding is unavailable.");
+  } catch {
+    mime = "image/jpeg";
+    extension = "jpg";
+    bestBlob = await canvasToBlob(canvas, THUMBNAIL_QUALITIES[0], mime);
+  }
+
+  for (const quality of THUMBNAIL_QUALITIES.slice(1)) {
+    if (bestBlob.size <= THUMBNAIL_TARGET_BYTES) break;
+    bestBlob = await canvasToBlob(canvas, quality, mime);
+  }
+
+  return { blob: bestBlob, extension, mime };
 }
 
 export async function compressThumbnailImage(file: File, crop: ThumbnailCropSettings) {
@@ -77,49 +91,9 @@ export async function compressThumbnailImage(file: File, crop: ThumbnailCropSett
 
   context.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
 
-  let bestBlob = await canvasToBlob(canvas, THUMBNAIL_QUALITIES[0]);
-  for (const quality of THUMBNAIL_QUALITIES.slice(1)) {
-    if (bestBlob.size <= 450 * 1024) break;
-    bestBlob = await canvasToBlob(canvas, quality);
-  }
-
-  return new File([bestBlob], thumbnailName(file), {
-    type: "image/jpeg",
-    lastModified: Date.now(),
-  });
-}
-
-export async function compressImageForUpload(file: File) {
-  if (!file.type.startsWith("image/") || file.type === "image/gif") return file;
-  if (file.size <= UPLOAD_COMPRESS_THRESHOLD_BYTES) return file;
-
-  const image = await loadImage(file);
-  const largestEdge = Math.max(image.naturalWidth, image.naturalHeight);
-  const scale = Math.min(1, UPLOAD_MAX_EDGE / largestEdge);
-
-  const width = Math.max(1, Math.round(image.naturalWidth * scale));
-  const height = Math.max(1, Math.round(image.naturalHeight * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Browser canvas is unavailable.");
-
-  context.fillStyle = "#111111";
-  context.fillRect(0, 0, width, height);
-  context.drawImage(image, 0, 0, width, height);
-
-  let bestBlob = await canvasToBlob(canvas, UPLOAD_QUALITIES[0]);
-  for (const quality of UPLOAD_QUALITIES.slice(1)) {
-    if (bestBlob.size <= UPLOAD_TARGET_BYTES) break;
-    bestBlob = await canvasToBlob(canvas, quality);
-  }
-
-  if (bestBlob.size >= file.size) return file;
-
-  return new File([bestBlob], uploadImageName(file), {
-    type: "image/jpeg",
+  const encoded = await encodeThumbnail(canvas);
+  return new File([encoded.blob], thumbnailName(file, encoded.extension), {
+    type: encoded.mime,
     lastModified: Date.now(),
   });
 }
