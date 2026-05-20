@@ -2,6 +2,7 @@ export type ThumbnailCropSettings = {
   focusX: number;
   focusY: number;
   zoom: number;
+  aspectRatio?: number;
 };
 
 const THUMBNAIL_WIDTH = 1280;
@@ -97,8 +98,9 @@ function drawImageToCanvas(image: HTMLImageElement, maxEdge: number) {
 
 export async function compressThumbnailImage(file: File, crop: ThumbnailCropSettings) {
   const image = await loadImage(file);
-  const width = THUMBNAIL_WIDTH;
-  const height = Math.round(width / THUMBNAIL_ASPECT_RATIO);
+  const aspectRatio = crop.aspectRatio && crop.aspectRatio > 0 ? crop.aspectRatio : THUMBNAIL_ASPECT_RATIO;
+  const width = aspectRatio >= 1 ? THUMBNAIL_WIDTH : Math.round(THUMBNAIL_WIDTH * aspectRatio);
+  const height = aspectRatio >= 1 ? Math.round(width / aspectRatio) : THUMBNAIL_WIDTH;
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;

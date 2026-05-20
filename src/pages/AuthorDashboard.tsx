@@ -385,6 +385,8 @@ function FileUploadField({
   folder = "uploads",
   onAttachmentTypeChange,
   enableThumbnailCrop = false,
+  thumbnailAspectRatio = 16 / 9,
+  thumbnailAspectLabel = "16:9",
   allowedModes = defaultUploadModes,
 }: {
   label: string;
@@ -395,6 +397,8 @@ function FileUploadField({
   folder?: string;
   onAttachmentTypeChange?: (type: Exclude<AttachmentMode, "url">) => void;
   enableThumbnailCrop?: boolean;
+  thumbnailAspectRatio?: number;
+  thumbnailAspectLabel?: string;
   allowedModes?: AttachmentMode[];
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -549,6 +553,8 @@ function FileUploadField({
         open={Boolean(cropFile)}
         imageUrl={cropPreviewUrl}
         fileName={cropFile?.name}
+        aspectRatio={thumbnailAspectRatio}
+        aspectLabel={thumbnailAspectLabel}
         onOpenChange={(open) => {
           if (!open) clearCropFile();
         }}
@@ -2283,6 +2289,8 @@ export default function AuthorDashboard() {
               accept="image/*"
               folder={isProject ? "projects" : isGallery ? "gallery" : "lore"}
               enableThumbnailCrop
+              thumbnailAspectRatio={isCharacter ? 3 / 4 : 16 / 9}
+              thumbnailAspectLabel={isCharacter ? "3:4" : "16:9"}
               allowedModes={thumbnailUploadModes}
             />
 

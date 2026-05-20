@@ -8,9 +8,13 @@ type ThumbnailCropDialogProps = {
   open: boolean;
   imageUrl: string;
   fileName?: string;
+  aspectRatio?: number;
+  aspectLabel?: string;
   onOpenChange: (open: boolean) => void;
   onConfirm: (settings: ThumbnailCropSettings) => Promise<void> | void;
 };
+
+const DEFAULT_ASPECT_RATIO = 16 / 9;
 
 const initialSettings: ThumbnailCropSettings = {
   focusX: 50,
@@ -22,6 +26,8 @@ export function ThumbnailCropDialog({
   open,
   imageUrl,
   fileName,
+  aspectRatio = DEFAULT_ASPECT_RATIO,
+  aspectLabel = "16:9",
   onOpenChange,
   onConfirm,
 }: ThumbnailCropDialogProps) {
@@ -39,7 +45,7 @@ export function ThumbnailCropDialog({
   const confirm = async () => {
     setProcessing(true);
     try {
-      await onConfirm(settings);
+      await onConfirm({ ...settings, aspectRatio });
     } finally {
       setProcessing(false);
     }
@@ -53,13 +59,13 @@ export function ThumbnailCropDialog({
             <Crop className="h-4 w-4 text-primary" /> Crop Thumbnail
           </DialogTitle>
           <DialogDescription>
-            Thumbnail will be cropped to 16:9 and compressed before upload. Original media is not modified.
+            Thumbnail will be cropped to {aspectLabel} and compressed before upload. Original media is not modified.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_240px]">
           <div className="space-y-2">
-            <div className="aspect-video overflow-hidden rounded-sm border border-border bg-muted">
+            <div className="overflow-hidden rounded-sm border border-border bg-muted" style={{ aspectRatio }}>
               {imageUrl ? (
                 <img
                   src={imageUrl}
