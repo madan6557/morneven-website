@@ -696,21 +696,17 @@ export default function AuthorDashboard() {
       ? `${activeTab}:${loreSub}:create:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       : `${activeTab}:${loreSub}:edit:${draft.id ?? "draft"}`;
 
-    setEditSessions((sessions) => {
-      const existing = sessions.find((session) => session.key === key);
-      if (existing) return sessions;
-      return [
-        {
-          key,
-          tab: activeTab,
-          loreSub,
-          draft,
-          baseline: editableFingerprint(draft),
-          creating,
-        },
-        ...sessions,
-      ];
-    });
+    // Only one edit form open at a time — replace any existing session.
+    setEditSessions([
+      {
+        key,
+        tab: activeTab,
+        loreSub,
+        draft,
+        baseline: editableFingerprint(draft),
+        creating,
+      },
+    ]);
     setActiveEditSessionKey(key);
   }, [activeTab, loreSub]);
 
