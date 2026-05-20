@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiUpload, getProjectsPage, createProject, updateProject, deleteProject, getCharactersPage, createCharacter, updateCharacter, deleteCharacter, getPlacesPage, createPlace, updatePlace, deletePlace, getTechnologyPage, createTech, updateTech, deleteTech, getGalleryPage, createGalleryItem, updateGalleryItem, deleteGalleryItem, getCreaturesPage, createCreature, updateCreature, deleteCreature, getEventsPage, createEvent, updateEvent, deleteEvent, getOthersPage, createOther, updateOther, deleteOther, getMapMarkers, saveMapMarkers, getMapImageRemote, setMapImageRemote, type PageInfo } from "@/services/api";
