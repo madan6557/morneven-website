@@ -652,6 +652,8 @@ export default function AuthorDashboard() {
   const fullDescRef = useRef<HTMLTextAreaElement>(null);
   const editFormRef = useRef<HTMLDivElement>(null);
   const [editFormSlot, setEditFormSlot] = useState<HTMLDivElement | null>(null);
+  const pendingEditFormFocusRef = useRef<string | null>(null);
+  const pendingEditTriggerRestoreIdRef = useRef<string | null>(null);
   const activeEditSession = useMemo(
     () => editSessions.find((session) => session.key === activeEditSessionKey) ?? null,
     [activeEditSessionKey, editSessions],
@@ -675,6 +677,10 @@ export default function AuthorDashboard() {
   const resetEditSession = useCallback((key?: string) => {
     const targetKey = key ?? activeEditSessionKey;
     if (!targetKey) return;
+    const target = editSessions.find((session) => session.key === targetKey);
+    if (!target?.creating && target?.draft?.id) {
+      pendingEditTriggerRestoreIdRef.current = target.draft.id;
+    }
 
     setEditSessions((sessions) => {
       const targetIndex = sessions.findIndex((session) => session.key === targetKey);
@@ -686,7 +692,7 @@ export default function AuthorDashboard() {
       });
       return nextSessions;
     });
-  }, [activeEditSessionKey]);
+  }, [activeEditSessionKey, editSessions]);
 
   const resetAllEditSessions = useCallback(() => {
     setEditSessions([]);
@@ -710,6 +716,7 @@ export default function AuthorDashboard() {
       },
     ]);
     setActiveEditSessionKey(key);
+    pendingEditFormFocusRef.current = key;
   }, [activeTab, loreSub]);
 
   const confirmUnsavedChanges = useCallback((onConfirm: () => void) => {
@@ -828,6 +835,31 @@ export default function AuthorDashboard() {
     });
     return () => window.cancelAnimationFrame(id);
   }, [editSessionKey, editFormSlot]);
+
+  useEffect(() => {
+    if (!editSessionKey || pendingEditFormFocusRef.current !== editSessionKey) return;
+    const id = window.requestAnimationFrame(() => {
+      const form = editFormRef.current ?? editFormSlot;
+      const firstInput = form?.querySelector<HTMLElement>(
+        "input:not([type=hidden]):not([disabled]), textarea:not([disabled]), select:not([disabled])",
+      );
+      firstInput?.focus({ preventScroll: true });
+      pendingEditFormFocusRef.current = null;
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [editSessionKey, editFormSlot]);
+
+  useEffect(() => {
+    if (activeEditSessionKey || !pendingEditTriggerRestoreIdRef.current) return;
+    const itemId = pendingEditTriggerRestoreIdRef.current;
+    const id = window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(`[data-author-edit-trigger="${CSS.escape(itemId)}"]`)
+        ?.focus({ preventScroll: true });
+      pendingEditTriggerRestoreIdRef.current = null;
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [activeEditSessionKey, projects, characters, places, tech, gallery, creatures, events, others]);
 
   useEffect(() => {
     if (activeTab === "homepage" || activeTab === "map" || activeTab === "news") {
@@ -3016,7 +3048,11 @@ export default function AuthorDashboard() {
               <div className="flex items-center gap-2 flex-shrink-0">
                 {canModify ? (
                   <>
-                    <button onClick={() => beginEdit(item)} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
+                    <button
+                      onClick={() => beginEdit(item)}
+                      className="p-1.5 text-muted-foreground hover:text-primary transition-colors"
+                      data-author-edit-trigger={item.id}
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button onClick={() => handleDelete(item.id, getItemTitle(item))} disabled={deletingId === item.id} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors disabled:cursor-wait disabled:opacity-60">

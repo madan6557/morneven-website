@@ -1,5 +1,5 @@
-import { useDeferredValue, useEffect, useState } from "react";
-import type { ReactNode } from "react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
+import type { ReactNode, RefObject } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpDown, BarChart3, ChevronDown, Eye, MessageCircle, Search, Star, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
@@ -77,6 +77,9 @@ export default function ActivityPage() {
   const [detail, setDetail] = useState<ActivityContentDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const inspectorRef = useRef<HTMLDivElement | null>(null);
+  const pendingInspectorFocusRef = useRef(false);
+  const pendingRowRestoreKeyRef = useRef<string | null>(null);
   const deferredSearch = useDeferredValue(search);
   const availableSortOptions = sortOptionsForCategory(category);
 
@@ -145,6 +148,7 @@ export default function ActivityPage() {
   };
 
   const selectContentItem = async (item: ActivityContentItem) => {
+    pendingInspectorFocusRef.current = true;
     setSelectedItem(item);
     setDetail(null);
     setDetailError(null);
@@ -157,6 +161,30 @@ export default function ActivityPage() {
       setDetailLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!selectedItem || !pendingInspectorFocusRef.current) return;
+    const inspector = inspectorRef.current;
+    if (!inspector) return;
+    const id = window.requestAnimationFrame(() => {
+      const firstInteractive = inspector.querySelector<HTMLElement>("a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled])");
+      firstInteractive?.focus({ preventScroll: true });
+      pendingInspectorFocusRef.current = false;
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [selectedItem, detail, detailLoading, detailError]);
+
+  useEffect(() => {
+    if (selectedItem || !pendingRowRestoreKeyRef.current) return;
+    const rowKey = pendingRowRestoreKeyRef.current;
+    const id = window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(`[data-activity-row="${CSS.escape(rowKey)}"]`)
+        ?.focus({ preventScroll: true });
+      pendingRowRestoreKeyRef.current = null;
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [selectedItem, items]);
 
   return (
     <div className="space-y-6 p-4 sm:p-6 md:p-8">
@@ -237,11 +265,13 @@ export default function ActivityPage() {
                   <ActivityContentRow item={item} selected={selected} onSelect={selectContentItem} />
                   {selected && (
                     <ActivityContentInspector
+                      inspectorRef={inspectorRef}
                       item={item}
                       detail={detail}
                       loading={detailLoading}
                       error={detailError}
                       onClose={() => {
+                        pendingRowRestoreKeyRef.current = `${item.entityType}:${item.id}`;
                         setSelectedItem(null);
                         setDetail(null);
                         setDetailError(null);
@@ -366,12 +396,14 @@ function ActivityFilters({
 }
 
 function ActivityContentInspector({
+  inspectorRef,
   item,
   detail,
   loading,
   error,
   onClose,
 }: {
+  inspectorRef: RefObject<HTMLDivElement | null>;
   item: ActivityContentItem;
   detail: ActivityContentDetail | null;
   loading: boolean;
@@ -381,7 +413,7 @@ function ActivityContentInspector({
   const current = detail ?? item;
 
   return (
-    <div className="hud-border bg-card p-3 sm:p-4">
+    <div ref={inspectorRef} className="hud-border bg-card p-3 sm:p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
           <div className="h-40 w-full flex-shrink-0 overflow-hidden rounded-sm bg-muted sm:h-24 sm:w-32">
@@ -539,6 +571,7 @@ function ActivityContentRow({
   onSelect?: (item: ActivityContentItem) => void;
 }) {
   const isGallery = item.entityType === "gallery";
+  const rowKey = `${item.entityType}:${item.id}`;
   const content = (
     <div className={`hud-border-sm bg-card transition-shadow hover:glow-primary ${selected ? "ring-1 ring-primary/45" : ""} ${compact ? "p-3" : "p-4"}`}>
       <div className="flex gap-3">
@@ -576,7 +609,12 @@ function ActivityContentRow({
 
   if (onSelect) {
     return (
-      <button type="button" onClick={() => onSelect(item)} className="block w-full text-left">
+      <button
+        type="button"
+        onClick={() => onSelect(item)}
+        className="block w-full text-left"
+        data-activity-row={rowKey}
+      >
         {content}
       </button>
     );

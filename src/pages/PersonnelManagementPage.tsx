@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { ArrowLeft, Save, X, Pencil, Search, ShieldCheck, Plus, Trash2, UserPlus, Layers, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -161,6 +161,8 @@ export default function PersonnelManagementPage() {
   const [creating, setCreating] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [moderationDraft, setModerationDraft] = useState<ModerationDraft | null>(null);
+  const pendingEditFocusIdRef = useRef<string | null>(null);
+  const pendingEditRestoreIdRef = useRef<string | null>(null);
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserPasswordConfirm, setNewUserPasswordConfirm] = useState("");
   const [newUser, setNewUser] = useState<Omit<PersonnelUser, "id" | "updatedAt">>({
@@ -357,14 +359,42 @@ export default function PersonnelManagementPage() {
 
   const startEdit = (p: PersonnelUser) => {
     if (!canUpdatePersonnelRecord(p)) return;
+    pendingEditFocusIdRef.current = p.id;
     setEditingId(p.id);
     setDraft({ level: p.level, track: p.track, note: p.note ?? "", role: p.role });
   };
 
   const cancelEdit = () => {
+    if (editingId) pendingEditRestoreIdRef.current = editingId;
     setEditingId(null);
     setDraft(null);
   };
+
+  useEffect(() => {
+    if (!editingId || pendingEditFocusIdRef.current !== editingId) return;
+    const id = window.requestAnimationFrame(() => {
+      const firstInput = document.querySelector<HTMLElement>(
+        `[data-personnel-edit-form="${CSS.escape(editingId)}"] input:not([type=hidden]):not([disabled]), ` +
+        `[data-personnel-edit-form="${CSS.escape(editingId)}"] textarea:not([disabled]), ` +
+        `[data-personnel-edit-form="${CSS.escape(editingId)}"] select:not([disabled])`,
+      );
+      firstInput?.focus({ preventScroll: true });
+      pendingEditFocusIdRef.current = null;
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [editingId, filtered.length]);
+
+  useEffect(() => {
+    if (editingId || !pendingEditRestoreIdRef.current) return;
+    const targetId = pendingEditRestoreIdRef.current;
+    const id = window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(`[data-personnel-edit-trigger="${CSS.escape(targetId)}"]`)
+        ?.focus({ preventScroll: true });
+      pendingEditRestoreIdRef.current = null;
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [editingId, filtered.length]);
 
   const persistEdit = async (person: PersonnelUser) => {
     if (!draft) return;
@@ -919,7 +949,11 @@ export default function PersonnelManagementPage() {
                 const canDeleteRecord = canDeletePersonnelRow(p);
                 const canModerateRecord = canModerateStatus(p);
                 return (
-                  <tr key={p.id} className={`border-b border-border/60 last:border-b-0 ${selected.has(p.id) ? "bg-primary/5" : ""}`}>
+                  <tr
+                    key={p.id}
+                    className={`border-b border-border/60 last:border-b-0 ${selected.has(p.id) ? "bg-primary/5" : ""}`}
+                    data-personnel-edit-form={isEditing ? p.id : undefined}
+                  >
                     <td className="p-3 align-top">
                       <input
                         type="checkbox"
@@ -1114,6 +1148,7 @@ export default function PersonnelManagementPage() {
                             className="p-1.5 text-muted-foreground hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
                             title={canEditRecord ? "Edit" : "Action not allowed"}
                             disabled={!canEditRecord}
+                            data-personnel-edit-trigger={p.id}
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
@@ -1150,7 +1185,11 @@ export default function PersonnelManagementPage() {
             const canDeleteRecord = canDeletePersonnelRow(p);
             const canModerateRecord = canModerateStatus(p);
             return (
-              <div key={p.id} className={`hud-border-sm bg-card p-3 space-y-2 ${selected.has(p.id) ? "ring-1 ring-primary/40" : ""}`}>
+              <div
+                key={p.id}
+                className={`hud-border-sm bg-card p-3 space-y-2 ${selected.has(p.id) ? "ring-1 ring-primary/40" : ""}`}
+                data-personnel-edit-form={isEditing ? p.id : undefined}
+              >
                 <div className="flex flex-col gap-2">
                   <div className="flex items-start gap-2 min-w-0">
                     <input
@@ -1229,6 +1268,7 @@ export default function PersonnelManagementPage() {
                           disabled={!canEditRecord}
                           className="p-1.5 text-muted-foreground hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
                           title={canEditRecord ? "Edit" : "Action not allowed"}
+                          data-personnel-edit-trigger={p.id}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
