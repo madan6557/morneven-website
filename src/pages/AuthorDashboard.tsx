@@ -2972,7 +2972,7 @@ export default function AuthorDashboard() {
       {/* Items List */}
       {activeTab !== "homepage" && activeTab !== "map" && activeTab !== "news" && canAccess(activeTab, loreSub) && (
         <div className="space-y-2">
-          {isCreating && activeEditSession && (
+          {activeEditSession && (isCreating || !getItems().some((it) => it.id === activeEditSession.draft?.id)) && (
             <div ref={setEditFormSlot} />
           )}
           {getItems().length === 0 && !dashboardLoading && (
