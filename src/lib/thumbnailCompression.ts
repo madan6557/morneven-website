@@ -7,8 +7,9 @@ export type ThumbnailCropSettings = {
 const THUMBNAIL_WIDTH = 1280;
 const THUMBNAIL_ASPECT_RATIO = 16 / 9;
 const THUMBNAIL_QUALITIES = [0.82, 0.74, 0.66];
+const UPLOAD_COMPRESS_THRESHOLD_BYTES = 5 * 1024 * 1024;
 const UPLOAD_MAX_EDGE = 1920;
-const UPLOAD_TARGET_BYTES = 1.5 * 1024 * 1024;
+const UPLOAD_TARGET_BYTES = 5 * 1024 * 1024;
 const UPLOAD_QUALITIES = [0.88, 0.8, 0.72, 0.64];
 
 function loadImage(file: File) {
@@ -90,12 +91,11 @@ export async function compressThumbnailImage(file: File, crop: ThumbnailCropSett
 
 export async function compressImageForUpload(file: File) {
   if (!file.type.startsWith("image/") || file.type === "image/gif") return file;
+  if (file.size <= UPLOAD_COMPRESS_THRESHOLD_BYTES) return file;
 
   const image = await loadImage(file);
   const largestEdge = Math.max(image.naturalWidth, image.naturalHeight);
   const scale = Math.min(1, UPLOAD_MAX_EDGE / largestEdge);
-
-  if (scale >= 1 && file.size <= UPLOAD_TARGET_BYTES) return file;
 
   const width = Math.max(1, Math.round(image.naturalWidth * scale));
   const height = Math.max(1, Math.round(image.naturalHeight * scale));
