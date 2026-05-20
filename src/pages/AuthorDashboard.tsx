@@ -2777,10 +2777,10 @@ export default function AuthorDashboard() {
           {editorTab === "lore" && (
             <EditorSection
               title="Field Records"
-              description="Internal notes, observations, and character anecdotes displayed on lore detail pages."
-              badge={`${(editing.fieldNotes || []).length + (editing.observations || []).length + (isCharacter ? (editing.anecdotes || []).length : 0)} item${(editing.fieldNotes || []).length + (editing.observations || []).length + (isCharacter ? (editing.anecdotes || []).length : 0) === 1 ? "" : "s"}`}
+              description="Internal notes and observations displayed on lore detail pages."
+              badge={`${(editing.fieldNotes || []).length + (editing.observations || []).length} item${(editing.fieldNotes || []).length + (editing.observations || []).length === 1 ? "" : "s"}`}
             >
-            <div className={`grid gap-4 ${isCharacter ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
+            <div className="grid gap-4 lg:grid-cols-2">
               <FieldEntryEditor
                 label="Field Notes"
                 items={editing.fieldNotes || []}
@@ -2797,17 +2797,24 @@ export default function AuthorDashboard() {
                 onRemove={(idx) => removeFieldEntry("observations", idx)}
                 itemRef={newItemRef}
               />
-              {isCharacter && (
-                <FieldEntryEditor
-                  label="Anecdotes"
-                  items={editing.anecdotes || []}
-                  onAdd={() => addFieldEntry("anecdotes")}
-                  onUpdate={(idx, key, value) => updateFieldEntry("anecdotes", idx, key, value)}
-                  onRemove={(idx) => removeFieldEntry("anecdotes", idx)}
-                  itemRef={newItemRef}
-                />
-              )}
             </div>
+            </EditorSection>
+          )}
+
+          {isCharacter && (
+            <EditorSection
+              title="Anecdotes"
+              description="Character-specific anecdotes shown in the Anecdotes tab on the character detail page."
+              badge={`${(editing.anecdotes || []).length} item${(editing.anecdotes || []).length === 1 ? "" : "s"}`}
+            >
+              <FieldEntryEditor
+                label="Anecdotes"
+                items={editing.anecdotes || []}
+                onAdd={() => addFieldEntry("anecdotes")}
+                onUpdate={(idx, key, value) => updateFieldEntry("anecdotes", idx, key, value)}
+                onRemove={(idx) => removeFieldEntry("anecdotes", idx)}
+                itemRef={newItemRef}
+              />
             </EditorSection>
           )}
 
