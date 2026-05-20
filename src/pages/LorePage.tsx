@@ -245,7 +245,7 @@ export default function LorePage() {
           placeholder="Search lore..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-3 py-2 bg-card border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="adaptive-surface-soft w-full rounded-sm border pl-10 pr-3 py-2 text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
         />
       </div>
 
@@ -266,7 +266,7 @@ export default function LorePage() {
                 navigate(`/lore/${loreRoutes[t]}`);
               }}
               className={`inline-flex min-w-[6.25rem] items-center justify-center gap-1 truncate rounded-sm border px-3 py-2 text-[10px] font-display uppercase tracking-[0.08em] transition-colors sm:w-auto sm:px-4 sm:text-xs sm:tracking-[0.1em]
-                ${active === t ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}
+                ${active === t ? "bg-primary text-primary-foreground border-primary" : "adaptive-surface-interactive text-muted-foreground"}`}
             >
               {t === "Personnel" && <ShieldCheck className="h-3 w-3" />}
               {t === "Events" && <CalendarClock className="h-3 w-3" />}
@@ -289,14 +289,14 @@ export default function LorePage() {
         <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {characters.map((c) => (
             <Link key={c.id} to={`/lore/characters/${c.id}`} className="block group">
-              <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow" style={{ borderColor: `${c.accentColor}30` }}>
+              <div className="hud-border adaptive-surface overflow-hidden hover:glow-primary transition-shadow" style={{ borderColor: `${c.accentColor}30` }}>
                 {c.thumbnail ? (
-                  <div className="aspect-[3/4] bg-muted overflow-hidden relative">
+                  <div className="adaptive-surface-muted relative aspect-[3/4] overflow-hidden">
                     <AuthenticatedImage src={c.thumbnail} alt={c.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: c.accentColor }} />
                   </div>
                 ) : (
-                  <div className="aspect-[3/4] bg-muted flex items-center justify-center relative">
+                  <div className="adaptive-surface-muted relative flex aspect-[3/4] items-center justify-center">
                     <span className="text-xs text-muted-foreground font-heading tracking-wider">PORTRAIT</span>
                     <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: c.accentColor }} />
                   </div>
@@ -319,13 +319,13 @@ export default function LorePage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {places.map((p) => (
             <Link key={p.id} to={`/lore/places/${p.id}`} className="block group">
-              <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
+              <div className="hud-border adaptive-surface overflow-hidden hover:glow-primary transition-shadow">
                 {p.thumbnail ? (
-                  <div className="aspect-video bg-muted overflow-hidden">
+                  <div className="adaptive-surface-muted aspect-video overflow-hidden">
                     <AuthenticatedImage src={p.thumbnail} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                 ) : (
-                  <div className="aspect-video bg-muted flex items-center justify-center">
+                  <div className="adaptive-surface-muted flex aspect-video items-center justify-center">
                     <span className="text-xs text-muted-foreground font-heading tracking-wider">LANDSCAPE</span>
                   </div>
                 )}
@@ -347,13 +347,13 @@ export default function LorePage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tech.map((t) => (
             <Link key={t.id} to={`/lore/tech/${t.id}`} className="block group">
-              <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
+              <div className="hud-border adaptive-surface overflow-hidden hover:glow-primary transition-shadow">
                 {t.thumbnail ? (
-                  <div className="aspect-video bg-muted overflow-hidden">
+                  <div className="adaptive-surface-muted aspect-video overflow-hidden">
                     <AuthenticatedImage src={t.thumbnail} alt={t.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                 ) : (
-                  <div className="aspect-video bg-muted flex items-center justify-center">
+                  <div className="adaptive-surface-muted flex aspect-video items-center justify-center">
                     <span className="text-xs text-muted-foreground font-heading tracking-wider">TECH</span>
                   </div>
                 )}
@@ -375,14 +375,14 @@ export default function LorePage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {creatures.map((c) => (
             <Link key={c.id} to={`/lore/creatures/${c.id}`} className="block group">
-              <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow" style={{ borderColor: `${c.accentColor}30` }}>
+              <div className="hud-border adaptive-surface overflow-hidden hover:glow-primary transition-shadow" style={{ borderColor: `${c.accentColor}30` }}>
                 {c.thumbnail ? (
-                  <div className="aspect-video bg-muted overflow-hidden relative">
+                  <div className="adaptive-surface-muted relative aspect-video overflow-hidden">
                     <AuthenticatedImage src={c.thumbnail} alt={c.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: c.accentColor }} />
                   </div>
                 ) : (
-                  <div className="aspect-video bg-muted flex items-center justify-center relative">
+                  <div className="adaptive-surface-muted relative flex aspect-video items-center justify-center">
                     <span className="text-xs text-muted-foreground font-heading tracking-wider">CREATURE</span>
                     <div className="absolute bottom-0 left-0 right-0 h-1" style={{ backgroundColor: c.accentColor }} />
                   </div>
@@ -417,13 +417,13 @@ export default function LorePage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {events.map((e) => (
             <Link key={e.id} to={`/lore/events/${e.id}`} className="block group">
-              <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
+              <div className="hud-border adaptive-surface overflow-hidden hover:glow-primary transition-shadow">
                 {e.thumbnail ? (
-                  <div className="aspect-video bg-muted overflow-hidden">
+                  <div className="adaptive-surface-muted aspect-video overflow-hidden">
                     <AuthenticatedImage src={e.thumbnail} alt={e.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                 ) : (
-                  <div className="aspect-video bg-muted flex items-center justify-center">
+                  <div className="adaptive-surface-muted flex aspect-video items-center justify-center">
                     <CalendarClock className="h-8 w-8 text-muted-foreground/60" />
                   </div>
                 )}
@@ -455,13 +455,13 @@ export default function LorePage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {others.map((o) => (
             <Link key={o.id} to={`/lore/other/${o.id}`} className="block group">
-              <div className="hud-border bg-card overflow-hidden hover:glow-primary transition-shadow">
+              <div className="hud-border adaptive-surface overflow-hidden hover:glow-primary transition-shadow">
                 {o.thumbnail ? (
-                  <div className="aspect-video bg-muted overflow-hidden">
+                  <div className="adaptive-surface-muted aspect-video overflow-hidden">
                     <AuthenticatedImage src={o.thumbnail} alt={o.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                 ) : (
-                  <div className="aspect-video bg-muted flex items-center justify-center">
+                  <div className="adaptive-surface-muted flex aspect-video items-center justify-center">
                     <span className="text-xs text-muted-foreground font-heading tracking-wider">DOCUMENT</span>
                   </div>
                 )}

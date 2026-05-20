@@ -25,7 +25,7 @@ export function ContentMetricPill({ kind, value = 0, active = false, label }: Pr
       className={`inline-flex items-center gap-1 rounded-sm border px-2 py-1 text-[10px] font-display uppercase tracking-[0.08em] ${
         active
           ? "border-primary/70 bg-primary/15 text-primary"
-          : "border-border/70 bg-background/50 text-muted-foreground"
+          : "adaptive-surface-soft text-muted-foreground"
       }`}
       title={label}
     >

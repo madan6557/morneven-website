@@ -48,6 +48,12 @@
     --accent-orange: 26 72% 46%;
     --accent-yellow: 43 78% 39%;
     --hud-glow: 356 52% 43%;
+    --adaptive-surface: color-mix(in srgb, hsl(var(--card)) 90%, hsl(var(--foreground)) 10%);
+    --adaptive-surface-soft: color-mix(in srgb, hsl(var(--card)) 76%, hsl(var(--background)) 24%);
+    --adaptive-surface-muted: color-mix(in srgb, hsl(var(--muted)) 78%, hsl(var(--card)) 22%);
+    --adaptive-surface-hover: color-mix(in srgb, hsl(var(--muted)) 68%, hsl(var(--foreground)) 32%);
+    --adaptive-surface-active: color-mix(in srgb, hsl(var(--primary)) 14%, hsl(var(--card)) 86%);
+    --adaptive-border: color-mix(in srgb, hsl(var(--border)) 82%, hsl(var(--foreground)) 18%);
     --canvas-gradient:
       radial-gradient(circle at top left, hsla(212, 38%, 99%, 0.94) 0%, transparent 48%),
       linear-gradient(180deg, hsla(214, 28%, 92%, 0.36) 0%, transparent 62%),
@@ -842,5 +848,35 @@
 
   .glow-accent {
     box-shadow: 0 0 20px hsl(var(--accent) / 0.2), 0 0 40px hsl(var(--accent) / 0.08);
+  }
+
+  .adaptive-surface {
+    background-color: var(--adaptive-surface);
+    border-color: var(--adaptive-border);
+  }
+
+  .adaptive-surface-soft {
+    background-color: var(--adaptive-surface-soft);
+    border-color: var(--adaptive-border);
+  }
+
+  .adaptive-surface-muted {
+    background-color: var(--adaptive-surface-muted);
+    border-color: var(--adaptive-border);
+  }
+
+  .adaptive-surface-interactive {
+    background-color: var(--adaptive-surface-soft);
+    border-color: var(--adaptive-border);
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+  }
+
+  .adaptive-surface-interactive:hover {
+    background-color: var(--adaptive-surface-hover);
+  }
+
+  .adaptive-surface-active {
+    background-color: var(--adaptive-surface-active);
+    border-color: hsl(var(--primary));
   }
 }
