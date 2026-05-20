@@ -11,7 +11,7 @@ import {
   deleteCharacterDiscussionReply,
 } from "@/services/api";
 import type { Character, DiscussionComment, DiscussionMention, LoreFieldNote } from "@/types";
-import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen, Info } from "lucide-react";
+import { ArrowLeft, Heart, Frown, FileText, BookOpen, Award, NotebookPen, Info, MessageSquareQuote } from "lucide-react";
 import DiscussionSection from "@/components/DiscussionSection";
 import RedactedBlock from "@/components/RedactedBlock";
 import LoreMetaPanel from "@/components/LoreMetaPanel";
@@ -308,7 +308,7 @@ export default function CharacterDetail() {
           <div className="lg:col-span-2 min-w-0">
             <Tabs defaultValue="overview" className="w-full">
               <TabsList
-                className="grid h-auto w-full grid-cols-2 gap-1 rounded-sm p-1.5 sm:inline-flex sm:h-auto sm:w-auto sm:grid-cols-5 [&>[data-state=active]]:text-[color:var(--char-accent)] [&>[data-state=active]]:shadow-[inset_0_-2px_0_0_var(--char-accent)]"
+                className="grid h-auto w-full grid-cols-2 gap-1 rounded-sm p-1.5 sm:grid-cols-3 lg:inline-flex lg:w-auto [&>[data-state=active]]:text-[color:var(--char-accent)] [&>[data-state=active]]:shadow-[inset_0_-2px_0_0_var(--char-accent)]"
                 style={{ borderColor: `${accentColor}30` }}
               >
                 <TabsTrigger value="overview" className="text-[11px] font-heading tracking-wider uppercase">
@@ -322,6 +322,9 @@ export default function CharacterDetail() {
                 </TabsTrigger>
                 <TabsTrigger value="notes" className="text-[11px] font-heading tracking-wider uppercase">
                   <NotebookPen className="h-3 w-3 mr-1.5" /> Notes
+                </TabsTrigger>
+                <TabsTrigger value="anecdotes" className="text-[11px] font-heading tracking-wider uppercase">
+                  <MessageSquareQuote className="h-3 w-3 mr-1.5" /> Anecdotes
                 </TabsTrigger>
                 <TabsTrigger value="metadata" className="text-[11px] font-heading tracking-wider uppercase">
                   <Info className="h-3 w-3 mr-1.5" /> Metadata
@@ -377,6 +380,11 @@ export default function CharacterDetail() {
                 <FieldNoteList title="Observations" items={char.observations ?? []} accent={accentColor} />
               </TabsContent>
 
+              {/* Anecdotes */}
+              <TabsContent value="anecdotes" className="mt-6">
+                <FieldNoteList title="Anecdotes" items={char.anecdotes ?? []} accent={accentColor} emptyIcon="quote" />
+              </TabsContent>
+
               {/* Metadata */}
               <TabsContent value="metadata" className="mt-6">
                 <LoreMetaPanel meta={char.meta} fallbackCreator={char.contributor} accentColor={accentColor} />
@@ -410,11 +418,22 @@ export default function CharacterDetail() {
   );
 }
 
-function FieldNoteList({ title, items, accent }: { title: string; items: LoreFieldNote[]; accent: string }) {
+function FieldNoteList({
+  title,
+  items,
+  accent,
+  emptyIcon = "note",
+}: {
+  title: string;
+  items: LoreFieldNote[];
+  accent: string;
+  emptyIcon?: "note" | "quote";
+}) {
   if (items.length === 0) {
+    const EmptyIcon = emptyIcon === "quote" ? MessageSquareQuote : NotebookPen;
     return (
       <div className="hud-border bg-card p-6 text-center" style={{ borderColor: `${accent}30` }}>
-        <NotebookPen className="h-5 w-5 mx-auto mb-2" style={{ color: accent }} />
+        <EmptyIcon className="h-5 w-5 mx-auto mb-2" style={{ color: accent }} />
         <p className="text-xs font-heading tracking-wider text-muted-foreground uppercase">{title}</p>
         <p className="mt-2 text-sm font-body text-muted-foreground italic">No entries recorded.</p>
       </div>

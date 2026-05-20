@@ -149,6 +149,7 @@ type EditableState = {
   contributions?: CharacterContribution[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
+  anecdotes?: LoreFieldNote[];
   skills?: Skill[];
   features?: Feature[];
   // Gallery - preserved across edits so ownership doesn't transfer.
@@ -1214,6 +1215,7 @@ export default function AuthorDashboard() {
             docs: [],
             fieldNotes: [],
             observations: [],
+            anecdotes: [],
             contributions: [],
             skills: [],
           };
@@ -1359,6 +1361,7 @@ export default function AuthorDashboard() {
             docs: docsForSave(editing.docs),
             fieldNotes: editing.fieldNotes ?? [],
             observations: editing.observations ?? [],
+            anecdotes: editing.anecdotes ?? [],
             contributions: editing.contributions ?? [],
             skills: editing.skills ?? [],
             meta: editing.meta,
@@ -1638,20 +1641,20 @@ export default function AuthorDashboard() {
     setEditing({ ...editing, contributions });
   };
 
-  const addFieldEntry = (field: "fieldNotes" | "observations") => {
+  const addFieldEntry = (field: "fieldNotes" | "observations" | "anecdotes") => {
     if (!editing) return;
     const id = `${field}-${Date.now()}`;
     const next: LoreFieldNote[] = [{ id, title: "", body: "", date: todayStr() }, ...(editing[field] || [])];
     setEditing({ ...editing, [field]: next });
     setPendingFocusKey(id);
   };
-  const updateFieldEntry = (field: "fieldNotes" | "observations", idx: number, key: keyof LoreFieldNote, value: string) => {
+  const updateFieldEntry = (field: "fieldNotes" | "observations" | "anecdotes", idx: number, key: keyof LoreFieldNote, value: string) => {
     if (!editing) return;
     const next = [...(editing[field] || [])];
     next[idx] = { ...next[idx], [key]: value };
     setEditing({ ...editing, [field]: next });
   };
-  const removeFieldEntry = (field: "fieldNotes" | "observations", idx: number) => {
+  const removeFieldEntry = (field: "fieldNotes" | "observations" | "anecdotes", idx: number) => {
     if (!editing) return;
     setEditing({ ...editing, [field]: (editing[field] || []).filter((_, i) => i !== idx) });
   };
@@ -1717,6 +1720,7 @@ export default function AuthorDashboard() {
           docs: docsForEditor(character.docs ?? []),
           fieldNotes: character.fieldNotes ?? [],
           observations: character.observations ?? [],
+          anecdotes: character.anecdotes ?? [],
           contributions: character.contributions ?? [],
           skills: character.skills ?? [],
           stats: normalizeCharacterStatsForEditor(character.stats),
@@ -2773,10 +2777,10 @@ export default function AuthorDashboard() {
           {editorTab === "lore" && (
             <EditorSection
               title="Field Records"
-              description="Internal notes and observations displayed on lore detail pages."
-              badge={`${(editing.fieldNotes || []).length + (editing.observations || []).length} item${(editing.fieldNotes || []).length + (editing.observations || []).length === 1 ? "" : "s"}`}
+              description="Internal notes, observations, and character anecdotes displayed on lore detail pages."
+              badge={`${(editing.fieldNotes || []).length + (editing.observations || []).length + (isCharacter ? (editing.anecdotes || []).length : 0)} item${(editing.fieldNotes || []).length + (editing.observations || []).length + (isCharacter ? (editing.anecdotes || []).length : 0) === 1 ? "" : "s"}`}
             >
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className={`grid gap-4 ${isCharacter ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
               <FieldEntryEditor
                 label="Field Notes"
                 items={editing.fieldNotes || []}
@@ -2793,6 +2797,16 @@ export default function AuthorDashboard() {
                 onRemove={(idx) => removeFieldEntry("observations", idx)}
                 itemRef={newItemRef}
               />
+              {isCharacter && (
+                <FieldEntryEditor
+                  label="Anecdotes"
+                  items={editing.anecdotes || []}
+                  onAdd={() => addFieldEntry("anecdotes")}
+                  onUpdate={(idx, key, value) => updateFieldEntry("anecdotes", idx, key, value)}
+                  onRemove={(idx) => removeFieldEntry("anecdotes", idx)}
+                  itemRef={newItemRef}
+                />
+              )}
             </div>
             </EditorSection>
           )}

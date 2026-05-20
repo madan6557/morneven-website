@@ -158,6 +158,7 @@ export interface Character {
   docs: DocItem[];
   fieldNotes?: LoreFieldNote[];
   observations?: LoreFieldNote[];
+  anecdotes?: LoreFieldNote[];
   contributions?: CharacterContribution[];
   skills?: Skill[];
   discussions?: DiscussionComment[];
