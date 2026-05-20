@@ -2187,21 +2187,28 @@ export default function AuthorDashboard() {
         </div>
       )}
 
-      {/* Edit Form */}
-      {editing && activeEditSession && canAccess(activeEditSession.tab, activeEditSession.loreSub) && (
+      {/* Edit Form — portaled into a slot inline with the selected list item (or at top when creating / item not in current page) */}
+      {editing && activeEditSession && canAccess(activeEditSession.tab, activeEditSession.loreSub) && editFormSlot && createPortal(
         <div ref={editFormRef} className="hud-border bg-card p-4 space-y-3 scroll-mt-4 sm:p-6 sm:space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase">
-                {isCreating ? "Create New" : "Edit"} {activeEditSession.tab === "lore" ? activeEditSession.loreSub.slice(0, -1) : activeEditSession.tab.slice(0, -1)}
-              </h3>
-              {hasActiveUnsavedChanges && (
-                <span className="rounded-sm border border-accent-orange/50 bg-accent-orange/10 px-2 py-0.5 text-[10px] font-display uppercase tracking-wider text-accent-orange">
-                  Unsaved changes
-                </span>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase">
+                  {isCreating ? "Create New" : "Edit"} {activeEditSession.tab === "lore" ? activeEditSession.loreSub.slice(0, -1) : activeEditSession.tab.slice(0, -1)}
+                </h3>
+                {hasActiveUnsavedChanges && (
+                  <span className="rounded-sm border border-accent-orange/50 bg-accent-orange/10 px-2 py-0.5 text-[10px] font-display uppercase tracking-wider text-accent-orange">
+                    Unsaved changes
+                  </span>
+                )}
+              </div>
+              {!isCreating && (
+                <p className="font-display text-lg text-primary truncate">
+                  {editing.title ?? editing.name ?? "Untitled"}
+                </p>
               )}
             </div>
-            <button onClick={() => requestCloseEditSession()} className="text-muted-foreground hover:text-foreground">
+            <button onClick={() => requestCloseEditSession()} className="text-muted-foreground hover:text-foreground shrink-0">
               <X className="h-4 w-4" />
             </button>
           </div>
