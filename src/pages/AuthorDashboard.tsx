@@ -2180,9 +2180,10 @@ export default function AuthorDashboard() {
         </div>
       )}
 
-      {/* Edit Form */}
-      {editing && activeEditSession && canAccess(activeEditSession.tab, activeEditSession.loreSub) && (
+      {/* Edit Form — rendered into a slot placed inline with the selected list item (or at top when creating) */}
+      {editing && activeEditSession && canAccess(activeEditSession.tab, activeEditSession.loreSub) && editFormSlot && createPortal(
         <div ref={editFormRef} className="hud-border bg-card p-4 space-y-3 scroll-mt-4 sm:p-6 sm:space-y-4">
+
           <div className="flex items-center justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase">
