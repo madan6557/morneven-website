@@ -31,7 +31,7 @@ import { showValidation } from "@/components/ui/validation-dialog";
 import SkillFeatureEditor from "@/components/SkillFeatureEditor";
 import { ThumbnailCropDialog } from "@/components/ThumbnailCropDialog";
 import { normalizeDocsForEditor, normalizeDocsForSave } from "@/lib/documentation";
-import { compressThumbnailImage } from "@/lib/thumbnailCompression";
+import { compressImageForUpload, compressThumbnailImage, shouldCompressImageForUpload } from "@/lib/thumbnailCompression";
 import {
   averageScore,
   createDefaultCharacterStats,
@@ -209,9 +209,10 @@ const isDashboardTab = (value: string | null): value is DashboardTab => {
 };
 
 type AttachmentMode = "url" | "image" | "video" | "file";
-type UploadStage = "uploading" | "finalizing";
+type UploadStage = "compressing" | "uploading" | "finalizing";
 
 function uploadLabel(stage: UploadStage | null, progress: number | null) {
+  if (stage === "compressing") return "Optimizing image";
   if (stage === "finalizing") return "Finalizing upload";
   return `Uploading ${progress ?? 0}%`;
 }
@@ -435,9 +436,12 @@ function FileUploadField({
     setUploadError("");
     setUploading(true);
     setUploadProgress(0);
-    setUploadStage("uploading");
+    const shouldCompress = mode === "image" && shouldCompressImageForUpload(file);
+    setUploadStage(shouldCompress ? "compressing" : "uploading");
     try {
-      const uploaded = await apiUpload<{ url?: string }>(`/files/upload?folder=${folder}`, file, {
+      const uploadFile = shouldCompress ? await compressImageForUpload(file) : file;
+      setUploadStage("uploading");
+      const uploaded = await apiUpload<{ url?: string }>(`/files/upload?folder=${folder}`, uploadFile, {
         onProgress: ({ percent }) => {
           if (typeof percent === "number") {
             setUploadProgress(percent);

@@ -8,6 +8,10 @@ const THUMBNAIL_WIDTH = 1280;
 const THUMBNAIL_ASPECT_RATIO = 16 / 9;
 const THUMBNAIL_TARGET_BYTES = 280 * 1024;
 const THUMBNAIL_QUALITIES = [0.78, 0.68, 0.58, 0.5];
+const MEDIA_COMPRESS_THRESHOLD_BYTES = 5 * 1024 * 1024;
+const MEDIA_TARGET_BYTES = 5 * 1024 * 1024;
+const MEDIA_SCALE_STEPS = [Number.POSITIVE_INFINITY, 3000, 2560, 2200];
+const MEDIA_QUALITIES = [0.95, 0.92, 0.9, 0.88, 0.85, 0.82];
 
 function loadImage(file: File) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -46,6 +50,11 @@ function thumbnailName(file: File, extension: "webp" | "jpg") {
   return `${baseName}-thumbnail.${extension}`;
 }
 
+function mediaName(file: File) {
+  const baseName = file.name.replace(/\.[^.]+$/, "") || "image";
+  return `${baseName}-optimized.jpg`;
+}
+
 async function encodeThumbnail(canvas: HTMLCanvasElement) {
   let mime = "image/webp";
   let extension: "webp" | "jpg" = "webp";
@@ -66,6 +75,24 @@ async function encodeThumbnail(canvas: HTMLCanvasElement) {
   }
 
   return { blob: bestBlob, extension, mime };
+}
+
+function drawImageToCanvas(image: HTMLImageElement, maxEdge: number) {
+  const largestEdge = Math.max(image.naturalWidth, image.naturalHeight);
+  const scale = Number.isFinite(maxEdge) ? Math.min(1, maxEdge / largestEdge) : 1;
+  const width = Math.max(1, Math.round(image.naturalWidth * scale));
+  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Browser canvas is unavailable.");
+
+  context.fillStyle = "#111111";
+  context.fillRect(0, 0, width, height);
+  context.drawImage(image, 0, 0, width, height);
+  return canvas;
 }
 
 export async function compressThumbnailImage(file: File, crop: ThumbnailCropSettings) {
@@ -94,6 +121,37 @@ export async function compressThumbnailImage(file: File, crop: ThumbnailCropSett
   const encoded = await encodeThumbnail(canvas);
   return new File([encoded.blob], thumbnailName(file, encoded.extension), {
     type: encoded.mime,
+    lastModified: Date.now(),
+  });
+}
+
+export function shouldCompressImageForUpload(file: File) {
+  return file.type.startsWith("image/") && file.type !== "image/gif" && file.size > MEDIA_COMPRESS_THRESHOLD_BYTES;
+}
+
+export async function compressImageForUpload(file: File) {
+  if (!shouldCompressImageForUpload(file)) return file;
+
+  const image = await loadImage(file);
+  let bestBlob: Blob | null = null;
+
+  for (const maxEdge of MEDIA_SCALE_STEPS) {
+    const canvas = drawImageToCanvas(image, maxEdge);
+    for (const quality of MEDIA_QUALITIES) {
+      const blob = await canvasToBlob(canvas, quality, "image/jpeg");
+      if (!bestBlob || blob.size < bestBlob.size) bestBlob = blob;
+      if (blob.size <= MEDIA_TARGET_BYTES) {
+        return new File([blob], mediaName(file), {
+          type: "image/jpeg",
+          lastModified: Date.now(),
+        });
+      }
+    }
+  }
+
+  if (!bestBlob || bestBlob.size >= file.size) return file;
+  return new File([bestBlob], mediaName(file), {
+    type: "image/jpeg",
     lastModified: Date.now(),
   });
 }
