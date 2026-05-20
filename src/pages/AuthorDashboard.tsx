@@ -698,21 +698,17 @@ export default function AuthorDashboard() {
       ? `${activeTab}:${loreSub}:create:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       : `${activeTab}:${loreSub}:edit:${draft.id ?? "draft"}`;
 
-    setEditSessions((sessions) => {
-      const existing = sessions.find((session) => session.key === key);
-      if (existing) return sessions;
-      return [
-        {
-          key,
-          tab: activeTab,
-          loreSub,
-          draft,
-          baseline: editableFingerprint(draft),
-          creating,
-        },
-        ...sessions,
-      ];
-    });
+    // Only one edit form open at a time — replace any existing session.
+    setEditSessions([
+      {
+        key,
+        tab: activeTab,
+        loreSub,
+        draft,
+        baseline: editableFingerprint(draft),
+        creating,
+      },
+    ]);
     setActiveEditSessionKey(key);
   }, [activeTab, loreSub]);
 
@@ -827,7 +823,6 @@ export default function AuthorDashboard() {
   // field/list update, otherwise adding inline rows jumps back to the form top.
   useEffect(() => {
     if (!editSessionKey || !editFormSlot) return;
-    // Defer to next frame so the portal content has rendered into the slot.
     const id = window.requestAnimationFrame(() => {
       (editFormRef.current ?? editFormSlot).scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -1745,6 +1740,18 @@ export default function AuthorDashboard() {
       }, false);
     };
 
+    // If switching from another item with unsaved changes, prompt first.
+    if (activeEditSession && hasActiveUnsavedChanges && activeEditSession.draft?.id !== item.id) {
+      showValidation({
+        variant: "warning",
+        title: "Unsaved changes",
+        description: "The currently open form has unsaved changes. Opening another item will discard them.",
+        confirmLabel: "Discard & open",
+        cancelLabel: "Keep editing",
+        onConfirm: openExistingEditSession,
+      });
+      return;
+    }
     openExistingEditSession();
   };
 
@@ -2125,7 +2132,7 @@ export default function AuthorDashboard() {
         </div>
       )}
 
-      {editSessions.length > 0 && (
+      {false && editSessions.length > 0 && (
         <div className="hud-border bg-card p-3 space-y-3 sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="font-heading text-xs tracking-wider text-accent-orange uppercase">
@@ -2180,22 +2187,28 @@ export default function AuthorDashboard() {
         </div>
       )}
 
-      {/* Edit Form — rendered into a slot placed inline with the selected list item (or at top when creating) */}
+      {/* Edit Form — portaled into a slot inline with the selected list item (or at top when creating / item not in current page) */}
       {editing && activeEditSession && canAccess(activeEditSession.tab, activeEditSession.loreSub) && editFormSlot && createPortal(
         <div ref={editFormRef} className="hud-border bg-card p-4 space-y-3 scroll-mt-4 sm:p-6 sm:space-y-4">
-
-          <div className="flex items-center justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase">
-                {isCreating ? "Create New" : "Edit"} {activeEditSession.tab === "lore" ? activeEditSession.loreSub.slice(0, -1) : activeEditSession.tab.slice(0, -1)}
-              </h3>
-              {hasActiveUnsavedChanges && (
-                <span className="rounded-sm border border-accent-orange/50 bg-accent-orange/10 px-2 py-0.5 text-[10px] font-display uppercase tracking-wider text-accent-orange">
-                  Unsaved changes
-                </span>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="font-heading text-sm tracking-wider text-accent-orange uppercase">
+                  {isCreating ? "Create New" : "Edit"} {activeEditSession.tab === "lore" ? activeEditSession.loreSub.slice(0, -1) : activeEditSession.tab.slice(0, -1)}
+                </h3>
+                {hasActiveUnsavedChanges && (
+                  <span className="rounded-sm border border-accent-orange/50 bg-accent-orange/10 px-2 py-0.5 text-[10px] font-display uppercase tracking-wider text-accent-orange">
+                    Unsaved changes
+                  </span>
+                )}
+              </div>
+              {!isCreating && (
+                <p className="font-display text-lg text-primary truncate">
+                  {editing.title ?? editing.name ?? "Untitled"}
+                </p>
               )}
             </div>
-            <button onClick={() => requestCloseEditSession()} className="text-muted-foreground hover:text-foreground">
+            <button onClick={() => requestCloseEditSession()} className="text-muted-foreground hover:text-foreground shrink-0">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -2983,9 +2996,11 @@ export default function AuthorDashboard() {
             const canModify =
               activeTab !== "gallery" || canModifyGalleryItem(item as GalleryItem);
             const isEditingThis = !isCreating && activeEditSession?.draft?.id === item.id;
+            if (isEditingThis) {
+              return <div key={item.id} ref={setEditFormSlot} />;
+            }
             return (
-            <div key={item.id} className="space-y-2">
-              <div className="hud-border-sm bg-card p-4 flex items-center justify-between gap-4">
+            <div key={item.id} className="hud-border-sm bg-card p-4 flex items-center justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <h3 className="font-heading text-sm text-foreground truncate">{getItemTitle(item)}</h3>
                 <p className="text-xs text-muted-foreground font-body truncate">{getItemDesc(item)}</p>
@@ -3020,9 +3035,7 @@ export default function AuthorDashboard() {
                     </TooltipContent>
                   </Tooltip>
                 )}
-                </div>
               </div>
-              {isEditingThis && <div ref={setEditFormSlot} />}
             </div>
             );
           })}
