@@ -31,7 +31,7 @@ import { showValidation } from "@/components/ui/validation-dialog";
 import SkillFeatureEditor from "@/components/SkillFeatureEditor";
 import { ThumbnailCropDialog } from "@/components/ThumbnailCropDialog";
 import { normalizeDocsForEditor, normalizeDocsForSave } from "@/lib/documentation";
-import { compressThumbnailImage } from "@/lib/thumbnailCompression";
+import { compressImageForUpload, compressThumbnailImage } from "@/lib/thumbnailCompression";
 import {
   averageScore,
   createDefaultCharacterStats,
@@ -209,6 +209,13 @@ const isDashboardTab = (value: string | null): value is DashboardTab => {
 };
 
 type AttachmentMode = "url" | "image" | "video" | "file";
+type UploadStage = "compressing" | "uploading" | "finalizing";
+
+function uploadLabel(stage: UploadStage | null, progress: number | null) {
+  if (stage === "compressing") return "Compressing image";
+  if (stage === "finalizing") return "Finalizing upload";
+  return `Uploading ${progress ?? 0}%`;
+}
 
 type StatSliderField = {
   key: string;
@@ -395,6 +402,7 @@ function FileUploadField({
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadStage, setUploadStage] = useState<UploadStage | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropPreviewUrl, setCropPreviewUrl] = useState("");
   const isUrlMode = mode === "url";
@@ -424,14 +432,23 @@ function FileUploadField({
     if (cropPreviewUrl) URL.revokeObjectURL(cropPreviewUrl);
   }, [cropPreviewUrl]);
 
-  const uploadSelectedFile = async (file: File) => {
+  const uploadSelectedFile = async (file: File, options: { compressImage?: boolean } = {}) => {
     setUploadError("");
     setUploading(true);
     setUploadProgress(0);
+    setUploadStage(options.compressImage === false ? "uploading" : "compressing");
     try {
-      const uploaded = await apiUpload<{ url?: string }>(`/files/upload?folder=${folder}`, file, {
+      const uploadFile =
+        options.compressImage === false || mode !== "image" || !file.type.startsWith("image/")
+          ? file
+          : await compressImageForUpload(file);
+      setUploadStage("uploading");
+      const uploaded = await apiUpload<{ url?: string }>(`/files/upload?folder=${folder}`, uploadFile, {
         onProgress: ({ percent }) => {
-          if (typeof percent === "number") setUploadProgress(percent);
+          if (typeof percent === "number") {
+            setUploadProgress(percent);
+            if (percent >= 100) setUploadStage("finalizing");
+          }
         },
       });
       if (!uploaded.url) throw new Error("Upload response did not include a file URL");
@@ -441,6 +458,7 @@ function FileUploadField({
     } finally {
       setUploading(false);
       setUploadProgress(null);
+      setUploadStage(null);
       if (fileRef.current) fileRef.current.value = "";
     }
   };
@@ -463,7 +481,7 @@ function FileUploadField({
     try {
       const compressed = await compressThumbnailImage(cropFile, settings);
       clearCropFile();
-      await uploadSelectedFile(compressed);
+      await uploadSelectedFile(compressed, { compressImage: false });
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Thumbnail compression failed");
     }
@@ -506,7 +524,7 @@ function FileUploadField({
           <button type="button" onClick={() => fileRef.current?.click()}
             disabled={uploading}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-display tracking-wider border border-dashed border-primary/40 rounded-sm text-primary hover:bg-primary/10 transition-colors">
-            <Upload className="h-3.5 w-3.5" /> {uploading ? `Uploading ${uploadProgress ?? 0}%` : `Choose ${selectedType}`}
+            <Upload className="h-3.5 w-3.5" /> {uploading ? uploadLabel(uploadStage, uploadProgress) : `Choose ${selectedType}`}
           </button>
           {isUploadedValue && (
             <span className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-muted px-2 py-1 text-[10px] font-display uppercase tracking-wider text-foreground">
