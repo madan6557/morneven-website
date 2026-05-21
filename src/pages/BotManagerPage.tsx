@@ -247,6 +247,27 @@ function isMemoryFile(file: Pick<BotIdentityFile, "kind" | "path">) {
   return file.kind === "memory" || file.path === "MEMORY.md" || file.path.startsWith("memory/");
 }
 
+function normalizeFilePath(value: string) {
+  return value.trim().replace(/\\/g, "/").replace(/^\/+/, "").toLowerCase();
+}
+
+function isReadOnlyFilePath(path: string) {
+  return normalizeFilePath(path) === "memory/history.jsonl";
+}
+
+function getFileUsageNote(file: Pick<BotIdentityFile, "kind" | "path">) {
+  const path = normalizeFilePath(file.path);
+  if (path === "agents.md") return "Core instruction file. Edit only when changing identity-level operating rules.";
+  if (path === "soul.md") return "Primary personality file. Use it for tone, identity, boundaries, and behavior.";
+  if (path === "memory.md") return "Editable long-term memory summary for this personality.";
+  if (path === "tools.md") return "Editable notes for allowed tools and tool usage rules.";
+  if (path === "user.md") return "Editable user preference and audience profile notes.";
+  if (path === "heartbeat.md") return "Editable periodic task and heartbeat notes.";
+  if (path === "memory/history.jsonl") return "Runtime history ledger. Read-only in Bot Manager; do not edit manually.";
+  if (file.kind === "memory") return "Editable per-personality memory file. Prefer memory/*.md for manual notes.";
+  return "Editable workspace file. Use a scoped path and sync runtime after saving.";
+}
+
 export default function BotManagerPage() {
   const { isAuthenticated, role, personnelLevel } = useAuth();
   const { toast } = useToast();
@@ -1041,18 +1062,30 @@ function Field({
   value,
   onChange,
   placeholder,
+  readOnly = false,
   type = "text",
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  readOnly?: boolean;
   type?: string;
 }) {
   return (
     <label className="block space-y-2">
       <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
-      <input type={type} className={inputClass} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
+      <input
+        type={type}
+        className={cn(inputClass, readOnly && "cursor-not-allowed opacity-75")}
+        value={value}
+        placeholder={placeholder}
+        readOnly={readOnly}
+        aria-readonly={readOnly}
+        onChange={(event) => {
+          if (!readOnly) onChange(event.target.value);
+        }}
+      />
     </label>
   );
 }
@@ -1105,6 +1138,8 @@ function FileEditor({
   defaultKind?: BotFileKind;
   allowedKinds?: BotFileKind[];
 }) {
+  const readOnly = isReadOnlyFilePath(fileDraft.path);
+  const usageNote = getFileUsageNote(fileDraft);
   return (
     <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
       <div className="space-y-2">
@@ -1128,24 +1163,32 @@ function FileEditor({
               )}
               onClick={() => setFileDraft(file)}
             >
-              <span className="block truncate font-heading">{file.path}</span>
+              <span className="flex min-w-0 items-center justify-between gap-2">
+                <span className="truncate font-heading">{file.path}</span>
+                {isReadOnlyFilePath(file.path) && <Badge variant="outline" className="shrink-0 text-[9px]">Read Only</Badge>}
+              </span>
               <span className="block truncate uppercase tracking-[0.12em]">{file.kind}</span>
             </button>
           ))}
         </div>
       </div>
       <div className="space-y-3">
+        <div className={cn("rounded-sm border border-border/70 bg-background/35 p-3 text-xs text-muted-foreground", readOnly && "border-primary/50 text-primary")}>
+          {usageNote}
+        </div>
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
-          <Field label="Path" value={fileDraft.path} onChange={(value) => setFileDraft({ ...fileDraft, path: value })} />
+          <Field label="Path" value={fileDraft.path} readOnly={readOnly} onChange={(value) => setFileDraft({ ...fileDraft, path: value })} />
           <label className="block space-y-2">
             <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Kind</span>
-            <select className={inputClass} value={fileDraft.kind} onChange={(event) => setFileDraft({ ...fileDraft, kind: event.target.value as BotFileKind })}>
+            <select className={cn(inputClass, readOnly && "cursor-not-allowed opacity-75")} value={fileDraft.kind} disabled={readOnly} onChange={(event) => setFileDraft({ ...fileDraft, kind: event.target.value as BotFileKind })}>
               {allowedKinds.map((kind) => <option key={kind} value={kind}>{kind}</option>)}
             </select>
           </label>
         </div>
-        <textarea className={cn(textareaClass, "min-h-96")} value={fileDraft.content} onChange={(event) => setFileDraft({ ...fileDraft, content: event.target.value })} />
-        <Button type="button" onClick={onSave} disabled={busy}>
+        <textarea className={cn(textareaClass, "min-h-96", readOnly && "cursor-not-allowed opacity-75")} readOnly={readOnly} aria-readonly={readOnly} value={fileDraft.content} onChange={(event) => {
+          if (!readOnly) setFileDraft({ ...fileDraft, content: event.target.value });
+        }} />
+        <Button type="button" onClick={onSave} disabled={busy || readOnly}>
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
           Save File
         </Button>
