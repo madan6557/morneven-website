@@ -90,7 +90,7 @@ const providers: Array<{ value: BotProvider; label: string }> = [
 const normalProviders = providers.filter((provider) => provider.value !== "openrouter") as Array<{ value: Exclude<BotProvider, "openrouter">; label: string }>;
 
 const fileKinds: BotFileKind[] = ["identity", "memory", "cron", "skill", "session", "tool", "user", "system", "other"];
-const tabs = ["channels", "system", "files", "memory", "settings", "logs"] as const;
+const tabs = ["channels", "system", "files", "memory", "cron", "sessions", "settings", "logs"] as const;
 type BotTab = (typeof tabs)[number];
 type ChannelKey = "telegram" | "whatsapp" | "discord" | "slack" | "feishu" | "dingtalk";
 type JsonRecord = Record<string, unknown>;
@@ -336,12 +336,21 @@ function emptyFile(): BotIdentityFile {
   };
 }
 
-function isMemoryFile(file: Pick<BotIdentityFile, "kind" | "path">) {
-  return file.kind === "memory" || file.path === "MEMORY.md" || file.path.startsWith("memory/");
-}
-
 function normalizeFilePath(value: string) {
   return value.trim().replace(/\\/g, "/").replace(/^\/+/, "").toLowerCase();
+}
+
+function isMemoryFile(file: Pick<BotIdentityFile, "kind" | "path">) {
+  const path = normalizeFilePath(file.path);
+  return file.kind === "memory" || path === "memory.md" || path.startsWith("memory/");
+}
+
+function isCronFile(file: Pick<BotIdentityFile, "kind" | "path">) {
+  return file.kind === "cron" || normalizeFilePath(file.path).startsWith("cron/");
+}
+
+function isSessionFile(file: Pick<BotIdentityFile, "kind" | "path">) {
+  return file.kind === "session" || normalizeFilePath(file.path).startsWith("sessions/");
 }
 
 function isReadOnlyFilePath(path: string) {
@@ -364,6 +373,8 @@ function getFileUsageNote(file: Pick<BotIdentityFile, "kind" | "path">) {
   if (path === "lore.md") return "Lore reference generated from Morneven Lore/Wiki. Read-only and protected from delete.";
   if (path === "memory/history.jsonl") return "Runtime history ledger. Read-only in Bot Manager; do not edit manually.";
   if (file.kind === "memory") return "Editable per-personality memory file. Prefer memory/*.md for manual notes.";
+  if (file.kind === "cron" || path.startsWith("cron/")) return "Editable scheduled task configuration or notes for this personality.";
+  if (file.kind === "session" || path.startsWith("sessions/")) return "Editable session configuration or notes for this personality.";
   return "Editable workspace file. Use a scoped path and sync runtime after saving.";
 }
 
@@ -1001,7 +1012,9 @@ export default function BotManagerPage() {
     );
 
   const memoryFiles = detail?.files.filter(isMemoryFile) ?? [];
-  const workspaceFiles = detail?.files.filter((file) => !isMemoryFile(file)) ?? [];
+  const cronFiles = detail?.files.filter(isCronFile) ?? [];
+  const sessionFiles = detail?.files.filter(isSessionFile) ?? [];
+  const workspaceFiles = detail?.files.filter((file) => !isMemoryFile(file) && !isCronFile(file) && !isSessionFile(file)) ?? [];
   const nanobotConfigured = Boolean(summary?.runtimeStatus.nanobotConfigured);
   const runtimeActionDisabled = Boolean(busy) || !nanobotConfigured;
   const gatewayState = runtimeStatus?.gateway?.state ?? (nanobotConfigured ? "unknown" : "not configured");
@@ -1406,6 +1419,7 @@ export default function BotManagerPage() {
                                 activeTab={activeTab}
                                 busy={busy}
                                 channelsDraft={channelsDraft}
+                                cronFiles={cronFiles}
                                 defaultRegenerateConfirm={defaultRegenerateConfirm}
                                 defaultRegenerateMode={defaultRegenerateMode}
                                 detail={detail}
@@ -1432,10 +1446,13 @@ export default function BotManagerPage() {
                                   setActiveTab(tab);
                                   if (tab === "files") setFileDraft(workspaceFiles[0] ?? { ...emptyFile(), kind: "identity", path: "SOUL.md" });
                                   if (tab === "memory") setFileDraft(memoryFiles[0] ?? { ...emptyFile(), kind: "memory", path: "MEMORY.md" });
+                                  if (tab === "cron") setFileDraft(cronFiles[0] ?? { ...emptyFile(), kind: "cron", path: "cron/new-task.md" });
+                                  if (tab === "sessions") setFileDraft(sessionFiles[0] ?? { ...emptyFile(), kind: "session", path: "sessions/session-notes.md" });
                                 }}
                                 onUploadProfile={uploadProfile}
                                 selectedChannel={selectedChannel}
                                 selectedLoreId={selectedLoreId}
+                                sessionFiles={sessionFiles}
                                 settingsDraft={settingsDraft}
                                 syncLog={syncLog}
                                 workspaceFiles={workspaceFiles}
@@ -1710,6 +1727,7 @@ function PersonalityEditor({
   activeTab,
   busy,
   channelsDraft,
+  cronFiles,
   defaultRegenerateConfirm,
   defaultRegenerateMode,
   detail,
@@ -1736,6 +1754,7 @@ function PersonalityEditor({
   onUploadProfile,
   selectedChannel,
   selectedLoreId,
+  sessionFiles,
   settingsDraft,
   syncLog,
   workspaceFiles,
@@ -1743,6 +1762,7 @@ function PersonalityEditor({
   activeTab: BotTab;
   busy: string | null;
   channelsDraft: JsonRecord;
+  cronFiles: BotIdentityFile[];
   defaultRegenerateConfirm: string;
   defaultRegenerateMode: "safe" | "force";
   detail: BotIdentityDetail | null;
@@ -1769,6 +1789,7 @@ function PersonalityEditor({
   onUploadProfile: (file: File) => void;
   selectedChannel: ChannelKey;
   selectedLoreId: string;
+  sessionFiles: BotIdentityFile[];
   settingsDraft: BotSettingsDraft;
   syncLog: string;
   workspaceFiles: BotIdentityFile[];
@@ -1813,10 +1834,14 @@ function PersonalityEditor({
           <Metric label="Current Active" value={detail.isActive ? "Yes" : "No"} />
           <Metric label="Workspace Files" value={String(detail.files.length)} />
           <Metric label="Memory Files" value={String(memoryFiles.length)} />
+          <Metric label="Cron Files" value={String(cronFiles.length)} />
+          <Metric label="Session Files" value={String(sessionFiles.length)} />
         </div>
       )}
-      {activeTab === "files" && <FileEditor files={workspaceFiles} fileDraft={fileDraft} setFileDraft={onFileDraftChange} onSave={onSaveFile} onDelete={onFileDelete} busy={busy === "file"} allowedKinds={fileKinds.filter((kind) => kind !== "memory")} />}
-      {activeTab === "memory" && <FileEditor files={memoryFiles} fileDraft={fileDraft} setFileDraft={onFileDraftChange} onSave={onSaveFile} onDelete={onFileDelete} busy={busy === "file"} defaultKind="memory" allowedKinds={["memory"]} />}
+      {activeTab === "files" && <FileEditor files={workspaceFiles} fileDraft={fileDraft} setFileDraft={onFileDraftChange} onSave={onSaveFile} onDelete={onFileDelete} busy={busy === "file"} allowedKinds={fileKinds.filter((kind) => kind !== "memory" && kind !== "cron" && kind !== "session")} />}
+      {activeTab === "memory" && <FileEditor files={memoryFiles} fileDraft={fileDraft} setFileDraft={onFileDraftChange} onSave={onSaveFile} onDelete={onFileDelete} busy={busy === "file"} defaultKind="memory" newFilePath="memory/note.md" allowedKinds={["memory"]} />}
+      {activeTab === "cron" && <FileEditor files={cronFiles} fileDraft={fileDraft} setFileDraft={onFileDraftChange} onSave={onSaveFile} onDelete={onFileDelete} busy={busy === "file"} defaultKind="cron" newFilePath="cron/new-task.md" allowedKinds={["cron"]} />}
+      {activeTab === "sessions" && <FileEditor files={sessionFiles} fileDraft={fileDraft} setFileDraft={onFileDraftChange} onSave={onSaveFile} onDelete={onFileDelete} busy={busy === "file"} defaultKind="session" newFilePath="sessions/session-notes.md" allowedKinds={["session"]} />}
       {activeTab === "settings" && (
         <div className="space-y-4">
           <SettingsEditor busy={Boolean(busy)} identityDraft={identityDraft} settingsDraft={settingsDraft} onIdentityChange={onIdentityChange} onSave={onSaveIdentity} onSettingsChange={onSettingsChange} />
@@ -2303,6 +2328,7 @@ function FileEditor({
   onDelete,
   busy,
   defaultKind = "identity",
+  newFilePath = "notes/new-file.md",
   allowedKinds = fileKinds,
 }: {
   files: BotIdentityFile[];
@@ -2312,6 +2338,7 @@ function FileEditor({
   onDelete: () => void;
   busy: boolean;
   defaultKind?: BotFileKind;
+  newFilePath?: string;
   allowedKinds?: BotFileKind[];
 }) {
   const readOnly = isReadOnlyFilePath(fileDraft.path);
@@ -2324,7 +2351,7 @@ function FileEditor({
           type="button"
           variant="outline"
           className="w-full justify-start"
-          onClick={() => setFileDraft({ ...emptyFile(), kind: defaultKind, path: defaultKind === "memory" ? "memory/note.md" : "notes/new-file.md" })}
+          onClick={() => setFileDraft({ ...emptyFile(), kind: defaultKind, path: newFilePath })}
         >
           <FileText className="mr-2 h-4 w-4" />
           New File
