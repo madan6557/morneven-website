@@ -758,6 +758,29 @@
 }
 
 @layer base {
+  /* Semantic status tokens — universal defaults that adapt to the active tone.
+     Individual theme variants inherit these unless they override. */
+  :root {
+    --success: 152 62% 38%;
+    --success-foreground: 0 0% 100%;
+    --warning: 36 92% 44%;
+    --warning-foreground: 28 40% 12%;
+    --info: 208 78% 46%;
+    --info-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --success: 152 62% 56%;
+    --success-foreground: 152 40% 10%;
+    --warning: 38 92% 60%;
+    --warning-foreground: 30 40% 10%;
+    --info: 206 86% 64%;
+    --info-foreground: 210 40% 10%;
+  }
+}
+
+
+@layer base {
   * {
     @apply border-border;
   }
