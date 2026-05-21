@@ -61,12 +61,24 @@ export function updateBotCredential(payload: {
   provider: BotProvider;
   apiKey: string;
   apiBase?: string;
+  modelId: string;
   password: string;
   botManagerKey: string;
   confirmText: "CREDENTIALS";
 }) {
   return apiRequest<BotCredentialSummary>("/bot-manager/credentials", {
     method: "PUT",
+    body: payload,
+  });
+}
+
+export function unlockBotCredentials(payload: {
+  password: string;
+  botManagerKey: string;
+  confirmText: "CREDENTIALS";
+}) {
+  return apiRequest<{ unlocked: boolean; unlockedAt: string }>("/bot-manager/credentials/unlock", {
+    method: "POST",
     body: payload,
   });
 }

@@ -5,11 +5,15 @@ import {
   Brain,
   Check,
   FileText,
+  Hash,
   KeyRound,
   Loader2,
+  MessageCircle,
+  Phone,
   Play,
   RefreshCw,
   Save,
+  Send,
   Settings,
   Shield,
   Upload,
@@ -31,6 +35,7 @@ import {
   getBotManagerSummary,
   saveBotIdentityFile,
   syncBotManagerRuntime,
+  unlockBotCredentials,
   updateBotCredential,
   updateBotGeneralConfig,
   updateBotIdentity,
@@ -57,6 +62,34 @@ const providers: Array<{ value: BotProvider; label: string }> = [
 const fileKinds: BotFileKind[] = ["identity", "memory", "cron", "skill", "session", "tool", "user", "system", "other"];
 const tabs = ["channels", "system", "files", "memory", "settings", "logs"] as const;
 type BotTab = (typeof tabs)[number];
+type ChannelKey = "telegram" | "whatsapp" | "discord" | "slack" | "feishu" | "dingtalk";
+type JsonRecord = Record<string, unknown>;
+
+const channelTabs: Array<{ key: ChannelKey; label: string; detail: string; icon: typeof MessageCircle }> = [
+  { key: "telegram", label: "Telegram", detail: "BotFather token", icon: Send },
+  { key: "whatsapp", label: "WhatsApp", detail: "Local bridge", icon: Phone },
+  { key: "discord", label: "Discord", detail: "Bot token", icon: Hash },
+  { key: "slack", label: "Slack", detail: "App token", icon: MessageCircle },
+  { key: "feishu", label: "Feishu", detail: "Lark app", icon: MessageCircle },
+  { key: "dingtalk", label: "DingTalk", detail: "Robot webhook", icon: MessageCircle },
+];
+
+type BotIdentityDraft = {
+  name: string;
+  roleTitle: string;
+  description: string;
+};
+
+type BotSettingsDraft = {
+  maxTokens: string;
+  temperature: string;
+  maxToolIterations: string;
+  webSearchApiKey: string;
+  webSearchMaxResults: string;
+  execTimeout: string;
+  restrictToWorkspace: boolean;
+  restartAfterSync: boolean;
+};
 
 const inputClass =
   "min-w-0 w-full rounded-sm border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:ring-1 focus:ring-primary";
@@ -75,6 +108,113 @@ function parseJsonObject(value: string) {
   return parsed as Record<string, unknown>;
 }
 
+function isRecordValue(value: unknown): value is JsonRecord {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function asRecord(value: unknown): JsonRecord {
+  return isRecordValue(value) ? value : {};
+}
+
+function readString(value: unknown, fallback = "") {
+  return typeof value === "string" ? value : fallback;
+}
+
+function readNumberText(value: unknown, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value) ? String(value) : readString(value, String(fallback));
+}
+
+function readBoolean(value: unknown, fallback: boolean) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function csvToArray(value: string) {
+  return value.split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function arrayToCsv(value: unknown) {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string").join(", ");
+  return readString(value);
+}
+
+function numberFromText(value: string, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function mergeRecord(base: JsonRecord, patch: JsonRecord): JsonRecord {
+  const result: JsonRecord = { ...base };
+  for (const [key, value] of Object.entries(patch)) {
+    const existing = result[key];
+    result[key] = isRecordValue(existing) && isRecordValue(value) ? mergeRecord(existing, value) : value;
+  }
+  return result;
+}
+
+function createDefaultChannels(): JsonRecord {
+  return {
+    telegram: { enabled: false, token: "", allowFrom: ["*"], proxy: "" },
+    whatsapp: { enabled: false, bridgeUrl: "ws://localhost:3001", allowFrom: [] },
+    discord: { enabled: false, token: "", applicationId: "", guildIds: [], channelIds: [] },
+    slack: { enabled: false, botToken: "", appToken: "", signingSecret: "", channelIds: [] },
+    feishu: { enabled: false, appId: "", appSecret: "", verificationToken: "", encryptKey: "" },
+    dingtalk: { enabled: false, webhookUrl: "", secret: "", allowFrom: [] },
+  };
+}
+
+function normalizeChannels(value: unknown) {
+  return mergeRecord(createDefaultChannels(), asRecord(value));
+}
+
+function createSettingsDraft(value: unknown): BotSettingsDraft {
+  const settings = asRecord(value);
+  const agents = asRecord(settings.agents);
+  const defaults = asRecord(agents.defaults);
+  const tools = asRecord(settings.tools);
+  const web = asRecord(tools.web);
+  const search = asRecord(web.search);
+  const exec = asRecord(tools.exec);
+  const gateway = asRecord(settings.gateway);
+
+  return {
+    maxTokens: readNumberText(defaults.maxTokens, 8192),
+    temperature: readNumberText(defaults.temperature, 0.7),
+    maxToolIterations: readNumberText(defaults.maxToolIterations, 20),
+    webSearchApiKey: readString(search.apiKey),
+    webSearchMaxResults: readNumberText(search.maxResults, 5),
+    execTimeout: readNumberText(exec.timeout, 60),
+    restrictToWorkspace: readBoolean(exec.restrictToWorkspace, false),
+    restartAfterSync: readBoolean(gateway.restartAfterSync, true),
+  };
+}
+
+function settingsDraftToConfig(draft: BotSettingsDraft): JsonRecord {
+  return {
+    agents: {
+      defaults: {
+        maxTokens: numberFromText(draft.maxTokens, 8192),
+        temperature: numberFromText(draft.temperature, 0.7),
+        maxToolIterations: numberFromText(draft.maxToolIterations, 20),
+      },
+    },
+    tools: {
+      web: {
+        search: {
+          apiKey: draft.webSearchApiKey,
+          maxResults: numberFromText(draft.webSearchMaxResults, 5),
+        },
+      },
+      exec: {
+        timeout: numberFromText(draft.execTimeout, 60),
+        restrictToWorkspace: draft.restrictToWorkspace,
+      },
+    },
+    gateway: {
+      restartAfterSync: draft.restartAfterSync,
+    },
+  };
+}
+
 function emptyFile(): BotIdentityFile {
   return {
     id: "new",
@@ -86,6 +226,10 @@ function emptyFile(): BotIdentityFile {
     updatedAt: new Date().toISOString(),
     content: "",
   };
+}
+
+function isMemoryFile(file: Pick<BotIdentityFile, "kind" | "path">) {
+  return file.kind === "memory" || file.path === "MEMORY.md" || file.path.startsWith("memory/");
 }
 
 export default function BotManagerPage() {
@@ -105,14 +249,20 @@ export default function BotManagerPage() {
   const [credentialProvider, setCredentialProvider] = useState<BotProvider>("gemini");
   const [credentialApiKey, setCredentialApiKey] = useState("");
   const [credentialApiBase, setCredentialApiBase] = useState("");
+  const [credentialModelId, setCredentialModelId] = useState("");
   const [credentialPassword, setCredentialPassword] = useState("");
   const [credentialKey, setCredentialKey] = useState("");
   const [credentialConfirm, setCredentialConfirm] = useState("");
+  const [credentialUnlocked, setCredentialUnlocked] = useState(false);
 
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
   const [newDescription, setNewDescription] = useState("");
-  const [identityDraft, setIdentityDraft] = useState({ name: "", roleTitle: "", description: "", channels: "{}", settings: "{}" });
+  const [identityDraft, setIdentityDraft] = useState<BotIdentityDraft>({ name: "", roleTitle: "", description: "" });
+  const [channelsDraft, setChannelsDraft] = useState<JsonRecord>(createDefaultChannels());
+  const [selectedChannel, setSelectedChannel] = useState<ChannelKey>("telegram");
+  const [settingsBase, setSettingsBase] = useState<JsonRecord>({});
+  const [settingsDraft, setSettingsDraft] = useState<BotSettingsDraft>(() => createSettingsDraft({}));
   const [fileDraft, setFileDraft] = useState<BotIdentityFile>(emptyFile());
 
   const activeIdentity = useMemo(
@@ -120,11 +270,16 @@ export default function BotManagerPage() {
     [summary],
   );
 
-  const canSubmitCredential =
-    credentialApiKey.trim().length > 0 &&
+  const canUnlockCredential =
     credentialPassword.length > 0 &&
     credentialKey.trim().length >= 16 &&
     credentialConfirm === "CREDENTIALS";
+
+  const canSubmitCredential =
+    credentialUnlocked &&
+    credentialApiKey.trim().length > 0 &&
+    credentialModelId.trim().length > 0 &&
+    canUnlockCredential;
 
   const loadSummary = useCallback(async () => {
     setLoading(true);
@@ -151,9 +306,10 @@ export default function BotManagerPage() {
         name: next.name,
         roleTitle: next.roleTitle,
         description: next.description,
-        channels: toJsonText(next.channels),
-        settings: toJsonText(next.settings),
       });
+      setChannelsDraft(normalizeChannels(next.channels));
+      setSettingsBase(asRecord(next.settings));
+      setSettingsDraft(createSettingsDraft(next.settings));
       const firstFile = next.files.find((file) => file.path === "SOUL.md") ?? next.files[0] ?? emptyFile();
       setFileDraft(firstFile);
     } catch (err) {
@@ -191,6 +347,30 @@ export default function BotManagerPage() {
     }
   };
 
+  const lockCredentials = () => {
+    setCredentialUnlocked(false);
+    setCredentialApiKey("");
+    setCredentialApiBase("");
+    setCredentialModelId("");
+    setCredentialPassword("");
+    setCredentialKey("");
+    setCredentialConfirm("");
+  };
+
+  const unlockCredentials = () =>
+    runAction(
+      "credential-unlock",
+      async () => {
+        await unlockBotCredentials({
+          password: credentialPassword,
+          botManagerKey: credentialKey,
+          confirmText: "CREDENTIALS",
+        });
+        setCredentialUnlocked(true);
+      },
+      "Credential section unlocked",
+    );
+
   const saveCredential = () =>
     runAction(
       "credential",
@@ -199,15 +379,12 @@ export default function BotManagerPage() {
           provider: credentialProvider,
           apiKey: credentialApiKey,
           apiBase: credentialApiBase.trim() || undefined,
+          modelId: credentialModelId.trim(),
           password: credentialPassword,
           botManagerKey: credentialKey,
           confirmText: "CREDENTIALS",
         });
-        setCredentialApiKey("");
-        setCredentialApiBase("");
-        setCredentialPassword("");
-        setCredentialKey("");
-        setCredentialConfirm("");
+        lockCredentials();
         await loadSummary();
       },
       "Credential saved",
@@ -261,8 +438,8 @@ export default function BotManagerPage() {
           name: identityDraft.name,
           roleTitle: identityDraft.roleTitle,
           description: identityDraft.description,
-          channels: parseJsonObject(identityDraft.channels),
-          settings: parseJsonObject(identityDraft.settings),
+          channels: channelsDraft,
+          settings: mergeRecord(settingsBase, settingsDraftToConfig(settingsDraft)),
         });
         await refreshAll();
       },
@@ -307,7 +484,17 @@ export default function BotManagerPage() {
       "Runtime sync requested",
     );
 
-  const memoryFiles = detail?.files.filter((file) => file.kind === "memory" || file.path === "MEMORY.md" || file.path.startsWith("memory/")) ?? [];
+  const memoryFiles = detail?.files.filter(isMemoryFile) ?? [];
+  const workspaceFiles = detail?.files.filter((file) => !isMemoryFile(file)) ?? [];
+  const updateChannel = (channel: ChannelKey, patch: JsonRecord) => {
+    setChannelsDraft((current) => ({
+      ...current,
+      [channel]: {
+        ...asRecord(current[channel]),
+        ...patch,
+      },
+    }));
+  };
 
   return (
     <div className="min-h-screen px-4 py-5 sm:px-6 lg:px-8">
@@ -351,34 +538,54 @@ export default function BotManagerPage() {
               <KeyRound className="h-4 w-4" />
               <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Credential Section</h2>
             </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <label className="space-y-2">
-                <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Provider</span>
-                <select className={inputClass} value={credentialProvider} onChange={(event) => setCredentialProvider(event.target.value as BotProvider)}>
-                  {providers.map((provider) => (
-                    <option key={provider.value} value={provider.value}>{provider.label}</option>
-                  ))}
-                </select>
-              </label>
-              <Field label="API Key" value={credentialApiKey} onChange={setCredentialApiKey} type="password" />
-              <Field label="API Base" value={credentialApiBase} onChange={setCredentialApiBase} placeholder="Optional provider base URL" />
-              <Field label="Password" value={credentialPassword} onChange={setCredentialPassword} type="password" />
-              <Field label="Bot Manager Key" value={credentialKey} onChange={setCredentialKey} type="password" />
-              <Field label="Confirmation" value={credentialConfirm} onChange={setCredentialConfirm} placeholder='Type "CREDENTIALS"' />
-            </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap gap-2">
                 {summary?.credentials.map((credential) => (
                   <Badge key={credential.provider} variant={credential.configured ? "default" : "outline"}>
                     {credential.provider}: {credential.configured ? credential.keyPreview : "empty"}
+                    {typeof credential.metadata.modelId === "string" && credential.metadata.modelId ? ` / ${credential.metadata.modelId}` : ""}
                   </Badge>
                 ))}
               </div>
-              <Button type="button" onClick={saveCredential} disabled={!canSubmitCredential || Boolean(busy)}>
-                {busy === "credential" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
-                Save Credential
-              </Button>
+              {credentialUnlocked && (
+                <Button type="button" variant="outline" onClick={lockCredentials} disabled={Boolean(busy)}>
+                  Lock
+                </Button>
+              )}
             </div>
+            {!credentialUnlocked ? (
+              <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+                <Field label="Password" value={credentialPassword} onChange={setCredentialPassword} type="password" />
+                <Field label="Bot Manager Key" value={credentialKey} onChange={setCredentialKey} type="password" />
+                <Field label="Confirmation" value={credentialConfirm} onChange={setCredentialConfirm} placeholder='Type "CREDENTIALS"' />
+                <Button type="button" onClick={unlockCredentials} disabled={!canUnlockCredential || Boolean(busy)}>
+                  {busy === "credential-unlock" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+                  Unlock
+                </Button>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-4">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <label className="space-y-2">
+                    <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Provider</span>
+                    <select className={inputClass} value={credentialProvider} onChange={(event) => setCredentialProvider(event.target.value as BotProvider)}>
+                      {providers.map((provider) => (
+                        <option key={provider.value} value={provider.value}>{provider.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <Field label="Model ID" value={credentialModelId} onChange={setCredentialModelId} placeholder="deepseek-chat" />
+                  <Field label="API Key" value={credentialApiKey} onChange={setCredentialApiKey} type="password" />
+                  <Field label="API Base" value={credentialApiBase} onChange={setCredentialApiBase} placeholder="Optional provider base URL" />
+                </div>
+                <div className="flex justify-end">
+                  <Button type="button" onClick={saveCredential} disabled={!canSubmitCredential || Boolean(busy)}>
+                    {busy === "credential" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+                    Save Credential
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -476,7 +683,11 @@ export default function BotManagerPage() {
                         "rounded-sm border px-3 py-2 text-xs font-heading uppercase tracking-[0.12em]",
                         activeTab === tab ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground",
                       )}
-                      onClick={() => setActiveTab(tab)}
+                      onClick={() => {
+                        setActiveTab(tab);
+                        if (tab === "files") setFileDraft(workspaceFiles[0] ?? { ...emptyFile(), kind: "identity", path: "SOUL.md" });
+                        if (tab === "memory") setFileDraft(memoryFiles[0] ?? { ...emptyFile(), kind: "memory", path: "MEMORY.md" });
+                      }}
                     >
                       {tab}
                     </button>
@@ -484,13 +695,14 @@ export default function BotManagerPage() {
                 </div>
 
                 {activeTab === "channels" && (
-                  <div className="space-y-3">
-                    <JsonEditor label="Channels JSON" value={identityDraft.channels} onChange={(value) => setIdentityDraft((current) => ({ ...current, channels: value }))} />
-                    <Button type="button" onClick={saveIdentity} disabled={Boolean(busy)}>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Channels
-                    </Button>
-                  </div>
+                  <ChannelEditor
+                    activeChannel={selectedChannel}
+                    busy={Boolean(busy)}
+                    channels={channelsDraft}
+                    onSave={saveIdentity}
+                    onSelect={setSelectedChannel}
+                    onUpdate={updateChannel}
+                  />
                 )}
 
                 {activeTab === "system" && (
@@ -503,27 +715,22 @@ export default function BotManagerPage() {
                 )}
 
                 {activeTab === "files" && (
-                  <FileEditor files={detail.files} fileDraft={fileDraft} setFileDraft={setFileDraft} onSave={saveFile} busy={busy === "file"} />
+                  <FileEditor files={workspaceFiles} fileDraft={fileDraft} setFileDraft={setFileDraft} onSave={saveFile} busy={busy === "file"} allowedKinds={fileKinds.filter((kind) => kind !== "memory")} />
                 )}
 
                 {activeTab === "memory" && (
-                  <FileEditor files={memoryFiles} fileDraft={fileDraft} setFileDraft={setFileDraft} onSave={saveFile} busy={busy === "file"} defaultKind="memory" />
+                  <FileEditor files={memoryFiles} fileDraft={fileDraft} setFileDraft={setFileDraft} onSave={saveFile} busy={busy === "file"} defaultKind="memory" allowedKinds={["memory"]} />
                 )}
 
                 {activeTab === "settings" && (
-                  <div className="space-y-3">
-                    <Field label="Name" value={identityDraft.name} onChange={(value) => setIdentityDraft((current) => ({ ...current, name: value }))} />
-                    <Field label="Role" value={identityDraft.roleTitle} onChange={(value) => setIdentityDraft((current) => ({ ...current, roleTitle: value }))} />
-                    <label className="space-y-2 block">
-                      <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Description</span>
-                      <textarea className={cn(inputClass, "min-h-24 resize-y")} value={identityDraft.description} onChange={(event) => setIdentityDraft((current) => ({ ...current, description: event.target.value }))} />
-                    </label>
-                    <JsonEditor label="Settings JSON" value={identityDraft.settings} onChange={(value) => setIdentityDraft((current) => ({ ...current, settings: value }))} />
-                    <Button type="button" onClick={saveIdentity} disabled={Boolean(busy)}>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Personality
-                    </Button>
-                  </div>
+                  <SettingsEditor
+                    busy={Boolean(busy)}
+                    identityDraft={identityDraft}
+                    settingsDraft={settingsDraft}
+                    onIdentityChange={(patch) => setIdentityDraft((current) => ({ ...current, ...patch }))}
+                    onSave={saveIdentity}
+                    onSettingsChange={(patch) => setSettingsDraft((current) => ({ ...current, ...patch }))}
+                  />
                 )}
 
                 {activeTab === "logs" && (
@@ -535,6 +742,215 @@ export default function BotManagerPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ChannelEditor({
+  activeChannel,
+  busy,
+  channels,
+  onSave,
+  onSelect,
+  onUpdate,
+}: {
+  activeChannel: ChannelKey;
+  busy: boolean;
+  channels: JsonRecord;
+  onSave: () => void;
+  onSelect: (channel: ChannelKey) => void;
+  onUpdate: (channel: ChannelKey, patch: JsonRecord) => void;
+}) {
+  const config = asRecord(channels[activeChannel]);
+  const currentTab = channelTabs.find((tab) => tab.key === activeChannel) ?? channelTabs[0];
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {channelTabs.map((channel) => {
+          const Icon = channel.icon;
+          const channelConfig = asRecord(channels[channel.key]);
+          const enabled = Boolean(channelConfig.enabled);
+          return (
+            <button
+              key={channel.key}
+              type="button"
+              className={cn(
+                "flex min-w-0 items-center gap-3 rounded-sm border p-3 text-left",
+                activeChannel === channel.key ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/35 text-muted-foreground hover:text-foreground",
+              )}
+              onClick={() => onSelect(channel.key)}
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-border bg-background">
+                <Icon className="h-4 w-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate font-heading text-sm">{channel.label}</span>
+                <span className="block truncate text-xs">{enabled ? "Enabled" : channel.detail}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-heading text-base text-foreground">{currentTab.label}</h3>
+            <p className="text-xs text-muted-foreground">{currentTab.detail}</p>
+          </div>
+          <ToggleControl
+            label="Enabled"
+            value={Boolean(config.enabled)}
+            onChange={(enabled) => onUpdate(activeChannel, { enabled })}
+          />
+        </div>
+        <div className="mt-4">
+          <ChannelFields channel={activeChannel} config={config} onUpdate={(patch) => onUpdate(activeChannel, patch)} />
+        </div>
+      </div>
+
+      <Button type="button" onClick={onSave} disabled={busy}>
+        <Save className="mr-2 h-4 w-4" />
+        Save Channels
+      </Button>
+    </div>
+  );
+}
+
+function ChannelFields({
+  channel,
+  config,
+  onUpdate,
+}: {
+  channel: ChannelKey;
+  config: JsonRecord;
+  onUpdate: (patch: JsonRecord) => void;
+}) {
+  if (channel === "telegram") {
+    return (
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="Token" value={readString(config.token)} onChange={(token) => onUpdate({ token })} type="password" placeholder="123456:ABC-DEF" />
+        <Field label="Allowed User IDs" value={arrayToCsv(config.allowFrom)} onChange={(value) => onUpdate({ allowFrom: csvToArray(value) })} placeholder="* or comma separated IDs" />
+        <Field label="Proxy" value={readString(config.proxy)} onChange={(proxy) => onUpdate({ proxy })} placeholder="Optional proxy URL" />
+      </div>
+    );
+  }
+
+  if (channel === "whatsapp") {
+    return (
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="Bridge URL" value={readString(config.bridgeUrl, "ws://localhost:3001")} onChange={(bridgeUrl) => onUpdate({ bridgeUrl })} />
+        <Field label="Allowed Numbers" value={arrayToCsv(config.allowFrom)} onChange={(value) => onUpdate({ allowFrom: csvToArray(value) })} />
+      </div>
+    );
+  }
+
+  if (channel === "discord") {
+    return (
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="Bot Token" value={readString(config.token)} onChange={(token) => onUpdate({ token })} type="password" />
+        <Field label="Application ID" value={readString(config.applicationId)} onChange={(applicationId) => onUpdate({ applicationId })} />
+        <Field label="Guild IDs" value={arrayToCsv(config.guildIds)} onChange={(value) => onUpdate({ guildIds: csvToArray(value) })} />
+        <Field label="Channel IDs" value={arrayToCsv(config.channelIds)} onChange={(value) => onUpdate({ channelIds: csvToArray(value) })} />
+      </div>
+    );
+  }
+
+  if (channel === "slack") {
+    return (
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="Bot Token" value={readString(config.botToken)} onChange={(botToken) => onUpdate({ botToken })} type="password" />
+        <Field label="App Token" value={readString(config.appToken)} onChange={(appToken) => onUpdate({ appToken })} type="password" />
+        <Field label="Signing Secret" value={readString(config.signingSecret)} onChange={(signingSecret) => onUpdate({ signingSecret })} type="password" />
+        <Field label="Channel IDs" value={arrayToCsv(config.channelIds)} onChange={(value) => onUpdate({ channelIds: csvToArray(value) })} />
+      </div>
+    );
+  }
+
+  if (channel === "feishu") {
+    return (
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="App ID" value={readString(config.appId)} onChange={(appId) => onUpdate({ appId })} />
+        <Field label="App Secret" value={readString(config.appSecret)} onChange={(appSecret) => onUpdate({ appSecret })} type="password" />
+        <Field label="Verification Token" value={readString(config.verificationToken)} onChange={(verificationToken) => onUpdate({ verificationToken })} type="password" />
+        <Field label="Encrypt Key" value={readString(config.encryptKey)} onChange={(encryptKey) => onUpdate({ encryptKey })} type="password" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <Field label="Webhook URL" value={readString(config.webhookUrl)} onChange={(webhookUrl) => onUpdate({ webhookUrl })} />
+      <Field label="Secret" value={readString(config.secret)} onChange={(secret) => onUpdate({ secret })} type="password" />
+      <Field label="Allowed Senders" value={arrayToCsv(config.allowFrom)} onChange={(value) => onUpdate({ allowFrom: csvToArray(value) })} />
+    </div>
+  );
+}
+
+function SettingsEditor({
+  busy,
+  identityDraft,
+  settingsDraft,
+  onIdentityChange,
+  onSave,
+  onSettingsChange,
+}: {
+  busy: boolean;
+  identityDraft: BotIdentityDraft;
+  settingsDraft: BotSettingsDraft;
+  onIdentityChange: (patch: Partial<BotIdentityDraft>) => void;
+  onSave: () => void;
+  onSettingsChange: (patch: Partial<BotSettingsDraft>) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="Name" value={identityDraft.name} onChange={(name) => onIdentityChange({ name })} />
+        <Field label="Role" value={identityDraft.roleTitle} onChange={(roleTitle) => onIdentityChange({ roleTitle })} />
+      </div>
+      <label className="block space-y-2">
+        <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Description</span>
+        <textarea className={cn(inputClass, "min-h-24 resize-y")} value={identityDraft.description} onChange={(event) => onIdentityChange({ description: event.target.value })} />
+      </label>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+          <h3 className="font-heading text-sm text-foreground">Agent Behaviour</h3>
+          <div className="mt-4 space-y-3">
+            <Field label="Max Tokens" type="number" value={settingsDraft.maxTokens} onChange={(maxTokens) => onSettingsChange({ maxTokens })} />
+            <Field label="Temperature" type="number" value={settingsDraft.temperature} onChange={(temperature) => onSettingsChange({ temperature })} />
+            <Field label="Max Tool Iterations" type="number" value={settingsDraft.maxToolIterations} onChange={(maxToolIterations) => onSettingsChange({ maxToolIterations })} />
+          </div>
+        </div>
+
+        <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+          <h3 className="font-heading text-sm text-foreground">Tools And Environment</h3>
+          <div className="mt-4 space-y-3">
+            <Field label="Web Search API Key" type="password" value={settingsDraft.webSearchApiKey} onChange={(webSearchApiKey) => onSettingsChange({ webSearchApiKey })} />
+            <Field label="Web Search Max Results" type="number" value={settingsDraft.webSearchMaxResults} onChange={(webSearchMaxResults) => onSettingsChange({ webSearchMaxResults })} />
+            <Field label="Execution Timeout" type="number" value={settingsDraft.execTimeout} onChange={(execTimeout) => onSettingsChange({ execTimeout })} />
+            <ToggleControl label="Restrict File Access" value={settingsDraft.restrictToWorkspace} onChange={(restrictToWorkspace) => onSettingsChange({ restrictToWorkspace })} />
+            <ToggleControl label="Restart After Sync" value={settingsDraft.restartAfterSync} onChange={(restartAfterSync) => onSettingsChange({ restartAfterSync })} />
+          </div>
+        </div>
+      </div>
+
+      <Button type="button" onClick={onSave} disabled={busy}>
+        <Save className="mr-2 h-4 w-4" />
+        Save Personality
+      </Button>
+    </div>
+  );
+}
+
+function ToggleControl({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <button type="button" className="flex w-full items-center justify-between gap-3 rounded-sm border border-border/70 bg-background/35 px-3 py-2 text-left" onClick={() => onChange(!value)}>
+      <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
+      <span className={cn("relative h-6 w-11 rounded-full transition-colors", value ? "bg-primary" : "bg-muted")}>
+        <span className={cn("absolute top-1 h-4 w-4 rounded-full bg-background transition-transform", value ? "translate-x-6" : "translate-x-1")} />
+      </span>
+    </button>
   );
 }
 
@@ -568,15 +984,6 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function JsonEditor({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return (
-    <label className="block space-y-2">
-      <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
-      <textarea className={textareaClass} value={value} onChange={(event) => onChange(event.target.value)} />
-    </label>
-  );
-}
-
 function Profile({
   identity,
   large = false,
@@ -606,6 +1013,7 @@ function FileEditor({
   onSave,
   busy,
   defaultKind = "identity",
+  allowedKinds = fileKinds,
 }: {
   files: BotIdentityFile[];
   fileDraft: BotIdentityFile;
@@ -613,6 +1021,7 @@ function FileEditor({
   onSave: () => void;
   busy: boolean;
   defaultKind?: BotFileKind;
+  allowedKinds?: BotFileKind[];
 }) {
   return (
     <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
@@ -649,7 +1058,7 @@ function FileEditor({
           <label className="block space-y-2">
             <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Kind</span>
             <select className={inputClass} value={fileDraft.kind} onChange={(event) => setFileDraft({ ...fileDraft, kind: event.target.value as BotFileKind })}>
-              {fileKinds.map((kind) => <option key={kind} value={kind}>{kind}</option>)}
+              {allowedKinds.map((kind) => <option key={kind} value={kind}>{kind}</option>)}
             </select>
           </label>
         </div>
