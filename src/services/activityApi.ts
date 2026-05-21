@@ -128,7 +128,7 @@ export async function getActivityOverview(): Promise<ActivityOverview> {
 }
 
 export async function getActivityVisits(params: ActivityVisitParams = {}): Promise<ActivityVisitSeries> {
-  return apiRequest<ActivityVisitSeries>(`/activity/visits${buildQuery(params)}`);
+  return apiRequest<ActivityVisitSeries>(`/activity/visits${buildQuery({ ...params })}`);
 }
 
 export async function getActivityContent(
