@@ -198,6 +198,14 @@ function formatCharacterLabel(character: Character) {
   return `${character.name} - ${trait}`;
 }
 
+function createCharacterAutofill(character: Character) {
+  return {
+    name: character.name,
+    role: character.occupation || character.race || "Morneven character",
+    description: character.shortDesc || "",
+  };
+}
+
 function createGeneralConfigDraft(value: unknown): GeneralConfigDraft {
   const config = asRecord(value);
   const gateway = asRecord(config.gateway);
@@ -401,6 +409,10 @@ export default function BotManagerPage() {
   const [newRole, setNewRole] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [showCreatePersonality, setShowCreatePersonality] = useState(false);
+  const [createLoreSearch, setCreateLoreSearch] = useState("");
+  const [createLoreOptions, setCreateLoreOptions] = useState<Character[]>([]);
+  const [selectedCreateLore, setSelectedCreateLore] = useState<Character | null>(null);
+  const [createAutofill, setCreateAutofill] = useState<ReturnType<typeof createCharacterAutofill> | null>(null);
   const [editingIdentityId, setEditingIdentityId] = useState<string | null>(null);
   const [personalitySearch, setPersonalitySearch] = useState("");
   const [personalityFilter, setPersonalityFilter] = useState("all");
@@ -556,7 +568,24 @@ export default function BotManagerPage() {
   }, [backupVisible, hasActiveBackupJob, loadBackupJobs]);
 
   useEffect(() => {
-    if (!allowed || !pageVisible || (!showCreatePersonality && !(editingIdentityId && activeTab === "settings"))) return undefined;
+    if (!allowed || !pageVisible || !showCreatePersonality) return undefined;
+    const handle = window.setTimeout(async () => {
+      if (!createLoreSearch.trim()) {
+        setCreateLoreOptions([]);
+        return;
+      }
+      try {
+        const result = await getCharactersPage({ search: createLoreSearch, page: 1, pageSize: 8, sort: "name" });
+        setCreateLoreOptions(result.items);
+      } catch {
+        setCreateLoreOptions([]);
+      }
+    }, 250);
+    return () => window.clearTimeout(handle);
+  }, [allowed, createLoreSearch, pageVisible, showCreatePersonality]);
+
+  useEffect(() => {
+    if (!allowed || !pageVisible || !(editingIdentityId && activeTab === "settings")) return undefined;
     const handle = window.setTimeout(async () => {
       if (!loreSearch.trim()) {
         setLoreOptions([]);
@@ -570,7 +599,7 @@ export default function BotManagerPage() {
       }
     }, 250);
     return () => window.clearTimeout(handle);
-  }, [activeTab, allowed, editingIdentityId, loreSearch, pageVisible, showCreatePersonality]);
+  }, [activeTab, allowed, editingIdentityId, loreSearch, pageVisible]);
 
   useEffect(() => {
     if (personalitiesVisible && selectedId && editingIdentityId === selectedId) void loadDetail(selectedId);
@@ -616,6 +645,32 @@ export default function BotManagerPage() {
     } finally {
       setBusy(null);
     }
+  };
+
+  const selectCreateLore = (character: Character) => {
+    const nextAutofill = createCharacterAutofill(character);
+    const previousAutofill = createAutofill;
+    setSelectedCreateLore(character);
+    setCreateLoreSearch(formatCharacterLabel(character));
+    setCreateLoreOptions([]);
+    setNewName((current) => (!current.trim() || current === previousAutofill?.name ? nextAutofill.name : current));
+    setNewRole((current) => (!current.trim() || current === previousAutofill?.role ? nextAutofill.role : current));
+    setNewDescription((current) => (!current.trim() || current === previousAutofill?.description ? nextAutofill.description : current));
+    setCreateAutofill(nextAutofill);
+  };
+
+  const clearCreateLore = () => {
+    setSelectedCreateLore(null);
+    setCreateLoreSearch("");
+    setCreateLoreOptions([]);
+    setCreateAutofill(null);
+  };
+
+  const updateCreateLoreSearch = (value: string) => {
+    setCreateLoreSearch(value);
+    if (!selectedCreateLore || value === formatCharacterLabel(selectedCreateLore)) return;
+    setSelectedCreateLore(null);
+    setCreateAutofill(null);
   };
 
   const lockCredentials = () => {
@@ -679,13 +734,15 @@ export default function BotManagerPage() {
           name: newName,
           roleTitle: newRole,
           description: newDescription,
-          loreCharacterId: selectedLoreId || undefined,
+          loreCharacterId: selectedCreateLore?.id || undefined,
         });
         setNewName("");
         setNewRole("");
         setNewDescription("");
-        setSelectedLoreId("");
-        setLoreSearch("");
+        setCreateLoreSearch("");
+        setCreateLoreOptions([]);
+        setSelectedCreateLore(null);
+        setCreateAutofill(null);
         setShowCreatePersonality(false);
         setSelectedId(created.id);
         await loadSummary();
@@ -1216,7 +1273,19 @@ export default function BotManagerPage() {
 
                 {showCreatePersonality && (
                   <div className="rounded-sm border border-border/70 bg-background/35 p-4">
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <LorePicker
+                      label="Lore Character (optional)"
+                      options={createLoreOptions}
+                      placeholder="Search character first or leave blank"
+                      search={createLoreSearch}
+                      selectedId={selectedCreateLore?.id ?? ""}
+                      onSearchChange={updateCreateLoreSearch}
+                      onSelect={selectCreateLore}
+                    />
+                    {selectedCreateLore && (
+                      <SelectedCharacterPreview character={selectedCreateLore} onClear={clearCreateLore} />
+                    )}
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
                       <Field label="Name" value={newName} onChange={setNewName} placeholder="Sola" />
                       <Field label="Role" value={newRole} onChange={setNewRole} placeholder="Morneven assistant" />
                     </div>
@@ -1224,7 +1293,6 @@ export default function BotManagerPage() {
                       <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Description</span>
                       <textarea className={cn(inputClass, "min-h-24 resize-y")} value={newDescription} onChange={(event) => setNewDescription(event.target.value)} />
                     </label>
-                    <LorePicker className="mt-3" options={loreOptions} search={loreSearch} selectedId={selectedLoreId} onSearchChange={setLoreSearch} onSelect={(character) => { setSelectedLoreId(character.id); setLoreSearch(formatCharacterLabel(character)); }} />
                     <Button type="button" className="mt-3" onClick={createIdentity} disabled={!newName.trim() || !newRole.trim() || Boolean(busy)}>
                       Create
                     </Button>
@@ -1370,14 +1438,18 @@ function PaginationControls({
 
 function LorePicker({
   className,
+  label = "Lore Character",
   options,
+  placeholder = "Search lore character",
   search,
   selectedId,
   onSearchChange,
   onSelect,
 }: {
   className?: string;
+  label?: string;
   options: Character[];
+  placeholder?: string;
   search: string;
   selectedId: string;
   onSearchChange: (value: string) => void;
@@ -1385,10 +1457,10 @@ function LorePicker({
 }) {
   return (
     <div className={cn("space-y-2", className)}>
-      <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Lore Character</span>
+      <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-        <input className={cn(inputClass, "pl-9")} value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Search lore character" />
+        <input className={cn(inputClass, "pl-9")} value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder={placeholder} />
       </div>
       {options.length > 0 && (
         <div className="max-h-44 overflow-y-auto rounded-sm border border-border bg-background">
@@ -1404,6 +1476,36 @@ function LorePicker({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function SelectedCharacterPreview({ character, onClear }: { character: Character; onClear: () => void }) {
+  const traitText = character.traits.length ? character.traits.slice(0, 4).join(", ") : "No traits";
+  return (
+    <div className="mt-3 rounded-sm border border-primary/50 bg-primary/10 p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div className="h-20 w-16 shrink-0 overflow-hidden rounded-sm border border-border bg-background">
+          {character.thumbnail ? (
+            <AuthenticatedImage src={character.thumbnail} alt={character.name} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center font-display text-primary">{character.name.slice(0, 1).toUpperCase()}</div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="truncate font-heading text-sm text-foreground">{character.name}</p>
+              <p className="text-xs text-muted-foreground">{character.race}{character.occupation ? ` / ${character.occupation}` : ""}</p>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={onClear}>
+              Clear Character
+            </Button>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">{traitText}</p>
+          <p className="mt-2 line-clamp-3 text-sm text-foreground/80">{character.shortDesc || "No short description."}</p>
+        </div>
+      </div>
     </div>
   );
 }
