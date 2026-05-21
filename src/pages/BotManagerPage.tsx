@@ -386,10 +386,12 @@ export default function BotManagerPage() {
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
     credentials: false,
-    general: true,
+    general: false,
     personalities: false,
-    backup: true,
+    backup: false,
   });
+  type MainTab = "runtime" | "credentials" | "personalities" | "config" | "backups";
+  const [activeMainTab, setActiveMainTab] = useState<MainTab>("runtime");
 
   const [credentialProvider, setCredentialProvider] = useState<BotProvider>("gemini");
   const [credentialApiKey, setCredentialApiKey] = useState("");
