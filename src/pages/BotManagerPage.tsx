@@ -1260,6 +1260,7 @@ export default function BotManagerPage() {
                     </div>
                   </div>
                 </div>
+
                 <OpenRouterSection
                   activeProfileId={activeOpenRouterProfileId}
                   busy={busy}
