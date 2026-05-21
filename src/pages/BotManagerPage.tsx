@@ -1260,8 +1260,10 @@ export default function BotManagerPage() {
                     </div>
                   </div>
                 </div>
+                </div>
 
                 <OpenRouterSection
+
                   activeProfileId={activeOpenRouterProfileId}
                   busy={busy}
                   canUseCredentialGate={canUnlockCredential}
