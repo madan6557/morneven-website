@@ -1482,6 +1482,7 @@ function LorePicker({
 
 function SelectedCharacterPreview({ character, onClear }: { character: Character; onClear: () => void }) {
   const traitText = character.traits.length ? character.traits.slice(0, 4).join(", ") : "No traits";
+  const anecdotes = character.anecdotes?.slice(0, 2) ?? [];
   return (
     <div className="mt-3 rounded-sm border border-primary/50 bg-primary/10 p-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
@@ -1504,6 +1505,17 @@ function SelectedCharacterPreview({ character, onClear }: { character: Character
           </div>
           <p className="mt-2 text-xs text-muted-foreground">{traitText}</p>
           <p className="mt-2 line-clamp-3 text-sm text-foreground/80">{character.shortDesc || "No short description."}</p>
+          {anecdotes.length > 0 && (
+            <div className="mt-3 space-y-1 rounded-sm border border-border/70 bg-background/40 p-2">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Anecdotes</p>
+              {anecdotes.map((anecdote) => (
+                <p key={anecdote.id} className="line-clamp-2 text-xs text-foreground/80">
+                  <span className="font-heading text-foreground">{anecdote.title}</span>
+                  {anecdote.body ? ` - ${anecdote.body}` : ""}
+                </p>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
