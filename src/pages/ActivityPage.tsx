@@ -529,7 +529,7 @@ function ActivityVisitGraph({
         <Signal label="Buckets" value={series?.points.length ?? 0} />
       </div>
 
-      <div className="mt-4 grid gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mt-4 space-y-4">
         <div className="min-w-0 rounded-sm border border-border bg-background/35 p-3">
           {error ? (
             <p className="py-16 text-center text-sm text-destructive">{error}</p>
@@ -543,7 +543,7 @@ function ActivityVisitGraph({
                 views: { label: "Views", color: "hsl(var(--primary))" },
                 uniqueVisitors: { label: "Visitors", color: "hsl(var(--accent-orange))" },
               }}
-              className="h-[260px] w-full"
+              className="h-[240px] w-full sm:h-[280px]"
             >
               <AreaChart
                 data={points}
@@ -609,26 +609,26 @@ function ActivityVisitNodePanel({ point }: { point: ActivityVisitPoint | null })
         </div>
       </div>
 
-      <ActivityInspectorSection title="Recorded viewers" count={point.viewers.length + point.viewerOverflow} defaultOpen>
-        <div className="space-y-2">
-          {point.viewers.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No viewer identities recorded in this bucket.</p>
-          ) : (
-            point.viewers.map((viewer) => (
-              <p key={`${viewer.kind}:${viewer.label}`} className="break-words rounded-sm border border-border/60 bg-background/45 px-3 py-2 text-sm text-foreground">
-                {viewer.label} viewed {formatCompactNumber(viewer.count)} time{viewer.count === 1 ? "" : "s"}
-              </p>
-            ))
-          )}
-          {point.viewerOverflow > 0 && (
-            <p className="text-xs text-muted-foreground">+{formatCompactNumber(point.viewerOverflow)} more viewers hidden for payload control.</p>
-          )}
-        </div>
-      </ActivityInspectorSection>
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <ActivityInspectorSection title="Recorded viewers" count={point.viewers.length + point.viewerOverflow} defaultOpen>
+          <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+            {point.viewers.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No viewer identities recorded in this bucket.</p>
+            ) : (
+              point.viewers.map((viewer) => (
+                <p key={`${viewer.kind}:${viewer.label}`} className="break-words rounded-sm border border-border/60 bg-background/45 px-3 py-2 text-sm text-foreground">
+                  {viewer.label} viewed {formatCompactNumber(viewer.count)} time{viewer.count === 1 ? "" : "s"}
+                </p>
+              ))
+            )}
+            {point.viewerOverflow > 0 && (
+              <p className="text-xs text-muted-foreground">+{formatCompactNumber(point.viewerOverflow)} more viewers hidden for payload control.</p>
+            )}
+          </div>
+        </ActivityInspectorSection>
 
-      <div className="mt-3">
         <ActivityInspectorSection title="Top content" count={point.topContent.length} defaultOpen>
-          <div className="space-y-2">
+          <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
             {point.topContent.length === 0 ? (
               <p className="text-xs text-muted-foreground">No linked content in this bucket.</p>
             ) : (
