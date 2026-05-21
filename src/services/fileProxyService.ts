@@ -46,7 +46,12 @@ export function getProxyUrl(url: string): string {
 
 export function isProxyUrl(url: string): boolean {
   if (!url) return false;
-  return /\/(?:api|v1)\/files\/object(?:\?|$)/.test(url) || /\/files\/object(?:\?|$)/.test(url);
+  return (
+    /\/(?:api|v1)\/files\/object(?:\?|$)/.test(url) ||
+    /\/files\/object(?:\?|$)/.test(url) ||
+    /\/(?:api|v1)\/bot-manager\/identities\/[^/]+\/files\/proxy(?:\?|$)/.test(url) ||
+    /\/bot-manager\/identities\/[^/]+\/files\/proxy(?:\?|$)/.test(url)
+  );
 }
 
 export function isDirectStorageUrl(url: string): boolean {

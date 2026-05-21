@@ -157,6 +157,7 @@ const BACKUP_MEDIA_SOURCES: Array<{ value: BackupMediaSource; label: string }> =
   { value: "projects", label: "Projects" },
   { value: "news", label: "News" },
   { value: "map", label: "Map" },
+  { value: "bot-manager", label: "Bot Manager" },
 ];
 
 function describeRestrictionDuration(mode: RestrictionDurationMode, amount: number) {

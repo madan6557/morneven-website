@@ -284,3 +284,7 @@ export function canManagePersonnel(level: PersonnelLevel): boolean {
 export function canAccessSecurityConsole(level: PersonnelLevel, role: UserRole): boolean {
   return level >= PL_FULL_AUTHORITY && (role === "author" || role === "admin" || role === "security");
 }
+
+export function canAccessBotManager(level: PersonnelLevel, role: UserRole): boolean {
+  return level >= PL_FULL_AUTHORITY && (role === "author" || role === "admin");
+}

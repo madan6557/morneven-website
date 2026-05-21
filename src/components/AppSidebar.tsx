@@ -18,6 +18,7 @@ import {
   ClipboardList,
   MessageCircle,
   BarChart3,
+  Bot,
 } from "lucide-react";
 import {
   Tooltip,
@@ -32,6 +33,7 @@ import {
   PERSONNEL_TRACKS,
   PL_FULL_AUTHORITY,
   canAccessSecurityConsole,
+  canAccessBotManager,
   canManagePersonnel,
   canEnterAuthorPanel,
   type PersonnelLevel,
@@ -80,6 +82,12 @@ const navItems: NavItem[] = [
     icon: MessageCircle,
     badge: "chat",
     visible: ({ role }) => role !== "guest",
+  },
+  {
+    title: "Bot Manager",
+    url: "/bot-manager",
+    icon: Bot,
+    visible: ({ role, level }) => canAccessBotManager(level, role),
   },
   {
     title: "Author Panel",

@@ -13,7 +13,8 @@ export type BackupMediaSource =
   | "other"
   | "projects"
   | "news"
-  | "map";
+  | "map"
+  | "bot-manager";
 
 export interface ExtractionJob {
   id: string;
