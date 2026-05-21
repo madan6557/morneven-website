@@ -53,6 +53,26 @@ export interface BotIdentityDetail extends BotIdentity {
   files: BotIdentityFile[];
 }
 
+export interface BotRuntimeStatus {
+  ok?: boolean;
+  action?: string;
+  sync?: { synced?: boolean; reason?: string; state?: unknown };
+  gateway?: {
+    state?: string;
+    pid?: number | null;
+    uptime?: number | null;
+    restart_count?: number;
+  };
+  morneven?: {
+    syncedAt?: string | null;
+    identity?: { name?: string; slug?: string; roleTitle?: string } | null;
+    fileCount?: number;
+    mode?: string;
+    error?: string;
+  };
+  logs?: string[];
+}
+
 export function getBotManagerSummary() {
   return apiRequest<BotSummary>("/bot-manager/summary");
 }
@@ -149,6 +169,19 @@ export function uploadBotProfileImage(id: string, file: File) {
 
 export function syncBotManagerRuntime() {
   return apiRequest<{ synced: boolean; reason?: string; bundle?: unknown; nanobot?: unknown }>("/bot-manager/sync", {
+    method: "POST",
+    timeoutMs: 60000,
+  });
+}
+
+export function getBotRuntimeStatus() {
+  return apiRequest<BotRuntimeStatus>("/bot-manager/runtime/status", {
+    timeoutMs: 30000,
+  });
+}
+
+export function controlBotRuntime(action: "start" | "stop" | "restart") {
+  return apiRequest<BotRuntimeStatus>(`/bot-manager/runtime/${action}`, {
     method: "POST",
     timeoutMs: 60000,
   });

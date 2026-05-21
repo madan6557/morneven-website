@@ -16,6 +16,7 @@ import {
   Send,
   Settings,
   Shield,
+  Square,
   Upload,
 } from "lucide-react";
 
@@ -29,10 +30,12 @@ import { canAccessBotManager } from "@/lib/pl";
 import { cn } from "@/lib/utils";
 import {
   activateBotIdentity,
+  controlBotRuntime,
   createBotIdentity,
   getBotManagerFileProxyUrl,
   getBotIdentity,
   getBotManagerSummary,
+  getBotRuntimeStatus,
   saveBotIdentityFile,
   syncBotManagerRuntime,
   unlockBotCredentials,
@@ -45,6 +48,7 @@ import {
   type BotIdentityDetail,
   type BotIdentityFile,
   type BotProvider,
+  type BotRuntimeStatus,
   type BotSummary,
 } from "@/services/botManagerApi";
 
@@ -140,6 +144,17 @@ function arrayToCsv(value: unknown) {
 function numberFromText(value: string, fallback: number) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function formatUptime(seconds?: number | null) {
+  if (!seconds) return "0s";
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  if (minutes < 1) return `${remainingSeconds}s`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (hours < 1) return `${minutes}m ${remainingSeconds}s`;
+  return `${hours}h ${remainingMinutes}m`;
 }
 
 function mergeRecord(base: JsonRecord, patch: JsonRecord): JsonRecord {
@@ -245,6 +260,8 @@ export default function BotManagerPage() {
   const [activeTab, setActiveTab] = useState<BotTab>("channels");
   const [generalConfigText, setGeneralConfigText] = useState("{}");
   const [syncLog, setSyncLog] = useState("");
+  const [runtimeStatus, setRuntimeStatus] = useState<BotRuntimeStatus | null>(null);
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
 
   const [credentialProvider, setCredentialProvider] = useState<BotProvider>("gemini");
   const [credentialApiKey, setCredentialApiKey] = useState("");
@@ -297,6 +314,16 @@ export default function BotManagerPage() {
     }
   }, []);
 
+  const loadRuntimeStatus = useCallback(async () => {
+    try {
+      const next = await getBotRuntimeStatus();
+      setRuntimeStatus(next);
+      setRuntimeError(null);
+    } catch (err) {
+      setRuntimeError(err instanceof Error ? err.message : "Nanobot runtime unavailable.");
+    }
+  }, []);
+
   const loadDetail = useCallback(async (id: string) => {
     setBusy("detail");
     try {
@@ -320,8 +347,11 @@ export default function BotManagerPage() {
   }, [toast]);
 
   useEffect(() => {
-    if (allowed) void loadSummary();
-  }, [allowed, loadSummary]);
+    if (allowed) {
+      void loadSummary();
+      void loadRuntimeStatus();
+    }
+  }, [allowed, loadRuntimeStatus, loadSummary]);
 
   useEffect(() => {
     if (selectedId) void loadDetail(selectedId);
@@ -331,7 +361,7 @@ export default function BotManagerPage() {
   if (!allowed) return <Navigate to="/home" replace />;
 
   const refreshAll = async () => {
-    await loadSummary();
+    await Promise.all([loadSummary(), loadRuntimeStatus()]);
     if (selectedId) await loadDetail(selectedId);
   };
 
@@ -480,12 +510,32 @@ export default function BotManagerPage() {
       async () => {
         const result = await syncBotManagerRuntime();
         setSyncLog(toJsonText(result));
+        if (result.nanobot && typeof result.nanobot === "object") setRuntimeStatus(result.nanobot as BotRuntimeStatus);
+        await loadRuntimeStatus();
       },
       "Runtime sync requested",
     );
 
+  const controlRuntime = (action: "start" | "stop" | "restart") =>
+    runAction(
+      `runtime-${action}`,
+      async () => {
+        const result = await controlBotRuntime(action);
+        setRuntimeStatus(result);
+        setRuntimeError(null);
+        setSyncLog(toJsonText(result));
+      },
+      `Nanobot ${action} requested`,
+    );
+
   const memoryFiles = detail?.files.filter(isMemoryFile) ?? [];
   const workspaceFiles = detail?.files.filter((file) => !isMemoryFile(file)) ?? [];
+  const nanobotConfigured = Boolean(summary?.runtimeStatus.nanobotConfigured);
+  const runtimeActionDisabled = Boolean(busy) || !nanobotConfigured;
+  const gatewayState = runtimeStatus?.gateway?.state ?? (nanobotConfigured ? "unknown" : "not configured");
+  const lastSync = runtimeStatus?.morneven?.syncedAt
+    ? new Date(runtimeStatus.morneven.syncedAt).toLocaleString()
+    : "Never";
   const updateChannel = (channel: ChannelKey, patch: JsonRecord) => {
     setChannelsDraft((current) => ({
       ...current,
@@ -529,7 +579,29 @@ export default function BotManagerPage() {
             <div className="mt-4 grid gap-3 text-sm">
               <Metric label="Active Personality" value={activeIdentity?.name ?? "None"} />
               <Metric label="Saved Personalities" value={String(summary?.identities.length ?? 0)} />
-              <Metric label="Nanobot Link" value={summary?.runtimeStatus.nanobotConfigured ? "Configured" : "Not configured"} />
+              <Metric label="Nanobot Link" value={nanobotConfigured ? "Configured" : "Not configured"} />
+              <Metric label="Gateway State" value={gatewayState} />
+              <Metric label="Gateway Uptime" value={formatUptime(runtimeStatus?.gateway?.uptime)} />
+              <Metric label="Last Sync" value={lastSync} />
+            </div>
+            {runtimeError && (
+              <div className="mt-3 rounded-sm border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
+                {runtimeError}
+              </div>
+            )}
+            <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+              <Button type="button" variant="outline" onClick={() => controlRuntime("start")} disabled={runtimeActionDisabled}>
+                {busy === "runtime-start" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                Start
+              </Button>
+              <Button type="button" variant="outline" onClick={() => controlRuntime("stop")} disabled={runtimeActionDisabled}>
+                {busy === "runtime-stop" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Square className="mr-2 h-4 w-4" />}
+                Stop
+              </Button>
+              <Button type="button" variant="outline" onClick={() => controlRuntime("restart")} disabled={runtimeActionDisabled}>
+                {busy === "runtime-restart" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                Restart
+              </Button>
             </div>
           </div>
 
