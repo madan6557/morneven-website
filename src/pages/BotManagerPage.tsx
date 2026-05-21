@@ -580,7 +580,7 @@ export default function BotManagerPage() {
         });
         setCredentialUnlocked(true);
       },
-      "Credential section unlocked",
+      "Credentials unlocked",
     );
 
   const saveCredential = () =>
@@ -997,7 +997,7 @@ export default function BotManagerPage() {
             <button type="button" className="flex w-full items-center justify-between gap-3 text-left" onClick={() => toggleSection("credentials")}>
               <span className="flex items-center gap-2 text-primary">
               <KeyRound className="h-4 w-4" />
-              <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Credential Section</h2>
+              <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Credentials</h2>
               </span>
               {collapsedSections.credentials ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
             </button>
@@ -1131,7 +1131,7 @@ export default function BotManagerPage() {
             <button type="button" className="flex w-full items-center justify-between gap-3 text-left" onClick={() => toggleSection("personalities")}>
               <span className="flex items-center gap-2 text-primary">
                 <Brain className="h-4 w-4" />
-                <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Personality Section</h2>
+                <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Personalities</h2>
               </span>
               {collapsedSections.personalities ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
             </button>
@@ -1188,8 +1188,7 @@ export default function BotManagerPage() {
                             <p className="truncate text-sm text-muted-foreground">{identity.roleTitle}</p>
                             <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{identity.description || "No description."}</p>
                           </div>
-                          <div className="grid gap-2 sm:grid-cols-4 lg:w-[28rem]">
-                            <Button type="button" variant="outline" size="sm" onClick={() => setSelectedId(identity.id)}>View</Button>
+                          <div className="grid gap-2 sm:grid-cols-3 lg:w-[22rem]">
                             <Button type="button" size="sm" onClick={() => { setSelectedId(identity.id); setEditingIdentityId(rowOpen ? null : identity.id); }}>Edit</Button>
                             <Button type="button" variant={identity.isActive ? "outline" : "default"} size="sm" onClick={() => activateIdentity(identity)} disabled={identity.isActive || Boolean(busy)}>Activate</Button>
                             <Button type="button" variant="destructive" size="sm" onClick={() => removeIdentity(identity)} disabled={identity.isActive || Boolean(busy)}>
