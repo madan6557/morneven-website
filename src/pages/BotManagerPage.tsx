@@ -790,7 +790,7 @@ export default function BotManagerPage() {
           botManagerKey: credentialKey,
           confirmText: "CREDENTIALS",
         });
-        await refreshAll();
+        await refreshVisibleData();
       },
       "Provider activated",
     );
