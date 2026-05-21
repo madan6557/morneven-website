@@ -319,8 +319,9 @@ export function syncBotManagerRuntime() {
   });
 }
 
-export function getBotRuntimeStatus() {
-  return apiRequest<BotRuntimeStatus>("/bot-manager/runtime/status", {
+export function getBotRuntimeStatus(options: { fresh?: boolean } = {}) {
+  const suffix = options.fresh ? "?fresh=true" : "";
+  return apiRequest<BotRuntimeStatus>(`/bot-manager/runtime/status${suffix}`, {
     timeoutMs: 30000,
   });
 }

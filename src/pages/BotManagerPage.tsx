@@ -141,9 +141,27 @@ const inputClass =
   "min-w-0 w-full rounded-sm border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:ring-1 focus:ring-primary";
 const textareaClass = `${inputClass} min-h-40 resize-y font-mono text-xs leading-5`;
 const panelClass = "hud-border bg-card p-4 sm:p-5";
+const RUNTIME_STATUS_POLL_MS = 60_000;
+const BACKUP_ACTIVE_POLL_MS = 3_000;
 
 function toJsonText(value: unknown) {
   return JSON.stringify(value ?? {}, null, 2);
+}
+
+function isDocumentVisible() {
+  return typeof document === "undefined" || document.visibilityState === "visible";
+}
+
+function usePageVisibility() {
+  const [visible, setVisible] = useState(isDocumentVisible);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => setVisible(isDocumentVisible());
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
+  return visible;
 }
 
 function isRecordValue(value: unknown): value is JsonRecord {
@@ -217,6 +235,10 @@ function formatUptime(seconds?: number | null) {
   const remainingMinutes = minutes % 60;
   if (hours < 1) return `${minutes}m ${remainingSeconds}s`;
   return `${hours}h ${remainingMinutes}m`;
+}
+
+function isActiveBackupJob(job: Pick<BotManagerBackupJob, "status">) {
+  return ["queued", "processing", "running"].includes(job.status);
 }
 
 function mergeRecord(base: JsonRecord, patch: JsonRecord): JsonRecord {
@@ -339,6 +361,7 @@ function getFileUsageNote(file: Pick<BotIdentityFile, "kind" | "path">) {
 export default function BotManagerPage() {
   const { isAuthenticated, role, personnelLevel } = useAuth();
   const { toast } = useToast();
+  const pageVisible = usePageVisibility();
   const allowed = canAccessBotManager(personnelLevel, role);
   const [summary, setSummary] = useState<BotSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -401,11 +424,18 @@ export default function BotManagerPage() {
   const [backupTotalPages, setBackupTotalPages] = useState(1);
   const [backupStatus, setBackupStatus] = useState("all");
   const [backupHistoryMode, setBackupHistoryMode] = useState("all");
+  const [runtimeStartedAtLocal, setRuntimeStartedAtLocal] = useState<number | null>(null);
+  const [runtimeNow, setRuntimeNow] = useState(() => Date.now());
 
   const activeIdentity = useMemo(
     () => summary?.identities.find((identity) => identity.isActive) ?? null,
     [summary],
   );
+  const backupVisible = allowed && pageVisible && !collapsedSections.backup;
+  const credentialsVisible = allowed && pageVisible && !collapsedSections.credentials;
+  const personalitiesVisible = allowed && pageVisible && !collapsedSections.personalities;
+  const hasActiveBackupJob = useMemo(() => backupJobs.some(isActiveBackupJob), [backupJobs]);
+  const observedGatewayState = runtimeStatus?.gateway?.state ?? null;
 
   const canUnlockCredential =
     credentialPassword.length > 0 &&
@@ -438,9 +468,9 @@ export default function BotManagerPage() {
     }
   }, []);
 
-  const loadRuntimeStatus = useCallback(async () => {
+  const loadRuntimeStatus = useCallback(async (fresh = false) => {
     try {
-      const next = await getBotRuntimeStatus();
+      const next = await getBotRuntimeStatus({ fresh });
       setRuntimeStatus(next);
       setRuntimeError(null);
       return next;
@@ -502,24 +532,31 @@ export default function BotManagerPage() {
   }, [allowed, loadRuntimeStatus, loadSummary]);
 
   useEffect(() => {
-    if (!allowed) return undefined;
+    if (!allowed || !pageVisible) return undefined;
     const interval = window.setInterval(() => {
       void loadRuntimeStatus();
-      void loadSummary(true);
-      void loadBackupJobs();
-    }, 5000);
+    }, RUNTIME_STATUS_POLL_MS);
     return () => window.clearInterval(interval);
-  }, [allowed, loadBackupJobs, loadRuntimeStatus, loadSummary]);
+  }, [allowed, loadRuntimeStatus, pageVisible]);
 
   useEffect(() => {
-    if (allowed) void loadOpenRouterProfiles();
-  }, [allowed, loadOpenRouterProfiles]);
+    if (credentialsVisible && credentialUnlocked) void loadOpenRouterProfiles();
+  }, [credentialUnlocked, credentialsVisible, loadOpenRouterProfiles]);
 
   useEffect(() => {
-    if (allowed) void loadBackupJobs();
-  }, [allowed, loadBackupJobs]);
+    if (backupVisible) void loadBackupJobs();
+  }, [backupVisible, loadBackupJobs]);
 
   useEffect(() => {
+    if (!backupVisible || !hasActiveBackupJob) return undefined;
+    const interval = window.setInterval(() => {
+      void loadBackupJobs();
+    }, BACKUP_ACTIVE_POLL_MS);
+    return () => window.clearInterval(interval);
+  }, [backupVisible, hasActiveBackupJob, loadBackupJobs]);
+
+  useEffect(() => {
+    if (!allowed || !pageVisible || (!showCreatePersonality && !(editingIdentityId && activeTab === "settings"))) return undefined;
     const handle = window.setTimeout(async () => {
       if (!loreSearch.trim()) {
         setLoreOptions([]);
@@ -533,18 +570,40 @@ export default function BotManagerPage() {
       }
     }, 250);
     return () => window.clearTimeout(handle);
-  }, [loreSearch]);
+  }, [activeTab, allowed, editingIdentityId, loreSearch, pageVisible, showCreatePersonality]);
 
   useEffect(() => {
-    if (selectedId) void loadDetail(selectedId);
-  }, [loadDetail, selectedId]);
+    if (personalitiesVisible && selectedId && editingIdentityId === selectedId) void loadDetail(selectedId);
+  }, [editingIdentityId, loadDetail, personalitiesVisible, selectedId]);
+
+  useEffect(() => {
+    if (observedGatewayState === "running") {
+      const now = Date.now();
+      setRuntimeStartedAtLocal((current) => current ?? now);
+      setRuntimeNow(now);
+      return;
+    }
+    if (observedGatewayState && observedGatewayState !== "running") {
+      setRuntimeStartedAtLocal(null);
+      setRuntimeNow(Date.now());
+    }
+  }, [observedGatewayState]);
+
+  useEffect(() => {
+    if (!pageVisible || observedGatewayState !== "running") return undefined;
+    const interval = window.setInterval(() => setRuntimeNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [observedGatewayState, pageVisible]);
 
   if (!isAuthenticated) return <Navigate to="/auth" replace />;
   if (!allowed) return <Navigate to="/home" replace />;
 
-  const refreshAll = async () => {
-    await Promise.all([loadSummary(), loadRuntimeStatus(), loadOpenRouterProfiles(), loadBackupJobs()]);
-    if (selectedId) await loadDetail(selectedId);
+  const refreshVisibleData = async () => {
+    const tasks: Array<Promise<unknown>> = [loadSummary(), loadRuntimeStatus()];
+    if (credentialsVisible && credentialUnlocked) tasks.push(loadOpenRouterProfiles());
+    if (backupVisible) tasks.push(loadBackupJobs());
+    await Promise.all(tasks);
+    if (personalitiesVisible && selectedId && editingIdentityId === selectedId) await loadDetail(selectedId);
   };
 
   const runAction = async (key: string, action: () => Promise<void>, success: string) => {
@@ -639,7 +698,7 @@ export default function BotManagerPage() {
       `activate-${identity.id}`,
       async () => {
         await activateBotIdentity(identity.id);
-        await refreshAll();
+        await refreshVisibleData();
       },
       "Active personality updated",
     );
@@ -653,7 +712,7 @@ export default function BotManagerPage() {
           setSelectedId(null);
           setDetail(null);
         }
-        await refreshAll();
+        await refreshVisibleData();
       },
       "Personality deleted",
     );
@@ -690,7 +749,7 @@ export default function BotManagerPage() {
         if (openRouterDraft.id) await updateOpenRouterProfile(openRouterDraft.id, payload);
         else await createOpenRouterProfile(payload);
         setOpenRouterDraft({ name: "", apiKey: "", apiBase: "", modelId: "", tags: "", notes: "" });
-        await refreshAll();
+        await refreshVisibleData();
       },
       openRouterDraft.id ? "OpenRouter profile updated" : "OpenRouter profile created",
     );
@@ -704,7 +763,7 @@ export default function BotManagerPage() {
           botManagerKey: credentialKey,
           confirmText: "CREDENTIALS",
         });
-        await refreshAll();
+        await refreshVisibleData();
       },
       "OpenRouter profile activated",
     );
@@ -718,7 +777,7 @@ export default function BotManagerPage() {
           botManagerKey: credentialKey,
           confirmText: "CREDENTIALS",
         });
-        await refreshAll();
+        await refreshVisibleData();
       },
       "OpenRouter profile deleted",
     );
@@ -736,7 +795,7 @@ export default function BotManagerPage() {
           settings: mergeRecord(settingsBase, settingsDraftToConfig(settingsDraft)),
           loreCharacterId: selectedLoreId || undefined,
         });
-        await refreshAll();
+        await refreshVisibleData();
       },
       "Personality saved",
     );
@@ -777,7 +836,7 @@ export default function BotManagerPage() {
       "profile",
       async () => {
         await uploadBotProfileImage(detail.id, file);
-        await refreshAll();
+        await refreshVisibleData();
       },
       "Profile image uploaded",
     );
@@ -787,7 +846,7 @@ export default function BotManagerPage() {
     try {
       const nextSummary = await loadSummary();
       if (!nextSummary) throw new Error("Bot Manager unavailable.");
-      const nextRuntime = await loadRuntimeStatus();
+      const nextRuntime = await loadRuntimeStatus(true);
       const needsRuntimeSync = Boolean(nextSummary?.runtimeSync.runtimeDirty ?? summary?.runtimeSync.runtimeDirty);
 
       if (!needsRuntimeSync) {
@@ -799,11 +858,11 @@ export default function BotManagerPage() {
       const result = await syncBotManagerRuntime();
       setSyncLog(toJsonText(result));
       if (result.nanobot && typeof result.nanobot === "object") setRuntimeStatus(result.nanobot as BotRuntimeStatus);
-      await refreshAll();
+      await refreshVisibleData();
       toast({ title: "Runtime synced" });
     } catch (err) {
       await loadSummary();
-      await loadRuntimeStatus();
+      await loadRuntimeStatus(true);
       toast({ title: "Bot Manager action failed", description: err instanceof Error ? err.message : "Request failed." });
     } finally {
       setBusy(null);
@@ -867,6 +926,7 @@ export default function BotManagerPage() {
   const gatewayState = runtimeStatus?.gateway?.state ?? (nanobotConfigured ? "unknown" : "not configured");
   const gatewayRunning = gatewayState === "running";
   const gatewayTransitioning = gatewayState === "starting" || gatewayState === "stopping";
+  const gatewayUptimeSeconds = gatewayRunning && runtimeStartedAtLocal ? Math.max(Math.floor((runtimeNow - runtimeStartedAtLocal) / 1000), 0) : 0;
   const runtimeDirty = Boolean(summary?.runtimeSync.runtimeDirty);
   const syncUnavailable = Boolean(error && !summary);
   const syncState = busy === "sync"
@@ -978,7 +1038,7 @@ export default function BotManagerPage() {
               <Metric label="Sync State" value={syncState} />
               {runtimeDirty && <Metric label="Sync Reason" value={summary?.runtimeSync.runtimeDirtyReason ?? "Runtime changes pending"} />}
               <Metric label="Gateway State" value={gatewayState} />
-              <Metric label="Gateway Uptime" value={formatUptime(runtimeStatus?.gateway?.uptime)} />
+              <Metric label="Gateway Uptime" value={formatUptime(gatewayUptimeSeconds)} />
               <Metric label="Last Sync" value={lastSync} />
             </div>
             {runtimeError && (
