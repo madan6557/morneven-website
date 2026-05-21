@@ -4,6 +4,9 @@ import {
   Bot,
   Brain,
   Check,
+  ChevronDown,
+  ChevronUp,
+  Download,
   FileText,
   Hash,
   KeyRound,
@@ -11,37 +14,55 @@ import {
   MessageCircle,
   Phone,
   Play,
+  Plus,
+  Power,
   RefreshCw,
   Save,
+  Search,
   Send,
   Settings,
   Shield,
   Square,
+  Trash2,
   Upload,
+  X,
 } from "lucide-react";
 
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { canAccessBotManager } from "@/lib/pl";
 import { cn } from "@/lib/utils";
 import {
   activateBotIdentity,
+  activateBotProvider,
+  activateOpenRouterProfile,
+  clearBotManagerBackups,
   controlBotRuntime,
+  createBotManagerBackup,
   createBotIdentity,
+  createOpenRouterProfile,
+  createBotManagerBackupDownloadTicket,
+  deleteBotIdentity,
+  deleteBotIdentityFile,
+  deleteOpenRouterProfile,
+  getBotManagerBackupDownloadUrl,
   getBotManagerFileProxyUrl,
   getBotIdentity,
   getBotManagerSummary,
   getBotRuntimeStatus,
+  listBotManagerBackups,
+  listOpenRouterProfiles,
   saveBotIdentityFile,
   syncBotManagerRuntime,
   unlockBotCredentials,
   updateBotCredential,
   updateBotGeneralConfig,
   updateBotIdentity,
+  updateOpenRouterProfile,
+  type BotManagerBackupJob,
   uploadBotProfileImage,
   type BotFileKind,
   type BotIdentity,
@@ -50,7 +71,10 @@ import {
   type BotProvider,
   type BotRuntimeStatus,
   type BotSummary,
+  type OpenRouterProfile,
 } from "@/services/botManagerApi";
+import { getCharactersPage } from "@/services/loreApi";
+import type { Character } from "@/types";
 
 const providers: Array<{ value: BotProvider; label: string }> = [
   { value: "gemini", label: "Gemini" },
@@ -62,6 +86,7 @@ const providers: Array<{ value: BotProvider; label: string }> = [
   { value: "zhipu", label: "Zhipu" },
   { value: "vllm", label: "vLLM" },
 ];
+const normalProviders = providers.filter((provider) => provider.value !== "openrouter") as Array<{ value: Exclude<BotProvider, "openrouter">; label: string }>;
 
 const fileKinds: BotFileKind[] = ["identity", "memory", "cron", "skill", "session", "tool", "user", "system", "other"];
 const tabs = ["channels", "system", "files", "memory", "settings", "logs"] as const;
@@ -95,6 +120,23 @@ type BotSettingsDraft = {
   restartAfterSync: boolean;
 };
 
+type GeneralConfigDraft = {
+  timezone: string;
+  globalRules: string;
+  restartAfterSync: boolean;
+  allowRuntimeReload: boolean;
+};
+
+type OpenRouterDraft = {
+  id?: string;
+  name: string;
+  apiKey: string;
+  apiBase: string;
+  modelId: string;
+  tags: string;
+  notes: string;
+};
+
 const inputClass =
   "min-w-0 w-full rounded-sm border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:ring-1 focus:ring-primary";
 const textareaClass = `${inputClass} min-h-40 resize-y font-mono text-xs leading-5`;
@@ -102,14 +144,6 @@ const panelClass = "hud-border bg-card p-4 sm:p-5";
 
 function toJsonText(value: unknown) {
   return JSON.stringify(value ?? {}, null, 2);
-}
-
-function parseJsonObject(value: string) {
-  const parsed = JSON.parse(value || "{}");
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("JSON must be an object.");
-  }
-  return parsed as Record<string, unknown>;
 }
 
 function isRecordValue(value: unknown): value is JsonRecord {
@@ -139,6 +173,34 @@ function csvToArray(value: string) {
 function arrayToCsv(value: unknown) {
   if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string").join(", ");
   return readString(value);
+}
+
+function formatCharacterLabel(character: Character) {
+  const trait = character.traits?.[0] ?? character.occupation ?? character.race ?? "Lore";
+  return `${character.name} - ${trait}`;
+}
+
+function createGeneralConfigDraft(value: unknown): GeneralConfigDraft {
+  const config = asRecord(value);
+  const gateway = asRecord(config.gateway);
+  return {
+    timezone: readString(config.timezone, "Asia/Singapore"),
+    globalRules: readString(config.globalRules, "Follow Morneven website policy and active personality files."),
+    restartAfterSync: readBoolean(gateway.restartAfterSync, true),
+    allowRuntimeReload: readBoolean(gateway.allowRuntimeReload, true),
+  };
+}
+
+function generalConfigDraftToConfig(base: JsonRecord, draft: GeneralConfigDraft): JsonRecord {
+  return mergeRecord(base, {
+    runtimeMode: "single-active-personality",
+    timezone: draft.timezone,
+    globalRules: draft.globalRules,
+    gateway: {
+      restartAfterSync: draft.restartAfterSync,
+      allowRuntimeReload: draft.allowRuntimeReload,
+    },
+  });
 }
 
 function numberFromText(value: string, fallback: number) {
@@ -252,7 +314,12 @@ function normalizeFilePath(value: string) {
 }
 
 function isReadOnlyFilePath(path: string) {
-  return normalizeFilePath(path) === "memory/history.jsonl";
+  const normalized = normalizeFilePath(path);
+  return normalized === "memory/history.jsonl" || normalized === "lore.md";
+}
+
+function isProtectedFilePath(path: string) {
+  return ["agents.md", "soul.md", "memory.md", "tools.md", "user.md", "heartbeat.md", "lore.md", "memory/history.jsonl"].includes(normalizeFilePath(path));
 }
 
 function getFileUsageNote(file: Pick<BotIdentityFile, "kind" | "path">) {
@@ -263,6 +330,7 @@ function getFileUsageNote(file: Pick<BotIdentityFile, "kind" | "path">) {
   if (path === "tools.md") return "Editable notes for allowed tools and tool usage rules.";
   if (path === "user.md") return "Editable user preference and audience profile notes.";
   if (path === "heartbeat.md") return "Editable periodic task and heartbeat notes.";
+  if (path === "lore.md") return "Lore reference generated from Morneven Lore/Wiki. Read-only and protected from delete.";
   if (path === "memory/history.jsonl") return "Runtime history ledger. Read-only in Bot Manager; do not edit manually.";
   if (file.kind === "memory") return "Editable per-personality memory file. Prefer memory/*.md for manual notes.";
   return "Editable workspace file. Use a scoped path and sync runtime after saving.";
@@ -279,10 +347,17 @@ export default function BotManagerPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<BotIdentityDetail | null>(null);
   const [activeTab, setActiveTab] = useState<BotTab>("channels");
-  const [generalConfigText, setGeneralConfigText] = useState("{}");
+  const [generalBase, setGeneralBase] = useState<JsonRecord>({});
+  const [generalDraft, setGeneralDraft] = useState<GeneralConfigDraft>(() => createGeneralConfigDraft({}));
   const [syncLog, setSyncLog] = useState("");
   const [runtimeStatus, setRuntimeStatus] = useState<BotRuntimeStatus | null>(null);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
+    credentials: false,
+    general: true,
+    personalities: false,
+    backup: true,
+  });
 
   const [credentialProvider, setCredentialProvider] = useState<BotProvider>("gemini");
   const [credentialApiKey, setCredentialApiKey] = useState("");
@@ -292,16 +367,40 @@ export default function BotManagerPage() {
   const [credentialKey, setCredentialKey] = useState("");
   const [credentialConfirm, setCredentialConfirm] = useState("");
   const [credentialUnlocked, setCredentialUnlocked] = useState(false);
+  const [openRouterProfiles, setOpenRouterProfiles] = useState<OpenRouterProfile[]>([]);
+  const [openRouterSearch, setOpenRouterSearch] = useState("");
+  const [openRouterFilter, setOpenRouterFilter] = useState("all");
+  const [openRouterPage, setOpenRouterPage] = useState(1);
+  const [openRouterTotalPages, setOpenRouterTotalPages] = useState(1);
+  const [openRouterDraft, setOpenRouterDraft] = useState<OpenRouterDraft>({ name: "", apiKey: "", apiBase: "", modelId: "", tags: "", notes: "" });
 
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
   const [newDescription, setNewDescription] = useState("");
+  const [showCreatePersonality, setShowCreatePersonality] = useState(false);
+  const [editingIdentityId, setEditingIdentityId] = useState<string | null>(null);
+  const [personalitySearch, setPersonalitySearch] = useState("");
+  const [personalityFilter, setPersonalityFilter] = useState("all");
+  const [personalityPage, setPersonalityPage] = useState(1);
+  const [loreSearch, setLoreSearch] = useState("");
+  const [loreOptions, setLoreOptions] = useState<Character[]>([]);
+  const [selectedLoreId, setSelectedLoreId] = useState("");
   const [identityDraft, setIdentityDraft] = useState<BotIdentityDraft>({ name: "", roleTitle: "", description: "" });
   const [channelsDraft, setChannelsDraft] = useState<JsonRecord>(createDefaultChannels());
   const [selectedChannel, setSelectedChannel] = useState<ChannelKey>("telegram");
   const [settingsBase, setSettingsBase] = useState<JsonRecord>({});
   const [settingsDraft, setSettingsDraft] = useState<BotSettingsDraft>(() => createSettingsDraft({}));
   const [fileDraft, setFileDraft] = useState<BotIdentityFile>(emptyFile());
+  const [backupMode, setBackupMode] = useState<"full" | "custom">("full");
+  const [backupSelectedIds, setBackupSelectedIds] = useState<string[]>([]);
+  const [backupPassword, setBackupPassword] = useState("");
+  const [backupKey, setBackupKey] = useState("");
+  const [backupConfirm, setBackupConfirm] = useState("");
+  const [backupJobs, setBackupJobs] = useState<BotManagerBackupJob[]>([]);
+  const [backupPage, setBackupPage] = useState(1);
+  const [backupTotalPages, setBackupTotalPages] = useState(1);
+  const [backupStatus, setBackupStatus] = useState("all");
+  const [backupHistoryMode, setBackupHistoryMode] = useState("all");
 
   const activeIdentity = useMemo(
     () => summary?.identities.find((identity) => identity.isActive) ?? null,
@@ -319,13 +418,15 @@ export default function BotManagerPage() {
     credentialModelId.trim().length > 0 &&
     canUnlockCredential;
 
-  const loadSummary = useCallback(async () => {
-    setLoading(true);
+  const loadSummary = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const next = await getBotManagerSummary();
       setSummary(next);
-      setGeneralConfigText(toJsonText(next.generalConfig));
+      setGeneralBase(next.generalConfig);
+      setGeneralDraft(createGeneralConfigDraft(next.generalConfig));
+      if (next.openRouterProfiles) setOpenRouterProfiles(next.openRouterProfiles);
       const preferred = next.runtimeStatus.activeIdentityId ?? next.identities[0]?.id ?? null;
       setSelectedId((current) => current ?? preferred);
       return next;
@@ -333,7 +434,7 @@ export default function BotManagerPage() {
       setError(err instanceof Error ? err.message : "Bot Manager unavailable.");
       return null;
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -349,6 +450,26 @@ export default function BotManagerPage() {
     }
   }, []);
 
+  const loadOpenRouterProfiles = useCallback(async () => {
+    try {
+      const page = await listOpenRouterProfiles({ search: openRouterSearch, filter: openRouterFilter, page: openRouterPage, pageSize: 4 });
+      setOpenRouterProfiles(page.items);
+      setOpenRouterTotalPages(page.totalPages);
+    } catch (err) {
+      toast({ title: "OpenRouter profiles unavailable", description: err instanceof Error ? err.message : "Unable to load OpenRouter profiles." });
+    }
+  }, [openRouterFilter, openRouterPage, openRouterSearch, toast]);
+
+  const loadBackupJobs = useCallback(async () => {
+    try {
+      const page = await listBotManagerBackups({ page: backupPage, pageSize: 5, status: backupStatus, mode: backupHistoryMode });
+      setBackupJobs(page.items);
+      setBackupTotalPages(page.totalPages);
+    } catch (err) {
+      toast({ title: "Backup history unavailable", description: err instanceof Error ? err.message : "Unable to load backup history." });
+    }
+  }, [backupHistoryMode, backupPage, backupStatus, toast]);
+
   const loadDetail = useCallback(async (id: string) => {
     setBusy("detail");
     try {
@@ -362,6 +483,8 @@ export default function BotManagerPage() {
       setChannelsDraft(normalizeChannels(next.channels));
       setSettingsBase(asRecord(next.settings));
       setSettingsDraft(createSettingsDraft(next.settings));
+      const loreReference = asRecord(asRecord(next.settings).loreReference);
+      setSelectedLoreId(readString(loreReference.id));
       const firstFile = next.files.find((file) => file.path === "SOUL.md") ?? next.files[0] ?? emptyFile();
       setFileDraft(firstFile);
     } catch (err) {
@@ -382,9 +505,35 @@ export default function BotManagerPage() {
     if (!allowed) return undefined;
     const interval = window.setInterval(() => {
       void loadRuntimeStatus();
+      void loadSummary(true);
+      void loadBackupJobs();
     }, 5000);
     return () => window.clearInterval(interval);
-  }, [allowed, loadRuntimeStatus]);
+  }, [allowed, loadBackupJobs, loadRuntimeStatus, loadSummary]);
+
+  useEffect(() => {
+    if (allowed) void loadOpenRouterProfiles();
+  }, [allowed, loadOpenRouterProfiles]);
+
+  useEffect(() => {
+    if (allowed) void loadBackupJobs();
+  }, [allowed, loadBackupJobs]);
+
+  useEffect(() => {
+    const handle = window.setTimeout(async () => {
+      if (!loreSearch.trim()) {
+        setLoreOptions([]);
+        return;
+      }
+      try {
+        const result = await getCharactersPage({ search: loreSearch, page: 1, pageSize: 8, sort: "name" });
+        setLoreOptions(result.items);
+      } catch {
+        setLoreOptions([]);
+      }
+    }, 250);
+    return () => window.clearTimeout(handle);
+  }, [loreSearch]);
 
   useEffect(() => {
     if (selectedId) void loadDetail(selectedId);
@@ -394,7 +543,7 @@ export default function BotManagerPage() {
   if (!allowed) return <Navigate to="/home" replace />;
 
   const refreshAll = async () => {
-    await Promise.all([loadSummary(), loadRuntimeStatus()]);
+    await Promise.all([loadSummary(), loadRuntimeStatus(), loadOpenRouterProfiles(), loadBackupJobs()]);
     if (selectedId) await loadDetail(selectedId);
   };
 
@@ -457,8 +606,7 @@ export default function BotManagerPage() {
     runAction(
       "general",
       async () => {
-        const parsed = parseJsonObject(generalConfigText);
-        await updateBotGeneralConfig(parsed);
+        await updateBotGeneralConfig(generalConfigDraftToConfig(generalBase, generalDraft));
         await loadSummary();
       },
       "General config saved",
@@ -472,10 +620,14 @@ export default function BotManagerPage() {
           name: newName,
           roleTitle: newRole,
           description: newDescription,
+          loreCharacterId: selectedLoreId || undefined,
         });
         setNewName("");
         setNewRole("");
         setNewDescription("");
+        setSelectedLoreId("");
+        setLoreSearch("");
+        setShowCreatePersonality(false);
         setSelectedId(created.id);
         await loadSummary();
       },
@@ -492,6 +644,85 @@ export default function BotManagerPage() {
       "Active personality updated",
     );
 
+  const removeIdentity = (identity: BotIdentity) =>
+    runAction(
+      `delete-${identity.id}`,
+      async () => {
+        await deleteBotIdentity(identity.id);
+        if (selectedId === identity.id) {
+          setSelectedId(null);
+          setDetail(null);
+        }
+        await refreshAll();
+      },
+      "Personality deleted",
+    );
+
+  const activateProvider = (provider: Exclude<BotProvider, "openrouter">) =>
+    runAction(
+      `provider-${provider}`,
+      async () => {
+        await activateBotProvider(provider, {
+          password: credentialPassword,
+          botManagerKey: credentialKey,
+          confirmText: "CREDENTIALS",
+        });
+        await refreshAll();
+      },
+      "Provider activated",
+    );
+
+  const saveOpenRouterProfile = () =>
+    runAction(
+      openRouterDraft.id ? `openrouter-${openRouterDraft.id}` : "openrouter-create",
+      async () => {
+        const payload = {
+          name: openRouterDraft.name,
+          apiKey: openRouterDraft.apiKey,
+          apiBase: openRouterDraft.apiBase.trim() || undefined,
+          modelId: openRouterDraft.modelId,
+          tags: csvToArray(openRouterDraft.tags),
+          notes: openRouterDraft.notes,
+          password: credentialPassword,
+          botManagerKey: credentialKey,
+          confirmText: "CREDENTIALS" as const,
+        };
+        if (openRouterDraft.id) await updateOpenRouterProfile(openRouterDraft.id, payload);
+        else await createOpenRouterProfile(payload);
+        setOpenRouterDraft({ name: "", apiKey: "", apiBase: "", modelId: "", tags: "", notes: "" });
+        await refreshAll();
+      },
+      openRouterDraft.id ? "OpenRouter profile updated" : "OpenRouter profile created",
+    );
+
+  const setActiveOpenRouterProfile = (profile: OpenRouterProfile) =>
+    runAction(
+      `openrouter-activate-${profile.id}`,
+      async () => {
+        await activateOpenRouterProfile(profile.id, {
+          password: credentialPassword,
+          botManagerKey: credentialKey,
+          confirmText: "CREDENTIALS",
+        });
+        await refreshAll();
+      },
+      "OpenRouter profile activated",
+    );
+
+  const removeOpenRouterProfile = (profile: OpenRouterProfile) =>
+    runAction(
+      `openrouter-delete-${profile.id}`,
+      async () => {
+        await deleteOpenRouterProfile(profile.id, {
+          password: credentialPassword,
+          botManagerKey: credentialKey,
+          confirmText: "CREDENTIALS",
+        });
+        await refreshAll();
+      },
+      "OpenRouter profile deleted",
+    );
+
   const saveIdentity = () =>
     detail &&
     runAction(
@@ -503,6 +734,7 @@ export default function BotManagerPage() {
           description: identityDraft.description,
           channels: channelsDraft,
           settings: mergeRecord(settingsBase, settingsDraftToConfig(settingsDraft)),
+          loreCharacterId: selectedLoreId || undefined,
         });
         await refreshAll();
       },
@@ -525,6 +757,18 @@ export default function BotManagerPage() {
         await loadSummary();
       },
       "File saved",
+    );
+
+  const removeFile = () =>
+    detail &&
+    runAction(
+      "file-delete",
+      async () => {
+        await deleteBotIdentityFile(detail.id, fileDraft.path);
+        await loadDetail(detail.id);
+        await loadSummary();
+      },
+      "File deleted",
     );
 
   const uploadProfile = (file: File) =>
@@ -578,6 +822,44 @@ export default function BotManagerPage() {
       `Nanobot ${action} requested`,
     );
 
+  const createBackup = () =>
+    runAction(
+      "backup-create",
+      async () => {
+        await createBotManagerBackup({
+          mode: backupMode,
+          identityIds: backupMode === "custom" ? backupSelectedIds : undefined,
+          password: backupPassword,
+          secretKey: backupKey,
+          confirmText: "PERSONALITY",
+        });
+        setBackupPassword("");
+        setBackupConfirm("");
+        await loadBackupJobs();
+      },
+      "Backup generation started",
+    );
+
+  const downloadBackup = (job: BotManagerBackupJob) =>
+    runAction(
+      `backup-download-${job.id}`,
+      async () => {
+        const ticket = await createBotManagerBackupDownloadTicket(job.id, backupKey);
+        window.open(getBotManagerBackupDownloadUrl(job.id, ticket.ticket), "_blank", "noopener,noreferrer");
+      },
+      "Backup download prepared",
+    );
+
+  const clearBackups = (ids?: string[]) =>
+    runAction(
+      "backup-clear",
+      async () => {
+        await clearBotManagerBackups(ids);
+        await loadBackupJobs();
+      },
+      "Backup history cleared",
+    );
+
   const memoryFiles = detail?.files.filter(isMemoryFile) ?? [];
   const workspaceFiles = detail?.files.filter((file) => !isMemoryFile(file)) ?? [];
   const nanobotConfigured = Boolean(summary?.runtimeStatus.nanobotConfigured);
@@ -602,6 +884,28 @@ export default function BotManagerPage() {
   const lastSync = lastSyncRaw
     ? new Date(lastSyncRaw).toLocaleString()
     : "Never";
+  const activeProvider = summary?.runtimeStatus.activeProvider ?? "";
+  const activeOpenRouterProfileId = summary?.runtimeStatus.activeOpenRouterProfileId ?? "";
+  const personalityPageSize = 5;
+  const filteredPersonalities = (summary?.identities ?? []).filter((identity) => {
+    const haystack = `${identity.name} ${identity.roleTitle} ${identity.description}`.toLowerCase();
+    const matchesSearch = !personalitySearch.trim() || haystack.includes(personalitySearch.trim().toLowerCase());
+    const loreReference = asRecord(asRecord(identity.settings).loreReference);
+    const matchesFilter =
+      personalityFilter === "all" ||
+      (personalityFilter === "active" && identity.isActive) ||
+      (personalityFilter === "inactive" && !identity.isActive) ||
+      (personalityFilter === "missing-lore" && !readString(loreReference.id));
+    return matchesSearch && matchesFilter;
+  });
+  const personalityTotalPages = Math.max(Math.ceil(filteredPersonalities.length / personalityPageSize), 1);
+  const pagedPersonalities = filteredPersonalities.slice((personalityPage - 1) * personalityPageSize, personalityPage * personalityPageSize);
+  const backupCanCreate =
+    backupPassword.length > 0 &&
+    backupKey.trim().length >= 16 &&
+    backupConfirm === "PERSONALITY" &&
+    (backupMode === "full" || backupSelectedIds.length > 0);
+  const toggleSection = (key: string) => setCollapsedSections((current) => ({ ...current, [key]: !current[key] }));
   const updateChannel = (channel: ChannelKey, patch: JsonRecord) => {
     setChannelsDraft((current) => ({
       ...current,
@@ -633,13 +937,41 @@ export default function BotManagerPage() {
           <div className="rounded-sm border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
         )}
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        {error && !summary ? (
+          <div className={cn(panelClass, "flex min-h-[24rem] flex-col items-center justify-center text-center")}>
+            <Bot className="h-10 w-10 text-destructive" />
+            <h2 className="mt-4 font-heading text-xl text-foreground">Bot Manager service unavailable</h2>
+            <p className="mt-2 max-w-xl text-sm text-muted-foreground">Backend or Bot Manager service is not connected. Sync can retry the connection when the service is available.</p>
+            <Button type="button" className="mt-4" onClick={() => void syncRuntime()} disabled={busy === "sync"}>
+              {busy === "sync" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Sync
+            </Button>
+          </div>
+        ) : (
+        <>
+        <div className="space-y-4">
           <div className={panelClass}>
-            <div className="flex items-center gap-2 text-primary">
-              <Bot className="h-4 w-4" />
-              <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Runtime</h2>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center gap-2 text-primary">
+                <Bot className="h-4 w-4" />
+                <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Runtime</h2>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <Button type="button" variant="outline" onClick={() => controlRuntime("start")} disabled={runtimeActionDisabled || gatewayRunning || gatewayTransitioning}>
+                  {busy === "runtime-start" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                  Start
+                </Button>
+                <Button type="button" variant="outline" onClick={() => controlRuntime("stop")} disabled={runtimeActionDisabled || !gatewayRunning || gatewayTransitioning}>
+                  {busy === "runtime-stop" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Square className="mr-2 h-4 w-4" />}
+                  Stop
+                </Button>
+                <Button type="button" variant="outline" onClick={() => controlRuntime("restart")} disabled={runtimeActionDisabled || !gatewayRunning || gatewayTransitioning}>
+                  {busy === "runtime-restart" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  Restart
+                </Button>
+              </div>
             </div>
-            <div className="mt-4 grid gap-3 text-sm">
+            <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
               <Metric label="Active Personality" value={activeIdentity?.name ?? "None"} />
               <Metric label="Saved Personalities" value={String(summary?.identities.length ?? 0)} />
               <Metric label="Nanobot Link" value={nanobotConfigured ? "Configured" : "Not configured"} />
@@ -659,35 +991,26 @@ export default function BotManagerPage() {
                 {summary.runtimeSync.lastRuntimeSyncError}
               </div>
             )}
-            <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
-              <Button type="button" variant="outline" onClick={() => controlRuntime("start")} disabled={runtimeActionDisabled || gatewayRunning || gatewayTransitioning}>
-                {busy === "runtime-start" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                Start
-              </Button>
-              <Button type="button" variant="outline" onClick={() => controlRuntime("stop")} disabled={runtimeActionDisabled || !gatewayRunning || gatewayTransitioning}>
-                {busy === "runtime-stop" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Square className="mr-2 h-4 w-4" />}
-                Stop
-              </Button>
-              <Button type="button" variant="outline" onClick={() => controlRuntime("restart")} disabled={runtimeActionDisabled || !gatewayRunning || gatewayTransitioning}>
-                {busy === "runtime-restart" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                Restart
-              </Button>
-            </div>
           </div>
 
-          <div className={cn(panelClass, "lg:col-span-2")}>
-            <div className="flex items-center gap-2 text-primary">
+          <div className={panelClass}>
+            <button type="button" className="flex w-full items-center justify-between gap-3 text-left" onClick={() => toggleSection("credentials")}>
+              <span className="flex items-center gap-2 text-primary">
               <KeyRound className="h-4 w-4" />
               <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Credential Section</h2>
-            </div>
+              </span>
+              {collapsedSections.credentials ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+            </button>
+            {!collapsedSections.credentials && (
+            <>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap gap-2">
-                {summary?.credentials.map((credential) => (
-                  <Badge key={credential.provider} variant={credential.configured ? "default" : "outline"}>
-                    {credential.provider}: {credential.configured ? credential.keyPreview : "empty"}
-                    {typeof credential.metadata.modelId === "string" && credential.metadata.modelId ? ` / ${credential.metadata.modelId}` : ""}
-                  </Badge>
-                ))}
+                <Badge variant={activeProvider ? "default" : "outline"}>
+                  Active provider: {activeProvider || "none"}
+                </Badge>
+                {activeProvider === "openrouter" && (
+                  <Badge variant="outline">OpenRouter profile: {openRouterProfiles.find((profile) => profile.id === activeOpenRouterProfileId)?.name ?? "selected"}</Badge>
+                )}
               </div>
               {credentialUnlocked && (
                 <Button type="button" variant="outline" onClick={lockCredentials} disabled={Boolean(busy)}>
@@ -707,182 +1030,685 @@ export default function BotManagerPage() {
               </div>
             ) : (
               <div className="mt-4 space-y-4">
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <label className="space-y-2">
-                    <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Provider</span>
-                    <select className={inputClass} value={credentialProvider} onChange={(event) => setCredentialProvider(event.target.value as BotProvider)}>
-                      {providers.map((provider) => (
-                        <option key={provider.value} value={provider.value}>{provider.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <Field label="Model ID" value={credentialModelId} onChange={setCredentialModelId} placeholder="deepseek-chat" />
-                  <Field label="API Key" value={credentialApiKey} onChange={setCredentialApiKey} type="password" />
-                  <Field label="API Base" value={credentialApiBase} onChange={setCredentialApiBase} placeholder="Optional provider base URL" />
+                <div className="grid gap-3">
+                  {normalProviders.map((provider) => {
+                    const credential = summary?.credentials.find((item) => item.provider === provider.value);
+                    const isActive = activeProvider === provider.value;
+                    return (
+                      <div key={provider.value} className="rounded-sm border border-border/70 bg-background/35 p-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="font-heading text-sm text-foreground">{provider.label}</p>
+                            <p className="text-xs text-muted-foreground">{credential?.configured ? `${credential.keyPreview} / ${readString(credential.metadata.modelId, "model not set")}` : "No credential configured"}</p>
+                          </div>
+                          <Button type="button" variant={isActive ? "outline" : "default"} size="sm" onClick={() => activateProvider(provider.value)} disabled={Boolean(busy) || !credential?.configured || isActive || !canUnlockCredential}>
+                            <Power className="mr-2 h-4 w-4" />
+                            {isActive ? "Active" : "Enable"}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="rounded-sm border border-border/70 bg-background/35 p-3">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                      <label className="space-y-2">
+                        <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Provider</span>
+                        <select className={inputClass} value={credentialProvider} onChange={(event) => setCredentialProvider(event.target.value as BotProvider)}>
+                          {normalProviders.map((provider) => (
+                            <option key={provider.value} value={provider.value}>{provider.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <Field label="Model ID" value={credentialModelId} onChange={setCredentialModelId} placeholder="deepseek-chat" />
+                      <Field label="API Key" value={credentialApiKey} onChange={setCredentialApiKey} type="password" />
+                      <Field label="API Base" value={credentialApiBase} onChange={setCredentialApiBase} placeholder="Optional provider base URL" />
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <Button type="button" onClick={saveCredential} disabled={!canSubmitCredential || Boolean(busy)}>
+                        {busy === "credential" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+                        Save Credential
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-end">
-                  <Button type="button" onClick={saveCredential} disabled={!canSubmitCredential || Boolean(busy)}>
-                    {busy === "credential" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
-                    Save Credential
-                  </Button>
-                </div>
+                <OpenRouterSection
+                  activeProfileId={activeOpenRouterProfileId}
+                  busy={busy}
+                  canUseCredentialGate={canUnlockCredential}
+                  draft={openRouterDraft}
+                  filter={openRouterFilter}
+                  onActivate={setActiveOpenRouterProfile}
+                  onDelete={removeOpenRouterProfile}
+                  onDraftChange={setOpenRouterDraft}
+                  onFilterChange={(value) => { setOpenRouterFilter(value); setOpenRouterPage(1); }}
+                  onPageChange={setOpenRouterPage}
+                  onSave={saveOpenRouterProfile}
+                  onSearchChange={(value) => { setOpenRouterSearch(value); setOpenRouterPage(1); }}
+                  page={openRouterPage}
+                  profiles={openRouterProfiles}
+                  search={openRouterSearch}
+                  totalPages={openRouterTotalPages}
+                />
               </div>
+            )}
+            </>
             )}
           </div>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.55fr)]">
-          <div className="space-y-4">
-            <div className={panelClass}>
-              <div className="flex items-center gap-2 text-primary">
+        <div className="space-y-4">
+          <div className={panelClass}>
+            <button type="button" className="flex w-full items-center justify-between gap-3 text-left" onClick={() => toggleSection("general")}>
+              <span className="flex items-center gap-2 text-primary">
                 <Settings className="h-4 w-4" />
                 <h2 className="font-heading text-sm uppercase tracking-[0.14em]">General Config</h2>
-              </div>
-              <textarea className={cn(textareaClass, "mt-4")} value={generalConfigText} onChange={(event) => setGeneralConfigText(event.target.value)} />
-              <Button type="button" className="mt-3 w-full" onClick={saveGeneralConfig} disabled={Boolean(busy)}>
-                <Save className="mr-2 h-4 w-4" />
-                Save General Config
-              </Button>
-            </div>
-
-            <div className={panelClass}>
-              <div className="flex items-center gap-2 text-primary">
-                <Brain className="h-4 w-4" />
-                <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Create Personality</h2>
-              </div>
-              <div className="mt-4 space-y-3">
-                <Field label="Name" value={newName} onChange={setNewName} placeholder="Sola" />
-                <Field label="Role" value={newRole} onChange={setNewRole} placeholder="Morneven assistant" />
-                <label className="space-y-2 block">
-                  <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Description</span>
-                  <textarea className={cn(inputClass, "min-h-24 resize-y")} value={newDescription} onChange={(event) => setNewDescription(event.target.value)} />
+              </span>
+              {collapsedSections.general ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+            </button>
+            {!collapsedSections.general && (
+              <div className="mt-4 space-y-4">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Field label="Runtime Mode" value="single-active-personality" readOnly onChange={() => undefined} />
+                  <Field label="Timezone" value={generalDraft.timezone} onChange={(timezone) => setGeneralDraft((current) => ({ ...current, timezone }))} placeholder="Asia/Singapore" />
+                </div>
+                <label className="block space-y-2">
+                  <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Global Rules</span>
+                  <textarea className={cn(inputClass, "min-h-28 resize-y")} value={generalDraft.globalRules} onChange={(event) => setGeneralDraft((current) => ({ ...current, globalRules: event.target.value }))} />
                 </label>
-                <Button type="button" className="w-full" onClick={createIdentity} disabled={!newName.trim() || !newRole.trim() || Boolean(busy)}>
-                  Create
+                <div className="grid gap-3 md:grid-cols-2">
+                  <ToggleControl label="Restart after sync" value={generalDraft.restartAfterSync} onChange={(restartAfterSync) => setGeneralDraft((current) => ({ ...current, restartAfterSync }))} />
+                  <ToggleControl label="Allow runtime reload" value={generalDraft.allowRuntimeReload} onChange={(allowRuntimeReload) => setGeneralDraft((current) => ({ ...current, allowRuntimeReload }))} />
+                </div>
+                <Button type="button" onClick={saveGeneralConfig} disabled={Boolean(busy)}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save General Config
                 </Button>
               </div>
-            </div>
-
-            <div className="grid gap-3">
-              {summary?.identities.map((identity) => (
-                <Card key={identity.id} className={cn("cursor-pointer border-border/80 bg-card/95", selectedId === identity.id && "border-primary")}>
-                  <button type="button" className="w-full text-left" onClick={() => setSelectedId(identity.id)}>
-                    <CardHeader className="flex-row items-center gap-3 space-y-0">
-                      <Profile identity={identity} />
-                      <div className="min-w-0 flex-1">
-                        <CardTitle className="truncate text-base">{identity.name}</CardTitle>
-                        <CardDescription className="truncate">{identity.roleTitle}</CardDescription>
-                      </div>
-                      {identity.isActive && <Badge><Check className="mr-1 h-3 w-3" />Active</Badge>}
-                    </CardHeader>
-                    <CardContent className="text-sm text-muted-foreground">{identity.description || "No description."}</CardContent>
-                  </button>
-                  <div className="px-6 pb-4">
-                    <Button type="button" variant={identity.isActive ? "outline" : "default"} size="sm" className="w-full" onClick={() => activateIdentity(identity)} disabled={identity.isActive || Boolean(busy)}>
-                      Make Active
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
+            )}
           </div>
 
           <div className={panelClass}>
-            {loading || busy === "detail" ? (
-              <div className="flex min-h-80 items-center justify-center text-muted-foreground">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading bot manager data...
-              </div>
-            ) : !detail ? (
-              <div className="flex min-h-80 items-center justify-center text-sm text-muted-foreground">Create or select a personality.</div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3">
-                    <Profile identity={detail} large />
-                    <div>
-                      <h2 className="font-heading text-xl text-foreground">{detail.name}</h2>
-                      <p className="text-sm text-muted-foreground">{detail.roleTitle}</p>
-                    </div>
-                  </div>
-                  <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
-                    <Upload className="h-4 w-4" />
-                    Profile
-                    <input type="file" accept="image/*" className="hidden" onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) void uploadProfile(file);
-                      event.currentTarget.value = "";
-                    }} />
+            <button type="button" className="flex w-full items-center justify-between gap-3 text-left" onClick={() => toggleSection("personalities")}>
+              <span className="flex items-center gap-2 text-primary">
+                <Brain className="h-4 w-4" />
+                <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Personality Section</h2>
+              </span>
+              {collapsedSections.personalities ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+            </button>
+            {!collapsedSections.personalities && (
+              <div className="mt-4 space-y-4">
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem_12rem]">
+                  <label className="relative block">
+                    <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <input className={cn(inputClass, "pl-9")} value={personalitySearch} onChange={(event) => { setPersonalitySearch(event.target.value); setPersonalityPage(1); }} placeholder="Search personality" />
                   </label>
+                  <select className={inputClass} value={personalityFilter} onChange={(event) => { setPersonalityFilter(event.target.value); setPersonalityPage(1); }}>
+                    <option value="all">All</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="missing-lore">Missing Lore</option>
+                  </select>
+                  <Button type="button" onClick={() => setShowCreatePersonality((current) => !current)}>
+                    {showCreatePersonality ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+                    New Personality
+                  </Button>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {tabs.map((tab) => (
-                    <button
-                      key={tab}
-                      type="button"
-                      className={cn(
-                        "rounded-sm border px-3 py-2 text-xs font-heading uppercase tracking-[0.12em]",
-                        activeTab === tab ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground",
-                      )}
-                      onClick={() => {
-                        setActiveTab(tab);
-                        if (tab === "files") setFileDraft(workspaceFiles[0] ?? { ...emptyFile(), kind: "identity", path: "SOUL.md" });
-                        if (tab === "memory") setFileDraft(memoryFiles[0] ?? { ...emptyFile(), kind: "memory", path: "MEMORY.md" });
-                      }}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-
-                {activeTab === "channels" && (
-                  <ChannelEditor
-                    activeChannel={selectedChannel}
-                    busy={Boolean(busy)}
-                    channels={channelsDraft}
-                    onSave={saveIdentity}
-                    onSelect={setSelectedChannel}
-                    onUpdate={updateChannel}
-                  />
-                )}
-
-                {activeTab === "system" && (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <Metric label="Runtime Mode" value="Single active personality" />
-                    <Metric label="Current Active" value={detail.isActive ? "Yes" : "No"} />
-                    <Metric label="Workspace Files" value={String(detail.files.length)} />
-                    <Metric label="Memory Files" value={String(memoryFiles.length)} />
+                {showCreatePersonality && (
+                  <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <Field label="Name" value={newName} onChange={setNewName} placeholder="Sola" />
+                      <Field label="Role" value={newRole} onChange={setNewRole} placeholder="Morneven assistant" />
+                    </div>
+                    <label className="mt-3 block space-y-2">
+                      <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Description</span>
+                      <textarea className={cn(inputClass, "min-h-24 resize-y")} value={newDescription} onChange={(event) => setNewDescription(event.target.value)} />
+                    </label>
+                    <LorePicker className="mt-3" options={loreOptions} search={loreSearch} selectedId={selectedLoreId} onSearchChange={setLoreSearch} onSelect={(character) => { setSelectedLoreId(character.id); setLoreSearch(formatCharacterLabel(character)); }} />
+                    <Button type="button" className="mt-3" onClick={createIdentity} disabled={!newName.trim() || !newRole.trim() || Boolean(busy)}>
+                      Create
+                    </Button>
                   </div>
                 )}
 
-                {activeTab === "files" && (
-                  <FileEditor files={workspaceFiles} fileDraft={fileDraft} setFileDraft={setFileDraft} onSave={saveFile} busy={busy === "file"} allowedKinds={fileKinds.filter((kind) => kind !== "memory")} />
-                )}
-
-                {activeTab === "memory" && (
-                  <FileEditor files={memoryFiles} fileDraft={fileDraft} setFileDraft={setFileDraft} onSave={saveFile} busy={busy === "file"} defaultKind="memory" allowedKinds={["memory"]} />
-                )}
-
-                {activeTab === "settings" && (
-                  <SettingsEditor
-                    busy={Boolean(busy)}
-                    identityDraft={identityDraft}
-                    settingsDraft={settingsDraft}
-                    onIdentityChange={(patch) => setIdentityDraft((current) => ({ ...current, ...patch }))}
-                    onSave={saveIdentity}
-                    onSettingsChange={(patch) => setSettingsDraft((current) => ({ ...current, ...patch }))}
-                  />
-                )}
-
-                {activeTab === "logs" && (
-                  <textarea className={textareaClass} readOnly value={syncLog || "No sync response yet."} />
-                )}
+                <div className="space-y-3">
+                  {pagedPersonalities.map((identity) => {
+                    const loreReference = asRecord(asRecord(identity.settings).loreReference);
+                    const rowOpen = editingIdentityId === identity.id && detail?.id === identity.id;
+                    return (
+                      <div key={identity.id} className={cn("rounded-sm border border-border/80 bg-background/25", selectedId === identity.id && "border-primary")}>
+                        <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
+                          <Profile identity={identity} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="truncate font-heading text-base text-foreground">{identity.name}</h3>
+                              {identity.isActive && <Badge><Check className="mr-1 h-3 w-3" />Active</Badge>}
+                              {readString(loreReference.id) ? <Badge variant="outline">Lore</Badge> : <Badge variant="destructive">No Lore</Badge>}
+                            </div>
+                            <p className="truncate text-sm text-muted-foreground">{identity.roleTitle}</p>
+                            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{identity.description || "No description."}</p>
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-4 lg:w-[28rem]">
+                            <Button type="button" variant="outline" size="sm" onClick={() => setSelectedId(identity.id)}>View</Button>
+                            <Button type="button" size="sm" onClick={() => { setSelectedId(identity.id); setEditingIdentityId(rowOpen ? null : identity.id); }}>Edit</Button>
+                            <Button type="button" variant={identity.isActive ? "outline" : "default"} size="sm" onClick={() => activateIdentity(identity)} disabled={identity.isActive || Boolean(busy)}>Activate</Button>
+                            <Button type="button" variant="destructive" size="sm" onClick={() => removeIdentity(identity)} disabled={identity.isActive || Boolean(busy)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        {rowOpen && (
+                          <div className="border-t border-border/70 p-4">
+                            {busy === "detail" ? (
+                              <div className="flex min-h-40 items-center justify-center text-muted-foreground">
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Loading personality config...
+                              </div>
+                            ) : (
+                              <PersonalityEditor
+                                activeTab={activeTab}
+                                busy={busy}
+                                channelsDraft={channelsDraft}
+                                detail={detail}
+                                fileDraft={fileDraft}
+                                identityDraft={identityDraft}
+                                loreOptions={loreOptions}
+                                loreSearch={loreSearch}
+                                memoryFiles={memoryFiles}
+                                onChannelSelect={setSelectedChannel}
+                                onChannelUpdate={updateChannel}
+                                onFileDelete={removeFile}
+                                onFileDraftChange={setFileDraft}
+                                onIdentityChange={(patch) => setIdentityDraft((current) => ({ ...current, ...patch }))}
+                                onLoreSearchChange={setLoreSearch}
+                                onLoreSelect={(character) => { setSelectedLoreId(character.id); setLoreSearch(formatCharacterLabel(character)); }}
+                                onSaveChannels={saveIdentity}
+                                onSaveFile={saveFile}
+                                onSaveIdentity={saveIdentity}
+                                onSettingsChange={(patch) => setSettingsDraft((current) => ({ ...current, ...patch }))}
+                                onTabChange={(tab) => {
+                                  setActiveTab(tab);
+                                  if (tab === "files") setFileDraft(workspaceFiles[0] ?? { ...emptyFile(), kind: "identity", path: "SOUL.md" });
+                                  if (tab === "memory") setFileDraft(memoryFiles[0] ?? { ...emptyFile(), kind: "memory", path: "MEMORY.md" });
+                                }}
+                                onUploadProfile={uploadProfile}
+                                selectedChannel={selectedChannel}
+                                selectedLoreId={selectedLoreId}
+                                settingsDraft={settingsDraft}
+                                syncLog={syncLog}
+                                workspaceFiles={workspaceFiles}
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <PaginationControls page={personalityPage} totalPages={personalityTotalPages} onPageChange={setPersonalityPage} />
               </div>
             )}
           </div>
+
+          <BackupSection
+            backupCanCreate={backupCanCreate}
+            backupConfirm={backupConfirm}
+            backupHistoryMode={backupHistoryMode}
+            backupJobs={backupJobs}
+            backupKey={backupKey}
+            backupMode={backupMode}
+            backupPage={backupPage}
+            backupPassword={backupPassword}
+            backupSelectedIds={backupSelectedIds}
+            backupStatus={backupStatus}
+            backupTotalPages={backupTotalPages}
+            busy={busy}
+            collapsed={collapsedSections.backup}
+            identities={summary?.identities ?? []}
+            onClearAll={() => clearBackups()}
+            onClearJob={(job) => clearBackups([job.id])}
+            onConfirmChange={setBackupConfirm}
+            onCreate={createBackup}
+            onDownload={downloadBackup}
+            onHistoryModeChange={(value) => { setBackupHistoryMode(value); setBackupPage(1); }}
+            onKeyChange={setBackupKey}
+            onModeChange={setBackupMode}
+            onPageChange={setBackupPage}
+            onPasswordChange={setBackupPassword}
+            onSelectedChange={setBackupSelectedIds}
+            onStatusChange={(value) => { setBackupStatus(value); setBackupPage(1); }}
+            onToggle={() => toggleSection("backup")}
+          />
+        </div>
+        </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PaginationControls({
+  page,
+  totalPages,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <Button type="button" variant="outline" size="sm" onClick={() => onPageChange(Math.max(page - 1, 1))} disabled={page <= 1}>
+        Previous
+      </Button>
+      <span className="text-xs text-muted-foreground">Page {page} / {totalPages}</span>
+      <Button type="button" variant="outline" size="sm" onClick={() => onPageChange(Math.min(page + 1, totalPages))} disabled={page >= totalPages}>
+        Next
+      </Button>
+    </div>
+  );
+}
+
+function LorePicker({
+  className,
+  options,
+  search,
+  selectedId,
+  onSearchChange,
+  onSelect,
+}: {
+  className?: string;
+  options: Character[];
+  search: string;
+  selectedId: string;
+  onSearchChange: (value: string) => void;
+  onSelect: (character: Character) => void;
+}) {
+  return (
+    <div className={cn("space-y-2", className)}>
+      <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Lore Character</span>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <input className={cn(inputClass, "pl-9")} value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Search lore character" />
+      </div>
+      {options.length > 0 && (
+        <div className="max-h-44 overflow-y-auto rounded-sm border border-border bg-background">
+          {options.map((character) => (
+            <button
+              key={character.id}
+              type="button"
+              className={cn("block w-full px-3 py-2 text-left text-sm hover:bg-primary/10", selectedId === character.id && "bg-primary/15 text-primary")}
+              onClick={() => onSelect(character)}
+            >
+              {formatCharacterLabel(character)}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OpenRouterSection({
+  activeProfileId,
+  busy,
+  canUseCredentialGate,
+  draft,
+  filter,
+  onActivate,
+  onDelete,
+  onDraftChange,
+  onFilterChange,
+  onPageChange,
+  onSave,
+  onSearchChange,
+  page,
+  profiles,
+  search,
+  totalPages,
+}: {
+  activeProfileId: string;
+  busy: string | null;
+  canUseCredentialGate: boolean;
+  draft: OpenRouterDraft;
+  filter: string;
+  onActivate: (profile: OpenRouterProfile) => void;
+  onDelete: (profile: OpenRouterProfile) => void;
+  onDraftChange: (draft: OpenRouterDraft) => void;
+  onFilterChange: (value: string) => void;
+  onPageChange: (page: number) => void;
+  onSave: () => void;
+  onSearchChange: (value: string) => void;
+  page: number;
+  profiles: OpenRouterProfile[];
+  search: string;
+  totalPages: number;
+}) {
+  return (
+    <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h3 className="font-heading text-base text-foreground">OpenRouter Custom Provider</h3>
+          <p className="text-xs text-muted-foreground">Multiple OpenRouter profiles, one active at runtime.</p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <input className={inputClass} value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Search profiles" />
+          <select className={inputClass} value={filter} onChange={(event) => onFilterChange(event.target.value)}>
+            <option value="all">All</option>
+            <option value="active">Runtime Active</option>
+            <option value="complete">Complete</option>
+            <option value="incomplete">Incomplete</option>
+          </select>
         </div>
       </div>
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        {profiles.map((profile) => {
+          const isActive = activeProfileId === profile.id || profile.isActive;
+          return (
+            <div key={profile.id} className={cn("rounded-sm border border-border/70 bg-card/60 p-3", isActive && "border-primary")}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-heading text-sm text-foreground">{profile.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{profile.keyPreview} / {profile.modelId}</p>
+                  {profile.tags.length > 0 && <p className="mt-1 truncate text-xs text-muted-foreground">{profile.tags.join(", ")}</p>}
+                </div>
+                {isActive && <Badge>Active</Badge>}
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <Button type="button" size="sm" variant="outline" onClick={() => onDraftChange({ id: profile.id, name: profile.name, apiKey: "", apiBase: profile.apiBase, modelId: profile.modelId, tags: profile.tags.join(", "), notes: profile.notes })}>
+                  Edit
+                </Button>
+                <Button type="button" size="sm" onClick={() => onActivate(profile)} disabled={!canUseCredentialGate || isActive || Boolean(busy)}>
+                  Enable
+                </Button>
+                <Button type="button" size="sm" variant="destructive" onClick={() => onDelete(profile)} disabled={!canUseCredentialGate || isActive || Boolean(busy)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <PaginationControls page={page} totalPages={totalPages} onPageChange={onPageChange} />
+      <div className="mt-4 rounded-sm border border-border/70 bg-background/40 p-3">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <Field label="Profile Name" value={draft.name} onChange={(name) => onDraftChange({ ...draft, name })} placeholder="OpenRouter DeepSeek" />
+          <Field label="Model ID" value={draft.modelId} onChange={(modelId) => onDraftChange({ ...draft, modelId })} placeholder="deepseek/deepseek-chat-v3" />
+          <Field label="API Key" value={draft.apiKey} onChange={(apiKey) => onDraftChange({ ...draft, apiKey })} type="password" />
+          <Field label="API Base" value={draft.apiBase} onChange={(apiBase) => onDraftChange({ ...draft, apiBase })} placeholder="https://openrouter.ai/api/v1" />
+          <Field label="Tags" value={draft.tags} onChange={(tags) => onDraftChange({ ...draft, tags })} placeholder="reasoning, production" />
+          <Field label="Notes" value={draft.notes} onChange={(notes) => onDraftChange({ ...draft, notes })} />
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Button type="button" onClick={onSave} disabled={!draft.name.trim() || !draft.apiKey.trim() || !draft.modelId.trim() || !canUseCredentialGate || Boolean(busy)}>
+            <Save className="mr-2 h-4 w-4" />
+            {draft.id ? "Update OpenRouter Profile" : "Create OpenRouter Profile"}
+          </Button>
+          {draft.id && (
+            <Button type="button" variant="outline" onClick={() => onDraftChange({ name: "", apiKey: "", apiBase: "", modelId: "", tags: "", notes: "" })}>
+              Cancel
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PersonalityEditor({
+  activeTab,
+  busy,
+  channelsDraft,
+  detail,
+  fileDraft,
+  identityDraft,
+  loreOptions,
+  loreSearch,
+  memoryFiles,
+  onChannelSelect,
+  onChannelUpdate,
+  onFileDelete,
+  onFileDraftChange,
+  onIdentityChange,
+  onLoreSearchChange,
+  onLoreSelect,
+  onSaveChannels,
+  onSaveFile,
+  onSaveIdentity,
+  onSettingsChange,
+  onTabChange,
+  onUploadProfile,
+  selectedChannel,
+  selectedLoreId,
+  settingsDraft,
+  syncLog,
+  workspaceFiles,
+}: {
+  activeTab: BotTab;
+  busy: string | null;
+  channelsDraft: JsonRecord;
+  detail: BotIdentityDetail | null;
+  fileDraft: BotIdentityFile;
+  identityDraft: BotIdentityDraft;
+  loreOptions: Character[];
+  loreSearch: string;
+  memoryFiles: BotIdentityFile[];
+  onChannelSelect: (channel: ChannelKey) => void;
+  onChannelUpdate: (channel: ChannelKey, patch: JsonRecord) => void;
+  onFileDelete: () => void;
+  onFileDraftChange: (file: BotIdentityFile) => void;
+  onIdentityChange: (patch: Partial<BotIdentityDraft>) => void;
+  onLoreSearchChange: (value: string) => void;
+  onLoreSelect: (character: Character) => void;
+  onSaveChannels: () => void;
+  onSaveFile: () => void;
+  onSaveIdentity: () => void;
+  onSettingsChange: (patch: Partial<BotSettingsDraft>) => void;
+  onTabChange: (tab: BotTab) => void;
+  onUploadProfile: (file: File) => void;
+  selectedChannel: ChannelKey;
+  selectedLoreId: string;
+  settingsDraft: BotSettingsDraft;
+  syncLog: string;
+  workspaceFiles: BotIdentityFile[];
+}) {
+  if (!detail) return null;
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Profile identity={detail} large />
+          <div>
+            <h2 className="font-heading text-xl text-foreground">{detail.name}</h2>
+            <p className="text-sm text-muted-foreground">{detail.roleTitle}</p>
+          </div>
+        </div>
+        <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+          <Upload className="h-4 w-4" />
+          Profile
+          <input type="file" accept="image/*" className="hidden" onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) onUploadProfile(file);
+            event.currentTarget.value = "";
+          }} />
+        </label>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {tabs.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            className={cn("rounded-sm border px-3 py-2 text-xs font-heading uppercase tracking-[0.12em]", activeTab === tab ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground")}
+            onClick={() => onTabChange(tab)}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+      {activeTab === "channels" && <ChannelEditor activeChannel={selectedChannel} busy={Boolean(busy)} channels={channelsDraft} onSave={onSaveChannels} onSelect={onChannelSelect} onUpdate={onChannelUpdate} />}
+      {activeTab === "system" && (
+        <div className="grid gap-3 md:grid-cols-2">
+          <Metric label="Runtime Mode" value="Single active personality" />
+          <Metric label="Current Active" value={detail.isActive ? "Yes" : "No"} />
+          <Metric label="Workspace Files" value={String(detail.files.length)} />
+          <Metric label="Memory Files" value={String(memoryFiles.length)} />
+        </div>
+      )}
+      {activeTab === "files" && <FileEditor files={workspaceFiles} fileDraft={fileDraft} setFileDraft={onFileDraftChange} onSave={onSaveFile} onDelete={onFileDelete} busy={busy === "file"} allowedKinds={fileKinds.filter((kind) => kind !== "memory")} />}
+      {activeTab === "memory" && <FileEditor files={memoryFiles} fileDraft={fileDraft} setFileDraft={onFileDraftChange} onSave={onSaveFile} onDelete={onFileDelete} busy={busy === "file"} defaultKind="memory" allowedKinds={["memory"]} />}
+      {activeTab === "settings" && (
+        <div className="space-y-4">
+          <SettingsEditor busy={Boolean(busy)} identityDraft={identityDraft} settingsDraft={settingsDraft} onIdentityChange={onIdentityChange} onSave={onSaveIdentity} onSettingsChange={onSettingsChange} />
+          <LorePicker options={loreOptions} search={loreSearch} selectedId={selectedLoreId} onSearchChange={onLoreSearchChange} onSelect={onLoreSelect} />
+        </div>
+      )}
+      {activeTab === "logs" && <textarea className={textareaClass} readOnly value={syncLog || "No sync response yet."} />}
+    </div>
+  );
+}
+
+function BackupSection({
+  backupCanCreate,
+  backupConfirm,
+  backupHistoryMode,
+  backupJobs,
+  backupKey,
+  backupMode,
+  backupPage,
+  backupPassword,
+  backupSelectedIds,
+  backupStatus,
+  backupTotalPages,
+  busy,
+  collapsed,
+  identities,
+  onClearAll,
+  onClearJob,
+  onConfirmChange,
+  onCreate,
+  onDownload,
+  onHistoryModeChange,
+  onKeyChange,
+  onModeChange,
+  onPageChange,
+  onPasswordChange,
+  onSelectedChange,
+  onStatusChange,
+  onToggle,
+}: {
+  backupCanCreate: boolean;
+  backupConfirm: string;
+  backupHistoryMode: string;
+  backupJobs: BotManagerBackupJob[];
+  backupKey: string;
+  backupMode: "full" | "custom";
+  backupPage: number;
+  backupPassword: string;
+  backupSelectedIds: string[];
+  backupStatus: string;
+  backupTotalPages: number;
+  busy: string | null;
+  collapsed: boolean;
+  identities: BotIdentity[];
+  onClearAll: () => void;
+  onClearJob: (job: BotManagerBackupJob) => void;
+  onConfirmChange: (value: string) => void;
+  onCreate: () => void;
+  onDownload: (job: BotManagerBackupJob) => void;
+  onHistoryModeChange: (value: string) => void;
+  onKeyChange: (value: string) => void;
+  onModeChange: (value: "full" | "custom") => void;
+  onPageChange: (page: number) => void;
+  onPasswordChange: (value: string) => void;
+  onSelectedChange: (ids: string[]) => void;
+  onStatusChange: (value: string) => void;
+  onToggle: () => void;
+}) {
+  return (
+    <div className={panelClass}>
+      <button type="button" className="flex w-full items-center justify-between gap-3 text-left" onClick={onToggle}>
+        <span className="flex items-center gap-2 text-primary">
+          <Download className="h-4 w-4" />
+          <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Backup</h2>
+        </span>
+        {collapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+      </button>
+      {!collapsed && (
+        <div className="mt-4 space-y-5">
+          <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              <label className="space-y-2">
+                <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Mode</span>
+                <select className={inputClass} value={backupMode} onChange={(event) => onModeChange(event.target.value as "full" | "custom")}>
+                  <option value="full">Full backup</option>
+                  <option value="custom">Custom backup</option>
+                </select>
+              </label>
+              <Field label="Password" value={backupPassword} onChange={onPasswordChange} type="password" />
+              <Field label="Extraction Key" value={backupKey} onChange={onKeyChange} type="password" />
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+              <Field label="Confirmation" value={backupConfirm} onChange={onConfirmChange} placeholder='Type "PERSONALITY"' />
+              <Button type="button" onClick={onCreate} disabled={!backupCanCreate || Boolean(busy)}>
+                {busy === "backup-create" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                Generate Backup
+              </Button>
+            </div>
+            {backupMode === "custom" && (
+              <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {identities.map((identity) => {
+                  const selected = backupSelectedIds.includes(identity.id);
+                  return (
+                    <label key={identity.id} className="flex items-center gap-2 rounded-sm border border-border/70 bg-background/40 p-2 text-sm">
+                      <input type="checkbox" checked={selected} onChange={(event) => {
+                        onSelectedChange(event.target.checked ? [...backupSelectedIds, identity.id] : backupSelectedIds.filter((id) => id !== identity.id));
+                      }} />
+                      <span className="truncate">{identity.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <div className="space-y-3">
+            <div className="grid gap-2 md:grid-cols-[12rem_12rem_1fr_auto] md:items-center">
+              <select className={inputClass} value={backupStatus} onChange={(event) => onStatusChange(event.target.value)}>
+                <option value="all">All status</option>
+                <option value="processing">Processing</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+              </select>
+              <select className={inputClass} value={backupHistoryMode} onChange={(event) => onHistoryModeChange(event.target.value)}>
+                <option value="all">All modes</option>
+                <option value="full">Full</option>
+                <option value="custom">Custom</option>
+              </select>
+              <div />
+              <Button type="button" variant="destructive" onClick={onClearAll} disabled={Boolean(busy)}>
+                Clear History
+              </Button>
+            </div>
+            {backupJobs.map((job) => (
+              <div key={job.id} className="grid gap-3 rounded-sm border border-border/70 bg-background/35 p-3 md:grid-cols-[minmax(0,1fr)_8rem_8rem_auto_auto] md:items-center">
+                <div className="min-w-0">
+                  <p className="truncate font-heading text-sm text-foreground">{job.downloadName ?? job.id}</p>
+                  <p className="text-xs text-muted-foreground">{job.progress?.message ?? job.status}</p>
+                  {job.error && <p className="text-xs text-destructive">{job.error}</p>}
+                </div>
+                <Badge variant="outline">{job.mode}</Badge>
+                <Badge variant={job.status === "failed" ? "destructive" : job.status === "completed" ? "default" : "outline"}>{job.status}</Badge>
+                <Button type="button" variant="outline" size="sm" onClick={() => onDownload(job)} disabled={job.status !== "completed" || !backupKey || Boolean(busy)}>
+                  Download
+                </Button>
+                <Button type="button" variant="destructive" size="sm" onClick={() => onClearJob(job)} disabled={Boolean(busy)}>
+                  Clear
+                </Button>
+              </div>
+            ))}
+            <PaginationControls page={backupPage} totalPages={backupTotalPages} onPageChange={onPageChange} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1165,6 +1991,7 @@ function FileEditor({
   fileDraft,
   setFileDraft,
   onSave,
+  onDelete,
   busy,
   defaultKind = "identity",
   allowedKinds = fileKinds,
@@ -1173,11 +2000,13 @@ function FileEditor({
   fileDraft: BotIdentityFile;
   setFileDraft: (file: BotIdentityFile) => void;
   onSave: () => void;
+  onDelete: () => void;
   busy: boolean;
   defaultKind?: BotFileKind;
   allowedKinds?: BotFileKind[];
 }) {
   const readOnly = isReadOnlyFilePath(fileDraft.path);
+  const protectedFile = isProtectedFilePath(fileDraft.path);
   const usageNote = getFileUsageNote(fileDraft);
   return (
     <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
@@ -1186,7 +2015,7 @@ function FileEditor({
           type="button"
           variant="outline"
           className="w-full justify-start"
-          onClick={() => setFileDraft({ ...emptyFile(), kind: defaultKind, path: defaultKind === "memory" ? "memory/note.md" : "SOUL.md" })}
+          onClick={() => setFileDraft({ ...emptyFile(), kind: defaultKind, path: defaultKind === "memory" ? "memory/note.md" : "notes/new-file.md" })}
         >
           <FileText className="mr-2 h-4 w-4" />
           New File
@@ -1227,10 +2056,16 @@ function FileEditor({
         <textarea className={cn(textareaClass, "min-h-96", readOnly && "cursor-not-allowed opacity-75")} readOnly={readOnly} aria-readonly={readOnly} value={fileDraft.content} onChange={(event) => {
           if (!readOnly) setFileDraft({ ...fileDraft, content: event.target.value });
         }} />
-        <Button type="button" onClick={onSave} disabled={busy || readOnly}>
-          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          Save File
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={onSave} disabled={busy || readOnly}>
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Save File
+          </Button>
+          <Button type="button" variant="destructive" onClick={onDelete} disabled={busy || protectedFile || !fileDraft.id || fileDraft.id === "new"}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete File
+          </Button>
+        </div>
       </div>
     </div>
   );
