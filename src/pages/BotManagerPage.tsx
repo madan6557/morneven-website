@@ -55,6 +55,7 @@ import {
   getBotRuntimeStatus,
   listBotManagerBackups,
   listOpenRouterProfiles,
+  regenerateBotIdentityDefaultFiles,
   saveBotIdentityFile,
   syncBotManagerRuntime,
   unlockBotCredentials,
@@ -420,6 +421,8 @@ export default function BotManagerPage() {
   const [loreSearch, setLoreSearch] = useState("");
   const [loreOptions, setLoreOptions] = useState<Character[]>([]);
   const [selectedLoreId, setSelectedLoreId] = useState("");
+  const [defaultRegenerateMode, setDefaultRegenerateMode] = useState<"safe" | "force">("safe");
+  const [defaultRegenerateConfirm, setDefaultRegenerateConfirm] = useState("");
   const [identityDraft, setIdentityDraft] = useState<BotIdentityDraft>({ name: "", roleTitle: "", description: "" });
   const [channelsDraft, setChannelsDraft] = useState<JsonRecord>(createDefaultChannels());
   const [selectedChannel, setSelectedChannel] = useState<ChannelKey>("telegram");
@@ -527,6 +530,8 @@ export default function BotManagerPage() {
       setSettingsDraft(createSettingsDraft(next.settings));
       const loreReference = asRecord(asRecord(next.settings).loreReference);
       setSelectedLoreId(readString(loreReference.id));
+      setDefaultRegenerateConfirm("");
+      setDefaultRegenerateMode("safe");
       const firstFile = next.files.find((file) => file.path === "SOUL.md") ?? next.files[0] ?? emptyFile();
       setFileDraft(firstFile);
     } catch (err) {
@@ -855,6 +860,23 @@ export default function BotManagerPage() {
         await refreshVisibleData();
       },
       "Personality saved",
+    );
+
+  const regenerateDefaults = () =>
+    detail &&
+    runAction(
+      "default-files",
+      async () => {
+        const result = await regenerateBotIdentityDefaultFiles(detail.id, {
+          confirmText: "DEFAULTS",
+          mode: defaultRegenerateMode,
+        });
+        setSyncLog(toJsonText(result));
+        setDefaultRegenerateConfirm("");
+        await loadDetail(detail.id);
+        await loadSummary(true);
+      },
+      "Default files regenerated",
     );
 
   const saveFile = () =>
@@ -1336,6 +1358,8 @@ export default function BotManagerPage() {
                                 activeTab={activeTab}
                                 busy={busy}
                                 channelsDraft={channelsDraft}
+                                defaultRegenerateConfirm={defaultRegenerateConfirm}
+                                defaultRegenerateMode={defaultRegenerateMode}
                                 detail={detail}
                                 fileDraft={fileDraft}
                                 identityDraft={identityDraft}
@@ -1349,6 +1373,9 @@ export default function BotManagerPage() {
                                 onIdentityChange={(patch) => setIdentityDraft((current) => ({ ...current, ...patch }))}
                                 onLoreSearchChange={setLoreSearch}
                                 onLoreSelect={(character) => { setSelectedLoreId(character.id); setLoreSearch(formatCharacterLabel(character)); }}
+                                onRegenerateConfirmChange={setDefaultRegenerateConfirm}
+                                onRegenerateDefaults={regenerateDefaults}
+                                onRegenerateModeChange={setDefaultRegenerateMode}
                                 onSaveChannels={saveIdentity}
                                 onSaveFile={saveFile}
                                 onSaveIdentity={saveIdentity}
@@ -1632,6 +1659,8 @@ function PersonalityEditor({
   activeTab,
   busy,
   channelsDraft,
+  defaultRegenerateConfirm,
+  defaultRegenerateMode,
   detail,
   fileDraft,
   identityDraft,
@@ -1645,6 +1674,9 @@ function PersonalityEditor({
   onIdentityChange,
   onLoreSearchChange,
   onLoreSelect,
+  onRegenerateConfirmChange,
+  onRegenerateDefaults,
+  onRegenerateModeChange,
   onSaveChannels,
   onSaveFile,
   onSaveIdentity,
@@ -1660,6 +1692,8 @@ function PersonalityEditor({
   activeTab: BotTab;
   busy: string | null;
   channelsDraft: JsonRecord;
+  defaultRegenerateConfirm: string;
+  defaultRegenerateMode: "safe" | "force";
   detail: BotIdentityDetail | null;
   fileDraft: BotIdentityFile;
   identityDraft: BotIdentityDraft;
@@ -1673,6 +1707,9 @@ function PersonalityEditor({
   onIdentityChange: (patch: Partial<BotIdentityDraft>) => void;
   onLoreSearchChange: (value: string) => void;
   onLoreSelect: (character: Character) => void;
+  onRegenerateConfirmChange: (value: string) => void;
+  onRegenerateDefaults: () => void;
+  onRegenerateModeChange: (value: "safe" | "force") => void;
   onSaveChannels: () => void;
   onSaveFile: () => void;
   onSaveIdentity: () => void;
@@ -1733,6 +1770,14 @@ function PersonalityEditor({
         <div className="space-y-4">
           <SettingsEditor busy={Boolean(busy)} identityDraft={identityDraft} settingsDraft={settingsDraft} onIdentityChange={onIdentityChange} onSave={onSaveIdentity} onSettingsChange={onSettingsChange} />
           <LorePicker options={loreOptions} search={loreSearch} selectedId={selectedLoreId} onSearchChange={onLoreSearchChange} onSelect={onLoreSelect} />
+          <DefaultFilesRegenerator
+            busy={busy === "default-files"}
+            confirm={defaultRegenerateConfirm}
+            mode={defaultRegenerateMode}
+            onConfirmChange={onRegenerateConfirmChange}
+            onModeChange={onRegenerateModeChange}
+            onRegenerate={onRegenerateDefaults}
+          />
         </div>
       )}
       {activeTab === "logs" && <textarea className={textareaClass} readOnly value={syncLog || "No sync response yet."} />}
@@ -2024,6 +2069,46 @@ function ChannelFields({
       <Field label="Webhook URL" value={readString(config.webhookUrl)} onChange={(webhookUrl) => onUpdate({ webhookUrl })} />
       <Field label="Secret" value={readString(config.secret)} onChange={(secret) => onUpdate({ secret })} type="password" />
       <Field label="Allowed Senders" value={arrayToCsv(config.allowFrom)} onChange={(value) => onUpdate({ allowFrom: csvToArray(value) })} />
+    </div>
+  );
+}
+
+function DefaultFilesRegenerator({
+  busy,
+  confirm,
+  mode,
+  onConfirmChange,
+  onModeChange,
+  onRegenerate,
+}: {
+  busy: boolean;
+  confirm: string;
+  mode: "safe" | "force";
+  onConfirmChange: (value: string) => void;
+  onModeChange: (value: "safe" | "force") => void;
+  onRegenerate: () => void;
+}) {
+  return (
+    <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 className="font-heading text-sm text-foreground">Regenerate Defaults</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Safe mode fills missing, empty, or managed default files. Force mode overwrites generated defaults but never touches memory/history.jsonl.
+          </p>
+        </div>
+        <select className={cn(inputClass, "sm:w-40")} value={mode} onChange={(event) => onModeChange(event.target.value as "safe" | "force")}>
+          <option value="safe">Safe</option>
+          <option value="force">Force</option>
+        </select>
+      </div>
+      <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem]">
+        <Field label="Confirmation" value={confirm} onChange={onConfirmChange} placeholder='Type "DEFAULTS"' />
+        <Button type="button" className="self-end" onClick={onRegenerate} disabled={busy || confirm !== "DEFAULTS"}>
+          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+          Regenerate
+        </Button>
+      </div>
     </div>
   );
 }

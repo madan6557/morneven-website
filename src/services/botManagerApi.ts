@@ -264,6 +264,21 @@ export function updateBotIdentity(id: string, payload: Partial<Pick<BotIdentity,
   });
 }
 
+export function regenerateBotIdentityDefaultFiles(id: string, payload: {
+  confirmText: "DEFAULTS";
+  mode: "safe" | "force";
+}) {
+  return apiRequest<{
+    updatedPaths: string[];
+    skippedPaths: string[];
+    mode: "safe" | "force";
+    runtimeSync: BotSummary["runtimeSync"];
+  }>(`/bot-manager/identities/${id}/default-files/regenerate`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
 export function deleteBotIdentity(id: string) {
   return apiRequest<{ deleted: boolean }>(`/bot-manager/identities/${id}`, {
     method: "DELETE",
