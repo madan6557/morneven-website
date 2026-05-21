@@ -1273,15 +1273,13 @@ export default function BotManagerPage() {
           )}
 
 
+          {activeMainTab === "config" && (
           <div className={panelClass}>
-            <button type="button" className="flex w-full items-center justify-between gap-3 text-left" onClick={() => toggleSection("general")}>
-              <span className="flex items-center gap-2 text-primary">
-                <Settings className="h-4 w-4" />
-                <h2 className="font-heading text-sm uppercase tracking-[0.14em]">General Config</h2>
-              </span>
-              {collapsedSections.general ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
-            </button>
-            {!collapsedSections.general && (
+            <div className="flex items-center gap-2 text-primary">
+              <Settings className="h-4 w-4" />
+              <h2 className="font-heading text-sm uppercase tracking-[0.14em]">General Config</h2>
+            </div>
+
               <div className="mt-4 space-y-4">
                 <div className="grid gap-3 md:grid-cols-2">
                   <Field label="Runtime Mode" value="single-active-personality" readOnly onChange={() => undefined} />
