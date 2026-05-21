@@ -386,10 +386,12 @@ export default function BotManagerPage() {
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
     credentials: false,
-    general: true,
+    general: false,
     personalities: false,
-    backup: true,
+    backup: false,
   });
+  type MainTab = "runtime" | "credentials" | "personalities" | "config" | "backups";
+  const [activeMainTab, setActiveMainTab] = useState<MainTab>("runtime");
 
   const [credentialProvider, setCredentialProvider] = useState<BotProvider>("gemini");
   const [credentialApiKey, setCredentialApiKey] = useState("");
@@ -788,7 +790,7 @@ export default function BotManagerPage() {
           botManagerKey: credentialKey,
           confirmText: "CREDENTIALS",
         });
-        await refreshAll();
+        await refreshVisibleData();
       },
       "Provider activated",
     );
@@ -1088,8 +1090,47 @@ export default function BotManagerPage() {
           </div>
         ) : (
         <>
+        <div className="hud-border bg-card/40 px-3 py-2 flex flex-wrap items-center gap-2 text-xs">
+          <span className="font-display uppercase tracking-[0.18em] text-muted-foreground">Status</span>
+          <Badge variant="outline" className="font-heading"><Brain className="mr-1 h-3 w-3" />{activeIdentity?.name ?? "No persona"}</Badge>
+          <Badge variant={syncStateVariant}>Sync: {syncState}</Badge>
+          <Badge variant="outline">Gateway: {gatewayState}</Badge>
+          {runtimeDirty && <Badge variant="destructive">Runtime dirty</Badge>}
+        </div>
+        <div role="tablist" aria-label="Bot Manager sections" className="hud-border bg-card/40 p-1 flex gap-1 overflow-x-auto">
+          {([
+            { key: "runtime", label: "Runtime", icon: Bot },
+            { key: "credentials", label: "Credentials", icon: KeyRound },
+            { key: "personalities", label: "Personalities", icon: Brain },
+            { key: "config", label: "Config", icon: Settings },
+            { key: "backups", label: "Backups", icon: Download },
+          ] as const).map((tab) => {
+            const isActive = activeMainTab === tab.key;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveMainTab(tab.key)}
+                className={cn(
+                  "flex items-center gap-2 whitespace-nowrap rounded-sm px-3 py-2 font-heading text-xs uppercase tracking-[0.14em] transition-colors",
+                  isActive
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
         <div className="space-y-4">
+          {activeMainTab === "runtime" && (
           <div className={panelClass}>
+
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-2 text-primary">
                 <Bot className="h-4 w-4" />
@@ -1132,16 +1173,14 @@ export default function BotManagerPage() {
             )}
           </div>
 
+          )}
+          {activeMainTab === "credentials" && (
           <div className={panelClass}>
-            <button type="button" className="flex w-full items-center justify-between gap-3 text-left" onClick={() => toggleSection("credentials")}>
-              <span className="flex items-center gap-2 text-primary">
+            <div className="flex items-center gap-2 text-primary">
               <KeyRound className="h-4 w-4" />
               <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Credentials</h2>
-              </span>
-              {collapsedSections.credentials ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
-            </button>
-            {!collapsedSections.credentials && (
-            <>
+            </div>
+
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap gap-2">
                 <Badge variant={activeProvider ? "default" : "outline"}>
@@ -1168,17 +1207,23 @@ export default function BotManagerPage() {
                 </Button>
               </div>
             ) : (
-              <div className="mt-4 space-y-4">
-                <div className="grid gap-3">
+              <div className="mt-4 space-y-5">
+                <div className="space-y-2">
+                  <p className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Active providers</p>
+                  <div className="grid gap-3">
                   {normalProviders.map((provider) => {
                     const credential = summary?.credentials.find((item) => item.provider === provider.value);
                     const isActive = activeProvider === provider.value;
                     return (
-                      <div key={provider.value} className="rounded-sm border border-border/70 bg-background/35 p-3">
+                      <div key={provider.value} className={cn("rounded-sm border bg-background/35 p-3", isActive ? "border-primary/60" : "border-border/70")}>
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <p className="font-heading text-sm text-foreground">{provider.label}</p>
-                            <p className="text-xs text-muted-foreground">{credential?.configured ? `${credential.keyPreview} / ${readString(credential.metadata.modelId, "model not set")}` : "No credential configured"}</p>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-heading text-sm text-foreground">{provider.label}</p>
+                              {credential?.configured ? <Badge variant="outline" className="text-[10px]">Configured</Badge> : <Badge variant="destructive" className="text-[10px]">Missing</Badge>}
+                              {isActive && <Badge className="text-[10px]"><Check className="mr-1 h-3 w-3" />Active</Badge>}
+                            </div>
+                            <p className="truncate text-xs text-muted-foreground">{credential?.configured ? `${credential.keyPreview} / ${readString(credential.metadata.modelId, "model not set")}` : "No credential configured"}</p>
                           </div>
                           <Button type="button" variant={isActive ? "outline" : "default"} size="sm" onClick={() => activateProvider(provider.value)} disabled={Boolean(busy) || !credential?.configured || isActive || !canUnlockCredential}>
                             <Power className="mr-2 h-4 w-4" />
@@ -1188,7 +1233,12 @@ export default function BotManagerPage() {
                       </div>
                     );
                   })}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Add / update credential</p>
                   <div className="rounded-sm border border-border/70 bg-background/35 p-3">
+
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                       <label className="space-y-2">
                         <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Provider</span>
@@ -1210,7 +1260,11 @@ export default function BotManagerPage() {
                     </div>
                   </div>
                 </div>
+
+
+
                 <OpenRouterSection
+
                   activeProfileId={activeOpenRouterProfileId}
                   busy={busy}
                   canUseCredentialGate={canUnlockCredential}
@@ -1230,21 +1284,17 @@ export default function BotManagerPage() {
                 />
               </div>
             )}
-            </>
-            )}
           </div>
-        </div>
+          )}
 
-        <div className="space-y-4">
+
+          {activeMainTab === "config" && (
           <div className={panelClass}>
-            <button type="button" className="flex w-full items-center justify-between gap-3 text-left" onClick={() => toggleSection("general")}>
-              <span className="flex items-center gap-2 text-primary">
-                <Settings className="h-4 w-4" />
-                <h2 className="font-heading text-sm uppercase tracking-[0.14em]">General Config</h2>
-              </span>
-              {collapsedSections.general ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
-            </button>
-            {!collapsedSections.general && (
+            <div className="flex items-center gap-2 text-primary">
+              <Settings className="h-4 w-4" />
+              <h2 className="font-heading text-sm uppercase tracking-[0.14em]">General Config</h2>
+            </div>
+
               <div className="mt-4 space-y-4">
                 <div className="grid gap-3 md:grid-cols-2">
                   <Field label="Runtime Mode" value="single-active-personality" readOnly onChange={() => undefined} />
@@ -1263,19 +1313,17 @@ export default function BotManagerPage() {
                   Save General Config
                 </Button>
               </div>
-            )}
           </div>
+          )}
 
+          {activeMainTab === "personalities" && (
           <div className={panelClass}>
-            <button type="button" className="flex w-full items-center justify-between gap-3 text-left" onClick={() => toggleSection("personalities")}>
-              <span className="flex items-center gap-2 text-primary">
-                <Brain className="h-4 w-4" />
-                <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Personalities</h2>
-              </span>
-              {collapsedSections.personalities ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
-            </button>
-            {!collapsedSections.personalities && (
+            <div className="flex items-center gap-2 text-primary">
+              <Brain className="h-4 w-4" />
+              <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Personalities</h2>
+            </div>
               <div className="mt-4 space-y-4">
+
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem_12rem]">
                   <label className="relative block">
                     <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -1401,9 +1449,10 @@ export default function BotManagerPage() {
                 </div>
                 <PaginationControls page={personalityPage} totalPages={personalityTotalPages} onPageChange={setPersonalityPage} />
               </div>
-            )}
           </div>
+          )}
 
+          {activeMainTab === "backups" && (
           <BackupSection
             backupCanCreate={backupCanCreate}
             backupConfirm={backupConfirm}
@@ -1417,7 +1466,7 @@ export default function BotManagerPage() {
             backupStatus={backupStatus}
             backupTotalPages={backupTotalPages}
             busy={busy}
-            collapsed={collapsedSections.backup}
+            collapsed={false}
             identities={summary?.identities ?? []}
             onClearAll={() => clearBackups()}
             onClearJob={(job) => clearBackups([job.id])}
@@ -1431,9 +1480,11 @@ export default function BotManagerPage() {
             onPasswordChange={setBackupPassword}
             onSelectedChange={setBackupSelectedIds}
             onStatusChange={(value) => { setBackupStatus(value); setBackupPage(1); }}
-            onToggle={() => toggleSection("backup")}
+            onToggle={() => undefined}
           />
+          )}
         </div>
+
         </>
         )}
       </div>
