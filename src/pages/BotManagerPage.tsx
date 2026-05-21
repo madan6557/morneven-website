@@ -1434,9 +1434,10 @@ export default function BotManagerPage() {
                 </div>
                 <PaginationControls page={personalityPage} totalPages={personalityTotalPages} onPageChange={setPersonalityPage} />
               </div>
-            )}
           </div>
+          )}
 
+          {activeMainTab === "backups" && (
           <BackupSection
             backupCanCreate={backupCanCreate}
             backupConfirm={backupConfirm}
@@ -1450,7 +1451,7 @@ export default function BotManagerPage() {
             backupStatus={backupStatus}
             backupTotalPages={backupTotalPages}
             busy={busy}
-            collapsed={collapsedSections.backup}
+            collapsed={false}
             identities={summary?.identities ?? []}
             onClearAll={() => clearBackups()}
             onClearJob={(job) => clearBackups([job.id])}
@@ -1464,9 +1465,11 @@ export default function BotManagerPage() {
             onPasswordChange={setBackupPassword}
             onSelectedChange={setBackupSelectedIds}
             onStatusChange={(value) => { setBackupStatus(value); setBackupPage(1); }}
-            onToggle={() => toggleSection("backup")}
+            onToggle={() => undefined}
           />
+          )}
         </div>
+
         </>
         )}
       </div>
