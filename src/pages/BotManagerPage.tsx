@@ -1173,16 +1173,14 @@ export default function BotManagerPage() {
             )}
           </div>
 
+          )}
+          {activeMainTab === "credentials" && (
           <div className={panelClass}>
-            <button type="button" className="flex w-full items-center justify-between gap-3 text-left" onClick={() => toggleSection("credentials")}>
-              <span className="flex items-center gap-2 text-primary">
+            <div className="flex items-center gap-2 text-primary">
               <KeyRound className="h-4 w-4" />
               <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Credentials</h2>
-              </span>
-              {collapsedSections.credentials ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
-            </button>
-            {!collapsedSections.credentials && (
-            <>
+            </div>
+
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap gap-2">
                 <Badge variant={activeProvider ? "default" : "outline"}>
