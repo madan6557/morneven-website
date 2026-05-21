@@ -354,6 +354,14 @@ export default function BotManagerPage() {
   }, [allowed, loadRuntimeStatus, loadSummary]);
 
   useEffect(() => {
+    if (!allowed) return undefined;
+    const interval = window.setInterval(() => {
+      void loadRuntimeStatus();
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [allowed, loadRuntimeStatus]);
+
+  useEffect(() => {
     if (selectedId) void loadDetail(selectedId);
   }, [loadDetail, selectedId]);
 
@@ -533,6 +541,8 @@ export default function BotManagerPage() {
   const nanobotConfigured = Boolean(summary?.runtimeStatus.nanobotConfigured);
   const runtimeActionDisabled = Boolean(busy) || !nanobotConfigured;
   const gatewayState = runtimeStatus?.gateway?.state ?? (nanobotConfigured ? "unknown" : "not configured");
+  const gatewayRunning = gatewayState === "running";
+  const gatewayTransitioning = gatewayState === "starting" || gatewayState === "stopping";
   const lastSync = runtimeStatus?.morneven?.syncedAt
     ? new Date(runtimeStatus.morneven.syncedAt).toLocaleString()
     : "Never";
@@ -590,15 +600,15 @@ export default function BotManagerPage() {
               </div>
             )}
             <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
-              <Button type="button" variant="outline" onClick={() => controlRuntime("start")} disabled={runtimeActionDisabled}>
+              <Button type="button" variant="outline" onClick={() => controlRuntime("start")} disabled={runtimeActionDisabled || gatewayRunning || gatewayTransitioning}>
                 {busy === "runtime-start" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
                 Start
               </Button>
-              <Button type="button" variant="outline" onClick={() => controlRuntime("stop")} disabled={runtimeActionDisabled}>
+              <Button type="button" variant="outline" onClick={() => controlRuntime("stop")} disabled={runtimeActionDisabled || !gatewayRunning || gatewayTransitioning}>
                 {busy === "runtime-stop" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Square className="mr-2 h-4 w-4" />}
                 Stop
               </Button>
-              <Button type="button" variant="outline" onClick={() => controlRuntime("restart")} disabled={runtimeActionDisabled}>
+              <Button type="button" variant="outline" onClick={() => controlRuntime("restart")} disabled={runtimeActionDisabled || !gatewayRunning || gatewayTransitioning}>
                 {busy === "runtime-restart" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                 Restart
               </Button>
