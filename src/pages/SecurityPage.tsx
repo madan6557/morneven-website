@@ -388,7 +388,7 @@ export default function SecurityPage() {
               {status ? Object.entries(status.features).map(([key, enabled]) => (
                 <div key={key} className="flex items-center justify-between gap-3 rounded-sm border border-border/70 bg-background/45 p-3">
                   <span className="font-heading text-sm text-foreground">{key}</span>
-                  <Badge variant="outline" className={enabled ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200" : "text-muted-foreground"}>
+                  <Badge variant="outline" className={enabled ? "border-success/35 bg-success/10 text-success" : "text-muted-foreground"}>
                     {enabled ? "On" : "Off"}
                   </Badge>
                 </div>

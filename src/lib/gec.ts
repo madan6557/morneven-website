@@ -17,9 +17,9 @@ export type GecTier =
 // instead of hard-coded hex values, so the chip stays themed.
 const GEC_CHIP_STYLES: Record<string, string> = {
   // Stable / passive - calm, mossy survey green
-  amorphous:    "bg-emerald-500/10 text-emerald-700 border-emerald-600/35 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/40",
+  amorphous:    "bg-success/10 text-success border-success/35",
   // Reactive / predatory - cold crystalline cyan
-  crystalline:  "bg-sky-500/10 text-sky-700 border-sky-600/35 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/40",
+  crystalline:  "bg-info/10 text-info border-info/35",
   // Adaptive / hostile - institute purple (secondary)
   metamorphic:  "bg-secondary/10 text-secondary border-secondary/35 dark:bg-secondary/20 dark:text-secondary-foreground dark:border-secondary/50",
   // Symbiotic asset - accent yellow (catalyst / leverage)

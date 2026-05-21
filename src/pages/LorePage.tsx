@@ -65,8 +65,8 @@ const emptyMessages: Record<LoreTab, string> = {
 };
 
 const dangerColor: Record<number, string> = {
-  1: "text-emerald-500",
-  2: "text-lime-500",
+  1: "text-success",
+  2: "text-success",
   3: "text-accent-yellow",
   4: "text-accent-orange",
   5: "text-destructive",

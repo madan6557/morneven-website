@@ -59,7 +59,7 @@ function statusTone(person: PersonnelUser) {
     return "border-accent-orange/40 bg-accent-orange/10 text-accent-orange";
   }
   if (person.online && person.status === "active") {
-    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
+    return "border-success/40 bg-success/10 text-success";
   }
   return "border-border text-muted-foreground";
 }
@@ -67,7 +67,7 @@ function statusTone(person: PersonnelUser) {
 function statusDotTone(person: PersonnelUser) {
   if (person.status === "banned" || person.status === "deleted") return "bg-destructive";
   if (person.status === "suspended") return "bg-accent-orange";
-  if (person.online && person.status === "active") return "bg-emerald-400";
+  if (person.online && person.status === "active") return "bg-success";
   return "bg-muted-foreground/40";
 }
 
@@ -1114,7 +1114,7 @@ export default function PersonnelManagementPage() {
                                       await handleStatusUpdate(p, "active", "Restored by personnel management");
                                     },
                                   })}
-                                  className="p-1.5 text-muted-foreground hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-30"
+                                  className="p-1.5 text-muted-foreground hover:text-success disabled:cursor-not-allowed disabled:opacity-30"
                                   title="Restore account"
                                   disabled={busyAction === `active-${p.id}`}
                                 >
@@ -1234,7 +1234,7 @@ export default function PersonnelManagementPage() {
                                     await handleStatusUpdate(p, "active", "Restored by personnel management");
                                   },
                                 })}
-                                className="p-1.5 text-muted-foreground hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-30"
+                                className="p-1.5 text-muted-foreground hover:text-success disabled:cursor-not-allowed disabled:opacity-30"
                                 disabled={busyAction === `active-${p.id}`}
                                 title="Restore account"
                               >

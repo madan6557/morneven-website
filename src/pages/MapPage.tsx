@@ -6,7 +6,7 @@ import { Plus, Minus, RotateCcw, MapPin, ExternalLink } from "lucide-react";
 import { ContentState } from "@/components/ContentState";
 
 const STATUS_STYLES: Record<MapZoneStatus, { label: string; color: string; ring: string }> = {
-  safe: { label: "Safe", color: "bg-emerald-500", ring: "ring-emerald-500/40" },
+  safe: { label: "Safe", color: "bg-success", ring: "ring-success/40" },
   caution: { label: "Caution", color: "bg-accent-yellow", ring: "ring-accent-yellow/40" },
   danger: { label: "Danger", color: "bg-accent-orange", ring: "ring-accent-orange/40" },
   restricted: { label: "Restricted", color: "bg-destructive", ring: "ring-destructive/40" },
