@@ -476,61 +476,70 @@ function ActivityVisitGraph({
   const selected = selectedPoint ?? points[points.length - 1] ?? null;
 
   return (
-    <section className="hud-border bg-card p-4">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-primary" />
+    <section className="hud-border bg-card">
+      {/* Header */}
+      <header className="flex flex-col gap-3 border-b border-border/60 p-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-sm border border-primary/40 bg-primary/10 text-primary">
+            <BarChart3 className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
             <h2 className="font-heading text-sm uppercase tracking-[0.12em] text-foreground">Visit Graph</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Timeline of recorded view buckets. Tap a node to inspect viewers.
+            </p>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Content visit timeline from recorded view buckets. Select a node to inspect captured viewers.
-          </p>
         </div>
-        <div className="flex flex-col gap-2 xl:items-end">
-          <div className="flex flex-wrap gap-2">
-            {visitRanges.map((entry) => (
-              <button
-                key={entry.key}
-                type="button"
-                onClick={() => onRangeChange(entry.key)}
-                className={`rounded-sm border px-3 py-2 text-[10px] font-display uppercase tracking-[0.08em] transition-colors ${
-                  range === entry.key
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                {entry.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-2 xl:justify-end">
-            {categories.map((entry) => (
-              <button
-                key={entry.key}
-                type="button"
-                onClick={() => onCategoryChange(entry.key)}
-                className={`rounded-sm border px-2.5 py-1.5 text-[9px] font-display uppercase tracking-[0.08em] transition-colors ${
-                  category === entry.key
-                    ? "border-primary bg-primary/15 text-primary"
-                    : "border-border text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                {entry.label}
-              </button>
-            ))}
-          </div>
+        <div className="inline-flex flex-wrap items-center gap-1 rounded-sm border border-border bg-background/40 p-1">
+          {visitRanges.map((entry) => (
+            <button
+              key={entry.key}
+              type="button"
+              onClick={() => onRangeChange(entry.key)}
+              className={`rounded-[2px] px-3 py-1.5 text-[10px] font-display uppercase tracking-[0.1em] transition-colors ${
+                range === entry.key
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {/* Category filter row */}
+      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5">
+        <span className="hidden flex-shrink-0 text-[9px] font-display uppercase tracking-[0.14em] text-muted-foreground sm:inline">
+          Filter
+        </span>
+        <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+          {categories.map((entry) => (
+            <button
+              key={entry.key}
+              type="button"
+              onClick={() => onCategoryChange(entry.key)}
+              className={`rounded-sm border px-2.5 py-1 text-[9px] font-display uppercase tracking-[0.1em] transition-colors ${
+                category === entry.key
+                  ? "border-primary/70 bg-primary/15 text-primary"
+                  : "border-border/70 text-muted-foreground hover:border-border hover:text-foreground"
+              }`}
+            >
+              {entry.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
-        <Signal label="Graph Views" value={series?.totalViews ?? 0} />
-        <Signal label="Unique Visitors" value={series?.uniqueVisitors ?? 0} />
-        <Signal label="Buckets" value={series?.points.length ?? 0} />
-      </div>
+      {/* Body */}
+      <div className="space-y-4 p-4">
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Signal label="Graph Views" value={series?.totalViews ?? 0} />
+          <Signal label="Unique Visitors" value={series?.uniqueVisitors ?? 0} />
+          <Signal label="Buckets" value={series?.points.length ?? 0} />
+        </div>
 
-      <div className="mt-4 space-y-4">
-        <div className="min-w-0 rounded-sm border border-border bg-background/35 p-3">
+        <div className="min-w-0 rounded-sm border border-border/70 bg-background/35 p-3">
           {error ? (
             <p className="py-16 text-center text-sm text-destructive">{error}</p>
           ) : !series && loading ? (
