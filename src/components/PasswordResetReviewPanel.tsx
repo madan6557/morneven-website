@@ -293,7 +293,7 @@ export default function PasswordResetReviewPanel({ enabled }: Props) {
                           className={cn(
                             "inline-flex shrink-0 items-center rounded-sm border px-2 py-0.5 text-[10px] font-display tracking-wider uppercase",
                             request.status === "approved" || request.status === "completed"
-                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                              ? "border-success/40 bg-success/10 text-success"
                               : request.status === "rejected"
                                 ? "border-muted bg-muted/20 text-muted-foreground"
                                 : "border-accent-orange/40 bg-accent-orange/10 text-accent-orange",
@@ -430,7 +430,7 @@ export default function PasswordResetReviewPanel({ enabled }: Props) {
                             <p className="mt-2 whitespace-pre-wrap">{request.reviewNote}</p>
                           ) : null}
                           {request.completedAt ? (
-                            <p className="mt-2 text-emerald-300">
+                            <p className="mt-2 text-success">
                               Credential confirmation completed{" "}
                               {new Date(request.completedAt).toLocaleString()}.
                             </p>

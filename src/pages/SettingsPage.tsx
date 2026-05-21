@@ -1159,7 +1159,7 @@ export default function SettingsPage() {
                           <span className={cn(
                             "inline-flex items-center rounded-sm border px-2 py-1 text-[10px] font-display tracking-wider uppercase",
                             report.status === "confirmed"
-                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                              ? "border-success/40 bg-success/10 text-success"
                               : report.status === "dismissed"
                                 ? "border-muted bg-muted/20 text-muted-foreground"
                                 : "border-accent-orange/40 bg-accent-orange/10 text-accent-orange",
@@ -1234,7 +1234,7 @@ export default function SettingsPage() {
                               <span className={cn(
                                 "inline-flex items-center rounded-sm border px-2 py-1 text-[10px] font-display tracking-wider uppercase",
                                 report.status === "confirmed"
-                                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                                  ? "border-success/40 bg-success/10 text-success"
                                   : report.status === "dismissed"
                                     ? "border-muted bg-muted/20 text-muted-foreground"
                                     : "border-destructive/40 bg-destructive/10 text-destructive",
@@ -1605,7 +1605,7 @@ export default function SettingsPage() {
                           <div className="text-muted-foreground">
                             {folder.referencedObjects} referenced / {folder.totalObjects} total
                           </div>
-                          <div className={folder.orphanedObjects > 0 ? "text-amber-500" : "text-muted-foreground"}>
+                          <div className={folder.orphanedObjects > 0 ? "text-warning" : "text-muted-foreground"}>
                             {folder.orphanedObjects} orphaned · {formatBytes(folder.orphanedBytes)}
                           </div>
                         </div>
@@ -1652,8 +1652,8 @@ export default function SettingsPage() {
               icon={AlertTriangle}
               title="PL7 Data Backup"
               description="Queue full Morneven backup jobs for SQL database, compatibility JSON, and selected attachment sources."
-              className="border-amber-500/40"
-              accentClass="text-amber-500"
+              className="border-warning/40"
+              accentClass="text-warning"
             >
               <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                 <p className="text-sm text-muted-foreground">History is retained for 30 days. Completed archives include restore guidance inside the attachment README.</p>

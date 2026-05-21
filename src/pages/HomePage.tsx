@@ -134,7 +134,7 @@ export default function HomePage() {
     "On Progress": "text-accent-yellow",
     "Planning": "text-primary",
     "On Hold": "text-accent-orange",
-    "Completed": "text-emerald-600 dark:text-emerald-400",
+    "Completed": "text-success",
     "Canceled": "text-destructive",
   };
 
@@ -174,7 +174,7 @@ export default function HomePage() {
       {settings.showStats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard icon={FolderKanban} label="Total Projects" value={snapshotStatus === "loading" ? "..." : snapshotStatus === "error" ? "--" : stats.totalProjects} color="bg-primary/20 text-primary" delay={0.05} />
-          <StatCard icon={Activity} label="In Progress" value={snapshotStatus === "loading" ? "..." : snapshotStatus === "error" ? "--" : stats.activeProjects} color="bg-green-500/20 text-green-400" delay={0.1} />
+          <StatCard icon={Activity} label="In Progress" value={snapshotStatus === "loading" ? "..." : snapshotStatus === "error" ? "--" : stats.activeProjects} color="bg-success/20 text-success" delay={0.1} />
           <StatCard icon={BookOpen} label="Lore Entries" value={snapshotStatus === "loading" ? "..." : snapshotStatus === "error" ? "--" : stats.totalLore} color="bg-secondary/20 text-secondary" delay={0.15} />
           <StatCard icon={Image} label="Gallery Items" value={snapshotStatus === "loading" ? "..." : snapshotStatus === "error" ? "--" : stats.totalGallery} color="bg-accent/20 text-accent-foreground" delay={0.2} />
         </div>

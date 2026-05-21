@@ -141,7 +141,7 @@ export default function ProjectDetail() {
             <span className={`text-xs font-display tracking-wider uppercase ${project.status === "On Progress" ? "text-accent-yellow" :
                 project.status === "Planning" ? "text-primary" :
                   project.status === "On Hold" ? "text-accent-orange" :
-                    project.status === "Completed" ? "text-emerald-600 dark:text-emerald-400" :
+                    project.status === "Completed" ? "text-success" :
                       "text-destructive"
               }`}>{project.status}</span>
           </div>
