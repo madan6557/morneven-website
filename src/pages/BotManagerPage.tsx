@@ -1207,17 +1207,23 @@ export default function BotManagerPage() {
                 </Button>
               </div>
             ) : (
-              <div className="mt-4 space-y-4">
-                <div className="grid gap-3">
+              <div className="mt-4 space-y-5">
+                <div className="space-y-2">
+                  <p className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Active providers</p>
+                  <div className="grid gap-3">
                   {normalProviders.map((provider) => {
                     const credential = summary?.credentials.find((item) => item.provider === provider.value);
                     const isActive = activeProvider === provider.value;
                     return (
-                      <div key={provider.value} className="rounded-sm border border-border/70 bg-background/35 p-3">
+                      <div key={provider.value} className={cn("rounded-sm border bg-background/35 p-3", isActive ? "border-primary/60" : "border-border/70")}>
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <p className="font-heading text-sm text-foreground">{provider.label}</p>
-                            <p className="text-xs text-muted-foreground">{credential?.configured ? `${credential.keyPreview} / ${readString(credential.metadata.modelId, "model not set")}` : "No credential configured"}</p>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-heading text-sm text-foreground">{provider.label}</p>
+                              {credential?.configured ? <Badge variant="outline" className="text-[10px]">Configured</Badge> : <Badge variant="destructive" className="text-[10px]">Missing</Badge>}
+                              {isActive && <Badge className="text-[10px]"><Check className="mr-1 h-3 w-3" />Active</Badge>}
+                            </div>
+                            <p className="truncate text-xs text-muted-foreground">{credential?.configured ? `${credential.keyPreview} / ${readString(credential.metadata.modelId, "model not set")}` : "No credential configured"}</p>
                           </div>
                           <Button type="button" variant={isActive ? "outline" : "default"} size="sm" onClick={() => activateProvider(provider.value)} disabled={Boolean(busy) || !credential?.configured || isActive || !canUnlockCredential}>
                             <Power className="mr-2 h-4 w-4" />
@@ -1227,7 +1233,12 @@ export default function BotManagerPage() {
                       </div>
                     );
                   })}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Add / update credential</p>
                   <div className="rounded-sm border border-border/70 bg-background/35 p-3">
+
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                       <label className="space-y-2">
                         <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Provider</span>
