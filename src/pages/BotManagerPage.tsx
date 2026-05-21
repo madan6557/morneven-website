@@ -1269,12 +1269,10 @@ export default function BotManagerPage() {
                 />
               </div>
             )}
-            </>
-            )}
           </div>
-        </div>
+          )}
 
-        <div className="space-y-4">
+
           <div className={panelClass}>
             <button type="button" className="flex w-full items-center justify-between gap-3 text-left" onClick={() => toggleSection("general")}>
               <span className="flex items-center gap-2 text-primary">
