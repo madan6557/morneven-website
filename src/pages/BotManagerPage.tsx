@@ -1298,19 +1298,17 @@ export default function BotManagerPage() {
                   Save General Config
                 </Button>
               </div>
-            )}
           </div>
+          )}
 
+          {activeMainTab === "personalities" && (
           <div className={panelClass}>
-            <button type="button" className="flex w-full items-center justify-between gap-3 text-left" onClick={() => toggleSection("personalities")}>
-              <span className="flex items-center gap-2 text-primary">
-                <Brain className="h-4 w-4" />
-                <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Personalities</h2>
-              </span>
-              {collapsedSections.personalities ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
-            </button>
-            {!collapsedSections.personalities && (
+            <div className="flex items-center gap-2 text-primary">
+              <Brain className="h-4 w-4" />
+              <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Personalities</h2>
+            </div>
               <div className="mt-4 space-y-4">
+
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem_12rem]">
                   <label className="relative block">
                     <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
