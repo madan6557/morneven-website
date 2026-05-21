@@ -80,14 +80,55 @@ export interface ActivityOverview {
   leaders: ActivityContentItem[];
 }
 
+export type ActivityVisitRange = "1d" | "7d" | "30d" | "90d";
+export type ActivityVisitBucket = "six_hour" | "day";
+
+export interface ActivityVisitTopContent {
+  id: string;
+  entityType: ActivityContentItem["entityType"];
+  category: string;
+  title: string;
+  thumbnail: string;
+  url: string;
+  views: number;
+}
+
+export interface ActivityVisitPoint {
+  bucketStart: string;
+  bucketLabel: string;
+  views: number;
+  uniqueVisitors: number;
+  viewers: ActivityViewerSummary[];
+  viewerOverflow: number;
+  topContent: ActivityVisitTopContent[];
+}
+
+export interface ActivityVisitSeries {
+  range: ActivityVisitRange;
+  bucket: ActivityVisitBucket;
+  category: ActivityCategory;
+  totalViews: number;
+  uniqueVisitors: number;
+  points: ActivityVisitPoint[];
+}
+
 export interface ActivityContentParams extends PaginationParams {
   category?: ActivityCategory;
   sort?: ActivitySort;
   order?: ActivityOrder;
 }
 
+export interface ActivityVisitParams {
+  range?: ActivityVisitRange;
+  category?: ActivityCategory;
+}
+
 export async function getActivityOverview(): Promise<ActivityOverview> {
   return apiRequest<ActivityOverview>("/activity/overview");
+}
+
+export async function getActivityVisits(params: ActivityVisitParams = {}): Promise<ActivityVisitSeries> {
+  return apiRequest<ActivityVisitSeries>(`/activity/visits${buildQuery(params)}`);
 }
 
 export async function getActivityContent(
