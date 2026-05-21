@@ -1090,8 +1090,47 @@ export default function BotManagerPage() {
           </div>
         ) : (
         <>
+        <div className="hud-border bg-card/40 px-3 py-2 flex flex-wrap items-center gap-2 text-xs">
+          <span className="font-display uppercase tracking-[0.18em] text-muted-foreground">Status</span>
+          <Badge variant="outline" className="font-heading"><Brain className="mr-1 h-3 w-3" />{activeIdentity?.name ?? "No persona"}</Badge>
+          <Badge variant={syncStateVariant}>Sync: {syncState}</Badge>
+          <Badge variant="outline">Gateway: {gatewayState}</Badge>
+          {runtimeDirty && <Badge variant="destructive">Runtime dirty</Badge>}
+        </div>
+        <div role="tablist" aria-label="Bot Manager sections" className="hud-border bg-card/40 p-1 flex gap-1 overflow-x-auto">
+          {([
+            { key: "runtime", label: "Runtime", icon: Bot },
+            { key: "credentials", label: "Credentials", icon: KeyRound },
+            { key: "personalities", label: "Personalities", icon: Brain },
+            { key: "config", label: "Config", icon: Settings },
+            { key: "backups", label: "Backups", icon: Download },
+          ] as const).map((tab) => {
+            const isActive = activeMainTab === tab.key;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveMainTab(tab.key)}
+                className={cn(
+                  "flex items-center gap-2 whitespace-nowrap rounded-sm px-3 py-2 font-heading text-xs uppercase tracking-[0.14em] transition-colors",
+                  isActive
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
         <div className="space-y-4">
+          {activeMainTab === "runtime" && (
           <div className={panelClass}>
+
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-2 text-primary">
                 <Bot className="h-4 w-4" />
