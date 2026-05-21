@@ -328,8 +328,10 @@ export default function BotManagerPage() {
       setGeneralConfigText(toJsonText(next.generalConfig));
       const preferred = next.runtimeStatus.activeIdentityId ?? next.identities[0]?.id ?? null;
       setSelectedId((current) => current ?? preferred);
+      return next;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Bot Manager unavailable.");
+      return null;
     } finally {
       setLoading(false);
     }
@@ -340,8 +342,10 @@ export default function BotManagerPage() {
       const next = await getBotRuntimeStatus();
       setRuntimeStatus(next);
       setRuntimeError(null);
+      return next;
     } catch (err) {
       setRuntimeError(err instanceof Error ? err.message : "Nanobot runtime unavailable.");
+      return null;
     }
   }, []);
 
@@ -518,6 +522,7 @@ export default function BotManagerPage() {
         });
         setFileDraft(saved);
         await loadDetail(detail.id);
+        await loadSummary();
       },
       "File saved",
     );
@@ -533,17 +538,33 @@ export default function BotManagerPage() {
       "Profile image uploaded",
     );
 
-  const syncRuntime = () =>
-    runAction(
-      "sync",
-      async () => {
-        const result = await syncBotManagerRuntime();
-        setSyncLog(toJsonText(result));
-        if (result.nanobot && typeof result.nanobot === "object") setRuntimeStatus(result.nanobot as BotRuntimeStatus);
-        await loadRuntimeStatus();
-      },
-      "Runtime sync requested",
-    );
+  const syncRuntime = async () => {
+    setBusy("sync");
+    try {
+      const nextSummary = await loadSummary();
+      if (!nextSummary) throw new Error("Bot Manager unavailable.");
+      const nextRuntime = await loadRuntimeStatus();
+      const needsRuntimeSync = Boolean(nextSummary?.runtimeSync.runtimeDirty ?? summary?.runtimeSync.runtimeDirty);
+
+      if (!needsRuntimeSync) {
+        setSyncLog(toJsonText({ refreshed: true, runtime: nextRuntime }));
+        toast({ title: "Runtime status refreshed" });
+        return;
+      }
+
+      const result = await syncBotManagerRuntime();
+      setSyncLog(toJsonText(result));
+      if (result.nanobot && typeof result.nanobot === "object") setRuntimeStatus(result.nanobot as BotRuntimeStatus);
+      await refreshAll();
+      toast({ title: "Runtime synced" });
+    } catch (err) {
+      await loadSummary();
+      await loadRuntimeStatus();
+      toast({ title: "Bot Manager action failed", description: err instanceof Error ? err.message : "Request failed." });
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const controlRuntime = (action: "start" | "stop" | "restart") =>
     runAction(
@@ -564,8 +585,22 @@ export default function BotManagerPage() {
   const gatewayState = runtimeStatus?.gateway?.state ?? (nanobotConfigured ? "unknown" : "not configured");
   const gatewayRunning = gatewayState === "running";
   const gatewayTransitioning = gatewayState === "starting" || gatewayState === "stopping";
-  const lastSync = runtimeStatus?.morneven?.syncedAt
-    ? new Date(runtimeStatus.morneven.syncedAt).toLocaleString()
+  const runtimeDirty = Boolean(summary?.runtimeSync.runtimeDirty);
+  const syncUnavailable = Boolean(error && !summary);
+  const syncState = busy === "sync"
+    ? "Syncing"
+    : runtimeError
+      ? "Nanobot unavailable"
+      : runtimeDirty && summary?.runtimeSync.lastRuntimeSyncError
+        ? "Sync failed"
+        : runtimeDirty
+          ? "Sync needed"
+          : "Up to date";
+  const syncStateVariant: "default" | "outline" | "destructive" =
+    syncState === "Sync failed" || syncState === "Nanobot unavailable" ? "destructive" : syncState === "Sync needed" ? "default" : "outline";
+  const lastSyncRaw = runtimeStatus?.morneven?.syncedAt ?? summary?.runtimeSync.lastRuntimeSyncAt;
+  const lastSync = lastSyncRaw
+    ? new Date(lastSyncRaw).toLocaleString()
     : "Never";
   const updateChannel = (channel: ChannelKey, patch: JsonRecord) => {
     setChannelsDraft((current) => ({
@@ -585,14 +620,11 @@ export default function BotManagerPage() {
             <p className="font-display text-[10px] uppercase tracking-[0.28em] text-muted-foreground">PL7 Bot Operations</p>
             <h1 className="font-display text-3xl uppercase tracking-[0.14em] text-primary md:text-4xl">Bot Manager</h1>
           </div>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => void refreshAll()} disabled={loading || Boolean(busy)}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
-            </Button>
-            <Button type="button" onClick={syncRuntime} disabled={Boolean(busy) || !activeIdentity}>
-              {busy === "sync" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-              Sync Runtime
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={syncStateVariant}>{syncState}</Badge>
+            <Button type="button" onClick={() => void syncRuntime()} disabled={loading || busy === "sync" || syncUnavailable}>
+              {busy === "sync" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Sync
             </Button>
           </div>
         </div>
@@ -611,6 +643,8 @@ export default function BotManagerPage() {
               <Metric label="Active Personality" value={activeIdentity?.name ?? "None"} />
               <Metric label="Saved Personalities" value={String(summary?.identities.length ?? 0)} />
               <Metric label="Nanobot Link" value={nanobotConfigured ? "Configured" : "Not configured"} />
+              <Metric label="Sync State" value={syncState} />
+              {runtimeDirty && <Metric label="Sync Reason" value={summary?.runtimeSync.runtimeDirtyReason ?? "Runtime changes pending"} />}
               <Metric label="Gateway State" value={gatewayState} />
               <Metric label="Gateway Uptime" value={formatUptime(runtimeStatus?.gateway?.uptime)} />
               <Metric label="Last Sync" value={lastSync} />
@@ -618,6 +652,11 @@ export default function BotManagerPage() {
             {runtimeError && (
               <div className="mt-3 rounded-sm border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
                 {runtimeError}
+              </div>
+            )}
+            {summary?.runtimeSync.lastRuntimeSyncError && (
+              <div className="mt-3 rounded-sm border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
+                {summary.runtimeSync.lastRuntimeSyncError}
               </div>
             )}
             <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">

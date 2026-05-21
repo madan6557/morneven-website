@@ -42,6 +42,13 @@ export interface BotSummary {
   credentials: BotCredentialSummary[];
   generalConfig: Record<string, unknown>;
   identities: BotIdentity[];
+  runtimeSync: {
+    runtimeDirty: boolean;
+    runtimeDirtySince: string | null;
+    runtimeDirtyReason: string | null;
+    lastRuntimeSyncAt: string | null;
+    lastRuntimeSyncError: string | null;
+  };
   runtimeStatus: {
     nanobotConfigured: boolean;
     singleActivePersonality: boolean;
@@ -168,7 +175,13 @@ export function uploadBotProfileImage(id: string, file: File) {
 }
 
 export function syncBotManagerRuntime() {
-  return apiRequest<{ synced: boolean; reason?: string; bundle?: unknown; nanobot?: unknown }>("/bot-manager/sync", {
+  return apiRequest<{
+    synced: boolean;
+    reason?: string;
+    runtimeSync?: BotSummary["runtimeSync"];
+    bundle?: unknown;
+    nanobot?: unknown;
+  }>("/bot-manager/sync", {
     method: "POST",
     timeoutMs: 60000,
   });
