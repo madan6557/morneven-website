@@ -196,6 +196,25 @@ function formatCharacterLabel(character: Character) {
   return `${character.name} - ${trait}`;
 }
 
+function characterSearchRank(character: Character, search: string) {
+  const query = search.trim().toLowerCase();
+  const name = character.name.toLowerCase();
+  const label = formatCharacterLabel(character).toLowerCase();
+  if (!query) return 0;
+  if (name === query) return 0;
+  if (name.startsWith(query)) return 1;
+  if (name.includes(query)) return 2;
+  if (label.includes(query)) return 3;
+  return 4;
+}
+
+function prioritizeCharacterOptions(items: Character[], search: string) {
+  return [...items].sort((left, right) => {
+    const rank = characterSearchRank(left, search) - characterSearchRank(right, search);
+    return rank || left.name.localeCompare(right.name);
+  });
+}
+
 function createCharacterAutofill(character: Character) {
   return {
     name: character.name,
@@ -583,36 +602,44 @@ export default function BotManagerPage() {
 
   useEffect(() => {
     if (!allowed || !pageVisible || !showCreatePersonality) return undefined;
+    let cancelled = false;
     const handle = window.setTimeout(async () => {
       if (!createLoreSearch.trim()) {
-        setCreateLoreOptions([]);
+        if (!cancelled) setCreateLoreOptions([]);
         return;
       }
       try {
         const result = await getCharactersPage({ search: createLoreSearch, page: 1, pageSize: 8, sort: "name" });
-        setCreateLoreOptions(result.items);
+        if (!cancelled) setCreateLoreOptions(result.items);
       } catch {
-        setCreateLoreOptions([]);
+        if (!cancelled) setCreateLoreOptions([]);
       }
     }, 250);
-    return () => window.clearTimeout(handle);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
   }, [allowed, createLoreSearch, pageVisible, showCreatePersonality]);
 
   useEffect(() => {
     if (!allowed || !pageVisible || !(editingIdentityId && activeTab === "settings")) return undefined;
+    let cancelled = false;
     const handle = window.setTimeout(async () => {
       if (!loreSearch.trim()) {
-        setLoreOptions([]);
+        if (!cancelled) setLoreOptions([]);
         return;
       }
       try {
         const result = await getCharactersPage({ search: loreSearch, page: 1, pageSize: 8, sort: "name" });
-        setLoreOptions(result.items);
+        if (!cancelled) setLoreOptions(result.items);
       } catch {
-        setLoreOptions([]);
+        if (!cancelled) setLoreOptions([]);
       }
     }, 250);
-    return () => window.clearTimeout(handle);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
   }, [activeTab, allowed, editingIdentityId, loreSearch, pageVisible]);
 
   useEffect(() => {
@@ -1400,7 +1427,8 @@ export default function BotManagerPage() {
                 <div className="space-y-3">
                   {pagedPersonalities.map((identity) => {
                     const loreReference = asRecord(asRecord(identity.settings).loreReference);
-                    const rowOpen = editingIdentityId === identity.id && detail?.id === identity.id;
+                    const rowEditing = editingIdentityId === identity.id;
+                    const rowLoaded = rowEditing && detail?.id === identity.id;
                     return (
                       <div key={identity.id} className={cn("rounded-sm border border-border/80 bg-background/25", selectedId === identity.id && "border-primary")}>
                         <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
@@ -1429,11 +1457,11 @@ export default function BotManagerPage() {
                             <Button
                               type="button"
                               size="sm"
-                              variant={rowOpen ? "secondary" : "default"}
-                              onClick={() => { setSelectedId(identity.id); setEditingIdentityId(rowOpen ? null : identity.id); }}
-                              aria-expanded={rowOpen}
+                              variant={rowEditing ? "secondary" : "default"}
+                              onClick={() => { setSelectedId(identity.id); setEditingIdentityId(rowEditing ? null : identity.id); }}
+                              aria-expanded={rowEditing}
                             >
-                              {rowOpen ? (
+                              {rowEditing ? (
                                 <>
                                   <ChevronUp className="mr-1.5 h-4 w-4" />
                                   Close config
@@ -1450,7 +1478,7 @@ export default function BotManagerPage() {
                             </Button>
                           </div>
                         </div>
-                        {rowOpen && (
+                        {rowEditing && (
                           <div className="border-t border-border/70 bg-background/40">
                             <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-2 text-xs uppercase tracking-[0.14em] text-muted-foreground">
                               <span className="flex items-center gap-2">
@@ -1467,7 +1495,7 @@ export default function BotManagerPage() {
                               </button>
                             </div>
                             <div className="p-4">
-                            {busy === "detail" ? (
+                            {busy === "detail" || !rowLoaded ? (
                               <div className="flex min-h-40 items-center justify-center text-muted-foreground">
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 Loading personality config...
@@ -1635,8 +1663,9 @@ function LorePicker({
 }
 
 function SelectedCharacterPreview({ character, onClear }: { character: Character; onClear: () => void }) {
-  const traitText = character.traits.length ? character.traits.slice(0, 4).join(", ") : "No traits";
-  const anecdotes = character.anecdotes?.slice(0, 2) ?? [];
+  const traits = Array.isArray(character.traits) ? character.traits : [];
+  const traitText = traits.length ? traits.slice(0, 4).join(", ") : "No traits";
+  const anecdotes = Array.isArray(character.anecdotes) ? character.anecdotes.slice(0, 2) : [];
   return (
     <div className="mt-3 rounded-sm border border-primary/50 bg-primary/10 p-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
