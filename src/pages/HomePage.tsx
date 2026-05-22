@@ -351,32 +351,39 @@ export default function HomePage() {
                     description="No character is currently featured in this panel."
                     compact
                   />
-                ) : characters.map((c, index) => (
-                  <Link
-                    key={c.id}
-                    to={`/lore/characters/${c.id}`}
-                    className="flex items-center gap-3 p-2 rounded-md hover:bg-background/50 transition-colors group"
-                  >
-                    <div
-                      className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-display font-bold flex-shrink-0"
-                      style={{ backgroundColor: `${c.accentColor}20`, color: c.accentColor }}
+                ) : characters.map((c) => {
+                  const profileSrc = c.profileImage || c.thumbnail || "";
+                  return (
+                    <Link
+                      key={c.id}
+                      to={`/lore/characters/${c.id}`}
+                      className="flex items-center gap-3 p-2 rounded-md hover:bg-background/50 transition-colors group"
                     >
-                      {c.name.charAt(0)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-heading text-foreground group-hover:text-primary transition-colors truncate">{c.name}</p>
-                      <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase truncate">{c.race}</p>
-                    </div>
-                    {c.stats && (
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-xs font-display text-primary">
-                          {averageScore(Object.values(toCharacterPrimaryStats(c.stats)))}
-                        </p>
-                        <p className="text-[9px] text-muted-foreground uppercase">Overall</p>
+                      <div
+                        className="h-9 w-9 overflow-hidden rounded-full flex items-center justify-center text-xs font-display font-bold flex-shrink-0 border border-border"
+                        style={{ backgroundColor: `${c.accentColor}20`, color: c.accentColor }}
+                      >
+                        {profileSrc ? (
+                          <AuthenticatedImage src={profileSrc} alt={c.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                        ) : (
+                          c.name.charAt(0)
+                        )}
                       </div>
-                    )}
-                  </Link>
-                ))}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-heading text-foreground group-hover:text-primary transition-colors truncate">{c.name}</p>
+                        <p className="text-[10px] font-display tracking-wider text-muted-foreground uppercase truncate">{c.race}</p>
+                      </div>
+                      {c.stats && (
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-xs font-display text-primary">
+                            {averageScore(Object.values(toCharacterPrimaryStats(c.stats)))}
+                          </p>
+                          <p className="text-[9px] text-muted-foreground uppercase">Overall</p>
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
               </div>
             </motion.div>
           )}

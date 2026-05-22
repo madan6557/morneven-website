@@ -910,6 +910,8 @@ export default function SettingsPage() {
                   <div className="grid gap-3 md:grid-cols-2">
                     <PasswordField
                       label="Current password"
+                      name="settings-current-password"
+                      autoComplete="current-password"
                       value={currentPassword}
                       onChange={setCurrentPassword}
                       shown={showCurrentPassword}
@@ -919,6 +921,8 @@ export default function SettingsPage() {
                     />
                     <PasswordField
                       label="New password"
+                      name="settings-new-password"
+                      autoComplete="new-password"
                       value={newPassword}
                       onChange={setNewPassword}
                       shown={showNewPassword}
@@ -965,6 +969,8 @@ export default function SettingsPage() {
                   <div className="grid gap-3 md:grid-cols-2">
                     <PasswordField
                       label="Account password"
+                      name="settings-delete-account-password"
+                      autoComplete="current-password"
                       value={deletePassword}
                       onChange={setDeletePassword}
                       shown={showDeletePassword}
@@ -1674,6 +1680,9 @@ export default function SettingsPage() {
 
                 <PasswordField
                   label="Password"
+                  name="settings-extraction-account-password"
+                  autoComplete="off"
+                  ignorePasswordManagers
                   value={password}
                   onChange={setPassword}
                   shown={showExtractionPassword}
@@ -1684,6 +1693,9 @@ export default function SettingsPage() {
 
                 <PasswordField
                   label="Extraction Key"
+                  name="settings-extraction-secret-key"
+                  autoComplete="off"
+                  ignorePasswordManagers
                   value={extractionSecretKey}
                   onChange={setExtractionSecretKey}
                   shown={showExtractionSecretKey}
@@ -1993,6 +2005,9 @@ export default function SettingsPage() {
               <div className="grid gap-3 lg:grid-cols-3 lg:items-end">
                 <PasswordField
                   label="Password"
+                  name="settings-migration-account-password"
+                  autoComplete="off"
+                  ignorePasswordManagers
                   value={migrationPassword}
                   onChange={setMigrationPassword}
                   shown={showMigrationPassword}
@@ -2002,6 +2017,9 @@ export default function SettingsPage() {
                 />
                 <PasswordField
                   label="Secret Key"
+                  name="settings-migration-secret-key"
+                  autoComplete="off"
+                  ignorePasswordManagers
                   value={migrationSecretKey}
                   onChange={setMigrationSecretKey}
                   shown={showMigrationSecretKey}
@@ -2260,6 +2278,9 @@ function LabeledInput({
 
 function PasswordField({
   label,
+  name,
+  autoComplete = "off",
+  ignorePasswordManagers = false,
   value,
   onChange,
   shown,
@@ -2268,6 +2289,9 @@ function PasswordField({
   className,
 }: {
   label: string;
+  name: string;
+  autoComplete?: string;
+  ignorePasswordManagers?: boolean;
   value: string;
   onChange: (value: string) => void;
   shown: boolean;
@@ -2281,6 +2305,14 @@ function PasswordField({
       <div className="relative">
         <input
           type={shown ? "text" : "password"}
+          name={name}
+          autoComplete={autoComplete}
+          autoCorrect="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          data-lpignore={ignorePasswordManagers ? "true" : undefined}
+          data-1p-ignore={ignorePasswordManagers ? "true" : undefined}
+          data-form-type={ignorePasswordManagers ? "other" : undefined}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}

@@ -114,6 +114,7 @@ type EditableState = {
   status?: Project["status"];
   thumbnail?: string;
   headerImage?: string;
+  profileImage?: string;
   shortDesc?: string;
   fullDesc?: string;
   patches?: ProjectPatch[];
@@ -388,6 +389,9 @@ function FileUploadField({
   enableThumbnailCrop = false,
   thumbnailAspectRatio = 16 / 9,
   thumbnailAspectLabel = "16:9",
+  thumbnailCropTitle = "Crop Thumbnail",
+  thumbnailCropDescription,
+  thumbnailCropGuide = "none",
   allowedModes = defaultUploadModes,
 }: {
   label: string;
@@ -400,6 +404,9 @@ function FileUploadField({
   enableThumbnailCrop?: boolean;
   thumbnailAspectRatio?: number;
   thumbnailAspectLabel?: string;
+  thumbnailCropTitle?: string;
+  thumbnailCropDescription?: string;
+  thumbnailCropGuide?: "none" | "profile";
   allowedModes?: AttachmentMode[];
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -556,6 +563,9 @@ function FileUploadField({
         fileName={cropFile?.name}
         aspectRatio={thumbnailAspectRatio}
         aspectLabel={thumbnailAspectLabel}
+        title={thumbnailCropTitle}
+        description={thumbnailCropDescription}
+        guide={thumbnailCropGuide}
         onOpenChange={(open) => {
           if (!open) clearCropFile();
         }}
@@ -1216,6 +1226,7 @@ export default function AuthorDashboard() {
             accentColor: "#4A90D9",
             thumbnail: "",
             headerImage: "",
+            profileImage: "",
             shortDesc: "",
             fullDesc: "",
             stats: createDefaultCharacterStats(),
@@ -1362,6 +1373,7 @@ export default function AuthorDashboard() {
             accentColor: editing.accentColor ?? "#4A90D9",
             thumbnail: editing.thumbnail ?? "",
             headerImage: editing.headerImage ?? "",
+            profileImage: editing.profileImage ?? "",
             shortDesc: editing.shortDesc ?? "",
             fullDesc: editing.fullDesc ?? "",
             stats: normalizedStats,
@@ -2294,6 +2306,23 @@ export default function AuthorDashboard() {
               thumbnailAspectLabel={isCharacter ? "3:4" : "16:9"}
               allowedModes={thumbnailUploadModes}
             />
+
+            {isCharacter && (
+              <FileUploadField
+                label="Profile Photo"
+                value={editing.profileImage || ""}
+                onChange={(url) => setEditing({ ...editing, profileImage: url })}
+                accept="image/*"
+                folder="lore"
+                enableThumbnailCrop
+                thumbnailAspectRatio={1}
+                thumbnailAspectLabel="1:1"
+                thumbnailCropTitle="Crop Profile Photo"
+                thumbnailCropDescription="Profile photo will be cropped to 1:1 and compressed before upload. Use the circular guide to position the face."
+                thumbnailCropGuide="profile"
+                allowedModes={thumbnailUploadModes}
+              />
+            )}
 
             {!isGallery && editing.fullDesc !== undefined && (
               <FileUploadField

@@ -10,6 +10,9 @@ type ThumbnailCropDialogProps = {
   fileName?: string;
   aspectRatio?: number;
   aspectLabel?: string;
+  title?: string;
+  description?: string;
+  guide?: "none" | "profile";
   onOpenChange: (open: boolean) => void;
   onConfirm: (settings: ThumbnailCropSettings) => Promise<void> | void;
 };
@@ -28,11 +31,15 @@ export function ThumbnailCropDialog({
   fileName,
   aspectRatio = DEFAULT_ASPECT_RATIO,
   aspectLabel = "16:9",
+  title = "Crop Thumbnail",
+  description,
+  guide = "none",
   onOpenChange,
   onConfirm,
 }: ThumbnailCropDialogProps) {
   const [settings, setSettings] = useState(initialSettings);
   const [processing, setProcessing] = useState(false);
+  const resolvedDescription = description ?? `Thumbnail will be cropped to ${aspectLabel} and compressed before upload. Original media is not modified.`;
 
   useEffect(() => {
     if (open) setSettings(initialSettings);
@@ -56,16 +63,14 @@ export function ThumbnailCropDialog({
       <DialogContent className="max-w-3xl border-border bg-background">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-heading text-sm uppercase tracking-wider">
-            <Crop className="h-4 w-4 text-primary" /> Crop Thumbnail
+            <Crop className="h-4 w-4 text-primary" /> {title}
           </DialogTitle>
-          <DialogDescription>
-            Thumbnail will be cropped to {aspectLabel} and compressed before upload. Original media is not modified.
-          </DialogDescription>
+          <DialogDescription>{resolvedDescription}</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_240px]">
           <div className="space-y-2">
-            <div className="overflow-hidden rounded-sm border border-border bg-muted" style={{ aspectRatio }}>
+            <div className="relative overflow-hidden rounded-sm border border-border bg-muted" style={{ aspectRatio }}>
               {imageUrl ? (
                 <img
                   src={imageUrl}
@@ -77,6 +82,19 @@ export function ThumbnailCropDialog({
                     transformOrigin: `${settings.focusX}% ${settings.focusY}%`,
                   }}
                 />
+              ) : null}
+              {guide === "profile" ? (
+                <div className="pointer-events-none absolute inset-0">
+                  <div className="absolute inset-y-0 left-1/3 w-px bg-primary/40" />
+                  <div className="absolute inset-y-0 left-2/3 w-px bg-primary/40" />
+                  <div className="absolute inset-x-0 top-1/3 h-px bg-primary/40" />
+                  <div className="absolute inset-x-0 top-2/3 h-px bg-primary/40" />
+                  <div
+                    className="absolute left-1/2 top-1/2 h-[76%] w-[76%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/80"
+                    style={{ boxShadow: "0 0 0 999px rgba(0, 0, 0, 0.12)" }}
+                  />
+                  <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary bg-background/70" />
+                </div>
               ) : null}
             </div>
             <p className="truncate text-[10px] font-display uppercase tracking-wider text-muted-foreground">
