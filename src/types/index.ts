@@ -152,6 +152,7 @@ export interface Character {
   accentColor: string;
   thumbnail: string;
   headerImage?: string;
+  profileImage?: string;
   shortDesc: string;
   fullDesc: string;
   stats: CharacterStats;

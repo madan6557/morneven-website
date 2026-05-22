@@ -247,6 +247,7 @@ export function createBotIdentity(payload: {
   name: string;
   roleTitle: string;
   description?: string;
+  profileImageUrl?: string;
   channels?: Record<string, unknown>;
   settings?: Record<string, unknown>;
   loreCharacterId?: string;
@@ -261,7 +262,7 @@ export function getBotIdentity(id: string) {
   return apiRequest<BotIdentityDetail>(`/bot-manager/identities/${id}`);
 }
 
-export function updateBotIdentity(id: string, payload: Partial<Pick<BotIdentity, "name" | "roleTitle" | "description" | "channels" | "settings">> & { loreCharacterId?: string }) {
+export function updateBotIdentity(id: string, payload: Partial<Pick<BotIdentity, "name" | "roleTitle" | "description" | "profileImageUrl" | "channels" | "settings">> & { loreCharacterId?: string }) {
   return apiRequest<BotIdentity>(`/bot-manager/identities/${id}`, {
     method: "PUT",
     body: payload,

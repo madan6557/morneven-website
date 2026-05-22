@@ -246,6 +246,10 @@ function createCharacterAutofill(character: Character) {
   };
 }
 
+function characterProfileImage(character?: Character | null) {
+  return character?.profileImage || character?.thumbnail || "";
+}
+
 function createGeneralConfigDraft(value: unknown): GeneralConfigDraft {
   const config = asRecord(value);
   const gateway = asRecord(config.gateway);
@@ -819,6 +823,7 @@ export default function BotManagerPage() {
           name: newName,
           roleTitle: newRole,
           description: newDescription,
+          profileImageUrl: characterProfileImage(selectedCreateLore) || undefined,
           loreCharacterId: selectedCreateLore?.id || undefined,
         });
         setNewName("");
@@ -1728,10 +1733,17 @@ function LorePicker({
             <button
               key={character.id}
               type="button"
-              className={cn("block w-full px-3 py-2 text-left text-sm hover:bg-primary/10", selectedId === character.id && "bg-primary/15 text-primary")}
+              className={cn("flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-primary/10", selectedId === character.id && "bg-primary/15 text-primary")}
               onClick={() => onSelect(character)}
             >
-              {formatCharacterLabel(character)}
+              <span className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-border bg-primary/10">
+                {characterProfileImage(character) ? (
+                  <AuthenticatedImage src={characterProfileImage(character)} alt={character.name} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center font-display text-xs text-primary">{character.name.slice(0, 1).toUpperCase()}</span>
+                )}
+              </span>
+              <span className="min-w-0 flex-1 truncate">{formatCharacterLabel(character)}</span>
             </button>
           ))}
         </div>
@@ -1744,12 +1756,13 @@ function SelectedCharacterPreview({ character, onClear }: { character: Character
   const traits = Array.isArray(character.traits) ? character.traits : [];
   const traitText = traits.length ? traits.slice(0, 4).join(", ") : "No traits";
   const anecdotes = Array.isArray(character.anecdotes) ? character.anecdotes.slice(0, 2) : [];
+  const profileSrc = characterProfileImage(character);
   return (
     <div className="mt-3 rounded-sm border border-primary/50 bg-primary/10 p-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-        <div className="h-20 w-16 shrink-0 overflow-hidden rounded-sm border border-border bg-background">
-          {character.thumbnail ? (
-            <AuthenticatedImage src={character.thumbnail} alt={character.name} className="h-full w-full object-cover" />
+        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border border-border bg-background">
+          {profileSrc ? (
+            <AuthenticatedImage src={profileSrc} alt={character.name} className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full w-full items-center justify-center font-display text-primary">{character.name.slice(0, 1).toUpperCase()}</div>
           )}
