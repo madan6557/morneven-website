@@ -183,6 +183,12 @@ function readNumberText(value: unknown, fallback: number) {
 }
 
 function readBoolean(value: unknown, fallback: boolean) {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "1", "yes", "on"].includes(normalized)) return true;
+    if (["false", "0", "no", "off"].includes(normalized)) return false;
+  }
+  if (typeof value === "number") return value !== 0;
   return typeof value === "boolean" ? value : fallback;
 }
 
@@ -229,7 +235,7 @@ function createGeneralConfigDraft(value: unknown): GeneralConfigDraft {
   return {
     timezone: readString(config.timezone, "Asia/Singapore"),
     globalRules: readString(config.globalRules, "Follow Morneven website policy and active personality files."),
-    restartAfterSync: readBoolean(gateway.restartAfterSync, true),
+    restartAfterSync: readBoolean(gateway.restartAfterSync, false),
     allowRuntimeReload: readBoolean(gateway.allowRuntimeReload, true),
   };
 }
@@ -308,7 +314,7 @@ function createSettingsDraft(value: unknown): BotSettingsDraft {
     webSearchMaxResults: readNumberText(search.maxResults, 5),
     execTimeout: readNumberText(exec.timeout, 60),
     restrictToWorkspace: readBoolean(exec.restrictToWorkspace, false),
-    restartAfterSync: readBoolean(gateway.restartAfterSync, true),
+    restartAfterSync: readBoolean(gateway.restartAfterSync, false),
   };
 }
 
