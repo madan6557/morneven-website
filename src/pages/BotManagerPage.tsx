@@ -273,6 +273,39 @@ function generalConfigDraftToConfig(base: JsonRecord, draft: GeneralConfigDraft)
   });
 }
 
+const generalConfigDraftStorageKey = "morneven.botManager.generalConfigDraft.v1";
+
+function sameGeneralConfigDraft(left: GeneralConfigDraft, right: GeneralConfigDraft) {
+  return (
+    left.timezone === right.timezone &&
+    left.globalRules === right.globalRules &&
+    left.restartAfterSync === right.restartAfterSync &&
+    left.allowRuntimeReload === right.allowRuntimeReload
+  );
+}
+
+function readStoredGeneralConfigDraft() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(generalConfigDraftStorageKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { draft?: unknown };
+    return createGeneralConfigDraft(parsed.draft ?? parsed);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredGeneralConfigDraft(draft: GeneralConfigDraft) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(generalConfigDraftStorageKey, JSON.stringify({ draft, updatedAt: new Date().toISOString() }));
+}
+
+function clearStoredGeneralConfigDraft() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(generalConfigDraftStorageKey);
+}
+
 function numberFromText(value: string, fallback: number) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -434,7 +467,9 @@ export default function BotManagerPage() {
   const [detail, setDetail] = useState<BotIdentityDetail | null>(null);
   const [activeTab, setActiveTab] = useState<BotTab>("channels");
   const [generalBase, setGeneralBase] = useState<JsonRecord>({});
-  const [generalDraft, setGeneralDraft] = useState<GeneralConfigDraft>(() => createGeneralConfigDraft({}));
+  const [generalDraft, setGeneralDraft] = useState<GeneralConfigDraft>(() => readStoredGeneralConfigDraft() ?? createGeneralConfigDraft({}));
+  const [generalDraftDirty, setGeneralDraftDirty] = useState(() => Boolean(readStoredGeneralConfigDraft()));
+  const generalDraftDirtyRef = useRef(generalDraftDirty);
   const [syncLog, setSyncLog] = useState("");
   const [runtimeStatus, setRuntimeStatus] = useState<BotRuntimeStatus | null>(null);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
@@ -509,6 +544,26 @@ export default function BotManagerPage() {
   const hasActiveBackupJob = useMemo(() => backupJobs.some(isActiveBackupJob), [backupJobs]);
   const observedGatewayState = runtimeStatus?.gateway?.state ?? null;
 
+  useEffect(() => {
+    generalDraftDirtyRef.current = generalDraftDirty;
+  }, [generalDraftDirty]);
+
+  const updateGeneralDraft = useCallback((patch: Partial<GeneralConfigDraft>) => {
+    setGeneralDraft((current) => {
+      const next = { ...current, ...patch };
+      writeStoredGeneralConfigDraft(next);
+      return next;
+    });
+    setGeneralDraftDirty(true);
+  }, []);
+
+  const resetGeneralDraft = useCallback(() => {
+    clearStoredGeneralConfigDraft();
+    const savedDraft = createGeneralConfigDraft(generalBase);
+    setGeneralDraft(savedDraft);
+    setGeneralDraftDirty(false);
+  }, [generalBase]);
+
   const canUnlockCredential =
     credentialPassword.length > 0 &&
     credentialKey.trim().length >= 16 &&
@@ -527,7 +582,16 @@ export default function BotManagerPage() {
       const next = await getBotManagerSummary();
       setSummary(next);
       setGeneralBase(next.generalConfig);
-      setGeneralDraft(createGeneralConfigDraft(next.generalConfig));
+      const savedDraft = createGeneralConfigDraft(next.generalConfig);
+      const storedDraft = readStoredGeneralConfigDraft();
+      if (storedDraft && !sameGeneralConfigDraft(storedDraft, savedDraft)) {
+        setGeneralDraft(storedDraft);
+        setGeneralDraftDirty(true);
+      } else if (!generalDraftDirtyRef.current) {
+        if (storedDraft) clearStoredGeneralConfigDraft();
+        setGeneralDraft(savedDraft);
+        setGeneralDraftDirty(false);
+      }
       if (next.openRouterProfiles) setOpenRouterProfiles(next.openRouterProfiles);
       const preferred = next.runtimeStatus.activeIdentityId ?? next.identities[0]?.id ?? null;
       setSelectedId((current) => current ?? preferred);
@@ -838,7 +902,11 @@ export default function BotManagerPage() {
     runAction(
       "general",
       async () => {
-        await updateBotGeneralConfig(generalConfigDraftToConfig(generalBase, generalDraft));
+        const saved = await updateBotGeneralConfig(generalConfigDraftToConfig(generalBase, generalDraft));
+        clearStoredGeneralConfigDraft();
+        setGeneralBase(saved);
+        setGeneralDraft(createGeneralConfigDraft(saved));
+        setGeneralDraftDirty(false);
         await loadSummary();
       },
       "General config saved",
@@ -1428,23 +1496,34 @@ export default function BotManagerPage() {
 
           {activeMainTab === "config" && (
           <div className={panelClass}>
-            <div className="flex items-center gap-2 text-primary">
-              <Settings className="h-4 w-4" />
-              <h2 className="font-heading text-sm uppercase tracking-[0.14em]">General Config</h2>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-primary">
+                <Settings className="h-4 w-4" />
+                <h2 className="font-heading text-sm uppercase tracking-[0.14em]">General Config</h2>
+              </div>
+              {generalDraftDirty && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline">Local draft</Badge>
+                  <Button type="button" variant="outline" size="sm" onClick={resetGeneralDraft} disabled={Boolean(busy)}>
+                    <X className="mr-2 h-4 w-4" />
+                    Reset Draft
+                  </Button>
+                </div>
+              )}
             </div>
 
               <div className="mt-4 space-y-4">
                 <div className="grid gap-3 md:grid-cols-2">
                   <Field label="Runtime Mode" value="single-active-personality" readOnly onChange={() => undefined} />
-                  <Field label="Timezone" value={generalDraft.timezone} onChange={(timezone) => setGeneralDraft((current) => ({ ...current, timezone }))} placeholder="Asia/Singapore" />
+                  <Field label="Timezone" value={generalDraft.timezone} onChange={(timezone) => updateGeneralDraft({ timezone })} placeholder="Asia/Singapore" />
                 </div>
                 <label className="block space-y-2">
                   <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Global Rules</span>
-                  <textarea className={cn(inputClass, "min-h-28 resize-y")} value={generalDraft.globalRules} onChange={(event) => setGeneralDraft((current) => ({ ...current, globalRules: event.target.value }))} />
+                  <textarea className={cn(inputClass, "min-h-28 resize-y")} value={generalDraft.globalRules} onChange={(event) => updateGeneralDraft({ globalRules: event.target.value })} />
                 </label>
                 <div className="grid gap-3 md:grid-cols-2">
-                  <ToggleControl label="Restart after sync" value={generalDraft.restartAfterSync} onChange={(restartAfterSync) => setGeneralDraft((current) => ({ ...current, restartAfterSync }))} />
-                  <ToggleControl label="Allow runtime reload" value={generalDraft.allowRuntimeReload} onChange={(allowRuntimeReload) => setGeneralDraft((current) => ({ ...current, allowRuntimeReload }))} />
+                  <ToggleControl label="Restart after sync" value={generalDraft.restartAfterSync} onChange={(restartAfterSync) => updateGeneralDraft({ restartAfterSync })} />
+                  <ToggleControl label="Allow runtime reload" value={generalDraft.allowRuntimeReload} onChange={(allowRuntimeReload) => updateGeneralDraft({ allowRuntimeReload })} />
                 </div>
                 <Button type="button" onClick={saveGeneralConfig} disabled={Boolean(busy)}>
                   <Save className="mr-2 h-4 w-4" />
