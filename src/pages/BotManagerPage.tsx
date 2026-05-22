@@ -1454,7 +1454,22 @@ export default function BotManagerPage() {
                           </div>
                         </div>
                         {rowOpen && (
-                          <div className="border-t border-border/70 p-4">
+                          <div className="border-t border-border/70 bg-background/40">
+                            <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-2 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              <span className="flex items-center gap-2">
+                                <Settings className="h-3.5 w-3.5 text-primary" />
+                                Configuring <span className="text-foreground normal-case tracking-normal">{identity.name}</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setEditingIdentityId(null)}
+                                className="inline-flex items-center gap-1 rounded-sm border border-border/60 px-2 py-1 text-[10px] tracking-[0.12em] text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
+                              >
+                                <X className="h-3 w-3" />
+                                Close
+                              </button>
+                            </div>
+                            <div className="p-4">
                             {busy === "detail" ? (
                               <div className="flex min-h-40 items-center justify-center text-muted-foreground">
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
