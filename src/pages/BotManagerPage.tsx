@@ -1398,7 +1398,14 @@ export default function BotManagerPage() {
                           </div>
                           <div className="grid gap-2 sm:grid-cols-3 lg:w-[22rem]">
                             <Button type="button" size="sm" onClick={() => { setSelectedId(identity.id); setEditingIdentityId(rowOpen ? null : identity.id); }}>Edit</Button>
-                            <Button type="button" variant={identity.isActive ? "outline" : "default"} size="sm" onClick={() => activateIdentity(identity)} disabled={identity.isActive || Boolean(busy)}>Activate</Button>
+                            <ToggleControl
+                              label="Active"
+                              value={identity.isActive}
+                              disabled={identity.isActive || Boolean(busy)}
+                              onChange={(active) => {
+                                if (active && !identity.isActive) activateIdentity(identity);
+                              }}
+                            />
                             <Button type="button" variant="destructive" size="sm" onClick={() => removeIdentity(identity)} disabled={identity.isActive || Boolean(busy)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -2242,9 +2249,14 @@ function SettingsEditor({
   );
 }
 
-function ToggleControl({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
+function ToggleControl({ label, value, disabled = false, onChange }: { label: string; value: boolean; disabled?: boolean; onChange: (value: boolean) => void }) {
   return (
-    <button type="button" className="flex w-full items-center justify-between gap-3 rounded-sm border border-border/70 bg-background/35 px-3 py-2 text-left" onClick={() => onChange(!value)}>
+    <button
+      type="button"
+      className={cn("flex w-full items-center justify-between gap-3 rounded-sm border border-border/70 bg-background/35 px-3 py-2 text-left", disabled && "cursor-not-allowed opacity-70")}
+      disabled={disabled}
+      onClick={() => onChange(!value)}
+    >
       <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
       <span className={cn("relative h-6 w-11 rounded-full transition-colors", value ? "bg-primary" : "bg-muted")}>
         <span className={cn("absolute top-1 h-4 w-4 rounded-full bg-background transition-transform", value ? "translate-x-6" : "translate-x-1")} />
