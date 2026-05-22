@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import {
   Bot,
@@ -1723,6 +1723,69 @@ function PaginationControls({
   );
 }
 
+function LineNumberedTextarea({
+  value,
+  onChange,
+  readOnly = false,
+  minHeightClass = "min-h-96",
+  ariaLabel,
+}: {
+  value: string;
+  onChange?: (value: string) => void;
+  readOnly?: boolean;
+  minHeightClass?: string;
+  ariaLabel: string;
+}) {
+  const gutterRef = useRef<HTMLPreElement>(null);
+  const lineCount = useMemo(() => Math.max(value.split(/\r\n|\r|\n/).length, 1), [value]);
+  const lineNumbers = useMemo(() => Array.from({ length: lineCount }, (_, index) => index + 1).join("\n"), [lineCount]);
+  const gutterWidth = `${Math.max(3.25, String(lineCount).length * 0.65 + 2.35)}rem`;
+
+  const syncGutterScroll = (event: UIEvent<HTMLTextAreaElement>) => {
+    if (gutterRef.current) gutterRef.current.scrollTop = event.currentTarget.scrollTop;
+  };
+
+  const updateValue = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    if (!readOnly) onChange?.(event.target.value);
+  };
+
+  return (
+    <div
+      className={cn(
+        "grid overflow-hidden rounded-sm border border-border bg-background focus-within:ring-1 focus-within:ring-primary",
+        readOnly && "opacity-90",
+      )}
+      style={{ gridTemplateColumns: `${gutterWidth} minmax(0, 1fr)` }}
+    >
+      <pre
+        ref={gutterRef}
+        aria-hidden="true"
+        className={cn(
+          minHeightClass,
+          "pointer-events-none select-none overflow-hidden border-r border-border/70 bg-muted/25 px-3 py-2.5 text-right font-mono text-xs leading-5 text-muted-foreground",
+        )}
+      >
+        {lineNumbers}
+      </pre>
+      <textarea
+        aria-label={ariaLabel}
+        aria-readonly={readOnly}
+        className={cn(
+          minHeightClass,
+          "w-full resize-y border-0 bg-transparent px-3 py-2.5 font-mono text-xs leading-5 text-foreground outline-none placeholder:text-muted-foreground/75",
+          readOnly && "cursor-not-allowed opacity-75",
+        )}
+        readOnly={readOnly}
+        spellCheck={false}
+        value={value}
+        wrap="off"
+        onChange={updateValue}
+        onScroll={syncGutterScroll}
+      />
+    </div>
+  );
+}
+
 function LorePicker({
   className,
   label = "Lore Character",
@@ -2057,7 +2120,14 @@ function PersonalityEditor({
           />
         </div>
       )}
-      {activeTab === "logs" && <textarea className={textareaClass} readOnly value={syncLog || "No sync response yet."} />}
+      {activeTab === "logs" && (
+        <LineNumberedTextarea
+          ariaLabel="Bot Manager sync log"
+          minHeightClass="min-h-40"
+          readOnly
+          value={syncLog || "No sync response yet."}
+        />
+      )}
     </div>
   );
 }
@@ -2638,9 +2708,12 @@ function FileEditor({
             </select>
           </label>
         </div>
-        <textarea className={cn(textareaClass, "min-h-96", readOnly && "cursor-not-allowed opacity-75")} readOnly={readOnly} aria-readonly={readOnly} value={fileDraft.content} onChange={(event) => {
-          if (!readOnly) setFileDraft({ ...fileDraft, content: event.target.value });
-        }} />
+        <LineNumberedTextarea
+          ariaLabel={`${fileDraft.path || "Workspace file"} content`}
+          readOnly={readOnly}
+          value={fileDraft.content}
+          onChange={(content) => setFileDraft({ ...fileDraft, content })}
+        />
         <div className="flex flex-wrap gap-2">
           <Button type="button" onClick={onSave} disabled={busy || readOnly}>
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
