@@ -1417,25 +1417,59 @@ export default function BotManagerPage() {
                             <p className="truncate text-sm text-muted-foreground">{identity.roleTitle}</p>
                             <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{identity.description || "No description."}</p>
                           </div>
-                          <div className="grid gap-2 sm:grid-cols-[7rem_3.5rem_7rem] lg:w-[22rem]">
-                            <Button type="button" size="sm" onClick={() => { setSelectedId(identity.id); setEditingIdentityId(rowOpen ? null : identity.id); }}>Edit</Button>
-                            <div className="flex items-center justify-center">
-                              <CompactSwitch
-                                ariaLabel={`Activate ${identity.name}`}
-                                value={identity.isActive}
-                                disabled={identity.isActive || Boolean(busy)}
-                                onChange={(active) => {
-                                  if (active && !identity.isActive) activateIdentity(identity);
-                                }}
-                              />
-                            </div>
-                            <Button type="button" variant="destructive" size="sm" onClick={() => removeIdentity(identity)} disabled={identity.isActive || Boolean(busy)}>
+                          <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-end">
+                            {identity.isActive ? (
+                              <Button type="button" size="sm" variant="outline" disabled className="cursor-default border-success/50 text-success disabled:opacity-100">
+                                <Check className="mr-1.5 h-4 w-4" />
+                                Active
+                              </Button>
+                            ) : (
+                              <Button type="button" size="sm" variant="outline" onClick={() => activateIdentity(identity)} disabled={Boolean(busy)} title={`Activate ${identity.name}`}>
+                                <Power className="mr-1.5 h-4 w-4" />
+                                Activate
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={rowOpen ? "secondary" : "default"}
+                              onClick={() => { setSelectedId(identity.id); setEditingIdentityId(rowOpen ? null : identity.id); }}
+                              aria-expanded={rowOpen}
+                            >
+                              {rowOpen ? (
+                                <>
+                                  <ChevronUp className="mr-1.5 h-4 w-4" />
+                                  Close config
+                                </>
+                              ) : (
+                                <>
+                                  <Settings className="mr-1.5 h-4 w-4" />
+                                  Open config
+                                </>
+                              )}
+                            </Button>
+                            <Button type="button" variant="destructive" size="sm" onClick={() => removeIdentity(identity)} disabled={identity.isActive || Boolean(busy)} title={identity.isActive ? "Deactivate before deleting" : `Delete ${identity.name}`}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
                         {rowOpen && (
-                          <div className="border-t border-border/70 p-4">
+                          <div className="border-t border-border/70 bg-background/40">
+                            <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-2 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                              <span className="flex items-center gap-2">
+                                <Settings className="h-3.5 w-3.5 text-primary" />
+                                Configuring <span className="text-foreground normal-case tracking-normal">{identity.name}</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setEditingIdentityId(null)}
+                                className="inline-flex items-center gap-1 rounded-sm border border-border/60 px-2 py-1 text-[10px] tracking-[0.12em] text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
+                              >
+                                <X className="h-3 w-3" />
+                                Close
+                              </button>
+                            </div>
+                            <div className="p-4">
                             {busy === "detail" ? (
                               <div className="flex min-h-40 items-center justify-center text-muted-foreground">
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1485,6 +1519,7 @@ export default function BotManagerPage() {
                                 workspaceFiles={workspaceFiles}
                               />
                             )}
+                            </div>
                           </div>
                         )}
                       </div>
