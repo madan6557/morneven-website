@@ -88,6 +88,9 @@ export interface BotSummary {
     runtimeDirtyReason: string | null;
     lastRuntimeSyncAt: string | null;
     lastRuntimeSyncError: string | null;
+    lastRuntimePullAt?: string | null;
+    lastRuntimePullChangedCount?: number;
+    lastRuntimePullConflictCount?: number;
   };
   runtimeStatus: {
     nanobotConfigured: boolean;
@@ -110,6 +113,7 @@ export interface BotRuntimeStatus {
     state?: string;
     pid?: number | null;
     uptime?: number | null;
+    startedAt?: string | null;
     restart_count?: number;
   };
   morneven?: {
@@ -326,6 +330,14 @@ export function syncBotManagerRuntime() {
     synced: boolean;
     reason?: string;
     runtimeSync?: BotSummary["runtimeSync"];
+    writeback?: {
+      pulledCount: number;
+      appliedPaths: string[];
+      conflictPaths: string[];
+      skippedPaths: string[];
+      changes?: unknown[];
+      skipped?: Array<{ path: string; reason: string }>;
+    };
     bundle?: unknown;
     nanobot?: unknown;
   }>("/bot-manager/sync", {

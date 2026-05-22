@@ -452,7 +452,6 @@ export default function BotManagerPage() {
   const [backupTotalPages, setBackupTotalPages] = useState(1);
   const [backupStatus, setBackupStatus] = useState("all");
   const [backupHistoryMode, setBackupHistoryMode] = useState("all");
-  const [runtimeStartedAtLocal, setRuntimeStartedAtLocal] = useState<number | null>(null);
   const [runtimeNow, setRuntimeNow] = useState(() => Date.now());
 
   const activeIdentity = useMemo(
@@ -624,16 +623,7 @@ export default function BotManagerPage() {
   }, [editingIdentityId, loadDetail, personalitiesVisible, selectedId]);
 
   useEffect(() => {
-    if (observedGatewayState === "running") {
-      const now = Date.now();
-      setRuntimeStartedAtLocal((current) => current ?? now);
-      setRuntimeNow(now);
-      return;
-    }
-    if (observedGatewayState && observedGatewayState !== "running") {
-      setRuntimeStartedAtLocal(null);
-      setRuntimeNow(Date.now());
-    }
+    setRuntimeNow(Date.now());
   }, [observedGatewayState]);
 
   useEffect(() => {
@@ -1020,20 +1010,28 @@ export default function BotManagerPage() {
   const gatewayState = runtimeStatus?.gateway?.state ?? (nanobotConfigured ? "unknown" : "not configured");
   const gatewayRunning = gatewayState === "running";
   const gatewayTransitioning = gatewayState === "starting" || gatewayState === "stopping";
-  const gatewayUptimeSeconds = gatewayRunning && runtimeStartedAtLocal ? Math.max(Math.floor((runtimeNow - runtimeStartedAtLocal) / 1000), 0) : 0;
+  const gatewayStartedAtMs = runtimeStatus?.gateway?.startedAt ? Date.parse(runtimeStatus.gateway.startedAt) : Number.NaN;
+  const gatewayUptimeSeconds = gatewayRunning
+    ? Number.isFinite(gatewayStartedAtMs)
+      ? Math.max(Math.floor((runtimeNow - gatewayStartedAtMs) / 1000), 0)
+      : runtimeStatus?.gateway?.uptime ?? 0
+    : 0;
   const runtimeDirty = Boolean(summary?.runtimeSync.runtimeDirty);
+  const runtimeConflictCount = summary?.runtimeSync.lastRuntimePullConflictCount ?? 0;
   const syncUnavailable = Boolean(error && !summary);
   const syncState = busy === "sync"
     ? "Syncing"
     : runtimeError
       ? "Nanobot unavailable"
+      : runtimeConflictCount > 0
+        ? `Sync conflict (${runtimeConflictCount})`
       : runtimeDirty && summary?.runtimeSync.lastRuntimeSyncError
         ? "Sync failed"
         : runtimeDirty
           ? "Sync needed"
           : "Up to date";
   const syncStateVariant: "default" | "outline" | "destructive" =
-    syncState === "Sync failed" || syncState === "Nanobot unavailable" ? "destructive" : syncState === "Sync needed" ? "default" : "outline";
+    syncState === "Sync failed" || syncState === "Nanobot unavailable" || syncState.startsWith("Sync conflict") ? "destructive" : syncState === "Sync needed" ? "default" : "outline";
   const lastSyncRaw = runtimeStatus?.morneven?.syncedAt ?? summary?.runtimeSync.lastRuntimeSyncAt;
   const lastSync = lastSyncRaw
     ? new Date(lastSyncRaw).toLocaleString()
