@@ -473,6 +473,7 @@ export default function BotManagerPage() {
   const [editingIdentityId, setEditingIdentityId] = useState<string | null>(null);
   const [personalitySearch, setPersonalitySearch] = useState("");
   const personalitySearchRef = useRef<HTMLInputElement | null>(null);
+  const initialRuntimeSyncRef = useRef(false);
   const [personalityFilter, setPersonalityFilter] = useState("all");
   const [personalityPage, setPersonalityPage] = useState(1);
   const [loreSearch, setLoreSearch] = useState("");
@@ -597,12 +598,40 @@ export default function BotManagerPage() {
     }
   }, [toast]);
 
+  const runInitialRuntimeSync = useCallback(async () => {
+    setBusy("sync");
+    try {
+      const nextSummary = await loadSummary(true);
+      if (!nextSummary) throw new Error("Bot Manager unavailable.");
+      const nextRuntime = await loadRuntimeStatus(true);
+      if (!nextSummary.runtimeStatus.nanobotConfigured || !nextRuntime) {
+        setSyncLog(toJsonText({ autoSync: true, skipped: true, reason: "Nanobot unavailable", runtime: nextRuntime }));
+        return;
+      }
+      const result = await syncBotManagerRuntime();
+      setSyncLog(toJsonText({ autoSync: true, ...result }));
+      if (result.nanobot && typeof result.nanobot === "object") setRuntimeStatus(result.nanobot as BotRuntimeStatus);
+      await Promise.all([loadSummary(true), loadRuntimeStatus(true)]);
+    } catch (err) {
+      setSyncLog(toJsonText({ autoSync: true, error: err instanceof Error ? err.message : "Request failed." }));
+      await Promise.all([loadSummary(true), loadRuntimeStatus(true)]);
+    } finally {
+      setBusy(null);
+    }
+  }, [loadRuntimeStatus, loadSummary]);
+
   useEffect(() => {
     if (allowed) {
       void loadSummary();
       void loadRuntimeStatus();
     }
   }, [allowed, loadRuntimeStatus, loadSummary]);
+
+  useEffect(() => {
+    if (!allowed || !pageVisible || initialRuntimeSyncRef.current) return;
+    initialRuntimeSyncRef.current = true;
+    void runInitialRuntimeSync();
+  }, [allowed, pageVisible, runInitialRuntimeSync]);
 
   useEffect(() => {
     if (!allowed || !pageVisible) return undefined;
