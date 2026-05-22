@@ -1519,6 +1519,7 @@ export default function BotManagerPage() {
                                 workspaceFiles={workspaceFiles}
                               />
                             )}
+                            </div>
                           </div>
                         )}
                       </div>
