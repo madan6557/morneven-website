@@ -1031,14 +1031,7 @@ export default function BotManagerPage() {
     try {
       const nextSummary = await loadSummary();
       if (!nextSummary) throw new Error("Bot Manager unavailable.");
-      const nextRuntime = await loadRuntimeStatus(true);
-      const needsRuntimeSync = Boolean(nextSummary?.runtimeSync.runtimeDirty ?? summary?.runtimeSync.runtimeDirty);
-
-      if (!needsRuntimeSync) {
-        setSyncLog(toJsonText({ refreshed: true, runtime: nextRuntime }));
-        toast({ title: "Runtime status refreshed" });
-        return;
-      }
+      await loadRuntimeStatus(true);
 
       const result = await syncBotManagerRuntime();
       setSyncLog(toJsonText(result));
