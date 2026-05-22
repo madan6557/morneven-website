@@ -609,8 +609,8 @@ export default function BotManagerPage() {
         return;
       }
       try {
-        const result = await getCharactersPage({ search: createLoreSearch, page: 1, pageSize: 8, sort: "name" });
-        if (!cancelled) setCreateLoreOptions(result.items);
+        const result = await getCharactersPage({ search: createLoreSearch, page: 1, pageSize: 100, sort: "name" });
+        if (!cancelled) setCreateLoreOptions(prioritizeCharacterOptions(result.items, createLoreSearch).slice(0, 8));
       } catch {
         if (!cancelled) setCreateLoreOptions([]);
       }
@@ -630,8 +630,8 @@ export default function BotManagerPage() {
         return;
       }
       try {
-        const result = await getCharactersPage({ search: loreSearch, page: 1, pageSize: 8, sort: "name" });
-        if (!cancelled) setLoreOptions(result.items);
+        const result = await getCharactersPage({ search: loreSearch, page: 1, pageSize: 100, sort: "name" });
+        if (!cancelled) setLoreOptions(prioritizeCharacterOptions(result.items, loreSearch).slice(0, 8));
       } catch {
         if (!cancelled) setLoreOptions([]);
       }
