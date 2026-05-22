@@ -1073,7 +1073,6 @@ export default function BotManagerPage() {
       <div className="mx-auto max-w-7xl space-y-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-display text-[10px] uppercase tracking-[0.28em] text-muted-foreground">PL7 Bot Operations</p>
             <h1 className="font-display text-3xl uppercase tracking-[0.14em] text-primary md:text-4xl">Bot Manager</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
