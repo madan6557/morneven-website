@@ -1066,7 +1066,10 @@ export default function BotManagerPage() {
       setSyncLog(toJsonText(result));
       if (result.nanobot && typeof result.nanobot === "object") setRuntimeStatus(result.nanobot as BotRuntimeStatus);
       await refreshVisibleData();
-      toast({ title: "Runtime synced" });
+      toast({
+        title: result.reloadSkipped ? "Runtime reload skipped" : result.restartGateway ? "Runtime synced and restarted" : "Runtime synced",
+        description: result.reloadSkipped ? result.reason : undefined,
+      });
     } catch (err) {
       await loadSummary();
       await loadRuntimeStatus(true);

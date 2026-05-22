@@ -330,6 +330,8 @@ export function syncBotManagerRuntime() {
   return apiRequest<{
     synced: boolean;
     reason?: string;
+    reloadSkipped?: boolean;
+    restartGateway?: boolean;
     runtimeSync?: BotSummary["runtimeSync"];
     writeback?: {
       pulledCount: number;
