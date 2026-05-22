@@ -197,25 +197,38 @@ function readStringArray(value: unknown) {
   return readString(value).split(",").map((item) => item.trim()).filter(Boolean);
 }
 
+function characterTraits(character: Character) {
+  return Array.isArray(character.traits) ? character.traits.map((trait) => trait.trim()).filter(Boolean) : [];
+}
+
 function formatCharacterLabel(character: Character) {
-  const trait = character.traits?.[0] ?? character.occupation ?? character.race ?? "Lore";
-  return `${character.name} - ${trait}`;
+  const traits = characterTraits(character);
+  const detail = traits.length ? traits.join(", ") : character.occupation ?? character.race ?? "Lore";
+  return `${character.name} - ${detail}`;
+}
+
+function matchesCharacterNameOrTrait(character: Character, search: string) {
+  const query = search.trim().toLowerCase();
+  if (!query) return true;
+  return [character.name, ...characterTraits(character)].some((value) => value.toLowerCase().includes(query));
 }
 
 function characterSearchRank(character: Character, search: string) {
   const query = search.trim().toLowerCase();
   const name = character.name.toLowerCase();
-  const label = formatCharacterLabel(character).toLowerCase();
+  const traits = characterTraits(character).map((trait) => trait.toLowerCase());
   if (!query) return 0;
   if (name === query) return 0;
-  if (name.startsWith(query)) return 1;
-  if (name.includes(query)) return 2;
-  if (label.includes(query)) return 3;
-  return 4;
+  if (traits.some((trait) => trait === query)) return 1;
+  if (name.startsWith(query)) return 2;
+  if (traits.some((trait) => trait.startsWith(query))) return 3;
+  if (name.includes(query)) return 4;
+  if (traits.some((trait) => trait.includes(query))) return 5;
+  return 6;
 }
 
 function prioritizeCharacterOptions(items: Character[], search: string) {
-  return [...items].sort((left, right) => {
+  return items.filter((item) => matchesCharacterNameOrTrait(item, search)).sort((left, right) => {
     const rank = characterSearchRank(left, search) - characterSearchRank(right, search);
     return rank || left.name.localeCompare(right.name);
   });
@@ -615,7 +628,7 @@ export default function BotManagerPage() {
         return;
       }
       try {
-        const result = await getCharactersPage({ search: createLoreSearch, page: 1, pageSize: 100, sort: "name" });
+        const result = await getCharactersPage({ search: createLoreSearch, searchScope: "name-traits", page: 1, pageSize: 100, sort: "name" });
         if (!cancelled) setCreateLoreOptions(prioritizeCharacterOptions(result.items, createLoreSearch).slice(0, 8));
       } catch {
         if (!cancelled) setCreateLoreOptions([]);
@@ -636,7 +649,7 @@ export default function BotManagerPage() {
         return;
       }
       try {
-        const result = await getCharactersPage({ search: loreSearch, page: 1, pageSize: 100, sort: "name" });
+        const result = await getCharactersPage({ search: loreSearch, searchScope: "name-traits", page: 1, pageSize: 100, sort: "name" });
         if (!cancelled) setLoreOptions(prioritizeCharacterOptions(result.items, loreSearch).slice(0, 8));
       } catch {
         if (!cancelled) setLoreOptions([]);

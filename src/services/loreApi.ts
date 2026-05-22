@@ -9,6 +9,7 @@ export type LoreSort = "name" | "name-desc";
 
 interface LorePageParams extends PaginationParams {
   sort?: LoreSort;
+  searchScope?: "name-traits";
 }
 
 function getLoreList<T>(category: string): Promise<T[]> {
