@@ -762,8 +762,29 @@ export default function BotManagerPage() {
     runAction(
       `activate-${identity.id}`,
       async () => {
-        await activateBotIdentity(identity.id);
-        await refreshVisibleData();
+        const activated = await activateBotIdentity(identity.id);
+        const now = new Date().toISOString();
+        setSummary((current) => current
+          ? {
+            ...current,
+            identities: current.identities.map((item) => ({
+              ...item,
+              isActive: item.id === activated.id
+            })),
+            runtimeStatus: {
+              ...current.runtimeStatus,
+              activeIdentityId: activated.id
+            },
+            runtimeSync: {
+              ...current.runtimeSync,
+              runtimeDirty: true,
+              runtimeDirtySince: current.runtimeSync.runtimeDirtySince ?? now,
+              runtimeDirtyReason: `Active personality changed: ${activated.name}`,
+              lastRuntimeSyncError: null
+            }
+          }
+          : current);
+        setDetail((current) => current ? { ...current, isActive: current.id === activated.id } : current);
       },
       "Active personality updated",
     );
@@ -1396,16 +1417,18 @@ export default function BotManagerPage() {
                             <p className="truncate text-sm text-muted-foreground">{identity.roleTitle}</p>
                             <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{identity.description || "No description."}</p>
                           </div>
-                          <div className="grid gap-2 sm:grid-cols-3 lg:w-[22rem]">
+                          <div className="grid gap-2 sm:grid-cols-[7rem_3.5rem_7rem] lg:w-[22rem]">
                             <Button type="button" size="sm" onClick={() => { setSelectedId(identity.id); setEditingIdentityId(rowOpen ? null : identity.id); }}>Edit</Button>
-                            <ToggleControl
-                              label="Active"
-                              value={identity.isActive}
-                              disabled={identity.isActive || Boolean(busy)}
-                              onChange={(active) => {
-                                if (active && !identity.isActive) activateIdentity(identity);
-                              }}
-                            />
+                            <div className="flex items-center justify-center">
+                              <CompactSwitch
+                                ariaLabel={`Activate ${identity.name}`}
+                                value={identity.isActive}
+                                disabled={identity.isActive || Boolean(busy)}
+                                onChange={(active) => {
+                                  if (active && !identity.isActive) activateIdentity(identity);
+                                }}
+                              />
+                            </div>
                             <Button type="button" variant="destructive" size="sm" onClick={() => removeIdentity(identity)} disabled={identity.isActive || Boolean(busy)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -2261,6 +2284,21 @@ function ToggleControl({ label, value, disabled = false, onChange }: { label: st
       <span className={cn("relative h-6 w-11 rounded-full transition-colors", value ? "bg-primary" : "bg-muted")}>
         <span className={cn("absolute top-1 h-4 w-4 rounded-full bg-background transition-transform", value ? "translate-x-6" : "translate-x-1")} />
       </span>
+    </button>
+  );
+}
+
+function CompactSwitch({ ariaLabel, value, disabled = false, onChange }: { ariaLabel: string; value: boolean; disabled?: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      aria-pressed={value}
+      disabled={disabled}
+      className={cn("relative h-7 w-12 rounded-full border border-border/70 transition-colors", value ? "bg-primary" : "bg-muted/30", disabled ? "cursor-not-allowed opacity-75" : "hover:border-primary/70")}
+      onClick={() => onChange(!value)}
+    >
+      <span className={cn("absolute top-1 h-5 w-5 rounded-full bg-background shadow-sm transition-transform", value ? "translate-x-5" : "translate-x-1")} />
     </button>
   );
 }
