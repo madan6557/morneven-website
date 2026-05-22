@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import {
   Bot,
@@ -195,6 +195,10 @@ function readBoolean(value: unknown, fallback: boolean) {
 function readStringArray(value: unknown) {
   if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean);
   return readString(value).split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function isLikelyEmailAutofill(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
 function characterTraits(character: Character) {
@@ -464,6 +468,7 @@ export default function BotManagerPage() {
   const [createAutofill, setCreateAutofill] = useState<ReturnType<typeof createCharacterAutofill> | null>(null);
   const [editingIdentityId, setEditingIdentityId] = useState<string | null>(null);
   const [personalitySearch, setPersonalitySearch] = useState("");
+  const personalitySearchRef = useRef<HTMLInputElement | null>(null);
   const [personalityFilter, setPersonalityFilter] = useState("all");
   const [personalityPage, setPersonalityPage] = useState(1);
   const [loreSearch, setLoreSearch] = useState("");
@@ -666,6 +671,23 @@ export default function BotManagerPage() {
   }, [editingIdentityId, loadDetail, personalitiesVisible, selectedId]);
 
   useEffect(() => {
+    if (!personalitiesVisible) return undefined;
+    const restoreSearchInput = () => {
+      const input = personalitySearchRef.current;
+      if (!input || !isLikelyEmailAutofill(input.value)) return;
+      const safeValue = isLikelyEmailAutofill(personalitySearch) ? "" : personalitySearch;
+      input.value = safeValue;
+      if (safeValue !== personalitySearch) {
+        setPersonalitySearch(safeValue);
+        setPersonalityPage(1);
+      }
+    };
+    restoreSearchInput();
+    const handles = [50, 200, 600, 1200].map((delay) => window.setTimeout(restoreSearchInput, delay));
+    return () => handles.forEach((handle) => window.clearTimeout(handle));
+  }, [editingIdentityId, personalitiesVisible, personalitySearch]);
+
+  useEffect(() => {
     setRuntimeNow(Date.now());
   }, [observedGatewayState]);
 
@@ -722,6 +744,18 @@ export default function BotManagerPage() {
     if (!selectedCreateLore || value === formatCharacterLabel(selectedCreateLore)) return;
     setSelectedCreateLore(null);
     setCreateAutofill(null);
+  };
+
+  const updatePersonalitySearch = (value: string) => {
+    if (isLikelyEmailAutofill(value)) {
+      window.setTimeout(() => {
+        const input = personalitySearchRef.current;
+        if (input && isLikelyEmailAutofill(input.value)) input.value = personalitySearch;
+      }, 0);
+      return;
+    }
+    setPersonalitySearch(value);
+    setPersonalityPage(1);
   };
 
   const lockCredentials = () => {
@@ -1272,8 +1306,8 @@ export default function BotManagerPage() {
             </div>
             {!credentialUnlocked ? (
               <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
-                <Field label="Password" value={credentialPassword} onChange={setCredentialPassword} type="password" />
-                <Field label="Bot Manager Key" value={credentialKey} onChange={setCredentialKey} type="password" />
+                <Field label="Password" value={credentialPassword} onChange={setCredentialPassword} type="password" name="bot-manager-credential-password" />
+                <Field label="Bot Manager Key" value={credentialKey} onChange={setCredentialKey} type="password" name="bot-manager-credential-key" />
                 <Field label="Confirmation" value={credentialConfirm} onChange={setCredentialConfirm} placeholder='Type "CREDENTIALS"' />
                 <Button type="button" onClick={unlockCredentials} disabled={!canUnlockCredential || Boolean(busy)}>
                   {busy === "credential-unlock" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
@@ -1323,7 +1357,7 @@ export default function BotManagerPage() {
                         </select>
                       </label>
                       <Field label="Model ID" value={credentialModelId} onChange={setCredentialModelId} placeholder="deepseek-chat" />
-                      <Field label="API Key" value={credentialApiKey} onChange={setCredentialApiKey} type="password" />
+                      <Field label="API Key" value={credentialApiKey} onChange={setCredentialApiKey} type="password" name={`bot-manager-${credentialProvider}-api-key`} />
                       <Field label="API Base" value={credentialApiBase} onChange={setCredentialApiBase} placeholder="Optional provider base URL" />
                     </div>
                     <div className="mt-3 flex justify-end">
@@ -1401,7 +1435,20 @@ export default function BotManagerPage() {
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem_12rem]">
                   <label className="relative block">
                     <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <input className={cn(inputClass, "pl-9")} value={personalitySearch} onChange={(event) => { setPersonalitySearch(event.target.value); setPersonalityPage(1); }} placeholder="Search personality" />
+                    <input
+                      ref={personalitySearchRef}
+                      id="bot-manager-personality-query"
+                      name="bot-manager-personality-query"
+                      type="search"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      className={cn(inputClass, "pl-9")}
+                      value={personalitySearch}
+                      onChange={(event) => updatePersonalitySearch(event.target.value)}
+                      placeholder="Search personality"
+                    />
                   </label>
                   <select className={inputClass} value={personalityFilter} onChange={(event) => { setPersonalityFilter(event.target.value); setPersonalityPage(1); }}>
                     <option value="all">All</option>
@@ -1569,6 +1616,18 @@ export default function BotManagerPage() {
                       </div>
                     );
                   })}
+                  {pagedPersonalities.length === 0 && (
+                    <div className="rounded-sm border border-border/70 bg-background/35 p-6 text-center">
+                      <p className="font-heading text-sm text-foreground">No personalities match this search.</p>
+                      <p className="mt-1 text-sm text-muted-foreground">Clear the query or adjust the filter to show saved personalities.</p>
+                      {personalitySearch.trim() && (
+                        <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => { setPersonalitySearch(""); setPersonalityPage(1); }}>
+                          <X className="mr-2 h-4 w-4" />
+                          Clear search
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <PaginationControls page={personalityPage} totalPages={personalityTotalPages} onPageChange={setPersonalityPage} />
               </div>
@@ -1809,7 +1868,7 @@ function OpenRouterSection({
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           <Field label="Profile Name" value={draft.name} onChange={(name) => onDraftChange({ ...draft, name })} placeholder="OpenRouter DeepSeek" />
           <Field label="Model ID" value={draft.modelId} onChange={(modelId) => onDraftChange({ ...draft, modelId })} placeholder="deepseek/deepseek-chat-v3" />
-          <Field label="API Key" value={draft.apiKey} onChange={(apiKey) => onDraftChange({ ...draft, apiKey })} type="password" />
+          <Field label="API Key" value={draft.apiKey} onChange={(apiKey) => onDraftChange({ ...draft, apiKey })} type="password" name="bot-manager-openrouter-api-key" />
           <Field label="API Base" value={draft.apiBase} onChange={(apiBase) => onDraftChange({ ...draft, apiBase })} placeholder="https://openrouter.ai/api/v1" />
           <TagField label="Tags" value={draft.tags} onChange={(tags) => onDraftChange({ ...draft, tags })} placeholder="reasoning, production" />
           <Field label="Notes" value={draft.notes} onChange={(notes) => onDraftChange({ ...draft, notes })} />
@@ -2045,8 +2104,8 @@ function BackupSection({
                   <option value="custom">Custom backup</option>
                 </select>
               </label>
-              <Field label="Password" value={backupPassword} onChange={onPasswordChange} type="password" />
-              <Field label="Extraction Key" value={backupKey} onChange={onKeyChange} type="password" />
+              <Field label="Password" value={backupPassword} onChange={onPasswordChange} type="password" name="bot-manager-backup-password" />
+              <Field label="Extraction Key" value={backupKey} onChange={onKeyChange} type="password" name="bot-manager-backup-extraction-key" />
             </div>
             <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
               <Field label="Confirmation" value={backupConfirm} onChange={onConfirmChange} placeholder='Type "PERSONALITY"' />
@@ -2198,7 +2257,7 @@ function ChannelFields({
   if (channel === "telegram") {
     return (
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Token" value={readString(config.token)} onChange={(token) => onUpdate({ token })} type="password" placeholder="123456:ABC-DEF" />
+        <Field label="Token" value={readString(config.token)} onChange={(token) => onUpdate({ token })} type="password" name="bot-manager-telegram-token" placeholder="123456:ABC-DEF" />
         <TagField label="Allowed User IDs" value={readStringArray(config.allowFrom)} onChange={(allowFrom) => onUpdate({ allowFrom })} placeholder="* or user ID" />
         <Field label="Proxy" value={readString(config.proxy)} onChange={(proxy) => onUpdate({ proxy })} placeholder="Optional proxy URL" />
       </div>
@@ -2217,7 +2276,7 @@ function ChannelFields({
   if (channel === "discord") {
     return (
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Bot Token" value={readString(config.token)} onChange={(token) => onUpdate({ token })} type="password" />
+        <Field label="Bot Token" value={readString(config.token)} onChange={(token) => onUpdate({ token })} type="password" name="bot-manager-discord-token" />
         <Field label="Application ID" value={readString(config.applicationId)} onChange={(applicationId) => onUpdate({ applicationId })} />
         <TagField label="Guild IDs" value={readStringArray(config.guildIds)} onChange={(guildIds) => onUpdate({ guildIds })} />
         <TagField label="Channel IDs" value={readStringArray(config.channelIds)} onChange={(channelIds) => onUpdate({ channelIds })} />
@@ -2228,9 +2287,9 @@ function ChannelFields({
   if (channel === "slack") {
     return (
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Bot Token" value={readString(config.botToken)} onChange={(botToken) => onUpdate({ botToken })} type="password" />
-        <Field label="App Token" value={readString(config.appToken)} onChange={(appToken) => onUpdate({ appToken })} type="password" />
-        <Field label="Signing Secret" value={readString(config.signingSecret)} onChange={(signingSecret) => onUpdate({ signingSecret })} type="password" />
+        <Field label="Bot Token" value={readString(config.botToken)} onChange={(botToken) => onUpdate({ botToken })} type="password" name="bot-manager-slack-bot-token" />
+        <Field label="App Token" value={readString(config.appToken)} onChange={(appToken) => onUpdate({ appToken })} type="password" name="bot-manager-slack-app-token" />
+        <Field label="Signing Secret" value={readString(config.signingSecret)} onChange={(signingSecret) => onUpdate({ signingSecret })} type="password" name="bot-manager-slack-signing-secret" />
         <TagField label="Channel IDs" value={readStringArray(config.channelIds)} onChange={(channelIds) => onUpdate({ channelIds })} />
       </div>
     );
@@ -2240,9 +2299,9 @@ function ChannelFields({
     return (
       <div className="grid gap-3 md:grid-cols-2">
         <Field label="App ID" value={readString(config.appId)} onChange={(appId) => onUpdate({ appId })} />
-        <Field label="App Secret" value={readString(config.appSecret)} onChange={(appSecret) => onUpdate({ appSecret })} type="password" />
-        <Field label="Verification Token" value={readString(config.verificationToken)} onChange={(verificationToken) => onUpdate({ verificationToken })} type="password" />
-        <Field label="Encrypt Key" value={readString(config.encryptKey)} onChange={(encryptKey) => onUpdate({ encryptKey })} type="password" />
+        <Field label="App Secret" value={readString(config.appSecret)} onChange={(appSecret) => onUpdate({ appSecret })} type="password" name="bot-manager-feishu-app-secret" />
+        <Field label="Verification Token" value={readString(config.verificationToken)} onChange={(verificationToken) => onUpdate({ verificationToken })} type="password" name="bot-manager-feishu-verification-token" />
+        <Field label="Encrypt Key" value={readString(config.encryptKey)} onChange={(encryptKey) => onUpdate({ encryptKey })} type="password" name="bot-manager-feishu-encrypt-key" />
       </div>
     );
   }
@@ -2250,7 +2309,7 @@ function ChannelFields({
   return (
     <div className="grid gap-3 md:grid-cols-2">
       <Field label="Webhook URL" value={readString(config.webhookUrl)} onChange={(webhookUrl) => onUpdate({ webhookUrl })} />
-      <Field label="Secret" value={readString(config.secret)} onChange={(secret) => onUpdate({ secret })} type="password" />
+      <Field label="Secret" value={readString(config.secret)} onChange={(secret) => onUpdate({ secret })} type="password" name="bot-manager-dingtalk-secret" />
       <TagField label="Allowed Senders" value={readStringArray(config.allowFrom)} onChange={(allowFrom) => onUpdate({ allowFrom })} />
     </div>
   );
@@ -2335,7 +2394,7 @@ function SettingsEditor({
         <div className="rounded-sm border border-border/70 bg-background/35 p-4">
           <h3 className="font-heading text-sm text-foreground">Tools And Environment</h3>
           <div className="mt-4 space-y-3">
-            <Field label="Web Search API Key" type="password" value={settingsDraft.webSearchApiKey} onChange={(webSearchApiKey) => onSettingsChange({ webSearchApiKey })} />
+            <Field label="Web Search API Key" type="password" name="bot-manager-web-search-api-key" value={settingsDraft.webSearchApiKey} onChange={(webSearchApiKey) => onSettingsChange({ webSearchApiKey })} />
             <Field label="Web Search Max Results" type="number" value={settingsDraft.webSearchMaxResults} onChange={(webSearchMaxResults) => onSettingsChange({ webSearchMaxResults })} />
             <Field label="Execution Timeout" type="number" value={settingsDraft.execTimeout} onChange={(execTimeout) => onSettingsChange({ execTimeout })} />
             <ToggleControl label="Restrict File Access" value={settingsDraft.restrictToWorkspace} onChange={(restrictToWorkspace) => onSettingsChange({ restrictToWorkspace })} />
@@ -2390,6 +2449,8 @@ function Field({
   placeholder,
   readOnly = false,
   type = "text",
+  name,
+  autoComplete,
 }: {
   label: string;
   value: string;
@@ -2397,12 +2458,17 @@ function Field({
   placeholder?: string;
   readOnly?: boolean;
   type?: string;
+  name?: string;
+  autoComplete?: string;
 }) {
+  const inputName = name ?? `bot-manager-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "field"}`;
   return (
     <label className="block space-y-2">
       <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
       <input
         type={type}
+        name={inputName}
+        autoComplete={autoComplete ?? (type === "password" ? "new-password" : "off")}
         className={cn(inputClass, readOnly && "cursor-not-allowed opacity-75")}
         value={value}
         placeholder={placeholder}
