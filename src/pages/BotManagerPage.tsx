@@ -290,7 +290,16 @@ function readStoredGeneralConfigDraft() {
     const raw = window.localStorage.getItem(generalConfigDraftStorageKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { draft?: unknown };
-    return createGeneralConfigDraft(parsed.draft ?? parsed);
+    const draft = asRecord(parsed.draft ?? parsed);
+    if ("timezone" in draft || "globalRules" in draft || "restartAfterSync" in draft || "allowRuntimeReload" in draft) {
+      return {
+        timezone: readString(draft.timezone, "Asia/Singapore"),
+        globalRules: readString(draft.globalRules, "Follow Morneven website policy and active personality files."),
+        restartAfterSync: readBoolean(draft.restartAfterSync, false),
+        allowRuntimeReload: readBoolean(draft.allowRuntimeReload, true),
+      };
+    }
+    return createGeneralConfigDraft(draft);
   } catch {
     return null;
   }
