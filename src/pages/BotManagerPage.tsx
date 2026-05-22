@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import TagInput from "@/components/TagInput";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -134,7 +135,7 @@ type OpenRouterDraft = {
   apiKey: string;
   apiBase: string;
   modelId: string;
-  tags: string;
+  tags: string[];
   notes: string;
 };
 
@@ -185,13 +186,9 @@ function readBoolean(value: unknown, fallback: boolean) {
   return typeof value === "boolean" ? value : fallback;
 }
 
-function csvToArray(value: string) {
-  return value.split(",").map((item) => item.trim()).filter(Boolean);
-}
-
-function arrayToCsv(value: unknown) {
-  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string").join(", ");
-  return readString(value);
+function readStringArray(value: unknown) {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean);
+  return readString(value).split(",").map((item) => item.trim()).filter(Boolean);
 }
 
 function formatCharacterLabel(character: Character) {
@@ -417,7 +414,7 @@ export default function BotManagerPage() {
   const [openRouterFilter, setOpenRouterFilter] = useState("all");
   const [openRouterPage, setOpenRouterPage] = useState(1);
   const [openRouterTotalPages, setOpenRouterTotalPages] = useState(1);
-  const [openRouterDraft, setOpenRouterDraft] = useState<OpenRouterDraft>({ name: "", apiKey: "", apiBase: "", modelId: "", tags: "", notes: "" });
+  const [openRouterDraft, setOpenRouterDraft] = useState<OpenRouterDraft>({ name: "", apiKey: "", apiBase: "", modelId: "", tags: [], notes: "" });
 
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
@@ -826,7 +823,7 @@ export default function BotManagerPage() {
           apiKey: openRouterDraft.apiKey,
           apiBase: openRouterDraft.apiBase.trim() || undefined,
           modelId: openRouterDraft.modelId,
-          tags: csvToArray(openRouterDraft.tags),
+          tags: openRouterDraft.tags,
           notes: openRouterDraft.notes,
           password: credentialPassword,
           botManagerKey: credentialKey,
@@ -834,7 +831,7 @@ export default function BotManagerPage() {
         };
         if (openRouterDraft.id) await updateOpenRouterProfile(openRouterDraft.id, payload);
         else await createOpenRouterProfile(payload);
-        setOpenRouterDraft({ name: "", apiKey: "", apiBase: "", modelId: "", tags: "", notes: "" });
+        setOpenRouterDraft({ name: "", apiKey: "", apiBase: "", modelId: "", tags: [], notes: "" });
         await refreshVisibleData();
       },
       openRouterDraft.id ? "OpenRouter profile updated" : "OpenRouter profile created",
@@ -1745,7 +1742,7 @@ function OpenRouterSection({
                 {isActive && <Badge>Active</Badge>}
               </div>
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                <Button type="button" size="sm" variant="outline" onClick={() => onDraftChange({ id: profile.id, name: profile.name, apiKey: "", apiBase: profile.apiBase, modelId: profile.modelId, tags: profile.tags.join(", "), notes: profile.notes })}>
+                <Button type="button" size="sm" variant="outline" onClick={() => onDraftChange({ id: profile.id, name: profile.name, apiKey: "", apiBase: profile.apiBase, modelId: profile.modelId, tags: profile.tags, notes: profile.notes })}>
                   Edit
                 </Button>
                 <Button type="button" size="sm" onClick={() => onActivate(profile)} disabled={!canUseCredentialGate || isActive || Boolean(busy)}>
@@ -1766,7 +1763,7 @@ function OpenRouterSection({
           <Field label="Model ID" value={draft.modelId} onChange={(modelId) => onDraftChange({ ...draft, modelId })} placeholder="deepseek/deepseek-chat-v3" />
           <Field label="API Key" value={draft.apiKey} onChange={(apiKey) => onDraftChange({ ...draft, apiKey })} type="password" />
           <Field label="API Base" value={draft.apiBase} onChange={(apiBase) => onDraftChange({ ...draft, apiBase })} placeholder="https://openrouter.ai/api/v1" />
-          <Field label="Tags" value={draft.tags} onChange={(tags) => onDraftChange({ ...draft, tags })} placeholder="reasoning, production" />
+          <TagField label="Tags" value={draft.tags} onChange={(tags) => onDraftChange({ ...draft, tags })} placeholder="reasoning, production" />
           <Field label="Notes" value={draft.notes} onChange={(notes) => onDraftChange({ ...draft, notes })} />
         </div>
         <div className="mt-3 flex gap-2">
@@ -1775,7 +1772,7 @@ function OpenRouterSection({
             {draft.id ? "Update OpenRouter Profile" : "Create OpenRouter Profile"}
           </Button>
           {draft.id && (
-            <Button type="button" variant="outline" onClick={() => onDraftChange({ name: "", apiKey: "", apiBase: "", modelId: "", tags: "", notes: "" })}>
+            <Button type="button" variant="outline" onClick={() => onDraftChange({ name: "", apiKey: "", apiBase: "", modelId: "", tags: [], notes: "" })}>
               Cancel
             </Button>
           )}
@@ -2154,7 +2151,7 @@ function ChannelFields({
     return (
       <div className="grid gap-3 md:grid-cols-2">
         <Field label="Token" value={readString(config.token)} onChange={(token) => onUpdate({ token })} type="password" placeholder="123456:ABC-DEF" />
-        <Field label="Allowed User IDs" value={arrayToCsv(config.allowFrom)} onChange={(value) => onUpdate({ allowFrom: csvToArray(value) })} placeholder="* or comma separated IDs" />
+        <TagField label="Allowed User IDs" value={readStringArray(config.allowFrom)} onChange={(allowFrom) => onUpdate({ allowFrom })} placeholder="* or user ID" />
         <Field label="Proxy" value={readString(config.proxy)} onChange={(proxy) => onUpdate({ proxy })} placeholder="Optional proxy URL" />
       </div>
     );
@@ -2164,7 +2161,7 @@ function ChannelFields({
     return (
       <div className="grid gap-3 md:grid-cols-2">
         <Field label="Bridge URL" value={readString(config.bridgeUrl, "ws://localhost:3001")} onChange={(bridgeUrl) => onUpdate({ bridgeUrl })} />
-        <Field label="Allowed Numbers" value={arrayToCsv(config.allowFrom)} onChange={(value) => onUpdate({ allowFrom: csvToArray(value) })} />
+        <TagField label="Allowed Numbers" value={readStringArray(config.allowFrom)} onChange={(allowFrom) => onUpdate({ allowFrom })} />
       </div>
     );
   }
@@ -2174,8 +2171,8 @@ function ChannelFields({
       <div className="grid gap-3 md:grid-cols-2">
         <Field label="Bot Token" value={readString(config.token)} onChange={(token) => onUpdate({ token })} type="password" />
         <Field label="Application ID" value={readString(config.applicationId)} onChange={(applicationId) => onUpdate({ applicationId })} />
-        <Field label="Guild IDs" value={arrayToCsv(config.guildIds)} onChange={(value) => onUpdate({ guildIds: csvToArray(value) })} />
-        <Field label="Channel IDs" value={arrayToCsv(config.channelIds)} onChange={(value) => onUpdate({ channelIds: csvToArray(value) })} />
+        <TagField label="Guild IDs" value={readStringArray(config.guildIds)} onChange={(guildIds) => onUpdate({ guildIds })} />
+        <TagField label="Channel IDs" value={readStringArray(config.channelIds)} onChange={(channelIds) => onUpdate({ channelIds })} />
       </div>
     );
   }
@@ -2186,7 +2183,7 @@ function ChannelFields({
         <Field label="Bot Token" value={readString(config.botToken)} onChange={(botToken) => onUpdate({ botToken })} type="password" />
         <Field label="App Token" value={readString(config.appToken)} onChange={(appToken) => onUpdate({ appToken })} type="password" />
         <Field label="Signing Secret" value={readString(config.signingSecret)} onChange={(signingSecret) => onUpdate({ signingSecret })} type="password" />
-        <Field label="Channel IDs" value={arrayToCsv(config.channelIds)} onChange={(value) => onUpdate({ channelIds: csvToArray(value) })} />
+        <TagField label="Channel IDs" value={readStringArray(config.channelIds)} onChange={(channelIds) => onUpdate({ channelIds })} />
       </div>
     );
   }
@@ -2206,7 +2203,7 @@ function ChannelFields({
     <div className="grid gap-3 md:grid-cols-2">
       <Field label="Webhook URL" value={readString(config.webhookUrl)} onChange={(webhookUrl) => onUpdate({ webhookUrl })} />
       <Field label="Secret" value={readString(config.secret)} onChange={(secret) => onUpdate({ secret })} type="password" />
-      <Field label="Allowed Senders" value={arrayToCsv(config.allowFrom)} onChange={(value) => onUpdate({ allowFrom: csvToArray(value) })} />
+      <TagField label="Allowed Senders" value={readStringArray(config.allowFrom)} onChange={(allowFrom) => onUpdate({ allowFrom })} />
     </div>
   );
 }
@@ -2368,6 +2365,27 @@ function Field({
         }}
       />
     </label>
+  );
+}
+
+function TagField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  readOnly = false,
+}: {
+  label: string;
+  value: string[];
+  onChange: (value: string[]) => void;
+  placeholder?: string;
+  readOnly?: boolean;
+}) {
+  return (
+    <div className="block space-y-2">
+      <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
+      <TagInput value={value} onChange={onChange} placeholder={placeholder} readOnly={readOnly} className="mt-0" />
+    </div>
   );
 }
 

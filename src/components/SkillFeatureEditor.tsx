@@ -7,6 +7,7 @@ import { themedHslBorder, themedHslColor, themedHslSurface } from "@/lib/themeCo
 import { apiUpload } from "@/services/restClient";
 import { AttributeBadge } from "./AttributeBadge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import TagInput from "@/components/TagInput";
 
 const inputClass =
   "w-full px-2 py-1.5 bg-background border border-border rounded-sm text-xs font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
@@ -301,21 +302,12 @@ export default function SkillFeatureEditor({ variant, items, onChange }: SkillFe
                   </div>
                   <div>
                     <label className={labelClass}>Tags</label>
-                    <input
-                      type="text"
-                      value={((item as Feature).tags ?? []).join(", ")}
-                      onChange={(e) =>
-                        updateFeature(
-                          idx,
-                          "tags",
-                          e.target.value
-                            .split(",")
-                            .map((tag) => tag.trim())
-                            .filter(Boolean),
-                        )
-                      }
+                    <TagInput
+                      value={(item as Feature).tags ?? []}
+                      onChange={(tags) => updateFeature(idx, "tags", tags)}
                       placeholder="defense, mobility"
-                      className={inputClass}
+                      className="text-xs"
+                      inputClassName="text-xs"
                     />
                   </div>
                   <div>

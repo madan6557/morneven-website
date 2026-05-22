@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { showValidation } from "@/components/ui/validation-dialog";
 import SkillFeatureEditor from "@/components/SkillFeatureEditor";
 import { ThumbnailCropDialog } from "@/components/ThumbnailCropDialog";
+import TagInput from "@/components/TagInput";
 import { normalizeDocsForEditor, normalizeDocsForSave } from "@/lib/documentation";
 import { compressImageForUpload, compressThumbnailImage, shouldCompressImageForUpload } from "@/lib/thumbnailCompression";
 import {
@@ -2190,7 +2191,7 @@ export default function AuthorDashboard() {
         </div>
       )}
 
-      {false && editSessions.length > 0 && (
+      {editSessions.length > 0 && (
         <div className="hud-border bg-card p-3 space-y-3 sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="font-heading text-xs tracking-wider text-accent-orange uppercase">
@@ -2341,24 +2342,16 @@ export default function AuthorDashboard() {
                   </div>
                 </div>
                 <div>
-                  <label className={labelClass}>Traits (comma-separated)</label>
-                  <input type="text" value={(editing.traits || []).join(", ")} onChange={(e) => setEditing({ ...editing, traits: e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean) })} className={inputClass} placeholder="e.g. Brave, Loyal, Cunning" />
+                  <label className={labelClass}>Traits</label>
+                  <TagInput value={editing.traits || []} onChange={(traits) => setEditing({ ...editing, traits })} placeholder="e.g. Brave, Loyal, Cunning" />
                 </div>
                 <div>
-                  <label className={labelClass}>Likes (comma-separated)</label>
-                  <input type="text" value={(editing.likes || []).join(", ")} onChange={(e) => setEditing({ ...editing, likes: e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean) })} className={inputClass} />
+                  <label className={labelClass}>Likes</label>
+                  <TagInput value={editing.likes || []} onChange={(likes) => setEditing({ ...editing, likes })} />
                 </div>
                 <div>
-                  <label className={labelClass}>Dislikes (comma-separated)</label>
-                  <input
-                    type="text"
-                    value={(editing.dislikes || []).join(", ")}
-                    onChange={(e) => setEditing({
-                      ...editing,
-                      dislikes: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
-                    })}
-                    className={inputClass}
-                  />
+                  <label className={labelClass}>Dislikes</label>
+                  <TagInput value={editing.dislikes || []} onChange={(dislikes) => setEditing({ ...editing, dislikes })} />
                 </div>
               </>
             )}
@@ -2399,32 +2392,26 @@ export default function AuthorDashboard() {
                   </div>
                 </div>
                 <div>
-                  <label className={labelClass}>Traits (comma-separated)</label>
-                  <input
-                    type="text"
-                    value={(editing.traits || []).join(", ")}
-                    onChange={(e) => setEditing({ ...editing, traits: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-                    className={inputClass}
+                  <label className={labelClass}>Traits</label>
+                  <TagInput
+                    value={editing.traits || []}
+                    onChange={(traits) => setEditing({ ...editing, traits })}
                     placeholder="e.g. Territorial, Pack-Hunting, Nocturnal"
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Instincts (comma-separated)</label>
-                  <input
-                    type="text"
-                    value={(editing.instincts || []).join(", ")}
-                    onChange={(e) => setEditing({ ...editing, instincts: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-                    className={inputClass}
+                  <label className={labelClass}>Instincts</label>
+                  <TagInput
+                    value={editing.instincts || []}
+                    onChange={(instincts) => setEditing({ ...editing, instincts })}
                     placeholder="e.g. Follows heat, Protects nest, Drawn to vibration"
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Aversions (comma-separated)</label>
-                  <input
-                    type="text"
-                    value={(editing.aversions || []).join(", ")}
-                    onChange={(e) => setEditing({ ...editing, aversions: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-                    className={inputClass}
+                  <label className={labelClass}>Aversions</label>
+                  <TagInput
+                    value={editing.aversions || []}
+                    onChange={(aversions) => setEditing({ ...editing, aversions })}
                     placeholder="e.g. Bright magnesium light, Salt fog, High-frequency noise"
                   />
                 </div>
@@ -2462,15 +2449,10 @@ export default function AuthorDashboard() {
                   <input type="text" value={editing.impactLevel || ""} onChange={(e) => setEditing({ ...editing, impactLevel: e.target.value })} className={inputClass} placeholder="e.g. High, Critical, Contained" />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className={labelClass}>Consequences (comma-separated)</label>
-                  <input
-                    type="text"
-                    value={(editing.consequences || []).join(", ")}
-                    onChange={(e) => setEditing({
-                      ...editing,
-                      consequences: e.target.value.split(",").map((item) => item.trim()).filter(Boolean),
-                    })}
-                    className={inputClass}
+                  <label className={labelClass}>Consequences</label>
+                  <TagInput
+                    value={editing.consequences || []}
+                    onChange={(consequences) => setEditing({ ...editing, consequences })}
                     placeholder="e.g. Archive lockdown, Team redeployment"
                   />
                 </div>
@@ -2685,8 +2667,8 @@ export default function AuthorDashboard() {
               {/* Tags (gallery) */}
               {isGallery && (
                 <div>
-                  <label className={labelClass}>Tags (comma-separated)</label>
-                  <input type="text" value={(editing.tags || []).join(", ")} onChange={(e) => setEditing({ ...editing, tags: e.target.value.split(",").map((t: string) => t.trim()).filter(Boolean) })} className={inputClass} />
+                  <label className={labelClass}>Tags</label>
+                  <TagInput value={editing.tags || []} onChange={(tags) => setEditing({ ...editing, tags })} />
                 </div>
               )}
             </div>

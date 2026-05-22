@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { LoreMeta, LoreMetaPatch } from "@/types";
 import { Plus, X, Calendar } from "lucide-react";
+import TagInput from "@/components/TagInput";
 
 const inputClass =
   "w-full mt-1 px-3 py-2 bg-background border border-border rounded-sm text-sm font-body text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
@@ -23,8 +24,6 @@ export default function MetadataEditor({ value, onChange }: MetadataEditorProps)
   const meta: LoreMeta = value ?? {};
   const set = <K extends keyof LoreMeta>(k: K, v: LoreMeta[K]) =>
     onChange({ ...meta, [k]: v });
-
-  const collaboratorsStr = (meta.collaborators ?? []).join(", ");
 
   const patches = meta.patchNotes ?? [];
   const setPatches = (next: LoreMetaPatch[]) => set("patchNotes", next);
@@ -104,20 +103,10 @@ export default function MetadataEditor({ value, onChange }: MetadataEditorProps)
           />
         </div>
         <div className="lg:col-span-2">
-          <label className={labelClass}>Collaborators (comma-separated)</label>
-          <input
-            type="text"
-            value={collaboratorsStr}
-            onChange={(e) =>
-              set(
-                "collaborators",
-                e.target.value
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-              )
-            }
-            className={inputClass}
+          <label className={labelClass}>Collaborators</label>
+          <TagInput
+            value={meta.collaborators ?? []}
+            onChange={(collaborators) => set("collaborators", collaborators)}
             placeholder="e.g. Aelis, Rho-7, Director Vance"
           />
         </div>
