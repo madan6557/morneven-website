@@ -1133,6 +1133,15 @@ export default function BotManagerPage() {
     );
 
   const syncRuntime = async () => {
+    if (generalDraftDirty) {
+      setActiveMainTab("config");
+      toast({
+        title: "Save General Config first",
+        description: "Sync uses the backend-saved config. Save or reset the local draft before syncing.",
+      });
+      return;
+    }
+
     setBusy("sync");
     try {
       const nextSummary = await loadSummary();
@@ -1224,8 +1233,11 @@ export default function BotManagerPage() {
   const runtimeDirty = Boolean(summary?.runtimeSync.runtimeDirty);
   const runtimeConflictCount = summary?.runtimeSync.lastRuntimePullConflictCount ?? 0;
   const syncUnavailable = Boolean(error && !summary);
+  const syncBlockedByLocalDraft = generalDraftDirty && !syncUnavailable;
   const syncState = busy === "sync"
     ? "Syncing"
+    : syncBlockedByLocalDraft
+      ? "Save config first"
     : runtimeError
       ? "Nanobot unavailable"
       : runtimeConflictCount > 0
@@ -1236,7 +1248,7 @@ export default function BotManagerPage() {
           ? "Sync needed"
           : "Up to date";
   const syncStateVariant: "default" | "outline" | "destructive" =
-    syncState === "Sync failed" || syncState === "Nanobot unavailable" || syncState.startsWith("Sync conflict") ? "destructive" : syncState === "Sync needed" ? "default" : "outline";
+    syncState === "Sync failed" || syncState === "Nanobot unavailable" || syncState.startsWith("Sync conflict") ? "destructive" : syncState === "Sync needed" || syncState === "Save config first" ? "default" : "outline";
   const lastSyncRaw = runtimeStatus?.morneven?.syncedAt ?? summary?.runtimeSync.lastRuntimeSyncAt;
   const lastSync = lastSyncRaw
     ? new Date(lastSyncRaw).toLocaleString()
@@ -1282,7 +1294,7 @@ export default function BotManagerPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={syncStateVariant}>{syncState}</Badge>
-            <Button type="button" onClick={() => void syncRuntime()} disabled={loading || busy === "sync" || syncUnavailable}>
+            <Button type="button" onClick={() => void syncRuntime()} disabled={loading || busy === "sync" || syncUnavailable || syncBlockedByLocalDraft}>
               {busy === "sync" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
               Sync
             </Button>
@@ -1512,7 +1524,7 @@ export default function BotManagerPage() {
               </div>
               {generalDraftDirty && (
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline">Local draft</Badge>
+                  <Badge variant="outline">Unsaved local draft</Badge>
                   <Button type="button" variant="outline" size="sm" onClick={resetGeneralDraft} disabled={Boolean(busy)}>
                     <X className="mr-2 h-4 w-4" />
                     Reset Draft
