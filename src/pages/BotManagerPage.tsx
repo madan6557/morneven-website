@@ -144,6 +144,7 @@ type OpenRouterDraft = {
   id?: string;
   name: string;
   apiKey: string;
+  keyPreview?: string;
   apiBase: string;
   modelId: string;
   tags: string[];
@@ -1302,6 +1303,10 @@ export default function BotManagerPage() {
     : "Never";
   const activeProvider = summary?.runtimeStatus.activeProvider ?? "";
   const activeOpenRouterProfileId = summary?.runtimeStatus.activeOpenRouterProfileId ?? "";
+  const selectedCredential = summary?.credentials.find((item) => item.provider === credentialProvider);
+  const credentialApiKeyValue: SecretFieldValue = credentialApiKey || (selectedCredential?.configured
+    ? { __botManagerSecret: true, configured: true, preview: selectedCredential.keyPreview || "***" }
+    : "");
   const personalityPageSize = 5;
   const filteredPersonalities = (summary?.identities ?? []).filter((identity) => {
     const haystack = `${identity.name} ${identity.roleTitle} ${identity.description}`.toLowerCase();
@@ -1523,7 +1528,14 @@ export default function BotManagerPage() {
                         </select>
                       </label>
                       <Field label="Model ID" value={credentialModelId} onChange={setCredentialModelId} placeholder="deepseek-chat" />
-                      <Field label="API Key" value={credentialApiKey} onChange={setCredentialApiKey} type="password" name={`bot-manager-${credentialProvider}-api-key`} />
+                      <SecretField
+                        label="API Key"
+                        value={credentialApiKeyValue}
+                        onChange={(apiKey) => setCredentialApiKey(typeof apiKey === "string" ? apiKey : "")}
+                        name={`bot-manager-${credentialProvider}-api-key`}
+                        placeholder="Enter provider API key"
+                        allowClear={false}
+                      />
                       <Field label="API Base" value={credentialApiBase} onChange={setCredentialApiBase} placeholder="Optional provider base URL" />
                     </div>
                     <div className="mt-3 flex justify-end">
@@ -2097,7 +2109,7 @@ function OpenRouterSection({
                 {isActive && <Badge>Active</Badge>}
               </div>
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                <Button type="button" size="sm" variant="outline" onClick={() => onDraftChange({ id: profile.id, name: profile.name, apiKey: "", apiBase: profile.apiBase, modelId: profile.modelId, tags: profile.tags, notes: profile.notes })}>
+                <Button type="button" size="sm" variant="outline" onClick={() => onDraftChange({ id: profile.id, name: profile.name, apiKey: "", keyPreview: profile.keyPreview, apiBase: profile.apiBase, modelId: profile.modelId, tags: profile.tags, notes: profile.notes })}>
                   Edit
                 </Button>
                 <Button type="button" size="sm" onClick={() => onActivate(profile)} disabled={!canUseCredentialGate || isActive || Boolean(busy)}>
@@ -2116,7 +2128,14 @@ function OpenRouterSection({
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           <Field label="Profile Name" value={draft.name} onChange={(name) => onDraftChange({ ...draft, name })} placeholder="OpenRouter DeepSeek" />
           <Field label="Model ID" value={draft.modelId} onChange={(modelId) => onDraftChange({ ...draft, modelId })} placeholder="deepseek/deepseek-chat-v3" />
-          <Field label="API Key" value={draft.apiKey} onChange={(apiKey) => onDraftChange({ ...draft, apiKey })} type="password" name="bot-manager-openrouter-api-key" />
+          <SecretField
+            label="API Key"
+            value={draft.apiKey || (draft.id && draft.keyPreview ? { __botManagerSecret: true, configured: true, preview: draft.keyPreview } : "")}
+            onChange={(apiKey) => onDraftChange({ ...draft, apiKey: typeof apiKey === "string" ? apiKey : "" })}
+            name="bot-manager-openrouter-api-key"
+            placeholder="Enter OpenRouter API key"
+            allowClear={false}
+          />
           <Field label="API Base" value={draft.apiBase} onChange={(apiBase) => onDraftChange({ ...draft, apiBase })} placeholder="https://openrouter.ai/api/v1" />
           <TagField label="Tags" value={draft.tags} onChange={(tags) => onDraftChange({ ...draft, tags })} placeholder="reasoning, production" />
           <Field label="Notes" value={draft.notes} onChange={(notes) => onDraftChange({ ...draft, notes })} />
@@ -2703,44 +2722,91 @@ function SecretField({
   onChange,
   placeholder,
   name,
+  allowClear = true,
 }: {
   label: string;
   value: unknown;
   onChange: (value: SecretFieldValue) => void;
   placeholder?: string;
   name?: string;
+  allowClear?: boolean;
 }) {
   const secret = readSecretRef(value);
+  const [editing, setEditing] = useState(false);
+  const [lastConfiguredSecret, setLastConfiguredSecret] = useState<BotSecretRef | null>(null);
+
+  useEffect(() => {
+    if (secret?.configured) setLastConfiguredSecret(secret);
+    if (secret && !secret.configured) setLastConfiguredSecret(null);
+  }, [secret?.configured, secret?.preview, secret?.__botManagerSecretAction]);
+
+  const configuredSecret = secret?.configured ? secret : lastConfiguredSecret;
   const inputValue = typeof value === "string" ? value : "";
-  const configured = Boolean(secret?.configured);
-  const preview = secret?.preview || "***";
+  const hasNewValue = inputValue.length > 0;
+  const configured = Boolean(configuredSecret?.configured);
+  const cleared = Boolean(secret && !secret.configured);
+  const preview = configuredSecret?.preview || "***";
+  const showConfiguredDisplay = configured && !editing && !hasNewValue && !cleared;
+  const statusText = hasNewValue ? "New value entered" : configured ? `Configured: ${preview}` : cleared ? "Cleared" : "Empty";
+  const updateValue = (next: string) => {
+    if (!next && configuredSecret) {
+      onChange(configuredSecret);
+      return;
+    }
+    onChange(next);
+  };
 
   return (
     <div className="block space-y-2">
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
-        {configured && (
-          <span className="max-w-[14rem] truncate text-[11px] text-muted-foreground">
-            Configured: {preview}
-          </span>
-        )}
+        <span className={cn("max-w-[14rem] truncate text-[11px]", configured || hasNewValue ? "text-primary" : "text-muted-foreground")}>
+          {statusText}
+        </span>
       </div>
-      <div className="flex gap-2">
-        <input
-          type="password"
-          name={name ?? `bot-manager-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "secret"}`}
-          autoComplete="new-password"
-          className={inputClass}
-          value={inputValue}
-          placeholder={configured ? "Enter new value to replace" : placeholder}
-          onChange={(event) => onChange(event.target.value)}
-        />
-        {configured && (
-          <Button type="button" variant="outline" onClick={() => onChange(clearSecretMarker())}>
-            Clear
+      {showConfiguredDisplay ? (
+        <div className="flex gap-2">
+          <input
+            type="text"
+            name={`${name ?? "bot-manager-secret"}-configured`}
+            autoComplete="off"
+            className={cn(inputClass, "cursor-default text-primary")}
+            value={`Configured: ${preview}`}
+            readOnly
+            aria-readonly
+          />
+          <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+            Replace
           </Button>
-        )}
-      </div>
+          {allowClear && (
+            <Button type="button" variant="outline" onClick={() => { setEditing(false); onChange(clearSecretMarker()); }}>
+              Clear
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <input
+            type="password"
+            name={name ?? `bot-manager-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "secret"}`}
+            autoComplete="new-password"
+            className={inputClass}
+            value={inputValue}
+            placeholder={configured ? "Enter new value to replace" : placeholder}
+            onChange={(event) => updateValue(event.target.value)}
+          />
+          {configured && (
+            <Button type="button" variant="outline" onClick={() => { setEditing(false); if (configuredSecret) onChange(configuredSecret); }}>
+              Cancel
+            </Button>
+          )}
+          {allowClear && configured && (
+            <Button type="button" variant="outline" onClick={() => { setEditing(false); onChange(clearSecretMarker()); }}>
+              Clear
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
