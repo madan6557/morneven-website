@@ -1110,7 +1110,7 @@ export default function BotManagerPage() {
     runAction(
       "identity",
       async () => {
-        await updateBotIdentity(detail.id, {
+        const updated = await updateBotIdentity(detail.id, {
           name: identityDraft.name,
           roleTitle: identityDraft.roleTitle,
           description: identityDraft.description,
@@ -1118,7 +1118,18 @@ export default function BotManagerPage() {
           settings: mergeRecord(settingsBase, settingsDraftToConfig(settingsDraft)),
           loreCharacterId: selectedLoreId || undefined,
         });
-        await refreshVisibleData();
+        setDetail((current) => (current && current.id === updated.id ? { ...current, ...updated, files: current.files } : current));
+        setIdentityDraft({
+          name: updated.name,
+          roleTitle: updated.roleTitle,
+          description: updated.description,
+        });
+        setChannelsDraft(normalizeChannels(updated.channels));
+        setSettingsBase(asRecord(updated.settings));
+        setSettingsDraft(createSettingsDraft(updated.settings));
+        const loreReference = asRecord(asRecord(updated.settings).loreReference);
+        setSelectedLoreId(readString(loreReference.id));
+        await Promise.all([loadSummary(true), loadRuntimeStatus(true)]);
       },
       "Personality saved",
     );
@@ -2753,8 +2764,14 @@ function SecretField({
       setLastConfiguredSecret(secret?.configured ? secret : null);
       return;
     }
-    if (secret?.configured) setLastConfiguredSecret(secret);
-    if (secret?.__botManagerSecretAction === "clear") setLastConfiguredSecret(null);
+    if (secret?.configured) {
+      setLastConfiguredSecret(secret);
+      setFocused(false);
+    }
+    if (secret?.__botManagerSecretAction === "clear") {
+      setLastConfiguredSecret(null);
+      setFocused(false);
+    }
   }, [name, secret?.configured, secret?.preview, secret?.__botManagerSecretAction]);
 
   const updateValue = (next: string) => {
