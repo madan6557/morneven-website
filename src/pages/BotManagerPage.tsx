@@ -1,4 +1,4 @@
-import { type CSSProperties, type ChangeEvent, type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type ChangeEvent, type UIEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import {
   ArrowDownAZ,
@@ -2785,10 +2785,12 @@ function SecretField({
   name?: string;
   allowClear?: boolean;
 }) {
+  const generatedId = useId();
   const secret = readSecretRef(value);
   const [lastConfiguredSecret, setLastConfiguredSecret] = useState<BotSecretRef | null>(secret?.configured ? secret : null);
   const [focused, setFocused] = useState(false);
   const previousName = useRef(name);
+  const inputName = `bot-manager-private-${generatedId.replace(/[^a-z0-9]/gi, "")}`;
   const inputValue = typeof value === "string" ? value : "";
   const hasNewValue = inputValue.length > 0;
   const cleared = secret?.__botManagerSecretAction === "clear";
@@ -2835,8 +2837,9 @@ function SecretField({
       <div className="flex gap-2">
         <input
           type="text"
-          name={name ?? `bot-manager-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "secret"}`}
-          autoComplete="off"
+          id={inputName}
+          name={inputName}
+          autoComplete="new-password"
           autoCorrect="off"
           autoCapitalize="none"
           spellCheck={false}
