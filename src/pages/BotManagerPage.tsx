@@ -2811,8 +2811,8 @@ function FileEditor({
   const sortLabel = sortMode === "name-asc" ? "Name A→Z" : sortMode === "name-desc" ? "Name Z→A" : "Recent";
 
   return (
-    <div className="grid gap-4 md:grid-cols-[15rem_minmax(0,1fr)] lg:grid-cols-[17rem_minmax(0,1fr)]">
-      <div className="space-y-2">
+    <div className="grid gap-4 grid-cols-[minmax(0,1fr)] md:grid-cols-[15rem_minmax(0,1fr)] lg:grid-cols-[17rem_minmax(0,1fr)]">
+      <div className="space-y-2 min-w-0">
         <Button
           type="button"
           variant="outline"
