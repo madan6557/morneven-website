@@ -2531,7 +2531,7 @@ function ChannelFields({
   if (channel === "telegram") {
     return (
       <div className="grid gap-3 md:grid-cols-2">
-        <SecretField label="Token" value={config.token} onChange={(token) => onUpdate({ token })} name="bot-manager-telegram-token" placeholder="123456:ABC-DEF" />
+        <SecretField label="Token" value={config.token} onChange={(token) => onUpdate({ token })} name="bot-manager-telegram-token" placeholder="Enter Telegram bot token" />
         <TagField label="Allowed User IDs" value={readStringArray(config.allowFrom)} onChange={(allowFrom) => onUpdate({ allowFrom })} placeholder="* or user ID" />
         <Field label="Proxy" value={readString(config.proxy)} onChange={(proxy) => onUpdate({ proxy })} placeholder="Optional proxy URL" />
       </div>
@@ -2744,16 +2744,23 @@ function SecretField({
   const inputValue = typeof value === "string" ? value : "";
   const hasNewValue = inputValue.length > 0;
   const configured = Boolean(configuredSecret?.configured);
-  const cleared = Boolean(secret && !secret.configured);
+  const cleared = secret?.__botManagerSecretAction === "clear";
   const preview = configuredSecret?.preview || "***";
-  const showConfiguredDisplay = configured && !editing && !hasNewValue && !cleared;
+  const showStatusDisplay = !editing && !hasNewValue;
   const statusText = hasNewValue ? "New value entered" : configured ? `Configured: ${preview}` : cleared ? "Cleared" : "Empty";
+  const actionLabel = configured ? "Replace" : "Set";
   const updateValue = (next: string) => {
     if (!next && configuredSecret) {
       onChange(configuredSecret);
       return;
     }
     onChange(next);
+  };
+  const cancelEdit = () => {
+    setEditing(false);
+    if (configuredSecret) onChange(configuredSecret);
+    else if (cleared) onChange(clearSecretMarker());
+    else onChange("");
   };
 
   return (
@@ -2764,19 +2771,19 @@ function SecretField({
           {statusText}
         </span>
       </div>
-      {showConfiguredDisplay ? (
+      {showStatusDisplay ? (
         <div className="flex gap-2">
           <input
             type="text"
             name={`${name ?? "bot-manager-secret"}-configured`}
             autoComplete="off"
-            className={cn(inputClass, "cursor-default text-primary")}
-            value={`Configured: ${preview}`}
+            className={cn(inputClass, "cursor-default", configured ? "text-primary" : "text-muted-foreground")}
+            value={statusText}
             readOnly
             aria-readonly
           />
           <Button type="button" variant="outline" onClick={() => setEditing(true)}>
-            Replace
+            {actionLabel}
           </Button>
           {allowClear && (
             <Button type="button" variant="outline" onClick={() => { setEditing(false); onChange(clearSecretMarker()); }}>
@@ -2795,8 +2802,8 @@ function SecretField({
             placeholder={configured ? "Enter new value to replace" : placeholder}
             onChange={(event) => updateValue(event.target.value)}
           />
-          {configured && (
-            <Button type="button" variant="outline" onClick={() => { setEditing(false); if (configuredSecret) onChange(configuredSecret); }}>
+          {(configured || cleared || editing) && (
+            <Button type="button" variant="outline" onClick={cancelEdit}>
               Cancel
             </Button>
           )}
