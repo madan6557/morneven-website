@@ -2842,13 +2842,13 @@ function FileEditor({
             </button>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="relative flex-1">
+        <div className="flex w-full min-w-0 items-center gap-1.5">
+          <div className="relative min-w-0 flex-1">
             <Filter className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <select
               value={kindFilter}
               onChange={(event) => setKindFilter(event.target.value as BotFileKind | "all")}
-              className={cn(inputClass, "h-9 pl-7 pr-2 text-xs")}
+              className={cn(inputClass, "h-9 w-full pl-7 pr-2 text-xs")}
             >
               <option value="all">All kinds</option>
               {(availableKinds.length ? availableKinds : allowedKinds).map((kind) => (
@@ -2859,8 +2859,9 @@ function FileEditor({
           <button
             type="button"
             onClick={toggleSortDirection}
-            className={cn(inputClass, "flex h-9 shrink-0 items-center gap-1.5 px-2 text-[10px] uppercase tracking-[0.1em] hover:text-foreground")}
-            title="Toggle sort"
+            className="inline-flex h-9 w-auto shrink-0 items-center gap-1.5 rounded-sm border border-border bg-background px-2.5 text-[10px] uppercase tracking-[0.1em] text-muted-foreground hover:text-foreground"
+            title={`Sort: ${sortLabel}`}
+            aria-label={`Sort: ${sortLabel}`}
           >
             {sortIcon}
             <span className="hidden sm:inline">{sortLabel}</span>
