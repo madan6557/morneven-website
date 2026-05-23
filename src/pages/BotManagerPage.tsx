@@ -1,4 +1,4 @@
-import { type ChangeEvent, type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type ChangeEvent, type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import {
   ArrowDownAZ,
@@ -2834,10 +2834,17 @@ function SecretField({
       </div>
       <div className="flex gap-2">
         <input
-          type={focused ? "password" : "text"}
+          type="text"
           name={name ?? `bot-manager-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "secret"}`}
-          autoComplete={focused ? "new-password" : "off"}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          data-lpignore="true"
+          data-1p-ignore="true"
+          data-form-type="other"
           className={cn(inputClass, displayMode && configured && "text-primary")}
+          style={focused && !displayMode ? ({ WebkitTextSecurity: "disc" } as CSSProperties) : undefined}
           value={displayValue}
           placeholder={configured ? "Focus to enter replacement value" : placeholder}
           readOnly={displayMode}
