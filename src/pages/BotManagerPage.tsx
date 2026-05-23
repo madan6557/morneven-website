@@ -227,9 +227,47 @@ function clearSecretMarker(): BotSecretRef {
   };
 }
 
+const sensitiveSecretKeys = new Set(["token", "apikey", "bottoken", "apptoken", "signingsecret", "appsecret", "verificationtoken", "encryptkey", "secret", "webhookurl"]);
+
+function normalizedSecretKey(key: string) {
+  return key.replace(/[^a-z0-9]/gi, "").toLowerCase();
+}
+
+function maskSecretPreview(value: string) {
+  if (!value) return "";
+  if (value.length <= 8) return "***";
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
+}
+
+function secretPreviewMarker(value: string): BotSecretRef {
+  return {
+    __botManagerSecret: true,
+    configured: true,
+    preview: maskSecretPreview(value),
+  };
+}
+
+function mergeSubmittedSecretPreviews(responseValue: unknown, submittedValue: unknown, key = ""): unknown {
+  if (key && sensitiveSecretKeys.has(normalizedSecretKey(key))) {
+    const responseSecret = readSecretRef(responseValue);
+    if (responseSecret?.configured || responseSecret?.__botManagerSecretAction === "clear") return responseValue;
+    if (typeof responseValue === "string" && responseValue.trim()) return responseValue;
+    if (typeof submittedValue === "string" && submittedValue.trim()) return secretPreviewMarker(submittedValue.trim());
+    return responseValue;
+  }
+
+  if (!isRecordValue(submittedValue)) return responseValue;
+  const responseRecord = asRecord(responseValue);
+  const result: JsonRecord = { ...responseRecord };
+  Object.entries(submittedValue).forEach(([entryKey, submittedEntry]) => {
+    result[entryKey] = mergeSubmittedSecretPreviews(responseRecord[entryKey], submittedEntry, entryKey);
+  });
+  return result;
+}
+
 function redactSensitiveForDisplay(value: unknown, key?: string): unknown {
   const normalizedKey = key?.replace(/[^a-z0-9]/gi, "").toLowerCase();
-  if (normalizedKey && ["token", "apikey", "bottoken", "apptoken", "signingsecret", "appsecret", "verificationtoken", "encryptkey", "secret", "webhookurl"].includes(normalizedKey)) {
+  if (normalizedKey && sensitiveSecretKeys.has(normalizedKey)) {
     return "[redacted]";
   }
   const secret = readSecretRef(value);
@@ -1110,24 +1148,28 @@ export default function BotManagerPage() {
     runAction(
       "identity",
       async () => {
+        const submittedChannels = channelsDraft;
+        const submittedSettings = mergeRecord(settingsBase, settingsDraftToConfig(settingsDraft));
         const updated = await updateBotIdentity(detail.id, {
           name: identityDraft.name,
           roleTitle: identityDraft.roleTitle,
           description: identityDraft.description,
-          channels: channelsDraft,
-          settings: mergeRecord(settingsBase, settingsDraftToConfig(settingsDraft)),
+          channels: submittedChannels,
+          settings: submittedSettings,
           loreCharacterId: selectedLoreId || undefined,
         });
+        const updatedChannels = mergeSubmittedSecretPreviews(updated.channels, submittedChannels) as JsonRecord;
+        const updatedSettings = mergeSubmittedSecretPreviews(updated.settings, submittedSettings) as JsonRecord;
         setDetail((current) => (current && current.id === updated.id ? { ...current, ...updated, files: current.files } : current));
         setIdentityDraft({
           name: updated.name,
           roleTitle: updated.roleTitle,
           description: updated.description,
         });
-        setChannelsDraft(normalizeChannels(updated.channels));
-        setSettingsBase(asRecord(updated.settings));
-        setSettingsDraft(createSettingsDraft(updated.settings));
-        const loreReference = asRecord(asRecord(updated.settings).loreReference);
+        setChannelsDraft(normalizeChannels(updatedChannels));
+        setSettingsBase(asRecord(updatedSettings));
+        setSettingsDraft(createSettingsDraft(updatedSettings));
+        const loreReference = asRecord(asRecord(updatedSettings).loreReference);
         setSelectedLoreId(readString(loreReference.id));
         await Promise.all([loadSummary(true), loadRuntimeStatus(true)]);
       },
