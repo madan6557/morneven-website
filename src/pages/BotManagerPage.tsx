@@ -2906,7 +2906,7 @@ function FileEditor({
         <div className={cn("rounded-sm border border-border/70 bg-background/35 p-3 text-xs text-muted-foreground", readOnly && "border-primary/50 text-primary")}>
           {usageNote}
         </div>
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-[minmax(0,1fr)_12rem]">
           <Field label="Path" value={fileDraft.path} readOnly={readOnly} onChange={(value) => setFileDraft({ ...fileDraft, path: value })} />
           <label className="block space-y-2">
             <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Kind</span>
