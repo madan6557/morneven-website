@@ -341,7 +341,7 @@ export function syncBotManagerRuntime() {
       changes?: unknown[];
       skipped?: Array<{ path: string; reason: string }>;
     };
-    bundle?: unknown;
+    runtimeBundle?: unknown;
     nanobot?: unknown;
   }>("/bot-manager/sync", {
     method: "POST",

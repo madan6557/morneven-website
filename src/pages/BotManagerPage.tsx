@@ -99,6 +99,13 @@ const tabs = ["channels", "system", "files", "memory", "cron", "sessions", "sett
 type BotTab = (typeof tabs)[number];
 type ChannelKey = "telegram" | "whatsapp" | "discord" | "slack" | "feishu" | "dingtalk";
 type JsonRecord = Record<string, unknown>;
+type BotSecretRef = {
+  __botManagerSecret: true;
+  configured: boolean;
+  preview: string;
+  __botManagerSecretAction?: "clear";
+};
+type SecretFieldValue = string | BotSecretRef;
 
 const channelTabs: Array<{ key: ChannelKey; label: string; detail: string; icon: typeof MessageCircle }> = [
   { key: "telegram", label: "Telegram", detail: "BotFather token", icon: Send },
@@ -119,7 +126,7 @@ type BotSettingsDraft = {
   maxTokens: string;
   temperature: string;
   maxToolIterations: string;
-  webSearchApiKey: string;
+  webSearchApiKey: SecretFieldValue;
   webSearchMaxResults: string;
   execTimeout: string;
   restrictToWorkspace: boolean;
@@ -151,7 +158,7 @@ const RUNTIME_STATUS_POLL_MS = 60_000;
 const BACKUP_ACTIVE_POLL_MS = 3_000;
 
 function toJsonText(value: unknown) {
-  return JSON.stringify(value ?? {}, null, 2);
+  return JSON.stringify(redactSensitiveForDisplay(value ?? {}), null, 2);
 }
 
 function isDocumentVisible() {
@@ -194,6 +201,42 @@ function readBoolean(value: unknown, fallback: boolean) {
   }
   if (typeof value === "number") return value !== 0;
   return typeof value === "boolean" ? value : fallback;
+}
+
+function readSecretRef(value: unknown): BotSecretRef | null {
+  if (!isRecordValue(value) || value.__botManagerSecret !== true) return null;
+  return {
+    __botManagerSecret: true,
+    configured: value.configured !== false,
+    preview: readString(value.preview),
+    __botManagerSecretAction: value.__botManagerSecretAction === "clear" ? "clear" : undefined,
+  };
+}
+
+function readSecretDraft(value: unknown): SecretFieldValue {
+  return readSecretRef(value) ?? readString(value);
+}
+
+function clearSecretMarker(): BotSecretRef {
+  return {
+    __botManagerSecret: true,
+    configured: false,
+    preview: "",
+    __botManagerSecretAction: "clear",
+  };
+}
+
+function redactSensitiveForDisplay(value: unknown, key?: string): unknown {
+  const normalizedKey = key?.replace(/[^a-z0-9]/gi, "").toLowerCase();
+  if (normalizedKey && ["token", "apikey", "bottoken", "apptoken", "signingsecret", "appsecret", "verificationtoken", "encryptkey", "secret", "webhookurl"].includes(normalizedKey)) {
+    return "[redacted]";
+  }
+  const secret = readSecretRef(value);
+  if (secret) return secret.configured ? `Configured: ${secret.preview || "***"}` : "empty";
+  if (key === "bundle") return "[omitted]";
+  if (Array.isArray(value)) return value.map((item) => redactSensitiveForDisplay(item));
+  if (!isRecordValue(value)) return value;
+  return Object.fromEntries(Object.entries(value).map(([entryKey, entryValue]) => [entryKey, redactSensitiveForDisplay(entryValue, entryKey)]));
 }
 
 function readStringArray(value: unknown) {
@@ -377,7 +420,7 @@ function createSettingsDraft(value: unknown): BotSettingsDraft {
     maxTokens: readNumberText(defaults.maxTokens, 8192),
     temperature: readNumberText(defaults.temperature, 0.7),
     maxToolIterations: readNumberText(defaults.maxToolIterations, 20),
-    webSearchApiKey: readString(search.apiKey),
+    webSearchApiKey: readSecretDraft(search.apiKey),
     webSearchMaxResults: readNumberText(search.maxResults, 5),
     execTimeout: readNumberText(exec.timeout, 60),
     restrictToWorkspace: readBoolean(exec.restrictToWorkspace, false),
@@ -2079,7 +2122,7 @@ function OpenRouterSection({
           <Field label="Notes" value={draft.notes} onChange={(notes) => onDraftChange({ ...draft, notes })} />
         </div>
         <div className="mt-3 flex gap-2">
-          <Button type="button" onClick={onSave} disabled={!draft.name.trim() || !draft.apiKey.trim() || !draft.modelId.trim() || !canUseCredentialGate || Boolean(busy)}>
+          <Button type="button" onClick={onSave} disabled={!draft.name.trim() || (!draft.id && !draft.apiKey.trim()) || !draft.modelId.trim() || !canUseCredentialGate || Boolean(busy)}>
             <Save className="mr-2 h-4 w-4" />
             {draft.id ? "Update OpenRouter Profile" : "Create OpenRouter Profile"}
           </Button>
@@ -2469,7 +2512,7 @@ function ChannelFields({
   if (channel === "telegram") {
     return (
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Token" value={readString(config.token)} onChange={(token) => onUpdate({ token })} type="password" name="bot-manager-telegram-token" placeholder="123456:ABC-DEF" />
+        <SecretField label="Token" value={config.token} onChange={(token) => onUpdate({ token })} name="bot-manager-telegram-token" placeholder="123456:ABC-DEF" />
         <TagField label="Allowed User IDs" value={readStringArray(config.allowFrom)} onChange={(allowFrom) => onUpdate({ allowFrom })} placeholder="* or user ID" />
         <Field label="Proxy" value={readString(config.proxy)} onChange={(proxy) => onUpdate({ proxy })} placeholder="Optional proxy URL" />
       </div>
@@ -2488,7 +2531,7 @@ function ChannelFields({
   if (channel === "discord") {
     return (
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Bot Token" value={readString(config.token)} onChange={(token) => onUpdate({ token })} type="password" name="bot-manager-discord-token" />
+        <SecretField label="Bot Token" value={config.token} onChange={(token) => onUpdate({ token })} name="bot-manager-discord-token" />
         <Field label="Application ID" value={readString(config.applicationId)} onChange={(applicationId) => onUpdate({ applicationId })} />
         <TagField label="Guild IDs" value={readStringArray(config.guildIds)} onChange={(guildIds) => onUpdate({ guildIds })} />
         <TagField label="Channel IDs" value={readStringArray(config.channelIds)} onChange={(channelIds) => onUpdate({ channelIds })} />
@@ -2499,9 +2542,9 @@ function ChannelFields({
   if (channel === "slack") {
     return (
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Bot Token" value={readString(config.botToken)} onChange={(botToken) => onUpdate({ botToken })} type="password" name="bot-manager-slack-bot-token" />
-        <Field label="App Token" value={readString(config.appToken)} onChange={(appToken) => onUpdate({ appToken })} type="password" name="bot-manager-slack-app-token" />
-        <Field label="Signing Secret" value={readString(config.signingSecret)} onChange={(signingSecret) => onUpdate({ signingSecret })} type="password" name="bot-manager-slack-signing-secret" />
+        <SecretField label="Bot Token" value={config.botToken} onChange={(botToken) => onUpdate({ botToken })} name="bot-manager-slack-bot-token" />
+        <SecretField label="App Token" value={config.appToken} onChange={(appToken) => onUpdate({ appToken })} name="bot-manager-slack-app-token" />
+        <SecretField label="Signing Secret" value={config.signingSecret} onChange={(signingSecret) => onUpdate({ signingSecret })} name="bot-manager-slack-signing-secret" />
         <TagField label="Channel IDs" value={readStringArray(config.channelIds)} onChange={(channelIds) => onUpdate({ channelIds })} />
       </div>
     );
@@ -2511,17 +2554,17 @@ function ChannelFields({
     return (
       <div className="grid gap-3 md:grid-cols-2">
         <Field label="App ID" value={readString(config.appId)} onChange={(appId) => onUpdate({ appId })} />
-        <Field label="App Secret" value={readString(config.appSecret)} onChange={(appSecret) => onUpdate({ appSecret })} type="password" name="bot-manager-feishu-app-secret" />
-        <Field label="Verification Token" value={readString(config.verificationToken)} onChange={(verificationToken) => onUpdate({ verificationToken })} type="password" name="bot-manager-feishu-verification-token" />
-        <Field label="Encrypt Key" value={readString(config.encryptKey)} onChange={(encryptKey) => onUpdate({ encryptKey })} type="password" name="bot-manager-feishu-encrypt-key" />
+        <SecretField label="App Secret" value={config.appSecret} onChange={(appSecret) => onUpdate({ appSecret })} name="bot-manager-feishu-app-secret" />
+        <SecretField label="Verification Token" value={config.verificationToken} onChange={(verificationToken) => onUpdate({ verificationToken })} name="bot-manager-feishu-verification-token" />
+        <SecretField label="Encrypt Key" value={config.encryptKey} onChange={(encryptKey) => onUpdate({ encryptKey })} name="bot-manager-feishu-encrypt-key" />
       </div>
     );
   }
 
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      <Field label="Webhook URL" value={readString(config.webhookUrl)} onChange={(webhookUrl) => onUpdate({ webhookUrl })} />
-      <Field label="Secret" value={readString(config.secret)} onChange={(secret) => onUpdate({ secret })} type="password" name="bot-manager-dingtalk-secret" />
+      <SecretField label="Webhook URL" value={config.webhookUrl} onChange={(webhookUrl) => onUpdate({ webhookUrl })} name="bot-manager-dingtalk-webhook-url" />
+      <SecretField label="Secret" value={config.secret} onChange={(secret) => onUpdate({ secret })} name="bot-manager-dingtalk-secret" />
       <TagField label="Allowed Senders" value={readStringArray(config.allowFrom)} onChange={(allowFrom) => onUpdate({ allowFrom })} />
     </div>
   );
@@ -2606,7 +2649,7 @@ function SettingsEditor({
         <div className="rounded-sm border border-border/70 bg-background/35 p-4">
           <h3 className="font-heading text-sm text-foreground">Tools And Environment</h3>
           <div className="mt-4 space-y-3">
-            <Field label="Web Search API Key" type="password" name="bot-manager-web-search-api-key" value={settingsDraft.webSearchApiKey} onChange={(webSearchApiKey) => onSettingsChange({ webSearchApiKey })} />
+            <SecretField label="Web Search API Key" name="bot-manager-web-search-api-key" value={settingsDraft.webSearchApiKey} onChange={(webSearchApiKey) => onSettingsChange({ webSearchApiKey })} />
             <Field label="Web Search Max Results" type="number" value={settingsDraft.webSearchMaxResults} onChange={(webSearchMaxResults) => onSettingsChange({ webSearchMaxResults })} />
             <Field label="Execution Timeout" type="number" value={settingsDraft.execTimeout} onChange={(execTimeout) => onSettingsChange({ execTimeout })} />
             <ToggleControl label="Restrict File Access" value={settingsDraft.restrictToWorkspace} onChange={(restrictToWorkspace) => onSettingsChange({ restrictToWorkspace })} />
@@ -2651,6 +2694,54 @@ function CompactSwitch({ ariaLabel, value, disabled = false, onChange }: { ariaL
     >
       <span className={cn("absolute top-1 h-5 w-5 rounded-full bg-background shadow-sm transition-transform", value ? "translate-x-5" : "translate-x-1")} />
     </button>
+  );
+}
+
+function SecretField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  name,
+}: {
+  label: string;
+  value: unknown;
+  onChange: (value: SecretFieldValue) => void;
+  placeholder?: string;
+  name?: string;
+}) {
+  const secret = readSecretRef(value);
+  const inputValue = typeof value === "string" ? value : "";
+  const configured = Boolean(secret?.configured);
+  const preview = secret?.preview || "***";
+
+  return (
+    <div className="block space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
+        {configured && (
+          <span className="max-w-[14rem] truncate text-[11px] text-muted-foreground">
+            Configured: {preview}
+          </span>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <input
+          type="password"
+          name={name ?? `bot-manager-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "secret"}`}
+          autoComplete="new-password"
+          className={inputClass}
+          value={inputValue}
+          placeholder={configured ? "Enter new value to replace" : placeholder}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        {configured && (
+          <Button type="button" variant="outline" onClick={() => onChange(clearSecretMarker())}>
+            Clear
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
