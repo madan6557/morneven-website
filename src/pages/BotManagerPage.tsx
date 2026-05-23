@@ -1,4 +1,5 @@
 import { type CSSProperties, type ChangeEvent, type UIEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Navigate } from "react-router-dom";
 import {
   ArrowDownAZ,
@@ -613,9 +614,12 @@ export default function BotManagerPage() {
   const [defaultRegenerateConfirm, setDefaultRegenerateConfirm] = useState("");
   const [identityDraft, setIdentityDraft] = useState<BotIdentityDraft>({ name: "", roleTitle: "", description: "" });
   const [channelsDraft, setChannelsDraft] = useState<JsonRecord>(createDefaultChannels());
+  const channelsDraftRef = useRef<JsonRecord>(channelsDraft);
   const [selectedChannel, setSelectedChannel] = useState<ChannelKey>("telegram");
   const [settingsBase, setSettingsBase] = useState<JsonRecord>({});
+  const settingsBaseRef = useRef<JsonRecord>(settingsBase);
   const [settingsDraft, setSettingsDraft] = useState<BotSettingsDraft>(() => createSettingsDraft({}));
+  const settingsDraftRef = useRef<BotSettingsDraft>(settingsDraft);
   const [fileDraft, setFileDraft] = useState<BotIdentityFile>(emptyFile());
   const [backupMode, setBackupMode] = useState<"full" | "custom">("full");
   const [backupSelectedIds, setBackupSelectedIds] = useState<string[]>([]);
@@ -742,9 +746,15 @@ export default function BotManagerPage() {
         roleTitle: next.roleTitle,
         description: next.description,
       });
-      setChannelsDraft(normalizeChannels(next.channels));
-      setSettingsBase(asRecord(next.settings));
-      setSettingsDraft(createSettingsDraft(next.settings));
+      const nextChannels = normalizeChannels(next.channels);
+      const nextSettingsBase = asRecord(next.settings);
+      const nextSettingsDraft = createSettingsDraft(next.settings);
+      channelsDraftRef.current = nextChannels;
+      settingsBaseRef.current = nextSettingsBase;
+      settingsDraftRef.current = nextSettingsDraft;
+      setChannelsDraft(nextChannels);
+      setSettingsBase(nextSettingsBase);
+      setSettingsDraft(nextSettingsDraft);
       const loreReference = asRecord(asRecord(next.settings).loreReference);
       setSelectedLoreId(readString(loreReference.id));
       setDefaultRegenerateConfirm("");
@@ -1148,8 +1158,8 @@ export default function BotManagerPage() {
     runAction(
       "identity",
       async () => {
-        const submittedChannels = channelsDraft;
-        const submittedSettings = mergeRecord(settingsBase, settingsDraftToConfig(settingsDraft));
+        const submittedChannels = channelsDraftRef.current;
+        const submittedSettings = mergeRecord(settingsBaseRef.current, settingsDraftToConfig(settingsDraftRef.current));
         const updated = await updateBotIdentity(detail.id, {
           name: identityDraft.name,
           roleTitle: identityDraft.roleTitle,
@@ -1166,9 +1176,15 @@ export default function BotManagerPage() {
           roleTitle: updated.roleTitle,
           description: updated.description,
         });
-        setChannelsDraft(normalizeChannels(updatedChannels));
-        setSettingsBase(asRecord(updatedSettings));
-        setSettingsDraft(createSettingsDraft(updatedSettings));
+        const nextChannels = normalizeChannels(updatedChannels);
+        const nextSettingsBase = asRecord(updatedSettings);
+        const nextSettingsDraft = createSettingsDraft(updatedSettings);
+        channelsDraftRef.current = nextChannels;
+        settingsBaseRef.current = nextSettingsBase;
+        settingsDraftRef.current = nextSettingsDraft;
+        setChannelsDraft(nextChannels);
+        setSettingsBase(nextSettingsBase);
+        setSettingsDraft(nextSettingsDraft);
         const loreReference = asRecord(asRecord(updatedSettings).loreReference);
         setSelectedLoreId(readString(loreReference.id));
         await Promise.all([loadSummary(true), loadRuntimeStatus(true)]);
@@ -1389,6 +1405,18 @@ export default function BotManagerPage() {
         ...patch,
       },
     }));
+    channelsDraftRef.current = {
+      ...channelsDraftRef.current,
+      [channel]: {
+        ...asRecord(channelsDraftRef.current[channel]),
+        ...patch,
+      },
+    };
+  };
+
+  const updateSettingsDraft = (patch: Partial<BotSettingsDraft>) => {
+    settingsDraftRef.current = { ...settingsDraftRef.current, ...patch };
+    setSettingsDraft(settingsDraftRef.current);
   };
 
   return (
@@ -1836,7 +1864,7 @@ export default function BotManagerPage() {
                                 onSaveChannels={saveIdentity}
                                 onSaveFile={saveFile}
                                 onSaveIdentity={saveIdentity}
-                                onSettingsChange={(patch) => setSettingsDraft((current) => ({ ...current, ...patch }))}
+                                onSettingsChange={updateSettingsDraft}
                                 onTabChange={(tab) => {
                                   setActiveTab(tab);
                                   if (tab === "files") setFileDraft(workspaceFiles[0] ?? { ...emptyFile(), kind: "identity", path: "SOUL.md" });
@@ -2819,11 +2847,13 @@ function SecretField({
   }, [name, secret?.configured, secret?.preview, secret?.__botManagerSecretAction]);
 
   const updateValue = (next: string) => {
-    if (!next && configuredSecret && !cleared) {
-      onChange(configuredSecret);
-      return;
-    }
-    onChange(next);
+    flushSync(() => {
+      if (!next && configuredSecret && !cleared) {
+        onChange(configuredSecret);
+        return;
+      }
+      onChange(next);
+    });
   };
 
   return (
