@@ -1,13 +1,17 @@
 import { type ChangeEvent, type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import {
+  ArrowDownAZ,
+  ArrowUpAZ,
   Bot,
   Brain,
   Check,
   ChevronDown,
   ChevronUp,
+  Clock,
   Download,
   FileText,
+  Filter,
   Hash,
   KeyRound,
   Loader2,
@@ -2182,12 +2186,12 @@ function PersonalityEditor({
           }} />
         </label>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
         {tabs.map((tab) => (
           <button
             key={tab}
             type="button"
-            className={cn("rounded-sm border px-3 py-2 text-xs font-heading uppercase tracking-[0.12em]", activeTab === tab ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground")}
+            className={cn("shrink-0 rounded-sm border px-2.5 py-1.5 text-[11px] font-heading uppercase tracking-[0.12em] sm:px-3 sm:py-2 sm:text-xs", activeTab === tab ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground")}
             onClick={() => onTabChange(tab)}
           >
             {tab}
@@ -2766,8 +2770,48 @@ function FileEditor({
   const readOnly = isReadOnlyFilePath(fileDraft.path);
   const protectedFile = isProtectedFilePath(fileDraft.path);
   const usageNote = getFileUsageNote(fileDraft);
+  const [search, setSearch] = useState("");
+  const [kindFilter, setKindFilter] = useState<BotFileKind | "all">("all");
+  const [sortMode, setSortMode] = useState<"name-asc" | "name-desc" | "recent">("name-asc");
+
+  const availableKinds = useMemo(() => {
+    const set = new Set<BotFileKind>();
+    files.forEach((file) => set.add(file.kind));
+    return Array.from(set);
+  }, [files]);
+
+  const visibleFiles = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const filtered = files.filter((file) => {
+      if (kindFilter !== "all" && file.kind !== kindFilter) return false;
+      if (!term) return true;
+      return file.path.toLowerCase().includes(term) || file.kind.toLowerCase().includes(term);
+    });
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      if (sortMode === "recent") {
+        const at = new Date(a.updatedAt || 0).getTime();
+        const bt = new Date(b.updatedAt || 0).getTime();
+        return bt - at;
+      }
+      const cmp = a.path.localeCompare(b.path);
+      return sortMode === "name-desc" ? -cmp : cmp;
+    });
+    return sorted;
+  }, [files, search, kindFilter, sortMode]);
+
+  const toggleSortDirection = () => {
+    setSortMode((prev) => {
+      if (prev === "name-asc") return "name-desc";
+      if (prev === "name-desc") return "recent";
+      return "name-asc";
+    });
+  };
+  const sortIcon = sortMode === "name-asc" ? <ArrowDownAZ className="h-3.5 w-3.5" /> : sortMode === "name-desc" ? <ArrowUpAZ className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />;
+  const sortLabel = sortMode === "name-asc" ? "Name A→Z" : sortMode === "name-desc" ? "Name Z→A" : "Recent";
+
   return (
-    <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
+    <div className="grid gap-4 md:grid-cols-[15rem_minmax(0,1fr)] lg:grid-cols-[17rem_minmax(0,1fr)]">
       <div className="space-y-2">
         <Button
           type="button"
@@ -2778,27 +2822,87 @@ function FileEditor({
           <FileText className="mr-2 h-4 w-4" />
           New File
         </Button>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search files…"
+            className={cn(inputClass, "h-9 pl-8 text-xs")}
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="relative flex-1">
+            <Filter className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <select
+              value={kindFilter}
+              onChange={(event) => setKindFilter(event.target.value as BotFileKind | "all")}
+              className={cn(inputClass, "h-9 pl-7 pr-2 text-xs")}
+            >
+              <option value="all">All kinds</option>
+              {(availableKinds.length ? availableKinds : allowedKinds).map((kind) => (
+                <option key={kind} value={kind}>{kind}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            onClick={toggleSortDirection}
+            className={cn(inputClass, "flex h-9 shrink-0 items-center gap-1.5 px-2 text-[10px] uppercase tracking-[0.1em] hover:text-foreground")}
+            title="Toggle sort"
+          >
+            {sortIcon}
+            <span className="hidden sm:inline">{sortLabel}</span>
+          </button>
+        </div>
+        <div className="flex items-center justify-between px-1 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+          <span>{visibleFiles.length} of {files.length}</span>
+          {(search || kindFilter !== "all") && (
+            <button
+              type="button"
+              onClick={() => { setSearch(""); setKindFilter("all"); }}
+              className="hover:text-foreground"
+            >
+              Reset
+            </button>
+          )}
+        </div>
         <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
-          {files.map((file) => (
+          {visibleFiles.length === 0 ? (
+            <div className="rounded-sm border border-dashed border-border/60 bg-background/30 px-3 py-6 text-center text-xs text-muted-foreground">
+              No files match.
+            </div>
+          ) : visibleFiles.map((file) => (
             <button
               key={file.id}
               type="button"
               className={cn(
-                "w-full rounded-sm border px-3 py-2 text-left text-xs",
+                "w-full rounded-sm border px-3 py-2 text-left text-xs transition-colors",
                 fileDraft.path === file.path ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/35 text-muted-foreground hover:text-foreground",
               )}
               onClick={() => setFileDraft(file)}
             >
               <span className="flex min-w-0 items-center justify-between gap-2">
                 <span className="truncate font-heading">{file.path}</span>
-                {isReadOnlyFilePath(file.path) && <Badge variant="outline" className="shrink-0 text-[9px]">Read Only</Badge>}
+                {isReadOnlyFilePath(file.path) && <Badge variant="outline" className="shrink-0 text-[9px]">RO</Badge>}
               </span>
               <span className="block truncate uppercase tracking-[0.12em]">{file.kind}</span>
             </button>
           ))}
         </div>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-3 min-w-0">
         <div className={cn("rounded-sm border border-border/70 bg-background/35 p-3 text-xs text-muted-foreground", readOnly && "border-primary/50 text-primary")}>
           {usageNote}
         </div>
@@ -2818,11 +2922,11 @@ function FileEditor({
           onChange={(content) => setFileDraft({ ...fileDraft, content })}
         />
         <div className="flex flex-wrap gap-2">
-          <Button type="button" onClick={onSave} disabled={busy || readOnly}>
+          <Button type="button" onClick={onSave} disabled={busy || readOnly} className="flex-1 sm:flex-initial">
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Save File
           </Button>
-          <Button type="button" variant="destructive" onClick={onDelete} disabled={busy || protectedFile || !fileDraft.id || fileDraft.id === "new"}>
+          <Button type="button" variant="destructive" onClick={onDelete} disabled={busy || protectedFile || !fileDraft.id || fileDraft.id === "new"} className="flex-1 sm:flex-initial">
             <Trash2 className="mr-2 h-4 w-4" />
             Delete File
           </Button>
