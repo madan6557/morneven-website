@@ -2186,12 +2186,12 @@ function PersonalityEditor({
           }} />
         </label>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
         {tabs.map((tab) => (
           <button
             key={tab}
             type="button"
-            className={cn("rounded-sm border px-3 py-2 text-xs font-heading uppercase tracking-[0.12em]", activeTab === tab ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground")}
+            className={cn("shrink-0 rounded-sm border px-2.5 py-1.5 text-[11px] font-heading uppercase tracking-[0.12em] sm:px-3 sm:py-2 sm:text-xs", activeTab === tab ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground")}
             onClick={() => onTabChange(tab)}
           >
             {tab}
