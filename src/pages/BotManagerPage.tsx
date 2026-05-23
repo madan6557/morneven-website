@@ -1428,7 +1428,7 @@ export default function BotManagerPage() {
               )}
             </div>
             {!credentialUnlocked ? (
-              <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+              <div className="mt-4 grid gap-3 grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
                 <Field label="Password" value={credentialPassword} onChange={setCredentialPassword} type="password" name="bot-manager-credential-password" />
                 <Field label="Bot Manager Key" value={credentialKey} onChange={setCredentialKey} type="password" name="bot-manager-credential-key" />
                 <Field label="Confirmation" value={credentialConfirm} onChange={setCredentialConfirm} placeholder='Type "CREDENTIALS"' />
@@ -1566,7 +1566,7 @@ export default function BotManagerPage() {
             </div>
               <div className="mt-4 space-y-4">
 
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_12rem_12rem]">
+                <div className="grid gap-3 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_12rem_12rem]">
                   <label className="relative block">
                     <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <input
@@ -2319,7 +2319,7 @@ function BackupSection({
               <Field label="Password" value={backupPassword} onChange={onPasswordChange} type="password" name="bot-manager-backup-password" />
               <Field label="Extraction Key" value={backupKey} onChange={onKeyChange} type="password" name="bot-manager-backup-extraction-key" />
             </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+            <div className="mt-3 grid gap-3 grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
               <Field label="Confirmation" value={backupConfirm} onChange={onConfirmChange} placeholder='Type "PERSONALITY"' />
               <Button type="button" onClick={onCreate} disabled={!backupCanCreate || Boolean(busy)}>
                 {busy === "backup-create" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
@@ -2343,7 +2343,7 @@ function BackupSection({
             )}
           </div>
           <div className="space-y-3">
-            <div className="grid gap-2 md:grid-cols-[12rem_12rem_1fr_auto] md:items-center">
+            <div className="grid gap-2 grid-cols-[minmax(0,1fr)] md:grid-cols-[12rem_12rem_1fr_auto] md:items-center">
               <select className={inputClass} value={backupStatus} onChange={(event) => onStatusChange(event.target.value)}>
                 <option value="all">All status</option>
                 <option value="processing">Processing</option>
@@ -2361,7 +2361,7 @@ function BackupSection({
               </Button>
             </div>
             {backupJobs.map((job) => (
-              <div key={job.id} className="grid gap-3 rounded-sm border border-border/70 bg-background/35 p-3 md:grid-cols-[minmax(0,1fr)_8rem_8rem_auto_auto] md:items-center">
+              <div key={job.id} className="grid gap-3 rounded-sm border border-border/70 bg-background/35 p-3 grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_8rem_8rem_auto_auto] md:items-center">
                 <div className="min-w-0">
                   <p className="truncate font-heading text-sm text-foreground">{job.downloadName ?? job.id}</p>
                   <p className="text-xs text-muted-foreground">{job.progress?.message ?? job.status}</p>
@@ -2556,7 +2556,7 @@ function DefaultFilesRegenerator({
           <option value="force">Force</option>
         </select>
       </div>
-      <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem]">
+      <div className="mt-3 grid gap-3 grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_12rem]">
         <Field label="Confirmation" value={confirm} onChange={onConfirmChange} placeholder='Type "DEFAULTS"' />
         <Button type="button" className="self-end" onClick={onRegenerate} disabled={busy || confirm !== "DEFAULTS"}>
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
@@ -2811,8 +2811,8 @@ function FileEditor({
   const sortLabel = sortMode === "name-asc" ? "Name A→Z" : sortMode === "name-desc" ? "Name Z→A" : "Recent";
 
   return (
-    <div className="grid gap-4 md:grid-cols-[15rem_minmax(0,1fr)] lg:grid-cols-[17rem_minmax(0,1fr)]">
-      <div className="space-y-2">
+    <div className="grid gap-4 grid-cols-[minmax(0,1fr)] md:grid-cols-[15rem_minmax(0,1fr)] lg:grid-cols-[17rem_minmax(0,1fr)]">
+      <div className="space-y-2 min-w-0">
         <Button
           type="button"
           variant="outline"
@@ -2906,7 +2906,7 @@ function FileEditor({
         <div className={cn("rounded-sm border border-border/70 bg-background/35 p-3 text-xs text-muted-foreground", readOnly && "border-primary/50 text-primary")}>
           {usageNote}
         </div>
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-[minmax(0,1fr)_12rem]">
           <Field label="Path" value={fileDraft.path} readOnly={readOnly} onChange={(value) => setFileDraft({ ...fileDraft, path: value })} />
           <label className="block space-y-2">
             <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Kind</span>
