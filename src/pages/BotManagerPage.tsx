@@ -626,9 +626,10 @@ export default function BotManagerPage() {
     credentialKey.trim().length >= 16 &&
     credentialConfirm === "CREDENTIALS";
 
+  const selectedCredentialConfigured = Boolean(summary?.credentials.some((item) => item.provider === credentialProvider && item.configured));
   const canSubmitCredential =
     credentialUnlocked &&
-    credentialApiKey.trim().length > 0 &&
+    (credentialApiKey.trim().length > 0 || selectedCredentialConfigured) &&
     credentialModelId.trim().length > 0 &&
     canUnlockCredential;
 
@@ -2732,35 +2733,36 @@ function SecretField({
   allowClear?: boolean;
 }) {
   const secret = readSecretRef(value);
-  const [editing, setEditing] = useState(false);
-  const [lastConfiguredSecret, setLastConfiguredSecret] = useState<BotSecretRef | null>(null);
-
-  useEffect(() => {
-    if (secret?.configured) setLastConfiguredSecret(secret);
-    if (secret && !secret.configured) setLastConfiguredSecret(null);
-  }, [secret?.configured, secret?.preview, secret?.__botManagerSecretAction]);
-
-  const configuredSecret = secret?.configured ? secret : lastConfiguredSecret;
+  const [lastConfiguredSecret, setLastConfiguredSecret] = useState<BotSecretRef | null>(secret?.configured ? secret : null);
+  const [focused, setFocused] = useState(false);
+  const previousName = useRef(name);
   const inputValue = typeof value === "string" ? value : "";
   const hasNewValue = inputValue.length > 0;
-  const configured = Boolean(configuredSecret?.configured);
   const cleared = secret?.__botManagerSecretAction === "clear";
-  const preview = configuredSecret?.preview || "***";
-  const showStatusDisplay = !editing && !hasNewValue;
-  const statusText = hasNewValue ? "New value entered" : configured ? `Configured: ${preview}` : cleared ? "Cleared" : "Empty";
-  const actionLabel = configured ? "Replace" : "Set";
+  const configuredSecret = secret?.configured ? secret : lastConfiguredSecret;
+  const configured = Boolean(configuredSecret?.configured);
+  const displayText = configured ? `Encrypted: ${configuredSecret?.preview || "***"}` : cleared ? "Cleared" : "";
+  const displayMode = !focused && !hasNewValue && Boolean(displayText);
+  const displayValue = displayMode ? displayText : inputValue;
+  const statusText = hasNewValue ? "New value pending" : configured ? displayText : cleared ? "Cleared" : "Empty";
+
+  useEffect(() => {
+    if (previousName.current !== name) {
+      previousName.current = name;
+      setFocused(false);
+      setLastConfiguredSecret(secret?.configured ? secret : null);
+      return;
+    }
+    if (secret?.configured) setLastConfiguredSecret(secret);
+    if (secret?.__botManagerSecretAction === "clear") setLastConfiguredSecret(null);
+  }, [name, secret?.configured, secret?.preview, secret?.__botManagerSecretAction]);
+
   const updateValue = (next: string) => {
-    if (!next && configuredSecret) {
+    if (!next && configuredSecret && !cleared) {
       onChange(configuredSecret);
       return;
     }
     onChange(next);
-  };
-  const cancelEdit = () => {
-    setEditing(false);
-    if (configuredSecret) onChange(configuredSecret);
-    else if (cleared) onChange(clearSecretMarker());
-    else onChange("");
   };
 
   return (
@@ -2771,49 +2773,26 @@ function SecretField({
           {statusText}
         </span>
       </div>
-      {showStatusDisplay ? (
-        <div className="flex gap-2">
-          <input
-            type="text"
-            name={`${name ?? "bot-manager-secret"}-configured`}
-            autoComplete="off"
-            className={cn(inputClass, "cursor-default", configured ? "text-primary" : "text-muted-foreground")}
-            value={statusText}
-            readOnly
-            aria-readonly
-          />
-          <Button type="button" variant="outline" onClick={() => setEditing(true)}>
-            {actionLabel}
+      <div className="flex gap-2">
+        <input
+          type={focused ? "password" : "text"}
+          name={name ?? `bot-manager-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "secret"}`}
+          autoComplete={focused ? "new-password" : "off"}
+          className={cn(inputClass, displayMode && configured && "text-primary")}
+          value={displayValue}
+          placeholder={configured ? "Focus to enter replacement value" : placeholder}
+          readOnly={displayMode}
+          aria-readonly={displayMode}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onChange={(event) => updateValue(event.target.value)}
+        />
+        {allowClear && configured && !hasNewValue && (
+          <Button type="button" variant="outline" onClick={() => { setFocused(false); onChange(clearSecretMarker()); }}>
+            Clear
           </Button>
-          {allowClear && (
-            <Button type="button" variant="outline" onClick={() => { setEditing(false); onChange(clearSecretMarker()); }}>
-              Clear
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="flex gap-2">
-          <input
-            type="password"
-            name={name ?? `bot-manager-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "secret"}`}
-            autoComplete="new-password"
-            className={inputClass}
-            value={inputValue}
-            placeholder={configured ? "Enter new value to replace" : placeholder}
-            onChange={(event) => updateValue(event.target.value)}
-          />
-          {(configured || cleared || editing) && (
-            <Button type="button" variant="outline" onClick={cancelEdit}>
-              Cancel
-            </Button>
-          )}
-          {allowClear && configured && (
-            <Button type="button" variant="outline" onClick={() => { setEditing(false); onChange(clearSecretMarker()); }}>
-              Clear
-            </Button>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
