@@ -2751,6 +2751,62 @@ function CompactSwitch({ ariaLabel, value, disabled = false, onChange }: { ariaL
   );
 }
 
+const REVEAL_DURATION_MS = 10000;
+
+function useRevealTimer() {
+  const [revealed, setRevealed] = useState(false);
+  const [remaining, setRemaining] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const endRef = useRef(0);
+
+  const clear = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const hide = useCallback(() => {
+    clear();
+    setRevealed(false);
+    setRemaining(0);
+  }, [clear]);
+
+  const reveal = useCallback(() => {
+    clear();
+    endRef.current = Date.now() + REVEAL_DURATION_MS;
+    setRevealed(true);
+    setRemaining(Math.ceil(REVEAL_DURATION_MS / 1000));
+    timerRef.current = setInterval(() => {
+      const left = endRef.current - Date.now();
+      if (left <= 0) {
+        hide();
+      } else {
+        setRemaining(Math.ceil(left / 1000));
+      }
+    }, 250);
+  }, [clear, hide]);
+
+  useEffect(() => clear, [clear]);
+
+  return { revealed, remaining, reveal, hide, toggle: () => (revealed ? hide() : reveal()) };
+}
+
+function RevealToggle({ revealed, remaining, onToggle }: { revealed: boolean; remaining: number; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="inline-flex h-7 shrink-0 items-center gap-1 rounded-sm border border-border/70 bg-background/60 px-2 text-[10px] font-display uppercase tracking-[0.12em] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+      aria-label={revealed ? "Hide value" : "Show value"}
+      title={revealed ? `Hides in ${remaining}s` : "Show for 10s"}
+    >
+      {revealed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+      <span>{revealed ? `${remaining}s` : "Show"}</span>
+    </button>
+  );
+}
+
 function SecretField({
   label,
   value,
@@ -2768,6 +2824,7 @@ function SecretField({
   const secret = readSecretRef(value);
   const [lastConfiguredSecret, setLastConfiguredSecret] = useState<BotSecretRef | null>(secret?.configured ? secret : null);
   const [focused, setFocused] = useState(false);
+  const { revealed, remaining, reveal, hide, toggle } = useRevealTimer();
   const previousName = useRef(name);
   const inputName = `bot-manager-private-${generatedId.replace(/[^a-z0-9]/gi, "")}`;
   const inputValue = typeof value === "string" ? value : "";
@@ -2778,23 +2835,27 @@ function SecretField({
   const displayMode = !focused && !hasNewValue && Boolean(displayText);
   const displayValue = displayMode ? displayText : inputValue;
   const statusText = hasNewValue ? "New value pending" : configured ? displayText : "Empty";
+  const shouldMask = focused && !displayMode && !revealed;
 
   useEffect(() => {
     if (previousName.current !== name) {
       previousName.current = name;
       setFocused(false);
+      hide();
       setLastConfiguredSecret(secret?.configured ? secret : null);
       return;
     }
     if (secret?.configured) {
       setLastConfiguredSecret(secret);
       setFocused(false);
+      hide();
     }
     if (secret && !secret.configured) {
       setLastConfiguredSecret(null);
       setFocused(false);
+      hide();
     }
-  }, [name, secret?.configured, secret?.preview]);
+  }, [name, secret?.configured, secret?.preview, hide]);
 
   const updateValue = (next: string) => {
     flushSync(() => {
@@ -2814,7 +2875,7 @@ function SecretField({
           {statusText}
         </span>
       </div>
-      <div>
+      <div className="flex items-center gap-2">
         <input
           type="text"
           id={inputName}
@@ -2826,8 +2887,8 @@ function SecretField({
           data-lpignore="true"
           data-1p-ignore="true"
           data-form-type="other"
-          className={cn(inputClass, displayMode && configured && "text-primary")}
-          style={focused && !displayMode ? ({ WebkitTextSecurity: "disc" } as CSSProperties) : undefined}
+          className={cn(inputClass, "min-w-0 flex-1", displayMode && configured && "text-primary")}
+          style={shouldMask ? ({ WebkitTextSecurity: "disc" } as CSSProperties) : undefined}
           value={displayValue}
           placeholder={configured ? "Focus to enter replacement value" : placeholder}
           readOnly={displayMode}
@@ -2836,10 +2897,14 @@ function SecretField({
           onBlur={() => setFocused(false)}
           onChange={(event) => updateValue(event.target.value)}
         />
+        {hasNewValue ? (
+          <RevealToggle revealed={revealed} remaining={remaining} onToggle={toggle} />
+        ) : null}
       </div>
     </div>
   );
 }
+
 
 function formatBotManagerError(error: unknown) {
   if (error instanceof ApiError) {
