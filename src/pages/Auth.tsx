@@ -290,7 +290,7 @@ export default function Auth() {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowRequestPassword((value) => !value)}
+                        onClick={toggleRequestPassword}
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
                       >
                         {showRequestPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -309,7 +309,7 @@ export default function Auth() {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowRequestConfirmPassword((value) => !value)}
+                        onClick={toggleRequestConfirmPassword}
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
                       >
                         {showRequestConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
