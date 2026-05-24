@@ -502,9 +502,10 @@ export default function SettingsPage() {
     migrationConfirmText === "MIGRATION" &&
     verifyPassword(migrationPassword) &&
     migrationSecretKey.trim().length >= 16 &&
-    Boolean(migrationBaseUrl.trim() || migrationEndpoint.trim()) &&
-    !(migrationBaseUrl.trim() && migrationEndpoint.trim()) &&
-    (migrationMode === "live" || Boolean(migrationBackupFile));
+    (migrationMode === "backup"
+      ? Boolean(migrationBackupFile)
+      : Boolean(migrationBaseUrl.trim() || migrationEndpoint.trim()) &&
+        !(migrationBaseUrl.trim() && migrationEndpoint.trim()));
   const pendingReviewCount = useMemo(
     () => reviewQueue.filter((item) => item.status === "open").length,
     [reviewQueue],
@@ -1938,13 +1939,13 @@ export default function SettingsPage() {
             <SectionCard
               icon={Waypoints}
               title="PL7 Backend Migration"
-              description="Send the full database snapshot and storage manifest to a target backend, then download a verification report."
+              description="Send the live database snapshot to a target backend, or restore this backend from a backup ZIP."
               className="border-primary/35"
               accentClass="text-primary"
             >
               <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                 <p className="text-sm text-muted-foreground">
-                  Use Base URL for a clone backend, a custom migration endpoint for translated payloads, or a backup ZIP created from Data Backup.
+                  Live mode sends the current payload to another backend. Backup mode imports a Data Backup ZIP into this current backend.
                 </p>
                 {migrationProcessing && <p className="text-sm text-muted-foreground">Migration in progress...</p>}
               </div>
@@ -1970,22 +1971,24 @@ export default function SettingsPage() {
                 </button>
               </div>
 
-              <div className="grid gap-3 lg:grid-cols-2">
-                <LabeledInput
-                  label="New BE Base URL"
-                  value={migrationBaseUrl}
-                  onChange={setMigrationBaseUrl}
-                  placeholder="https://new-backend.example.com"
-                  className={inputClass}
-                />
-                <LabeledInput
-                  label="Migration Path"
-                  value={migrationEndpoint}
-                  onChange={setMigrationEndpoint}
-                  placeholder={migrationMode === "backup" ? "https://new-backend.example.com/api/settings/migration/receive-backup" : "https://new-backend.example.com/api/settings/migration/receive"}
-                  className={inputClass}
-                />
-              </div>
+              {migrationMode === "live" && (
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <LabeledInput
+                    label="New BE Base URL"
+                    value={migrationBaseUrl}
+                    onChange={setMigrationBaseUrl}
+                    placeholder="https://new-backend.example.com"
+                    className={inputClass}
+                  />
+                  <LabeledInput
+                    label="Migration Path"
+                    value={migrationEndpoint}
+                    onChange={setMigrationEndpoint}
+                    placeholder="https://new-backend.example.com/api/settings/migration/receive"
+                    className={inputClass}
+                  />
+                </div>
+              )}
 
               {migrationMode === "backup" && (
                 <label className="block space-y-2 rounded-sm border border-border/70 bg-background/35 p-3">
@@ -2046,9 +2049,9 @@ export default function SettingsPage() {
                   variant: "warning",
                   title: "Start backend migration",
                   description: migrationMode === "backup"
-                    ? "This sends the selected backup ZIP to the destination backend and generates a verification report."
+                    ? "This restores the selected backup ZIP into the current backend and generates a verification report."
                     : "This sends the full migration payload to the destination backend and generates a verification report.",
-                  confirmLabel: "Start migration",
+                  confirmLabel: migrationMode === "backup" ? "Restore backup" : "Start migration",
                   cancelLabel: "Cancel",
                   critical: true,
                   confirmDelaySeconds: 5,
@@ -2062,7 +2065,12 @@ export default function SettingsPage() {
                         confirmText: "MIGRATION" as const,
                       };
                       const job = migrationMode === "backup" && migrationBackupFile
-                        ? await startMigrationFromBackupRemote({ ...commonPayload, backupFile: migrationBackupFile })
+                        ? await startMigrationFromBackupRemote({
+                            backupFile: migrationBackupFile,
+                            password: migrationPassword,
+                            secretKey: migrationSecretKey,
+                            confirmText: "MIGRATION",
+                          })
                         : await startMigrationRemote(commonPayload);
                       setMigrationHistory((current) => [job, ...current]);
                       setShouldPollMigration(job.status === "processing");
@@ -2070,7 +2078,7 @@ export default function SettingsPage() {
                   },
                 })}
               >
-                Start Migration
+                {migrationMode === "backup" ? "Restore Backup" : "Start Migration"}
               </Button>
 
               <div className="space-y-3">
@@ -2101,7 +2109,7 @@ export default function SettingsPage() {
                     <ContentState
                       kind="empty"
                       title="No migration jobs yet"
-                      description="Start a migration when a new backend is ready to receive the full payload."
+                      description="Start a live migration to a new backend or restore this backend from a backup ZIP."
                       compact
                       className="bg-background/45"
                     />
