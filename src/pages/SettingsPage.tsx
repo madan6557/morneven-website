@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useRevealTimer } from "@/hooks/useRevealTimer";
 import { ContentState } from "@/components/ContentState";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
