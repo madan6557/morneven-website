@@ -13,13 +13,13 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const { revealed: showPassword, toggle: togglePassword } = useRevealTimer();
   const [forgotView, setForgotView] = useState<ForgotView | null>(null);
   const [requestNewPassword, setRequestNewPassword] = useState("");
   const [requestConfirmPassword, setRequestConfirmPassword] = useState("");
   const [identityProof, setIdentityProof] = useState("");
-  const [showRequestPassword, setShowRequestPassword] = useState(false);
-  const [showRequestConfirmPassword, setShowRequestConfirmPassword] = useState(false);
+  const { revealed: showRequestPassword, toggle: toggleRequestPassword } = useRevealTimer();
+  const { revealed: showRequestConfirmPassword, toggle: toggleRequestConfirmPassword } = useRevealTimer();
   const [errors, setErrors] = useState<{ email?: string; username?: string; password?: string }>({});
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
