@@ -11,6 +11,8 @@ import {
   ChevronUp,
   Clock,
   Download,
+  Eye,
+  EyeOff,
   FileText,
   Filter,
   Hash,
@@ -32,6 +34,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+
 
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import TagInput from "@/components/TagInput";
