@@ -2935,24 +2935,36 @@ function Field({
   autoComplete?: string;
 }) {
   const inputName = name ?? `bot-manager-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "field"}`;
+  const isPassword = type === "password";
+  const { revealed, remaining, toggle, hide } = useRevealTimer();
+  useEffect(() => {
+    if (!value && revealed) hide();
+  }, [value, revealed, hide]);
+  const effectiveType = isPassword && revealed ? "text" : type;
   return (
     <label className="block space-y-2">
       <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
-      <input
-        type={type}
-        name={inputName}
-        autoComplete={autoComplete ?? (type === "password" ? "new-password" : "off")}
-        className={cn(inputClass, readOnly && "cursor-not-allowed opacity-75")}
-        value={value}
-        placeholder={placeholder}
-        readOnly={readOnly}
-        aria-readonly={readOnly}
-        onChange={(event) => {
-          if (!readOnly) onChange(event.target.value);
-        }}
-      />
+      <div className={cn("flex items-center gap-2", !isPassword && "block")}>
+        <input
+          type={effectiveType}
+          name={inputName}
+          autoComplete={autoComplete ?? (type === "password" ? "new-password" : "off")}
+          className={cn(inputClass, "min-w-0 flex-1", readOnly && "cursor-not-allowed opacity-75")}
+          value={value}
+          placeholder={placeholder}
+          readOnly={readOnly}
+          aria-readonly={readOnly}
+          onChange={(event) => {
+            if (!readOnly) onChange(event.target.value);
+          }}
+        />
+        {isPassword && value.length > 0 ? (
+          <RevealToggle revealed={revealed} remaining={remaining} onToggle={toggle} />
+        ) : null}
+      </div>
     </label>
   );
+
 }
 
 function TagField({
