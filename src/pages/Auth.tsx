@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRevealTimer } from "@/hooks/useRevealTimer";
 import { requestPasswordReset, submitPasswordResetRequest } from "@/services/accountApi";
 
 type ForgotView = "options" | "email" | "request";
@@ -12,13 +13,13 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const { revealed: showPassword, toggle: togglePassword } = useRevealTimer();
   const [forgotView, setForgotView] = useState<ForgotView | null>(null);
   const [requestNewPassword, setRequestNewPassword] = useState("");
   const [requestConfirmPassword, setRequestConfirmPassword] = useState("");
   const [identityProof, setIdentityProof] = useState("");
-  const [showRequestPassword, setShowRequestPassword] = useState(false);
-  const [showRequestConfirmPassword, setShowRequestConfirmPassword] = useState(false);
+  const { revealed: showRequestPassword, toggle: toggleRequestPassword } = useRevealTimer();
+  const { revealed: showRequestConfirmPassword, toggle: toggleRequestConfirmPassword } = useRevealTimer();
   const [errors, setErrors] = useState<{ email?: string; username?: string; password?: string }>({});
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -188,7 +189,7 @@ export default function Auth() {
               />
               <button
                 type="button"
-                onClick={() => setShowPassword((value) => !value)}
+                onClick={togglePassword}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
@@ -289,7 +290,7 @@ export default function Auth() {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowRequestPassword((value) => !value)}
+                        onClick={toggleRequestPassword}
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
                       >
                         {showRequestPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -308,7 +309,7 @@ export default function Auth() {
                       />
                       <button
                         type="button"
-                        onClick={() => setShowRequestConfirmPassword((value) => !value)}
+                        onClick={toggleRequestConfirmPassword}
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
                       >
                         {showRequestConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

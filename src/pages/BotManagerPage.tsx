@@ -2792,17 +2792,16 @@ function useRevealTimer() {
   return { revealed, remaining, reveal, hide, toggle: () => (revealed ? hide() : reveal()) };
 }
 
-function RevealToggle({ revealed, remaining, onToggle }: { revealed: boolean; remaining: number; onToggle: () => void }) {
+function RevealToggle({ revealed, onToggle }: { revealed: boolean; remaining?: number; onToggle: () => void }) {
   return (
     <button
       type="button"
       onClick={onToggle}
-      className="inline-flex h-7 shrink-0 items-center gap-1 rounded-sm border border-border/70 bg-background/60 px-2 text-[10px] font-display uppercase tracking-[0.12em] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border border-border/70 bg-background/60 text-muted-foreground transition hover:border-primary/60 hover:text-primary"
       aria-label={revealed ? "Hide value" : "Show value"}
-      title={revealed ? `Hides in ${remaining}s` : "Show for 10s"}
+      title={revealed ? "Hide" : "Show for 10s"}
     >
-      {revealed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-      <span>{revealed ? `${remaining}s` : "Show"}</span>
+      {revealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
     </button>
   );
 }

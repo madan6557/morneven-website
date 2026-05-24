@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRevealTimer } from "@/hooks/useRevealTimer";
 import { confirmApprovedPasswordReset } from "@/services/accountApi";
 
 export default function PasswordResetConfirmationPage() {
@@ -12,8 +13,8 @@ export default function PasswordResetConfirmationPage() {
   const [username, setUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { revealed: showPassword, toggle: togglePassword } = useRevealTimer();
+  const { revealed: showConfirmPassword, toggle: toggleConfirmPassword } = useRevealTimer();
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -96,7 +97,7 @@ export default function PasswordResetConfirmationPage() {
               />
               <button
                 type="button"
-                onClick={() => setShowPassword((value) => !value)}
+                onClick={togglePassword}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -116,7 +117,7 @@ export default function PasswordResetConfirmationPage() {
               />
               <button
                 type="button"
-                onClick={() => setShowConfirmPassword((value) => !value)}
+                onClick={() => toggleConfirmPassword()}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
               >
                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
