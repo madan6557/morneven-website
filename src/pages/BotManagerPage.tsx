@@ -81,6 +81,7 @@ import {
   type OpenRouterProfile,
 } from "@/services/botManagerApi";
 import { getCharactersPage } from "@/services/loreApi";
+import { ApiError } from "@/services/restClient";
 import type { Character } from "@/types";
 
 const providers: Array<{ value: BotProvider; label: string }> = [
@@ -229,42 +230,6 @@ function clearSecretMarker(): BotSecretRef {
 }
 
 const sensitiveSecretKeys = new Set(["token", "apikey", "bottoken", "apptoken", "signingsecret", "appsecret", "verificationtoken", "encryptkey", "secret", "webhookurl"]);
-
-function normalizedSecretKey(key: string) {
-  return key.replace(/[^a-z0-9]/gi, "").toLowerCase();
-}
-
-function maskSecretPreview(value: string) {
-  if (!value) return "";
-  if (value.length <= 8) return "***";
-  return `${value.slice(0, 4)}...${value.slice(-4)}`;
-}
-
-function secretPreviewMarker(value: string): BotSecretRef {
-  return {
-    __botManagerSecret: true,
-    configured: true,
-    preview: maskSecretPreview(value),
-  };
-}
-
-function mergeSubmittedSecretPreviews(responseValue: unknown, submittedValue: unknown, key = ""): unknown {
-  if (key && sensitiveSecretKeys.has(normalizedSecretKey(key))) {
-    const responseSecret = readSecretRef(responseValue);
-    if (responseSecret?.configured || responseSecret?.__botManagerSecretAction === "clear") return responseValue;
-    if (typeof responseValue === "string" && responseValue.trim()) return responseValue;
-    if (typeof submittedValue === "string" && submittedValue.trim()) return secretPreviewMarker(submittedValue.trim());
-    return responseValue;
-  }
-
-  if (!isRecordValue(submittedValue)) return responseValue;
-  const responseRecord = asRecord(responseValue);
-  const result: JsonRecord = { ...responseRecord };
-  Object.entries(submittedValue).forEach(([entryKey, submittedEntry]) => {
-    result[entryKey] = mergeSubmittedSecretPreviews(responseRecord[entryKey], submittedEntry, entryKey);
-  });
-  return result;
-}
 
 function redactSensitiveForDisplay(value: unknown, key?: string): unknown {
   const normalizedKey = key?.replace(/[^a-z0-9]/gi, "").toLowerCase();
@@ -917,7 +882,7 @@ export default function BotManagerPage() {
       await action();
       toast({ title: success });
     } catch (err) {
-      toast({ title: "Bot Manager action failed", description: err instanceof Error ? err.message : "Request failed." });
+      toast({ title: "Bot Manager action failed", description: formatBotManagerError(err) });
     } finally {
       setBusy(null);
     }
@@ -1168,24 +1133,22 @@ export default function BotManagerPage() {
           settings: submittedSettings,
           loreCharacterId: selectedLoreId || undefined,
         });
-        const updatedChannels = mergeSubmittedSecretPreviews(updated.channels, submittedChannels) as JsonRecord;
-        const updatedSettings = mergeSubmittedSecretPreviews(updated.settings, submittedSettings) as JsonRecord;
         setDetail((current) => (current && current.id === updated.id ? { ...current, ...updated, files: current.files } : current));
         setIdentityDraft({
           name: updated.name,
           roleTitle: updated.roleTitle,
           description: updated.description,
         });
-        const nextChannels = normalizeChannels(updatedChannels);
-        const nextSettingsBase = asRecord(updatedSettings);
-        const nextSettingsDraft = createSettingsDraft(updatedSettings);
+        const nextChannels = normalizeChannels(updated.channels);
+        const nextSettingsBase = asRecord(updated.settings);
+        const nextSettingsDraft = createSettingsDraft(updated.settings);
         channelsDraftRef.current = nextChannels;
         settingsBaseRef.current = nextSettingsBase;
         settingsDraftRef.current = nextSettingsDraft;
         setChannelsDraft(nextChannels);
         setSettingsBase(nextSettingsBase);
         setSettingsDraft(nextSettingsDraft);
-        const loreReference = asRecord(asRecord(updatedSettings).loreReference);
+        const loreReference = asRecord(asRecord(updated.settings).loreReference);
         setSelectedLoreId(readString(loreReference.id));
         await Promise.all([loadSummary(true), loadRuntimeStatus(true)]);
       },
@@ -1277,7 +1240,7 @@ export default function BotManagerPage() {
     } catch (err) {
       await loadSummary();
       await loadRuntimeStatus(true);
-      toast({ title: "Bot Manager action failed", description: err instanceof Error ? err.message : "Request failed." });
+      toast({ title: "Bot Manager action failed", description: formatBotManagerError(err) });
     } finally {
       setBusy(null);
     }
@@ -2894,6 +2857,15 @@ function SecretField({
       </div>
     </div>
   );
+}
+
+function formatBotManagerError(error: unknown) {
+  if (error instanceof ApiError) {
+    const details = error.errors.map((item) => item.path ? `${item.path}: ${item.message}` : item.message);
+    const codeText = error.errorCode ? `[${error.errorCode}] ` : "";
+    return [codeText + error.message, ...details].filter(Boolean).join(" ");
+  }
+  return error instanceof Error ? error.message : "Request failed.";
 }
 
 function Field({
