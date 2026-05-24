@@ -81,6 +81,7 @@ export default function ActivityPage() {
   const [overview, setOverview] = useState<ActivityOverview | null>(null);
   const [visits, setVisits] = useState<ActivityVisitSeries | null>(null);
   const [visitRange, setVisitRange] = useState<ActivityVisitRange>("7d");
+  const [visitCategory, setVisitCategory] = useState<ActivityCategory>("all");
   const [selectedVisitPoint, setSelectedVisitPoint] = useState<ActivityVisitPoint | null>(null);
   const [visitsLoading, setVisitsLoading] = useState(false);
   const [visitsError, setVisitsError] = useState<string | null>(null);
@@ -121,11 +122,11 @@ export default function ActivityPage() {
     let active = true;
     setVisitsLoading(true);
     setVisitsError(null);
-    void getActivityVisits({ range: visitRange })
+    void getActivityVisits({ range: visitRange, category: visitCategory })
       .then((next) => {
         if (!active) return;
         setVisits(next);
-        const lastActivePoint = [...next.points].reverse().find((point) => point.visitors > 0);
+        const lastActivePoint = [...next.points].reverse().find((point) => point.visitors > 0 || point.views > 0);
         setSelectedVisitPoint(lastActivePoint ?? next.points[next.points.length - 1] ?? null);
       })
       .catch((error) => {
@@ -140,7 +141,7 @@ export default function ActivityPage() {
     return () => {
       active = false;
     };
-  }, [visitRange]);
+  }, [visitCategory, visitRange]);
 
   useEffect(() => {
     let active = true;
@@ -275,8 +276,10 @@ export default function ActivityPage() {
             loading={visitsLoading}
             error={visitsError}
             range={visitRange}
+            category={visitCategory}
             selectedPoint={selectedVisitPoint}
             onRangeChange={setVisitRange}
+            onCategoryChange={setVisitCategory}
             onPointSelect={setSelectedVisitPoint}
           />
 
@@ -453,16 +456,20 @@ function ActivityVisitGraph({
   loading,
   error,
   range,
+  category,
   selectedPoint,
   onRangeChange,
+  onCategoryChange,
   onPointSelect,
 }: {
   series: ActivityVisitSeries | null;
   loading: boolean;
   error: string | null;
   range: ActivityVisitRange;
+  category: ActivityCategory;
   selectedPoint: ActivityVisitPoint | null;
   onRangeChange: (range: ActivityVisitRange) => void;
+  onCategoryChange: (category: ActivityCategory) => void;
   onPointSelect: (point: ActivityVisitPoint) => void;
 }) {
   const points = series?.points ?? [];
@@ -479,7 +486,7 @@ function ActivityVisitGraph({
           <div className="min-w-0">
             <h2 className="font-heading text-sm uppercase tracking-[0.12em] text-foreground">Visit Graph</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Timeline of logged-in personnel visits across the website. Tap a node to inspect visitors.
+              Timeline of logged-in website visitors and content views. Tap a node to inspect the bucket.
             </p>
           </div>
         </div>
@@ -501,11 +508,33 @@ function ActivityVisitGraph({
         </div>
       </header>
 
+      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5">
+        <span className="hidden flex-shrink-0 text-[9px] font-display uppercase tracking-[0.14em] text-muted-foreground sm:inline">
+          Views Filter
+        </span>
+        <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+          {categories.map((entry) => (
+            <button
+              key={entry.key}
+              type="button"
+              onClick={() => onCategoryChange(entry.key)}
+              className={`rounded-sm border px-2.5 py-1 text-[9px] font-display uppercase tracking-[0.1em] transition-colors ${
+                category === entry.key
+                  ? "border-primary/70 bg-primary/15 text-primary"
+                  : "border-border/70 text-muted-foreground hover:border-border hover:text-foreground"
+              }`}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Body */}
       <div className="space-y-4 p-4">
         <div className="grid gap-2 sm:grid-cols-3">
-          <Signal label="Logged Visitors" value={series?.totalVisitors ?? series?.uniqueVisitors ?? 0} />
-          <Signal label="Visit Records" value={series?.totalVisits ?? series?.totalViews ?? 0} />
+          <Signal label="Visitors" value={series?.totalVisitors ?? series?.uniqueVisitors ?? 0} />
+          <Signal label="Views" value={series?.totalViews ?? 0} />
           <Signal label="Buckets" value={series?.points.length ?? 0} />
         </div>
 
@@ -520,7 +549,7 @@ function ActivityVisitGraph({
             <ChartContainer
               config={{
                 visitors: { label: "Visitors", color: "hsl(var(--primary))" },
-                visits: { label: "Visit Records", color: "color-mix(in srgb, hsl(var(--foreground)) 72%, hsl(var(--primary)) 28%)" },
+                views: { label: "Views", color: "color-mix(in srgb, hsl(var(--foreground)) 72%, hsl(var(--primary)) 28%)" },
               }}
               className="h-[240px] w-full sm:h-[280px]"
             >
@@ -558,22 +587,22 @@ function ActivityVisitGraph({
                 />
                 <Area
                   type="monotone"
-                  dataKey="visits"
-                  stroke="var(--color-visits)"
-                  fill="var(--color-visits)"
+                  dataKey="views"
+                  stroke="var(--color-views)"
+                  fill="var(--color-views)"
                   fillOpacity={0.1}
                   strokeWidth={2.5}
                   strokeDasharray="6 4"
                   dot={{
                     r: 3,
-                    fill: "var(--color-visits)",
+                    fill: "var(--color-views)",
                     stroke: "hsl(var(--card))",
                     strokeWidth: 1.5,
                   }}
                   activeDot={{
                     r: 6,
                     fill: "hsl(var(--card))",
-                    stroke: "var(--color-visits)",
+                    stroke: "var(--color-views)",
                     strokeWidth: 2.5,
                   }}
                 />
@@ -583,12 +612,15 @@ function ActivityVisitGraph({
           {series && (
             <div className="mt-3 flex flex-wrap gap-3 text-[10px] font-display uppercase tracking-[0.1em] text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full border-2 border-[--color-visitors] bg-card" />
+                <span className="h-2.5 w-2.5 rounded-full border-2 bg-card" style={{ borderColor: "hsl(var(--primary))" }} />
                 Visitors
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full border border-card bg-[--color-visits]" />
-                Visit Records
+                <span
+                  className="h-2.5 w-2.5 rounded-full border border-card"
+                  style={{ backgroundColor: "color-mix(in srgb, hsl(var(--foreground)) 72%, hsl(var(--primary)) 28%)" }}
+                />
+                Views
               </span>
             </div>
           )}
@@ -620,11 +652,12 @@ function ActivityVisitNodePanel({ point }: { point: ActivityVisitPoint | null })
         <div className="text-right">
           <p className="font-display text-xl text-primary">{formatCompactNumber(point.visitors)}</p>
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">visitors</p>
+          <p className="mt-1 font-display text-sm text-muted-foreground">{formatCompactNumber(point.views)} views</p>
         </div>
       </div>
 
-      <div className="mt-4">
-        <ActivityInspectorSection title="Recorded viewers" count={point.viewers.length + point.viewerOverflow} defaultOpen>
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <ActivityInspectorSection title="Recorded visitors" count={point.viewers.length + point.viewerOverflow} defaultOpen>
           <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
             {point.viewers.length === 0 ? (
               <p className="text-xs text-muted-foreground">No logged-in visitor identities recorded in this bucket.</p>
@@ -637,6 +670,33 @@ function ActivityVisitNodePanel({ point }: { point: ActivityVisitPoint | null })
             )}
             {point.viewerOverflow > 0 && (
               <p className="text-xs text-muted-foreground">+{formatCompactNumber(point.viewerOverflow)} more viewers hidden for payload control.</p>
+            )}
+          </div>
+        </ActivityInspectorSection>
+
+        <ActivityInspectorSection title="Viewed content" count={point.topContent.length} defaultOpen>
+          <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+            {point.topContent.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No content views recorded in this bucket.</p>
+            ) : (
+              point.topContent.map((item) => (
+                <Link key={`${item.entityType}:${item.id}`} to={item.url} className="flex gap-3 rounded-sm border border-border/60 bg-background/45 p-2 hover:border-primary/60">
+                  <div className="h-12 w-16 flex-shrink-0 overflow-hidden rounded-sm bg-muted">
+                    {item.thumbnail ? (
+                      <AuthenticatedImage src={item.thumbnail} alt={item.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[9px] font-display uppercase tracking-wider text-muted-foreground">
+                        {item.category}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] font-display uppercase tracking-[0.1em] text-accent-orange">{item.category}</p>
+                    <p className="truncate text-sm font-heading text-foreground">{item.title}</p>
+                    <p className="text-xs text-muted-foreground">{formatCompactNumber(item.views)} views in node</p>
+                  </div>
+                </Link>
+              ))
             )}
           </div>
         </ActivityInspectorSection>
