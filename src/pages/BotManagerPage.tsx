@@ -105,7 +105,6 @@ type BotSecretRef = {
   __botManagerSecret: true;
   configured: boolean;
   preview: string;
-  __botManagerSecretAction?: "clear";
 };
 type SecretFieldValue = string | BotSecretRef;
 
@@ -212,21 +211,11 @@ function readSecretRef(value: unknown): BotSecretRef | null {
     __botManagerSecret: true,
     configured: value.configured !== false,
     preview: readString(value.preview),
-    __botManagerSecretAction: value.__botManagerSecretAction === "clear" ? "clear" : undefined,
   };
 }
 
 function readSecretDraft(value: unknown): SecretFieldValue {
   return readSecretRef(value) ?? readString(value);
-}
-
-function clearSecretMarker(): BotSecretRef {
-  return {
-    __botManagerSecret: true,
-    configured: false,
-    preview: "",
-    __botManagerSecretAction: "clear",
-  };
 }
 
 const sensitiveSecretKeys = new Set(["token", "apikey", "bottoken", "apptoken", "signingsecret", "appsecret", "verificationtoken", "encryptkey", "secret", "webhookurl"]);
@@ -1579,7 +1568,6 @@ export default function BotManagerPage() {
                         onChange={(apiKey) => setCredentialApiKey(typeof apiKey === "string" ? apiKey : "")}
                         name={`bot-manager-${credentialProvider}-api-key`}
                         placeholder="Enter provider API key"
-                        allowClear={false}
                       />
                       <Field label="API Base" value={credentialApiBase} onChange={setCredentialApiBase} placeholder="Optional provider base URL" />
                     </div>
@@ -2179,7 +2167,6 @@ function OpenRouterSection({
             onChange={(apiKey) => onDraftChange({ ...draft, apiKey: typeof apiKey === "string" ? apiKey : "" })}
             name="bot-manager-openrouter-api-key"
             placeholder="Enter OpenRouter API key"
-            allowClear={false}
           />
           <Field label="API Base" value={draft.apiBase} onChange={(apiBase) => onDraftChange({ ...draft, apiBase })} placeholder="https://openrouter.ai/api/v1" />
           <TagField label="Tags" value={draft.tags} onChange={(tags) => onDraftChange({ ...draft, tags })} placeholder="reasoning, production" />
@@ -2767,14 +2754,12 @@ function SecretField({
   onChange,
   placeholder,
   name,
-  allowClear = true,
 }: {
   label: string;
   value: unknown;
   onChange: (value: SecretFieldValue) => void;
   placeholder?: string;
   name?: string;
-  allowClear?: boolean;
 }) {
   const generatedId = useId();
   const secret = readSecretRef(value);
@@ -2784,13 +2769,12 @@ function SecretField({
   const inputName = `bot-manager-private-${generatedId.replace(/[^a-z0-9]/gi, "")}`;
   const inputValue = typeof value === "string" ? value : "";
   const hasNewValue = inputValue.length > 0;
-  const cleared = secret?.__botManagerSecretAction === "clear";
   const configuredSecret = secret?.configured ? secret : lastConfiguredSecret;
   const configured = Boolean(configuredSecret?.configured);
-  const displayText = configured ? `Encrypted: ${configuredSecret?.preview || "***"}` : cleared ? "Cleared" : "";
+  const displayText = configured ? `Encrypted: ${configuredSecret?.preview || "***"}` : "";
   const displayMode = !focused && !hasNewValue && Boolean(displayText);
   const displayValue = displayMode ? displayText : inputValue;
-  const statusText = hasNewValue ? "New value pending" : configured ? displayText : cleared ? "Cleared" : "Empty";
+  const statusText = hasNewValue ? "New value pending" : configured ? displayText : "Empty";
 
   useEffect(() => {
     if (previousName.current !== name) {
@@ -2803,15 +2787,15 @@ function SecretField({
       setLastConfiguredSecret(secret);
       setFocused(false);
     }
-    if (secret?.__botManagerSecretAction === "clear") {
+    if (secret && !secret.configured) {
       setLastConfiguredSecret(null);
       setFocused(false);
     }
-  }, [name, secret?.configured, secret?.preview, secret?.__botManagerSecretAction]);
+  }, [name, secret?.configured, secret?.preview]);
 
   const updateValue = (next: string) => {
     flushSync(() => {
-      if (!next && configuredSecret && !cleared) {
+      if (!next && configuredSecret) {
         onChange(configuredSecret);
         return;
       }
@@ -2827,7 +2811,7 @@ function SecretField({
           {statusText}
         </span>
       </div>
-      <div className="flex gap-2">
+      <div>
         <input
           type="text"
           id={inputName}
@@ -2849,11 +2833,6 @@ function SecretField({
           onBlur={() => setFocused(false)}
           onChange={(event) => updateValue(event.target.value)}
         />
-        {allowClear && configured && !hasNewValue && (
-          <Button type="button" variant="outline" onClick={() => { setFocused(false); onChange(clearSecretMarker()); }}>
-            Clear
-          </Button>
-        )}
       </div>
     </div>
   );
