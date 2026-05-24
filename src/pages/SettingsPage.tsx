@@ -2356,8 +2356,6 @@ function PasswordField({
   ignorePasswordManagers = false,
   value,
   onChange,
-  shown,
-  onToggle,
   placeholder,
   className,
 }: {
@@ -2367,17 +2365,18 @@ function PasswordField({
   ignorePasswordManagers?: boolean;
   value: string;
   onChange: (value: string) => void;
-  shown: boolean;
-  onToggle: () => void;
+  shown?: boolean;
+  onToggle?: () => void;
   placeholder: string;
   className: string;
 }) {
+  const { revealed, toggle } = useRevealTimer();
   return (
     <div className="space-y-2">
       <label className="text-xs font-heading tracking-[0.12em] text-muted-foreground uppercase">{label}</label>
       <div className="relative">
         <input
-          type={shown ? "text" : "password"}
+          type={revealed ? "text" : "password"}
           name={name}
           autoComplete={autoComplete}
           autoCorrect="off"
@@ -2393,11 +2392,12 @@ function PasswordField({
         />
         <button
           type="button"
-          onClick={onToggle}
+          onClick={toggle}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
-          aria-label={shown ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+          aria-label={revealed ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+          title={revealed ? "Hide" : "Show for 10s"}
         >
-          {shown ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
     </div>
