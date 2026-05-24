@@ -1,4 +1,4 @@
-import { apiRequest, getAccessToken, getApiBaseUrl } from "@/services/restClient";
+import { apiRequest, apiUploadForm, getAccessToken, getApiBaseUrl, type UploadProgress } from "@/services/restClient";
 
 const BACKUP_MIGRATION_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -49,16 +49,16 @@ export async function startMigrationFromBackupRemote(payload: {
   password: string;
   secretKey: string;
   confirmText: "MIGRATION";
+  onUploadProgress?: (progress: UploadProgress) => void;
 }): Promise<MigrationJob> {
   const form = new FormData();
   form.append("backup", payload.backupFile);
   form.append("password", payload.password);
   form.append("secretKey", payload.secretKey);
   form.append("confirmText", payload.confirmText);
-  return apiRequest<MigrationJob>("/settings/migrations/from-backup", {
-    method: "POST",
-    body: form,
+  return apiUploadForm<MigrationJob>("/settings/migrations/from-backup", form, {
     timeoutMs: BACKUP_MIGRATION_TIMEOUT_MS,
+    onProgress: payload.onUploadProgress,
   });
 }
 

@@ -30,6 +30,8 @@ export interface ApiUploadOptions {
   timeoutMs?: number;
 }
 
+export type ApiFormUploadOptions = Omit<ApiUploadOptions, "fieldName">;
+
 export interface BackendPage<T> {
   items: T[];
   page?: number;
@@ -293,10 +295,25 @@ export async function apiUpload<T>(
 ): Promise<T> {
   const options: ApiUploadOptions =
     typeof fieldNameOrOptions === "string" ? { fieldName: fieldNameOrOptions } : fieldNameOrOptions;
+  const form = new FormData();
+  form.append(options.fieldName ?? "file", file);
 
+  return apiUploadForm<T>(path, form, {
+    ...options,
+    onProgress: (progress) => {
+      const total = progress.total ?? (file.size || undefined);
+      const percent = total ? Math.min(100, Math.max(0, Math.round((progress.loaded / total) * 100))) : progress.percent;
+      options.onProgress?.({ loaded: progress.loaded, total, percent });
+    },
+  });
+}
+
+export async function apiUploadForm<T>(
+  path: string,
+  form: FormData,
+  options: ApiFormUploadOptions = {},
+): Promise<T> {
   if (typeof XMLHttpRequest === "undefined") {
-    const form = new FormData();
-    form.append(options.fieldName ?? "file", file);
     return apiRequest<T>(path, {
       method: "POST",
       body: form,
@@ -307,14 +324,11 @@ export async function apiUpload<T>(
   }
 
   const {
-    fieldName = "file",
     onProgress,
     auth = true,
     retryOnUnauthorized = true,
     timeoutMs = DEFAULT_UPLOAD_TIMEOUT_MS,
   } = options;
-  const form = new FormData();
-  form.append(fieldName, file);
 
   return new Promise<T>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -328,7 +342,7 @@ export async function apiUpload<T>(
     }
 
     xhr.upload.onprogress = (event) => {
-      const total = event.lengthComputable && event.total > 0 ? event.total : file.size || undefined;
+      const total = event.lengthComputable && event.total > 0 ? event.total : undefined;
       const percent = total ? Math.min(100, Math.max(0, Math.round((event.loaded / total) * 100))) : undefined;
       onProgress?.({ loaded: event.loaded, total, percent });
     };
@@ -341,7 +355,7 @@ export async function apiUpload<T>(
           try {
             const refreshed = await refreshAccessToken();
             if (refreshed) {
-              resolve(apiUpload<T>(path, file, { ...options, retryOnUnauthorized: false }));
+              resolve(apiUploadForm<T>(path, form, { ...options, retryOnUnauthorized: false }));
               return;
             }
           } catch {
@@ -353,7 +367,6 @@ export async function apiUpload<T>(
         return;
       }
 
-      onProgress?.({ loaded: file.size, total: file.size, percent: 100 });
       try {
         resolve(unwrapPayload<T>(payload, xhr.status));
       } catch (error) {

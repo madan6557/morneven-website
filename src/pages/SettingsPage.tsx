@@ -190,6 +190,13 @@ export default function SettingsPage() {
   const [migrationEndpoint, setMigrationEndpoint] = useState("");
   const [migrationMode, setMigrationMode] = useState<"live" | "backup">("live");
   const [migrationBackupFile, setMigrationBackupFile] = useState<File | null>(null);
+  const [migrationUploadProgress, setMigrationUploadProgress] = useState<{
+    percent: number;
+    loaded: number;
+    total?: number;
+    stage: string;
+    message: string;
+  } | null>(null);
   const [showExtractionPassword, setShowExtractionPassword] = useState(false);
   const [showExtractionSecretKey, setShowExtractionSecretKey] = useState(false);
   const [showMigrationPassword, setShowMigrationPassword] = useState(false);
@@ -1953,7 +1960,10 @@ export default function SettingsPage() {
               <div className="grid gap-2 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={() => setMigrationMode("live")}
+                  onClick={() => {
+                    setMigrationMode("live");
+                    setMigrationUploadProgress(null);
+                  }}
                   className={`rounded-sm border px-3 py-2 text-left text-xs font-heading uppercase tracking-[0.12em] ${
                     migrationMode === "live" ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"
                   }`}
@@ -1962,7 +1972,10 @@ export default function SettingsPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setMigrationMode("backup")}
+                  onClick={() => {
+                    setMigrationMode("backup");
+                    setMigrationUploadProgress(null);
+                  }}
                   className={`rounded-sm border px-3 py-2 text-left text-xs font-heading uppercase tracking-[0.12em] ${
                     migrationMode === "backup" ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"
                   }`}
@@ -1996,12 +2009,25 @@ export default function SettingsPage() {
                   <input
                     type="file"
                     accept=".zip,application/zip"
-                    onChange={(event) => setMigrationBackupFile(event.target.files?.[0] ?? null)}
+                    onChange={(event) => {
+                      setMigrationBackupFile(event.target.files?.[0] ?? null);
+                      setMigrationUploadProgress(null);
+                    }}
                     className={inputClass}
                   />
                   <span className="block text-xs text-muted-foreground">
                     {migrationBackupFile ? `${migrationBackupFile.name} (${Math.round(migrationBackupFile.size / 1024 / 1024)} MB)` : "Choose a backup_ddbbyyhhss.zip archive."}
                   </span>
+                  {migrationUploadProgress && (
+                    <div className="space-y-2 rounded-sm border border-primary/25 bg-primary/5 p-3">
+                      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                        <span className="font-heading uppercase tracking-[0.12em]">{migrationUploadProgress.stage}</span>
+                        <span className="font-display text-foreground">{migrationUploadProgress.percent}%</span>
+                      </div>
+                      <Progress value={Math.min(100, Math.max(0, migrationUploadProgress.percent))} className="h-2 bg-muted/70" />
+                      <p className="text-xs leading-5 text-muted-foreground">{migrationUploadProgress.message}</p>
+                    </div>
+                  )}
                 </label>
               )}
 
@@ -2064,14 +2090,53 @@ export default function SettingsPage() {
                         secretKey: migrationSecretKey,
                         confirmText: "MIGRATION" as const,
                       };
-                      const job = migrationMode === "backup" && migrationBackupFile
-                        ? await startMigrationFromBackupRemote({
+                      let job: MigrationJob;
+                      if (migrationMode === "backup" && migrationBackupFile) {
+                        setMigrationUploadProgress({
+                          percent: 0,
+                          loaded: 0,
+                          total: migrationBackupFile.size,
+                          stage: "uploading-backup",
+                          message: `Preparing ${migrationBackupFile.name} for upload.`,
+                        });
+                        try {
+                          job = await startMigrationFromBackupRemote({
                             backupFile: migrationBackupFile,
                             password: migrationPassword,
                             secretKey: migrationSecretKey,
                             confirmText: "MIGRATION",
-                          })
-                        : await startMigrationRemote(commonPayload);
+                            onUploadProgress: (progress) => {
+                              const total = progress.total ?? migrationBackupFile.size;
+                              const percent = progress.percent ?? Math.round((progress.loaded / total) * 100);
+                              const safePercent = Math.min(100, Math.max(0, percent));
+                              setMigrationUploadProgress({
+                                percent: safePercent,
+                                loaded: progress.loaded,
+                                total,
+                                stage: safePercent >= 100 ? "queued-restore" : "uploading-backup",
+                                message: safePercent >= 100
+                                  ? "Backup ZIP uploaded. Waiting for restore job to start."
+                                  : `Uploading ${formatBytes(progress.loaded)} of ${formatBytes(total)}.`,
+                              });
+                            },
+                          });
+                        } catch (error) {
+                          setMigrationUploadProgress((current) => current
+                            ? { ...current, stage: "upload-failed", message: "Backup upload or restore start failed." }
+                            : null);
+                          throw error;
+                        }
+                        setMigrationUploadProgress({
+                          percent: 100,
+                          loaded: migrationBackupFile.size,
+                          total: migrationBackupFile.size,
+                          stage: "restore-tracked",
+                          message: "Backup ZIP uploaded. Restore progress is now tracked in Migration History.",
+                        });
+                      } else {
+                        setMigrationUploadProgress(null);
+                        job = await startMigrationRemote(commonPayload);
+                      }
                       setMigrationHistory((current) => [job, ...current]);
                       setShouldPollMigration(job.status === "processing");
                     }, "Migration started", "Migration failed");
