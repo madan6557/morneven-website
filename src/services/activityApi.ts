@@ -97,6 +97,8 @@ export interface ActivityVisitPoint {
   bucketStart: string;
   bucketLabel: string;
   views: number;
+  visitors: number;
+  visits: number;
   uniqueVisitors: number;
   viewers: ActivityViewerSummary[];
   viewerOverflow: number;
@@ -108,6 +110,8 @@ export interface ActivityVisitSeries {
   bucket: ActivityVisitBucket;
   category: ActivityCategory;
   totalViews: number;
+  totalVisitors: number;
+  totalVisits: number;
   uniqueVisitors: number;
   points: ActivityVisitPoint[];
 }
