@@ -1402,8 +1402,14 @@ export default function BotManagerPage() {
       : runtimeStatus?.gateway?.uptime ?? 0
     : 0;
   const runtimeMode = summary?.runtimeStatus.runtimeMode ?? generalDraft.runtimeMode;
+  const isMultiRuntime = runtimeMode === "multi-active-personality";
   const activeRuntimeIdentities = (summary?.identities ?? []).filter((identity) => identity.isActive || (runtimeMode === "single-active-personality" && identity.isMain));
   const runtimeStatusByIdentity = new Map((runtimeStatus?.gateway?.runtimes ?? []).map((runtime) => [runtime.identityId, runtime]));
+  const runningRuntimeCount = activeRuntimeIdentities.filter((identity) => (runtimeStatusByIdentity.get(identity.id)?.state ?? (identity.isMain ? gatewayState : "stopped")) === "running").length;
+  const enabledRuntimeChannelCount = activeRuntimeIdentities.reduce((total, identity) => {
+    const channels = Object.values(asRecord(identity.channels)).filter((value) => asRecord(value).enabled === true).length;
+    return total + channels;
+  }, 0);
   const runtimeDirty = Boolean(summary?.runtimeSync.runtimeDirty);
   const runtimeConflictCount = summary?.runtimeSync.lastRuntimePullConflictCount ?? 0;
   const syncUnavailable = Boolean(error && !summary);
@@ -1553,79 +1559,99 @@ export default function BotManagerPage() {
                 <Bot className="h-4 w-4" />
                 <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Runtime</h2>
               </div>
-              <Badge variant="outline">{runtimeMode === "multi-active-personality" ? `${activeRuntimeIdentities.length} active runtimes` : "Single active runtime"}</Badge>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline">{isMultiRuntime ? `${activeRuntimeIdentities.length} active runtimes` : "Single runtime"}</Badge>
+                {!isMultiRuntime && (
+                  <>
+                    <Button type="button" variant="outline" onClick={() => controlRuntime("start")} disabled={runtimeActionDisabled || gatewayRunning || gatewayTransitioning}>
+                      {busy === "runtime-start" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                      Start
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => controlRuntime("stop")} disabled={runtimeActionDisabled || !gatewayRunning || gatewayTransitioning}>
+                      {busy === "runtime-stop" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Square className="mr-2 h-4 w-4" />}
+                      Stop
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => controlRuntime("restart")} disabled={runtimeActionDisabled || !gatewayRunning || gatewayTransitioning}>
+                      {busy === "runtime-restart" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                      Restart
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
             <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-              <Metric label="Main Personality" value={(summary?.identities.find((identity) => identity.isMain) ?? activeIdentity)?.name ?? "None"} />
+              <Metric label={isMultiRuntime ? "Runtime Mode" : "Active Personality"} value={isMultiRuntime ? "Multi active personality" : ((summary?.identities.find((identity) => identity.isMain) ?? activeIdentity)?.name ?? "None")} />
+              <Metric label={isMultiRuntime ? "Active Runtimes" : "Gateway State"} value={isMultiRuntime ? String(activeRuntimeIdentities.length) : gatewayState} />
+              <Metric label={isMultiRuntime ? "Running Runtimes" : "Gateway Uptime"} value={isMultiRuntime ? `${runningRuntimeCount} running / ${Math.max(activeRuntimeIdentities.length - runningRuntimeCount, 0)} stopped` : formatUptime(gatewayUptimeSeconds)} />
+              <Metric label={isMultiRuntime ? "Enabled Channels" : "Last Sync"} value={isMultiRuntime ? String(enabledRuntimeChannelCount) : lastSync} />
+              <Metric label={isMultiRuntime ? "Main Personality" : "Provider"} value={isMultiRuntime ? ((summary?.identities.find((identity) => identity.isMain) ?? activeIdentity)?.name ?? "None") : (activeProvider || "default provider")} />
               <Metric label="Saved Personalities" value={String(summary?.identities.length ?? 0)} />
               <Metric label="Nanobot Link" value={nanobotConfigured ? "Configured" : "Not configured"} />
               <Metric label="Sync State" value={syncState} />
               {runtimeDirty && <Metric label="Sync Reason" value={summary?.runtimeSync.runtimeDirtyReason ?? "Runtime changes pending"} />}
-              <Metric label="Gateway State" value={gatewayState} />
-              <Metric label="Gateway Uptime" value={formatUptime(gatewayUptimeSeconds)} />
-              <Metric label="Last Sync" value={lastSync} />
             </div>
-            <div className="mt-4 grid gap-3 lg:grid-cols-2">
-              {activeRuntimeIdentities.map((identity) => {
-                const status = runtimeStatusByIdentity.get(identity.id);
-                const state = status?.state ?? (identity.isMain ? gatewayState : "stopped");
-                const isRunning = state === "running";
-                const isTransitioning = state === "starting" || state === "stopping";
-                const startedAtMs = status?.startedAt ? Date.parse(status.startedAt) : Number.NaN;
-                const uptime = isRunning
-                  ? Number.isFinite(startedAtMs)
-                    ? Math.max(Math.floor((runtimeNow - startedAtMs) / 1000), 0)
-                    : status?.uptime ?? 0
-                  : 0;
-                const providerLabel = identity.runtimeProvider || activeProvider || "default provider";
-                const enabledChannels = Object.entries(asRecord(identity.channels))
-                  .filter(([, value]) => asRecord(value).enabled === true)
-                  .map(([key]) => key)
-                  .join(", ") || "No enabled channels";
-                return (
-                  <div key={identity.id} className="rounded-sm border border-border/80 bg-background/30 p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <Profile identity={identity} />
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="truncate font-heading text-base text-foreground">{identity.name}</h3>
-                            {identity.isMain && <Badge variant="outline">Main</Badge>}
+            {isMultiRuntime && (
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                {activeRuntimeIdentities.map((identity) => {
+                  const status = runtimeStatusByIdentity.get(identity.id);
+                  const state = status?.state ?? (identity.isMain ? gatewayState : "stopped");
+                  const isRunning = state === "running";
+                  const isTransitioning = state === "starting" || state === "stopping";
+                  const startedAtMs = status?.startedAt ? Date.parse(status.startedAt) : Number.NaN;
+                  const uptime = isRunning
+                    ? Number.isFinite(startedAtMs)
+                      ? Math.max(Math.floor((runtimeNow - startedAtMs) / 1000), 0)
+                      : status?.uptime ?? 0
+                    : 0;
+                  const providerLabel = identity.runtimeProvider || activeProvider || "default provider";
+                  const enabledChannels = Object.entries(asRecord(identity.channels))
+                    .filter(([, value]) => asRecord(value).enabled === true)
+                    .map(([key]) => key)
+                    .join(", ") || "No enabled channels";
+                  return (
+                    <div key={identity.id} className="rounded-sm border border-border/80 bg-background/30 p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <Profile identity={identity} />
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="truncate font-heading text-base text-foreground">{identity.name}</h3>
+                              {identity.isMain && <Badge variant="outline">Main</Badge>}
+                            </div>
+                            <p className="truncate text-sm text-muted-foreground">{providerLabel}</p>
+                            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{enabledChannels}</p>
                           </div>
-                          <p className="truncate text-sm text-muted-foreground">{providerLabel}</p>
-                          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{enabledChannels}</p>
                         </div>
+                        <Badge variant={isRunning ? "default" : "outline"}>{state}</Badge>
                       </div>
-                      <Badge variant={isRunning ? "default" : "outline"}>{state}</Badge>
+                      <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                        <Metric label="Uptime" value={formatUptime(uptime)} />
+                        <Metric label="PID" value={status?.pid ? String(status.pid) : "-"} />
+                      </div>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                        <Button type="button" variant="outline" onClick={() => controlRuntimeIdentity(identity, "start")} disabled={runtimeActionDisabled || isRunning || isTransitioning}>
+                          {busy === `runtime-${identity.id}-start` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                          Start
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => controlRuntimeIdentity(identity, "stop")} disabled={runtimeActionDisabled || !isRunning || isTransitioning}>
+                          {busy === `runtime-${identity.id}-stop` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Square className="mr-2 h-4 w-4" />}
+                          Stop
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => controlRuntimeIdentity(identity, "restart")} disabled={runtimeActionDisabled || !isRunning || isTransitioning}>
+                          {busy === `runtime-${identity.id}-restart` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                          Restart
+                        </Button>
+                      </div>
                     </div>
-                    <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
-                      <Metric label="Uptime" value={formatUptime(uptime)} />
-                      <Metric label="Last Sync" value={lastSync} />
-                      <Metric label="PID" value={status?.pid ? String(status.pid) : "-"} />
-                    </div>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                      <Button type="button" variant="outline" onClick={() => controlRuntimeIdentity(identity, "start")} disabled={runtimeActionDisabled || isRunning || isTransitioning}>
-                        {busy === `runtime-${identity.id}-start` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                        Start
-                      </Button>
-                      <Button type="button" variant="outline" onClick={() => controlRuntimeIdentity(identity, "stop")} disabled={runtimeActionDisabled || !isRunning || isTransitioning}>
-                        {busy === `runtime-${identity.id}-stop` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Square className="mr-2 h-4 w-4" />}
-                        Stop
-                      </Button>
-                      <Button type="button" variant="outline" onClick={() => controlRuntimeIdentity(identity, "restart")} disabled={runtimeActionDisabled || !isRunning || isTransitioning}>
-                        {busy === `runtime-${identity.id}-restart` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                        Restart
-                      </Button>
-                    </div>
+                  );
+                })}
+                {activeRuntimeIdentities.length === 0 && (
+                  <div className="rounded-sm border border-border/70 bg-background/35 p-6 text-center text-sm text-muted-foreground">
+                    No active runtime personalities.
                   </div>
-                );
-              })}
-              {activeRuntimeIdentities.length === 0 && (
-                <div className="rounded-sm border border-border/70 bg-background/35 p-6 text-center text-sm text-muted-foreground">
-                  No active runtime personalities.
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
             {runtimeError && (
               <div className="mt-3 rounded-sm border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
                 {runtimeError}
