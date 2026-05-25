@@ -2367,6 +2367,17 @@ function OpenRouterSection({
         <div className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
           <Field label="Profile Name" value={draft.name} onChange={(name) => onDraftChange({ ...draft, name })} placeholder="OpenRouter DeepSeek" />
           <Field label="Model ID" value={draft.modelId} onChange={(modelId) => onDraftChange({ ...draft, modelId })} placeholder="deepseek/deepseek-chat-v3" />
+          <Field label="API Base" value={draft.apiBase} onChange={(apiBase) => onDraftChange({ ...draft, apiBase })} placeholder="https://openrouter.ai/api/v1" />
+        </div>
+        <div className="mt-4 grid items-end gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <TagField label="Tags" value={draft.tags} onChange={(tags) => onDraftChange({ ...draft, tags })} placeholder="reasoning, production" />
+          <Field label="Notes" value={draft.notes} onChange={(notes) => onDraftChange({ ...draft, notes })} />
+          <Button type="button" className="h-10 whitespace-nowrap" onClick={onSave} disabled={!draft.name.trim() || (!draft.id && !draft.apiKey.trim()) || !draft.modelId.trim() || !canUseCredentialGate || Boolean(busy)}>
+            <Save className="mr-2 h-4 w-4" />
+            {draft.id ? "Update OpenRouter Profile" : "Create OpenRouter Profile"}
+          </Button>
+        </div>
+        <div className="mt-4">
           <SecretField
             label="API Key"
             value={draft.apiKey || (draft.id && draft.keyPreview ? { __botManagerSecret: true, configured: true, preview: draft.keyPreview } : "")}
@@ -2374,15 +2385,8 @@ function OpenRouterSection({
             name="bot-manager-openrouter-api-key"
             placeholder="Enter OpenRouter API key"
           />
-          <Field label="API Base" value={draft.apiBase} onChange={(apiBase) => onDraftChange({ ...draft, apiBase })} placeholder="https://openrouter.ai/api/v1" />
-          <TagField label="Tags" value={draft.tags} onChange={(tags) => onDraftChange({ ...draft, tags })} placeholder="reasoning, production" />
-          <Field label="Notes" value={draft.notes} onChange={(notes) => onDraftChange({ ...draft, notes })} />
         </div>
         <div className="mt-3 flex justify-end gap-2">
-          <Button type="button" onClick={onSave} disabled={!draft.name.trim() || (!draft.id && !draft.apiKey.trim()) || !draft.modelId.trim() || !canUseCredentialGate || Boolean(busy)}>
-            <Save className="mr-2 h-4 w-4" />
-            {draft.id ? "Update OpenRouter Profile" : "Create OpenRouter Profile"}
-          </Button>
           {draft.id && (
             <Button type="button" variant="outline" onClick={() => onDraftChange({ name: "", apiKey: "", apiBase: "", modelId: "", tags: [], notes: "" })}>
               Cancel
