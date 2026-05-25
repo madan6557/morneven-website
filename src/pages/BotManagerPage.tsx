@@ -3099,11 +3099,8 @@ function SecretField({
 
   return (
     <div className="block space-y-2">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex min-h-[18px] items-center">
         <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
-        <span className={cn("max-w-[14rem] truncate text-[11px]", configured || hasNewValue ? "text-primary" : "text-muted-foreground")}>
-          {statusText}
-        </span>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -3131,6 +3128,9 @@ function SecretField({
           <RevealToggle revealed={revealed} remaining={remaining} onToggle={toggle} />
         ) : null}
       </div>
+      <p className={cn("truncate text-[10px] uppercase tracking-[0.14em]", configured || hasNewValue ? "text-primary/80" : "text-muted-foreground/80")}>
+        {statusText}
+      </p>
     </div>
   );
 }
