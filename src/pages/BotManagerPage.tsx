@@ -1588,7 +1588,7 @@ export default function BotManagerPage() {
               <Metric label="Saved Personalities" value={String(summary?.identities.length ?? 0)} />
               <Metric label="Nanobot Link" value={nanobotConfigured ? "Configured" : "Not configured"} />
               <Metric label="Sync State" value={syncState} />
-              {runtimeDirty && <Metric label="Sync Reason" value={summary?.runtimeSync.runtimeDirtyReason ?? "Runtime changes pending"} />}
+              <Metric label="Sync Reason" value={runtimeDirty ? (summary?.runtimeSync.runtimeDirtyReason ?? "Runtime changes pending") : "No pending runtime changes"} />
             </div>
             {isMultiRuntime && (
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
