@@ -1819,8 +1819,18 @@ export default function BotManagerPage() {
                   <textarea className={cn(inputClass, "min-h-28 resize-y")} value={generalDraft.globalRules} onChange={(event) => updateGeneralDraft({ globalRules: event.target.value })} />
                 </label>
                 <div className="grid gap-3 md:grid-cols-2">
-                  <ToggleControl label="Restart after sync" value={generalDraft.restartAfterSync} onChange={(restartAfterSync) => updateGeneralDraft({ restartAfterSync })} />
-                  <ToggleControl label="Allow runtime reload" value={generalDraft.allowRuntimeReload} onChange={(allowRuntimeReload) => updateGeneralDraft({ allowRuntimeReload })} />
+                  <ToggleControl
+                    label="Default Restart After Sync"
+                    description="Fallback restart behavior for personalities without their own override."
+                    value={generalDraft.restartAfterSync}
+                    onChange={(restartAfterSync) => updateGeneralDraft({ restartAfterSync })}
+                  />
+                  <ToggleControl
+                    label="Allow Runtime Reload"
+                    description="Lets Sync apply backend config and workspace changes to Nanobot runtimes."
+                    value={generalDraft.allowRuntimeReload}
+                    onChange={(allowRuntimeReload) => updateGeneralDraft({ allowRuntimeReload })}
+                  />
                 </div>
                 <Button type="button" onClick={saveGeneralConfig} disabled={Boolean(busy)}>
                   <Save className="mr-2 h-4 w-4" />
@@ -2938,7 +2948,12 @@ function SettingsEditor({
             <Field label="Web Search Max Results" type="number" value={settingsDraft.webSearchMaxResults} onChange={(webSearchMaxResults) => onSettingsChange({ webSearchMaxResults })} />
             <Field label="Execution Timeout" type="number" value={settingsDraft.execTimeout} onChange={(execTimeout) => onSettingsChange({ execTimeout })} />
             <ToggleControl label="Restrict File Access" value={settingsDraft.restrictToWorkspace} onChange={(restrictToWorkspace) => onSettingsChange({ restrictToWorkspace })} />
-            <ToggleControl label="Restart After Sync" value={settingsDraft.restartAfterSync} onChange={(restartAfterSync) => onSettingsChange({ restartAfterSync })} />
+            <ToggleControl
+              label="Restart This Runtime After Sync"
+              description="Applies only to this personality runtime when Sync updates its config or workspace."
+              value={settingsDraft.restartAfterSync}
+              onChange={(restartAfterSync) => onSettingsChange({ restartAfterSync })}
+            />
           </div>
         </div>
       </div>
@@ -2951,7 +2966,7 @@ function SettingsEditor({
   );
 }
 
-function ToggleControl({ label, value, disabled = false, onChange }: { label: string; value: boolean; disabled?: boolean; onChange: (value: boolean) => void }) {
+function ToggleControl({ label, description, value, disabled = false, onChange }: { label: string; description?: string; value: boolean; disabled?: boolean; onChange: (value: boolean) => void }) {
   return (
     <button
       type="button"
@@ -2959,8 +2974,11 @@ function ToggleControl({ label, value, disabled = false, onChange }: { label: st
       disabled={disabled}
       onClick={() => onChange(!value)}
     >
-      <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
-      <span className={cn("relative h-6 w-11 rounded-full transition-colors", value ? "bg-primary" : "bg-muted")}>
+      <span className="min-w-0">
+        <span className="block text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
+        {description && <span className="mt-1 block text-xs normal-case tracking-normal text-muted-foreground/75">{description}</span>}
+      </span>
+      <span className={cn("relative h-6 w-11 shrink-0 rounded-full transition-colors", value ? "bg-primary" : "bg-muted")}>
         <span className={cn("absolute top-1 h-4 w-4 rounded-full bg-background transition-transform", value ? "translate-x-6" : "translate-x-1")} />
       </span>
     </button>
