@@ -1730,7 +1730,7 @@ export default function BotManagerPage() {
                   <p className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Add / update credential</p>
                   <div className="rounded-sm border border-border/70 bg-background/35 p-3">
 
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_minmax(16rem,1.2fr)_minmax(14rem,1fr)_auto]">
                       <label className="space-y-2">
                         <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Provider</span>
                         <select className={inputClass} value={credentialProvider} onChange={(event) => setCredentialProvider(event.target.value as BotProvider)}>
@@ -1748,9 +1748,7 @@ export default function BotManagerPage() {
                         placeholder="Enter provider API key"
                       />
                       <Field label="API Base" value={credentialApiBase} onChange={setCredentialApiBase} placeholder="Optional provider base URL" />
-                    </div>
-                    <div className="mt-3 flex justify-end">
-                      <Button type="button" onClick={saveCredential} disabled={!canSubmitCredential || Boolean(busy)}>
+                      <Button type="button" className="h-10 whitespace-nowrap" onClick={saveCredential} disabled={!canSubmitCredential || Boolean(busy)}>
                         {busy === "credential" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
                         Save Credential
                       </Button>
@@ -2771,10 +2769,12 @@ function ChannelFields({
 }) {
   if (channel === "telegram") {
     return (
-      <div className="grid gap-3 md:grid-cols-2">
-        <SecretField label="Token" value={config.token} onChange={(token) => onUpdate({ token })} name="bot-manager-telegram-token" placeholder="Enter Telegram bot token" />
+      <div className="grid items-start gap-3 md:grid-cols-2">
+        <div className="space-y-3">
+          <SecretField label="Token" value={config.token} onChange={(token) => onUpdate({ token })} name="bot-manager-telegram-token" placeholder="Enter Telegram bot token" />
+          <Field label="Proxy" value={readString(config.proxy)} onChange={(proxy) => onUpdate({ proxy })} placeholder="Optional proxy URL" />
+        </div>
         <TagField label="Allowed User IDs" value={readStringArray(config.allowFrom)} onChange={(allowFrom) => onUpdate({ allowFrom })} placeholder="* or user ID" />
-        <Field label="Proxy" value={readString(config.proxy)} onChange={(proxy) => onUpdate({ proxy })} placeholder="Optional proxy URL" />
       </div>
     );
   }
@@ -3117,8 +3117,11 @@ function SecretField({
 
   return (
     <div className="block space-y-2">
-      <div className="flex min-h-[18px] items-center">
+      <div className="flex min-h-[18px] items-center justify-between gap-3">
         <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
+        <span className={cn("max-w-[55%] truncate text-[10px] uppercase tracking-[0.14em]", configured || hasNewValue ? "text-primary/80" : "text-muted-foreground/80")}>
+          {statusText}
+        </span>
       </div>
       <div className="flex items-center gap-2">
         <input
