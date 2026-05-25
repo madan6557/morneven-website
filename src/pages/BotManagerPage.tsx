@@ -1435,6 +1435,7 @@ export default function BotManagerPage() {
     : "Never";
   const activeProvider = summary?.runtimeStatus.activeProvider ?? "";
   const activeOpenRouterProfileId = summary?.runtimeStatus.activeOpenRouterProfileId ?? "";
+  const syncReasonText = runtimeDirty ? (summary?.runtimeSync.runtimeDirtyReason ?? "Runtime changes pending") : "No pending runtime changes";
   const selectedCredential = summary?.credentials.find((item) => item.provider === credentialProvider);
   const credentialApiKeyValue: SecretFieldValue = credentialApiKey || (selectedCredential?.configured
     ? { __botManagerSecret: true, configured: true, preview: selectedCredential.keyPreview || "***" }
@@ -1519,6 +1520,7 @@ export default function BotManagerPage() {
           <Badge variant={syncStateVariant}>Sync: {syncState}</Badge>
           <Badge variant="outline">Gateway: {gatewayState}</Badge>
           {runtimeDirty && <Badge variant="destructive">Runtime dirty</Badge>}
+          <span className="min-w-0 truncate text-muted-foreground">Reason: {syncReasonText}</span>
         </div>
         <div role="tablist" aria-label="Bot Manager sections" className="hud-border bg-card/40 p-1 flex gap-1 overflow-x-auto">
           {([
@@ -1588,7 +1590,6 @@ export default function BotManagerPage() {
               <Metric label="Saved Personalities" value={String(summary?.identities.length ?? 0)} />
               <Metric label="Nanobot Link" value={nanobotConfigured ? "Configured" : "Not configured"} />
               <Metric label="Sync State" value={syncState} />
-              <Metric label="Sync Reason" value={runtimeDirty ? (summary?.runtimeSync.runtimeDirtyReason ?? "Runtime changes pending") : "No pending runtime changes"} />
             </div>
             {isMultiRuntime && (
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
