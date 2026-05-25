@@ -303,7 +303,7 @@ function characterProfileImage(character?: Character | null) {
 function createGeneralConfigDraft(value: unknown): GeneralConfigDraft {
   const config = asRecord(value);
   const gateway = asRecord(config.gateway);
-  const runtimeMode = readString(config.runtimeMode, "single-active-personality") === "multi-active-personality"
+  const runtimeMode: GeneralConfigDraft["runtimeMode"] = readString(config.runtimeMode, "single-active-personality") === "multi-active-personality"
     ? "multi-active-personality"
     : "single-active-personality";
   return {
@@ -339,7 +339,7 @@ function sameGeneralConfigDraft(left: GeneralConfigDraft, right: GeneralConfigDr
   );
 }
 
-function readStoredGeneralConfigDraft() {
+function readStoredGeneralConfigDraft(): GeneralConfigDraft | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(generalConfigDraftStorageKey);
@@ -347,7 +347,7 @@ function readStoredGeneralConfigDraft() {
     const parsed = JSON.parse(raw) as { draft?: unknown };
     const draft = asRecord(parsed.draft ?? parsed);
     if ("timezone" in draft || "globalRules" in draft || "runtimeMode" in draft || "restartAfterSync" in draft || "allowRuntimeReload" in draft) {
-      const runtimeMode = readString(draft.runtimeMode, "single-active-personality") === "multi-active-personality"
+      const runtimeMode: GeneralConfigDraft["runtimeMode"] = readString(draft.runtimeMode, "single-active-personality") === "multi-active-personality"
         ? "multi-active-personality"
         : "single-active-personality";
       return {
@@ -3099,11 +3099,8 @@ function SecretField({
 
   return (
     <div className="block space-y-2">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex min-h-[18px] items-center">
         <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
-        <span className={cn("max-w-[14rem] truncate text-[11px]", configured || hasNewValue ? "text-primary" : "text-muted-foreground")}>
-          {statusText}
-        </span>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -3131,6 +3128,9 @@ function SecretField({
           <RevealToggle revealed={revealed} remaining={remaining} onToggle={toggle} />
         ) : null}
       </div>
+      <p className={cn("truncate text-[10px] uppercase tracking-[0.14em]", configured || hasNewValue ? "text-primary/80" : "text-muted-foreground/80")}>
+        {statusText}
+      </p>
     </div>
   );
 }
