@@ -57,6 +57,9 @@ export interface BotIdentity {
   roleTitle: string;
   description: string;
   isActive: boolean;
+  isMain: boolean;
+  runtimeProvider?: BotProvider | string | null;
+  runtimeOpenRouterProfileId?: string | null;
   profileImageObjectPath?: string | null;
   profileImageUrl?: string | null;
   channels: Record<string, unknown>;
@@ -95,7 +98,10 @@ export interface BotSummary {
   runtimeStatus: {
     nanobotConfigured: boolean;
     singleActivePersonality: boolean;
+    runtimeMode?: "single-active-personality" | "multi-active-personality" | string;
     activeIdentityId: string | null;
+    activeIdentityIds?: string[];
+    mainIdentityId?: string | null;
     activeProvider?: BotProvider | string | null;
     activeOpenRouterProfileId?: string | null;
   };
@@ -115,10 +121,24 @@ export interface BotRuntimeStatus {
     uptime?: number | null;
     startedAt?: string | null;
     restart_count?: number;
+    runtimes?: Array<{
+      state?: string;
+      identityId?: string;
+      name?: string;
+      slug?: string;
+      isMain?: boolean;
+      pid?: number | null;
+      uptime?: number | null;
+      startedAt?: string | null;
+      restart_count?: number;
+    }>;
   };
   morneven?: {
     syncedAt?: string | null;
     identity?: { name?: string; slug?: string; roleTitle?: string } | null;
+    mainIdentity?: { name?: string; slug?: string; roleTitle?: string; id?: string } | null;
+    runtimeCount?: number;
+    runtimes?: Array<{ identityId?: string; name?: string; slug?: string; isMain?: boolean; fileCount?: number; syncedAt?: string | null }>;
     fileCount?: number;
     mode?: string;
     error?: string;
@@ -251,6 +271,8 @@ export function createBotIdentity(payload: {
   channels?: Record<string, unknown>;
   settings?: Record<string, unknown>;
   loreCharacterId?: string;
+  runtimeProvider?: BotProvider | string;
+  runtimeOpenRouterProfileId?: string;
 }) {
   return apiRequest<BotIdentity>("/bot-manager/identities", {
     method: "POST",
@@ -262,7 +284,7 @@ export function getBotIdentity(id: string) {
   return apiRequest<BotIdentityDetail>(`/bot-manager/identities/${id}`);
 }
 
-export function updateBotIdentity(id: string, payload: Partial<Pick<BotIdentity, "name" | "roleTitle" | "description" | "profileImageUrl" | "channels" | "settings">> & { loreCharacterId?: string }) {
+export function updateBotIdentity(id: string, payload: Partial<Pick<BotIdentity, "name" | "roleTitle" | "description" | "profileImageUrl" | "channels" | "settings" | "runtimeProvider" | "runtimeOpenRouterProfileId">> & { loreCharacterId?: string }) {
   return apiRequest<BotIdentity>(`/bot-manager/identities/${id}`, {
     method: "PUT",
     body: payload,
@@ -292,6 +314,18 @@ export function deleteBotIdentity(id: string) {
 
 export function activateBotIdentity(id: string) {
   return apiRequest<BotIdentity>(`/bot-manager/identities/${id}/activate`, {
+    method: "PATCH",
+  });
+}
+
+export function deactivateBotIdentity(id: string) {
+  return apiRequest<BotIdentity>(`/bot-manager/identities/${id}/deactivate`, {
+    method: "PATCH",
+  });
+}
+
+export function setMainBotIdentity(id: string) {
+  return apiRequest<BotIdentity>(`/bot-manager/identities/${id}/main`, {
     method: "PATCH",
   });
 }
@@ -404,6 +438,13 @@ export function getBotManagerBackupDownloadUrl(id: string, ticket?: string) {
 
 export function controlBotRuntime(action: "start" | "stop" | "restart") {
   return apiRequest<BotRuntimeStatus>(`/bot-manager/runtime/${action}`, {
+    method: "POST",
+    timeoutMs: 60000,
+  });
+}
+
+export function controlBotRuntimeForIdentity(identityId: string, action: "start" | "stop" | "restart") {
+  return apiRequest<BotRuntimeStatus>(`/bot-manager/runtime/${identityId}/${action}`, {
     method: "POST",
     timeoutMs: 60000,
   });

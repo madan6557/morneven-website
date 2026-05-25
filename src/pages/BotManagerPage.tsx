@@ -50,12 +50,14 @@ import {
   activateOpenRouterProfile,
   clearBotManagerBackups,
   controlBotRuntime,
+  controlBotRuntimeForIdentity,
   createBotManagerBackup,
   createBotIdentity,
   createOpenRouterProfile,
   createBotManagerBackupDownloadTicket,
   deleteBotIdentity,
   deleteBotIdentityFile,
+  deactivateBotIdentity,
   deleteOpenRouterProfile,
   getBotManagerBackupDownloadUrl,
   getBotManagerFileProxyUrl,
@@ -66,6 +68,7 @@ import {
   listOpenRouterProfiles,
   regenerateBotIdentityDefaultFiles,
   saveBotIdentityFile,
+  setMainBotIdentity,
   syncBotManagerRuntime,
   unlockBotCredentials,
   updateBotCredential,
@@ -124,6 +127,8 @@ type BotIdentityDraft = {
   name: string;
   roleTitle: string;
   description: string;
+  runtimeProvider: string;
+  runtimeOpenRouterProfileId: string;
 };
 
 type BotSettingsDraft = {
@@ -138,6 +143,7 @@ type BotSettingsDraft = {
 };
 
 type GeneralConfigDraft = {
+  runtimeMode: "single-active-personality" | "multi-active-personality";
   timezone: string;
   globalRules: string;
   restartAfterSync: boolean;
@@ -297,7 +303,11 @@ function characterProfileImage(character?: Character | null) {
 function createGeneralConfigDraft(value: unknown): GeneralConfigDraft {
   const config = asRecord(value);
   const gateway = asRecord(config.gateway);
+  const runtimeMode = readString(config.runtimeMode, "single-active-personality") === "multi-active-personality"
+    ? "multi-active-personality"
+    : "single-active-personality";
   return {
+    runtimeMode,
     timezone: readString(config.timezone, "Asia/Singapore"),
     globalRules: readString(config.globalRules, "Follow Morneven website policy and active personality files."),
     restartAfterSync: readBoolean(gateway.restartAfterSync, false),
@@ -307,7 +317,7 @@ function createGeneralConfigDraft(value: unknown): GeneralConfigDraft {
 
 function generalConfigDraftToConfig(base: JsonRecord, draft: GeneralConfigDraft): JsonRecord {
   return mergeRecord(base, {
-    runtimeMode: "single-active-personality",
+    runtimeMode: draft.runtimeMode,
     timezone: draft.timezone,
     globalRules: draft.globalRules,
     gateway: {
@@ -322,6 +332,7 @@ const generalConfigDraftStorageKey = "morneven.botManager.generalConfigDraft.v1"
 function sameGeneralConfigDraft(left: GeneralConfigDraft, right: GeneralConfigDraft) {
   return (
     left.timezone === right.timezone &&
+    left.runtimeMode === right.runtimeMode &&
     left.globalRules === right.globalRules &&
     left.restartAfterSync === right.restartAfterSync &&
     left.allowRuntimeReload === right.allowRuntimeReload
@@ -335,8 +346,12 @@ function readStoredGeneralConfigDraft() {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { draft?: unknown };
     const draft = asRecord(parsed.draft ?? parsed);
-    if ("timezone" in draft || "globalRules" in draft || "restartAfterSync" in draft || "allowRuntimeReload" in draft) {
+    if ("timezone" in draft || "globalRules" in draft || "runtimeMode" in draft || "restartAfterSync" in draft || "allowRuntimeReload" in draft) {
+      const runtimeMode = readString(draft.runtimeMode, "single-active-personality") === "multi-active-personality"
+        ? "multi-active-personality"
+        : "single-active-personality";
       return {
+        runtimeMode,
         timezone: readString(draft.timezone, "Asia/Singapore"),
         globalRules: readString(draft.globalRules, "Follow Morneven website policy and active personality files."),
         restartAfterSync: readBoolean(draft.restartAfterSync, false),
@@ -569,7 +584,7 @@ export default function BotManagerPage() {
   const [selectedLoreId, setSelectedLoreId] = useState("");
   const [defaultRegenerateMode, setDefaultRegenerateMode] = useState<"safe" | "force">("safe");
   const [defaultRegenerateConfirm, setDefaultRegenerateConfirm] = useState("");
-  const [identityDraft, setIdentityDraft] = useState<BotIdentityDraft>({ name: "", roleTitle: "", description: "" });
+  const [identityDraft, setIdentityDraft] = useState<BotIdentityDraft>({ name: "", roleTitle: "", description: "", runtimeProvider: "", runtimeOpenRouterProfileId: "" });
   const [channelsDraft, setChannelsDraft] = useState<JsonRecord>(createDefaultChannels());
   const channelsDraftRef = useRef<JsonRecord>(channelsDraft);
   const [selectedChannel, setSelectedChannel] = useState<ChannelKey>("telegram");
@@ -591,7 +606,7 @@ export default function BotManagerPage() {
   const [runtimeNow, setRuntimeNow] = useState(() => Date.now());
 
   const activeIdentity = useMemo(
-    () => summary?.identities.find((identity) => identity.isActive) ?? null,
+    () => summary?.identities.find((identity) => identity.isMain) ?? summary?.identities.find((identity) => identity.isActive) ?? null,
     [summary],
   );
   const backupVisible = allowed && pageVisible && !collapsedSections.backup;
@@ -702,6 +717,8 @@ export default function BotManagerPage() {
         name: next.name,
         roleTitle: next.roleTitle,
         description: next.description,
+        runtimeProvider: next.runtimeProvider ?? "",
+        runtimeOpenRouterProfileId: next.runtimeOpenRouterProfileId ?? "",
       });
       const nextChannels = normalizeChannels(next.channels);
       const nextSettingsBase = asRecord(next.settings);
@@ -1006,16 +1023,22 @@ export default function BotManagerPage() {
       async () => {
         const activated = await activateBotIdentity(identity.id);
         const now = new Date().toISOString();
+        const mode = summary?.runtimeStatus.runtimeMode ?? generalDraft.runtimeMode;
         setSummary((current) => current
           ? {
             ...current,
-            identities: current.identities.map((item) => ({
-              ...item,
-              isActive: item.id === activated.id
-            })),
+            identities: current.identities.map((item) => item.id === activated.id
+              ? { ...item, ...activated }
+              : mode === "multi-active-personality"
+                ? item
+                : { ...item, isActive: false, isMain: false }),
             runtimeStatus: {
               ...current.runtimeStatus,
-              activeIdentityId: activated.id
+              activeIdentityId: activated.id,
+              activeIdentityIds: mode === "multi-active-personality"
+                ? Array.from(new Set([...(current.runtimeStatus.activeIdentityIds ?? current.identities.filter((item) => item.isActive).map((item) => item.id)), activated.id]))
+                : [activated.id],
+              mainIdentityId: activated.isMain ? activated.id : current.runtimeStatus.mainIdentityId
             },
             runtimeSync: {
               ...current.runtimeSync,
@@ -1026,9 +1049,68 @@ export default function BotManagerPage() {
             }
           }
           : current);
-        setDetail((current) => current ? { ...current, isActive: current.id === activated.id } : current);
+        setDetail((current) => current?.id === activated.id ? { ...current, ...activated } : current);
       },
       "Active personality updated",
+    );
+
+  const deactivateIdentity = (identity: BotIdentity) =>
+    runAction(
+      `deactivate-${identity.id}`,
+      async () => {
+        const updated = await deactivateBotIdentity(identity.id);
+        setSummary((current) => current
+          ? {
+            ...current,
+            identities: current.identities.map((item) => item.id === updated.id ? { ...item, ...updated } : item),
+            runtimeStatus: {
+              ...current.runtimeStatus,
+              activeIdentityIds: (current.runtimeStatus.activeIdentityIds ?? []).filter((id) => id !== updated.id),
+            },
+            runtimeSync: {
+              ...current.runtimeSync,
+              runtimeDirty: true,
+              runtimeDirtySince: current.runtimeSync.runtimeDirtySince ?? new Date().toISOString(),
+              runtimeDirtyReason: `Active personality disabled: ${updated.name}`,
+              lastRuntimeSyncError: null
+            }
+          }
+          : current);
+        setDetail((current) => current?.id === updated.id ? { ...current, ...updated } : current);
+      },
+      "Personality deactivated",
+    );
+
+  const makeMainIdentity = (identity: BotIdentity) =>
+    runAction(
+      `main-${identity.id}`,
+      async () => {
+        const updated = await setMainBotIdentity(identity.id);
+        const mode = summary?.runtimeStatus.runtimeMode ?? generalDraft.runtimeMode;
+        setSummary((current) => current
+          ? {
+            ...current,
+            identities: current.identities.map((item) => item.id === updated.id
+              ? { ...item, ...updated }
+              : { ...item, isMain: false, isActive: mode === "single-active-personality" ? false : item.isActive }),
+            runtimeStatus: {
+              ...current.runtimeStatus,
+              mainIdentityId: updated.id,
+              activeIdentityId: updated.id,
+              activeIdentityIds: mode === "single-active-personality" ? [updated.id] : Array.from(new Set([...(current.runtimeStatus.activeIdentityIds ?? []), updated.id])),
+            },
+            runtimeSync: {
+              ...current.runtimeSync,
+              runtimeDirty: true,
+              runtimeDirtySince: current.runtimeSync.runtimeDirtySince ?? new Date().toISOString(),
+              runtimeDirtyReason: `Main personality changed: ${updated.name}`,
+              lastRuntimeSyncError: null
+            }
+          }
+          : current);
+        setDetail((current) => current?.id === updated.id ? { ...current, ...updated } : current);
+      },
+      "Main personality updated",
     );
 
   const removeIdentity = (identity: BotIdentity) =>
@@ -1121,6 +1203,8 @@ export default function BotManagerPage() {
           name: identityDraft.name,
           roleTitle: identityDraft.roleTitle,
           description: identityDraft.description,
+          runtimeProvider: identityDraft.runtimeProvider || undefined,
+          runtimeOpenRouterProfileId: identityDraft.runtimeProvider === "openrouter" ? identityDraft.runtimeOpenRouterProfileId || undefined : "",
           channels: submittedChannels,
           settings: submittedSettings,
           loreCharacterId: selectedLoreId || undefined,
@@ -1130,6 +1214,8 @@ export default function BotManagerPage() {
           name: updated.name,
           roleTitle: updated.roleTitle,
           description: updated.description,
+          runtimeProvider: updated.runtimeProvider ?? "",
+          runtimeOpenRouterProfileId: updated.runtimeOpenRouterProfileId ?? "",
         });
         const nextChannels = normalizeChannels(updated.channels);
         const nextSettingsBase = asRecord(updated.settings);
@@ -1250,6 +1336,18 @@ export default function BotManagerPage() {
       `Nanobot ${action} requested`,
     );
 
+  const controlRuntimeIdentity = (identity: BotIdentity, action: "start" | "stop" | "restart") =>
+    runAction(
+      `runtime-${identity.id}-${action}`,
+      async () => {
+        const result = await controlBotRuntimeForIdentity(identity.id, action);
+        setRuntimeStatus(result);
+        setRuntimeError(null);
+        setSyncLog(toJsonText(result));
+      },
+      `${identity.name} ${action} requested`,
+    );
+
   const createBackup = () =>
     runAction(
       "backup-create",
@@ -1303,6 +1401,9 @@ export default function BotManagerPage() {
       ? Math.max(Math.floor((runtimeNow - gatewayStartedAtMs) / 1000), 0)
       : runtimeStatus?.gateway?.uptime ?? 0
     : 0;
+  const runtimeMode = summary?.runtimeStatus.runtimeMode ?? generalDraft.runtimeMode;
+  const activeRuntimeIdentities = (summary?.identities ?? []).filter((identity) => identity.isActive || (runtimeMode === "single-active-personality" && identity.isMain));
+  const runtimeStatusByIdentity = new Map((runtimeStatus?.gateway?.runtimes ?? []).map((runtime) => [runtime.identityId, runtime]));
   const runtimeDirty = Boolean(summary?.runtimeSync.runtimeDirty);
   const runtimeConflictCount = summary?.runtimeSync.lastRuntimePullConflictCount ?? 0;
   const syncUnavailable = Boolean(error && !summary);
@@ -1452,23 +1553,10 @@ export default function BotManagerPage() {
                 <Bot className="h-4 w-4" />
                 <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Runtime</h2>
               </div>
-              <div className="grid gap-2 sm:grid-cols-3">
-                <Button type="button" variant="outline" onClick={() => controlRuntime("start")} disabled={runtimeActionDisabled || gatewayRunning || gatewayTransitioning}>
-                  {busy === "runtime-start" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                  Start
-                </Button>
-                <Button type="button" variant="outline" onClick={() => controlRuntime("stop")} disabled={runtimeActionDisabled || !gatewayRunning || gatewayTransitioning}>
-                  {busy === "runtime-stop" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Square className="mr-2 h-4 w-4" />}
-                  Stop
-                </Button>
-                <Button type="button" variant="outline" onClick={() => controlRuntime("restart")} disabled={runtimeActionDisabled || !gatewayRunning || gatewayTransitioning}>
-                  {busy === "runtime-restart" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                  Restart
-                </Button>
-              </div>
+              <Badge variant="outline">{runtimeMode === "multi-active-personality" ? `${activeRuntimeIdentities.length} active runtimes` : "Single active runtime"}</Badge>
             </div>
             <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-              <Metric label="Active Personality" value={activeIdentity?.name ?? "None"} />
+              <Metric label="Main Personality" value={(summary?.identities.find((identity) => identity.isMain) ?? activeIdentity)?.name ?? "None"} />
               <Metric label="Saved Personalities" value={String(summary?.identities.length ?? 0)} />
               <Metric label="Nanobot Link" value={nanobotConfigured ? "Configured" : "Not configured"} />
               <Metric label="Sync State" value={syncState} />
@@ -1476,6 +1564,67 @@ export default function BotManagerPage() {
               <Metric label="Gateway State" value={gatewayState} />
               <Metric label="Gateway Uptime" value={formatUptime(gatewayUptimeSeconds)} />
               <Metric label="Last Sync" value={lastSync} />
+            </div>
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              {activeRuntimeIdentities.map((identity) => {
+                const status = runtimeStatusByIdentity.get(identity.id);
+                const state = status?.state ?? (identity.isMain ? gatewayState : "stopped");
+                const isRunning = state === "running";
+                const isTransitioning = state === "starting" || state === "stopping";
+                const startedAtMs = status?.startedAt ? Date.parse(status.startedAt) : Number.NaN;
+                const uptime = isRunning
+                  ? Number.isFinite(startedAtMs)
+                    ? Math.max(Math.floor((runtimeNow - startedAtMs) / 1000), 0)
+                    : status?.uptime ?? 0
+                  : 0;
+                const providerLabel = identity.runtimeProvider || activeProvider || "default provider";
+                const enabledChannels = Object.entries(asRecord(identity.channels))
+                  .filter(([, value]) => asRecord(value).enabled === true)
+                  .map(([key]) => key)
+                  .join(", ") || "No enabled channels";
+                return (
+                  <div key={identity.id} className="rounded-sm border border-border/80 bg-background/30 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Profile identity={identity} />
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="truncate font-heading text-base text-foreground">{identity.name}</h3>
+                            {identity.isMain && <Badge variant="outline">Main</Badge>}
+                          </div>
+                          <p className="truncate text-sm text-muted-foreground">{providerLabel}</p>
+                          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{enabledChannels}</p>
+                        </div>
+                      </div>
+                      <Badge variant={isRunning ? "default" : "outline"}>{state}</Badge>
+                    </div>
+                    <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+                      <Metric label="Uptime" value={formatUptime(uptime)} />
+                      <Metric label="Last Sync" value={lastSync} />
+                      <Metric label="PID" value={status?.pid ? String(status.pid) : "-"} />
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      <Button type="button" variant="outline" onClick={() => controlRuntimeIdentity(identity, "start")} disabled={runtimeActionDisabled || isRunning || isTransitioning}>
+                        {busy === `runtime-${identity.id}-start` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                        Start
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => controlRuntimeIdentity(identity, "stop")} disabled={runtimeActionDisabled || !isRunning || isTransitioning}>
+                        {busy === `runtime-${identity.id}-stop` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Square className="mr-2 h-4 w-4" />}
+                        Stop
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => controlRuntimeIdentity(identity, "restart")} disabled={runtimeActionDisabled || !isRunning || isTransitioning}>
+                        {busy === `runtime-${identity.id}-restart` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                        Restart
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+              {activeRuntimeIdentities.length === 0 && (
+                <div className="rounded-sm border border-border/70 bg-background/35 p-6 text-center text-sm text-muted-foreground">
+                  No active runtime personalities.
+                </div>
+              )}
             </div>
             {runtimeError && (
               <div className="mt-3 rounded-sm border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
@@ -1630,7 +1779,13 @@ export default function BotManagerPage() {
 
               <div className="mt-4 space-y-4">
                 <div className="grid gap-3 md:grid-cols-2">
-                  <Field label="Runtime Mode" value="single-active-personality" readOnly onChange={() => undefined} />
+                  <label className="space-y-2">
+                    <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Runtime Mode</span>
+                    <select className={inputClass} value={generalDraft.runtimeMode} onChange={(event) => updateGeneralDraft({ runtimeMode: event.target.value as GeneralConfigDraft["runtimeMode"] })}>
+                      <option value="single-active-personality">Single active personality</option>
+                      <option value="multi-active-personality">Multi active personality</option>
+                    </select>
+                  </label>
                   <Field label="Timezone" value={generalDraft.timezone} onChange={(timezone) => updateGeneralDraft({ timezone })} placeholder="Asia/Singapore" />
                 </div>
                 <label className="block space-y-2">
@@ -1728,23 +1883,35 @@ export default function BotManagerPage() {
                             <div className="flex flex-wrap items-center gap-2">
                               <h3 className="truncate font-heading text-base text-foreground">{identity.name}</h3>
                               {identity.isActive && <Badge><Check className="mr-1 h-3 w-3" />Active</Badge>}
+                              {identity.isMain && <Badge variant="outline">Main</Badge>}
                               {readString(loreReference.id) ? <Badge variant="outline">Lore</Badge> : <Badge variant="destructive">No Lore</Badge>}
                             </div>
                             <p className="truncate text-sm text-muted-foreground">{identity.roleTitle}</p>
                             <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{identity.description || "No description."}</p>
                           </div>
                           <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap lg:justify-end">
-                            {identity.isActive ? (
-                              <Button type="button" size="sm" variant="outline" disabled className="cursor-default border-success/50 text-success disabled:opacity-100">
-                                <Check className="mr-1.5 h-4 w-4" />
-                                Active
-                              </Button>
-                            ) : (
-                              <Button type="button" size="sm" variant="outline" onClick={() => activateIdentity(identity)} disabled={Boolean(busy)} title={`Activate ${identity.name}`}>
-                                <Power className="mr-1.5 h-4 w-4" />
-                                Activate
-                              </Button>
-                            )}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={identity.isActive ? "outline" : "default"}
+                              className={identity.isActive ? "border-success/50 text-success" : undefined}
+                              onClick={() => identity.isActive ? void deactivateIdentity(identity) : void activateIdentity(identity)}
+                              disabled={Boolean(busy) || (identity.isActive && identity.isMain)}
+                              title={identity.isActive ? "Deactivate personality" : `Activate ${identity.name}`}
+                            >
+                              {identity.isActive ? <Check className="mr-1.5 h-4 w-4" /> : <Power className="mr-1.5 h-4 w-4" />}
+                              {identity.isActive ? "Active" : "Activate"}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={identity.isMain ? "outline" : "secondary"}
+                              onClick={() => makeMainIdentity(identity)}
+                              disabled={Boolean(busy) || identity.isMain}
+                              title={`Set ${identity.name} as main personality`}
+                            >
+                              Main
+                            </Button>
                             <Button
                               type="button"
                               size="sm"
@@ -1764,7 +1931,7 @@ export default function BotManagerPage() {
                                 </>
                               )}
                             </Button>
-                            <Button type="button" variant="destructive" size="sm" onClick={() => removeIdentity(identity)} disabled={identity.isActive || Boolean(busy)} title={identity.isActive ? "Deactivate before deleting" : `Delete ${identity.name}`}>
+                            <Button type="button" variant="destructive" size="sm" onClick={() => removeIdentity(identity)} disabled={identity.isActive || identity.isMain || Boolean(busy)} title={identity.isActive || identity.isMain ? "Deactivate and remove main tag before deleting" : `Delete ${identity.name}`}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -1812,6 +1979,7 @@ export default function BotManagerPage() {
                                 onIdentityChange={(patch) => setIdentityDraft((current) => ({ ...current, ...patch }))}
                                 onLoreSearchChange={setLoreSearch}
                                 onLoreSelect={(character) => { setSelectedLoreId(character.id); setLoreSearch(formatCharacterLabel(character)); }}
+                                openRouterProfiles={openRouterProfiles}
                                 onRegenerateConfirmChange={setDefaultRegenerateConfirm}
                                 onRegenerateDefaults={regenerateDefaults}
                                 onRegenerateModeChange={setDefaultRegenerateMode}
@@ -2211,6 +2379,7 @@ function PersonalityEditor({
   onIdentityChange,
   onLoreSearchChange,
   onLoreSelect,
+  openRouterProfiles,
   onRegenerateConfirmChange,
   onRegenerateDefaults,
   onRegenerateModeChange,
@@ -2246,6 +2415,7 @@ function PersonalityEditor({
   onIdentityChange: (patch: Partial<BotIdentityDraft>) => void;
   onLoreSearchChange: (value: string) => void;
   onLoreSelect: (character: Character) => void;
+  openRouterProfiles: OpenRouterProfile[];
   onRegenerateConfirmChange: (value: string) => void;
   onRegenerateDefaults: () => void;
   onRegenerateModeChange: (value: "safe" | "force") => void;
@@ -2312,7 +2482,7 @@ function PersonalityEditor({
       {activeTab === "sessions" && <FileEditor files={sessionFiles} fileDraft={fileDraft} setFileDraft={onFileDraftChange} onSave={onSaveFile} onDelete={onFileDelete} busy={busy === "file"} defaultKind="session" newFilePath="sessions/session-notes.md" allowedKinds={["session"]} />}
       {activeTab === "settings" && (
         <div className="space-y-4">
-          <SettingsEditor busy={Boolean(busy)} identityDraft={identityDraft} settingsDraft={settingsDraft} onIdentityChange={onIdentityChange} onSave={onSaveIdentity} onSettingsChange={onSettingsChange} />
+          <SettingsEditor busy={Boolean(busy)} identityDraft={identityDraft} openRouterProfiles={openRouterProfiles} settingsDraft={settingsDraft} onIdentityChange={onIdentityChange} onSave={onSaveIdentity} onSettingsChange={onSettingsChange} />
           <LorePicker options={loreOptions} search={loreSearch} selectedId={selectedLoreId} onSearchChange={onLoreSearchChange} onSelect={onLoreSelect} />
           <DefaultFilesRegenerator
             busy={busy === "default-files"}
@@ -2667,6 +2837,7 @@ function DefaultFilesRegenerator({
 function SettingsEditor({
   busy,
   identityDraft,
+  openRouterProfiles,
   settingsDraft,
   onIdentityChange,
   onSave,
@@ -2674,6 +2845,7 @@ function SettingsEditor({
 }: {
   busy: boolean;
   identityDraft: BotIdentityDraft;
+  openRouterProfiles: OpenRouterProfile[];
   settingsDraft: BotSettingsDraft;
   onIdentityChange: (patch: Partial<BotIdentityDraft>) => void;
   onSave: () => void;
@@ -2689,6 +2861,39 @@ function SettingsEditor({
         <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Description</span>
         <textarea className={cn(inputClass, "min-h-24 resize-y")} value={identityDraft.description} onChange={(event) => onIdentityChange({ description: event.target.value })} />
       </label>
+
+      <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+        <h3 className="font-heading text-sm text-foreground">Runtime Provider Assignment</h3>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <label className="space-y-2">
+            <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Provider</span>
+            <select
+              className={inputClass}
+              value={identityDraft.runtimeProvider}
+              onChange={(event) => onIdentityChange({ runtimeProvider: event.target.value, runtimeOpenRouterProfileId: event.target.value === "openrouter" ? identityDraft.runtimeOpenRouterProfileId : "" })}
+            >
+              <option value="">Use global default</option>
+              {providers.map((provider) => (
+                <option key={provider.value} value={provider.value}>{provider.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-2">
+            <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">OpenRouter Profile</span>
+            <select
+              className={inputClass}
+              value={identityDraft.runtimeOpenRouterProfileId}
+              onChange={(event) => onIdentityChange({ runtimeOpenRouterProfileId: event.target.value })}
+              disabled={identityDraft.runtimeProvider !== "openrouter"}
+            >
+              <option value="">Use active OpenRouter profile</option>
+              {openRouterProfiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>{profile.name} - {profile.modelId}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-sm border border-border/70 bg-background/35 p-4">
