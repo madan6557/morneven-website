@@ -303,7 +303,7 @@ function characterProfileImage(character?: Character | null) {
 function createGeneralConfigDraft(value: unknown): GeneralConfigDraft {
   const config = asRecord(value);
   const gateway = asRecord(config.gateway);
-  const runtimeMode = readString(config.runtimeMode, "single-active-personality") === "multi-active-personality"
+  const runtimeMode: GeneralConfigDraft["runtimeMode"] = readString(config.runtimeMode, "single-active-personality") === "multi-active-personality"
     ? "multi-active-personality"
     : "single-active-personality";
   return {
