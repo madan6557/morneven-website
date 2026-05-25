@@ -2364,7 +2364,7 @@ function OpenRouterSection({
       </div>
       <PaginationControls page={page} totalPages={totalPages} onPageChange={onPageChange} />
       <div className="mt-4 rounded-sm border border-border/70 bg-background/40 p-3">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
           <Field label="Profile Name" value={draft.name} onChange={(name) => onDraftChange({ ...draft, name })} placeholder="OpenRouter DeepSeek" />
           <Field label="Model ID" value={draft.modelId} onChange={(modelId) => onDraftChange({ ...draft, modelId })} placeholder="deepseek/deepseek-chat-v3" />
           <SecretField
@@ -2378,7 +2378,7 @@ function OpenRouterSection({
           <TagField label="Tags" value={draft.tags} onChange={(tags) => onDraftChange({ ...draft, tags })} placeholder="reasoning, production" />
           <Field label="Notes" value={draft.notes} onChange={(notes) => onDraftChange({ ...draft, notes })} />
         </div>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex justify-end gap-2">
           <Button type="button" onClick={onSave} disabled={!draft.name.trim() || (!draft.id && !draft.apiKey.trim()) || !draft.modelId.trim() || !canUseCredentialGate || Boolean(busy)}>
             <Save className="mr-2 h-4 w-4" />
             {draft.id ? "Update OpenRouter Profile" : "Create OpenRouter Profile"}
@@ -3044,12 +3044,12 @@ function useRevealTimer() {
   return { revealed, remaining, reveal, hide, toggle: () => (revealed ? hide() : reveal()) };
 }
 
-function RevealToggle({ revealed, onToggle }: { revealed: boolean; remaining?: number; onToggle: () => void }) {
+function RevealToggle({ revealed, onToggle, className }: { revealed: boolean; remaining?: number; onToggle: () => void; className?: string }) {
   return (
     <button
       type="button"
       onClick={onToggle}
-      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border border-border/70 bg-background/60 text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+      className={cn("inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border border-border/70 bg-background/60 text-muted-foreground transition hover:border-primary/60 hover:text-primary", className)}
       aria-label={revealed ? "Hide value" : "Show value"}
       title={revealed ? "Hide" : "Show for 10s"}
     >
@@ -3122,7 +3122,7 @@ function SecretField({
       <div className="flex min-h-[18px] items-center">
         <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="relative">
         <input
           type="text"
           id={inputName}
@@ -3134,7 +3134,7 @@ function SecretField({
           data-lpignore="true"
           data-1p-ignore="true"
           data-form-type="other"
-          className={cn(inputClass, "min-w-0 flex-1", displayMode && configured && "text-primary")}
+          className={cn(inputClass, "min-w-0 pr-10", displayMode && configured && "text-primary")}
           style={shouldMask ? ({ WebkitTextSecurity: "disc" } as CSSProperties) : undefined}
           value={displayValue}
           placeholder={configured ? "Focus to enter replacement value" : placeholder}
@@ -3145,7 +3145,7 @@ function SecretField({
           onChange={(event) => updateValue(event.target.value)}
         />
         {hasNewValue ? (
-          <RevealToggle revealed={revealed} remaining={remaining} onToggle={toggle} />
+          <RevealToggle revealed={revealed} remaining={remaining} onToggle={toggle} className="absolute right-2 top-1/2 -translate-y-1/2 border-0 bg-transparent" />
         ) : null}
       </div>
     </div>
@@ -3191,12 +3191,12 @@ function Field({
   return (
     <label className="block space-y-2">
       <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
-      <div className={cn("flex items-center gap-2", !isPassword && "block")}>
+      <div className={cn(isPassword ? "relative" : "block")}>
         <input
           type={effectiveType}
           name={inputName}
           autoComplete={autoComplete ?? (type === "password" ? "new-password" : "off")}
-          className={cn(inputClass, "min-w-0 flex-1", readOnly && "cursor-not-allowed opacity-75")}
+          className={cn(inputClass, "min-w-0", isPassword && "pr-10", readOnly && "cursor-not-allowed opacity-75")}
           value={value}
           placeholder={placeholder}
           readOnly={readOnly}
@@ -3206,7 +3206,7 @@ function Field({
           }}
         />
         {isPassword && value.length > 0 ? (
-          <RevealToggle revealed={revealed} remaining={remaining} onToggle={toggle} />
+          <RevealToggle revealed={revealed} remaining={remaining} onToggle={toggle} className="absolute right-2 top-1/2 -translate-y-1/2 border-0 bg-transparent" />
         ) : null}
       </div>
     </label>
