@@ -339,7 +339,7 @@ function sameGeneralConfigDraft(left: GeneralConfigDraft, right: GeneralConfigDr
   );
 }
 
-function readStoredGeneralConfigDraft() {
+function readStoredGeneralConfigDraft(): GeneralConfigDraft | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(generalConfigDraftStorageKey);
