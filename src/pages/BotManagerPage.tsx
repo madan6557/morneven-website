@@ -347,7 +347,7 @@ function readStoredGeneralConfigDraft(): GeneralConfigDraft | null {
     const parsed = JSON.parse(raw) as { draft?: unknown };
     const draft = asRecord(parsed.draft ?? parsed);
     if ("timezone" in draft || "globalRules" in draft || "runtimeMode" in draft || "restartAfterSync" in draft || "allowRuntimeReload" in draft) {
-      const runtimeMode = readString(draft.runtimeMode, "single-active-personality") === "multi-active-personality"
+      const runtimeMode: GeneralConfigDraft["runtimeMode"] = readString(draft.runtimeMode, "single-active-personality") === "multi-active-personality"
         ? "multi-active-personality"
         : "single-active-personality";
       return {
