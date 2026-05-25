@@ -2775,7 +2775,9 @@ function ChannelFields({
           <SecretField label="Token" value={config.token} onChange={(token) => onUpdate({ token })} name="bot-manager-telegram-token" placeholder="Enter Telegram bot token" />
           <Field label="Proxy" value={readString(config.proxy)} onChange={(proxy) => onUpdate({ proxy })} placeholder="Optional proxy URL" />
         </div>
-        <TagField label="Allowed User IDs" value={readStringArray(config.allowFrom)} onChange={(allowFrom) => onUpdate({ allowFrom })} placeholder="* or user ID" />
+        <div className="-mt-0.5">
+          <TagField label="Allowed User IDs" value={readStringArray(config.allowFrom)} onChange={(allowFrom) => onUpdate({ allowFrom })} placeholder="* or user ID" />
+        </div>
       </div>
     );
   }
