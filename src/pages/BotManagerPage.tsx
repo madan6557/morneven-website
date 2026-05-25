@@ -3146,9 +3146,6 @@ function SecretField({
           <RevealToggle revealed={revealed} remaining={remaining} onToggle={toggle} />
         ) : null}
       </div>
-      <p className={cn("truncate text-[10px] uppercase tracking-[0.14em]", configured || hasNewValue ? "text-primary/80" : "text-muted-foreground/80")}>
-        {statusText}
-      </p>
     </div>
   );
 }
