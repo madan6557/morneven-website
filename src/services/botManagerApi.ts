@@ -1,4 +1,4 @@
-import { apiRequest, getApiBaseUrl } from "@/services/restClient";
+import { apiRequest, apiUploadForm, getApiBaseUrl } from "@/services/restClient";
 
 export type BotProvider = "openai" | "anthropic" | "gemini" | "groq" | "openrouter" | "deepseek" | "zhipu" | "vllm";
 export type BotFileKind = "identity" | "memory" | "cron" | "skill" | "session" | "tool" | "user" | "system" | "other";
@@ -410,6 +410,33 @@ export function createBotManagerBackup(payload: {
     method: "POST",
     body: payload,
     timeoutMs: 30000,
+  });
+}
+
+export function importBotManagerBackup(payload: {
+  backupFile: File;
+  password: string;
+  secretKey: string;
+  confirmText: "PERSONALITY";
+}) {
+  const form = new FormData();
+  form.append("backup", payload.backupFile);
+  form.append("password", payload.password);
+  form.append("secretKey", payload.secretKey);
+  form.append("confirmText", payload.confirmText);
+  return apiUploadForm<{
+    importedIdentities: number;
+    createdIdentities: number;
+    updatedIdentities: number;
+    importedFiles: number;
+    importedProfiles: number;
+    generalConfigImported: boolean;
+    skippedFiles: Array<{ path: string; reason: string }>;
+    fileName: string;
+    size: number;
+    sha256: string;
+  }>("/bot-manager/backups/import", form, {
+    timeoutMs: 300000,
   });
 }
 

@@ -64,6 +64,7 @@ import {
   getBotIdentity,
   getBotManagerSummary,
   getBotRuntimeStatus,
+  importBotManagerBackup,
   listBotManagerBackups,
   listOpenRouterProfiles,
   regenerateBotIdentityDefaultFiles,
@@ -622,6 +623,10 @@ export default function BotManagerPage() {
   const [backupPassword, setBackupPassword] = useState("");
   const [backupKey, setBackupKey] = useState("");
   const [backupConfirm, setBackupConfirm] = useState("");
+  const [backupImportFile, setBackupImportFile] = useState<File | null>(null);
+  const [backupImportPassword, setBackupImportPassword] = useState("");
+  const [backupImportKey, setBackupImportKey] = useState("");
+  const [backupImportConfirm, setBackupImportConfirm] = useState("");
   const [backupJobs, setBackupJobs] = useState<BotManagerBackupJob[]>([]);
   const [backupPage, setBackupPage] = useState(1);
   const [backupTotalPages, setBackupTotalPages] = useState(1);
@@ -1410,6 +1415,27 @@ export default function BotManagerPage() {
       "Backup history cleared",
     );
 
+  const importBackup = () =>
+    backupImportFile &&
+    runAction(
+      "backup-import",
+      async () => {
+        const result = await importBotManagerBackup({
+          backupFile: backupImportFile,
+          password: backupImportPassword,
+          secretKey: backupImportKey,
+          confirmText: "PERSONALITY",
+        });
+        setSyncLog(toJsonText({ backupImport: result }));
+        setBackupImportFile(null);
+        setBackupImportPassword("");
+        setBackupImportKey("");
+        setBackupImportConfirm("");
+        await refreshVisibleData();
+      },
+      "Backup imported",
+    );
+
   const memoryFiles = detail?.files.filter(isMemoryFile) ?? [];
   const cronFiles = detail?.files.filter(isCronFile) ?? [];
   const sessionFiles = detail?.files.filter(isSessionFile) ?? [];
@@ -1483,6 +1509,11 @@ export default function BotManagerPage() {
     backupKey.trim().length >= 16 &&
     backupConfirm === "PERSONALITY" &&
     (backupMode === "full" || backupSelectedIds.length > 0);
+  const backupCanImport =
+    Boolean(backupImportFile) &&
+    backupImportPassword.length > 0 &&
+    backupImportKey.trim().length >= 16 &&
+    backupImportConfirm === "PERSONALITY";
   const toggleSection = (key: string) => setCollapsedSections((current) => ({ ...current, [key]: !current[key] }));
   const updateChannel = (channel: ChannelKey, patch: JsonRecord) => {
     setChannelsDraft((current) => ({
@@ -2089,8 +2120,13 @@ export default function BotManagerPage() {
           {activeMainTab === "backups" && (
           <BackupSection
             backupCanCreate={backupCanCreate}
+            backupCanImport={backupCanImport}
             backupConfirm={backupConfirm}
             backupHistoryMode={backupHistoryMode}
+            backupImportConfirm={backupImportConfirm}
+            backupImportFile={backupImportFile}
+            backupImportKey={backupImportKey}
+            backupImportPassword={backupImportPassword}
             backupJobs={backupJobs}
             backupKey={backupKey}
             backupMode={backupMode}
@@ -2108,6 +2144,11 @@ export default function BotManagerPage() {
             onCreate={createBackup}
             onDownload={downloadBackup}
             onHistoryModeChange={(value) => { setBackupHistoryMode(value); setBackupPage(1); }}
+            onImport={() => { void importBackup(); }}
+            onImportConfirmChange={setBackupImportConfirm}
+            onImportFileChange={setBackupImportFile}
+            onImportKeyChange={setBackupImportKey}
+            onImportPasswordChange={setBackupImportPassword}
             onKeyChange={setBackupKey}
             onModeChange={setBackupMode}
             onPageChange={setBackupPage}
@@ -2571,8 +2612,13 @@ function PersonalityEditor({
 
 function BackupSection({
   backupCanCreate,
+  backupCanImport,
   backupConfirm,
   backupHistoryMode,
+  backupImportConfirm,
+  backupImportFile,
+  backupImportKey,
+  backupImportPassword,
   backupJobs,
   backupKey,
   backupMode,
@@ -2590,6 +2636,11 @@ function BackupSection({
   onCreate,
   onDownload,
   onHistoryModeChange,
+  onImport,
+  onImportConfirmChange,
+  onImportFileChange,
+  onImportKeyChange,
+  onImportPasswordChange,
   onKeyChange,
   onModeChange,
   onPageChange,
@@ -2599,8 +2650,13 @@ function BackupSection({
   onToggle,
 }: {
   backupCanCreate: boolean;
+  backupCanImport: boolean;
   backupConfirm: string;
   backupHistoryMode: string;
+  backupImportConfirm: string;
+  backupImportFile: File | null;
+  backupImportKey: string;
+  backupImportPassword: string;
   backupJobs: BotManagerBackupJob[];
   backupKey: string;
   backupMode: "full" | "custom";
@@ -2618,6 +2674,11 @@ function BackupSection({
   onCreate: () => void;
   onDownload: (job: BotManagerBackupJob) => void;
   onHistoryModeChange: (value: string) => void;
+  onImport: () => void;
+  onImportConfirmChange: (value: string) => void;
+  onImportFileChange: (file: File | null) => void;
+  onImportKeyChange: (value: string) => void;
+  onImportPasswordChange: (value: string) => void;
   onKeyChange: (value: string) => void;
   onModeChange: (value: "full" | "custom") => void;
   onPageChange: (page: number) => void;
@@ -2671,6 +2732,30 @@ function BackupSection({
                 })}
               </div>
             )}
+          </div>
+          <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+              <label className="space-y-2">
+                <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Backup File</span>
+                <input
+                  key={backupImportFile?.name ?? "empty-import-file"}
+                  className={inputClass}
+                  type="file"
+                  accept=".zip,application/zip"
+                  onChange={(event: ChangeEvent<HTMLInputElement>) => onImportFileChange(event.target.files?.[0] ?? null)}
+                />
+                {backupImportFile && <span className="block truncate text-xs text-muted-foreground">{backupImportFile.name}</span>}
+              </label>
+              <Field label="Password" value={backupImportPassword} onChange={onImportPasswordChange} type="password" name="bot-manager-backup-import-password" />
+              <Field label="Extraction Key" value={backupImportKey} onChange={onImportKeyChange} type="password" name="bot-manager-backup-import-extraction-key" />
+            </div>
+            <div className="mt-3 grid gap-3 grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+              <Field label="Confirmation" value={backupImportConfirm} onChange={onImportConfirmChange} placeholder='Type "PERSONALITY"' />
+              <Button type="button" onClick={onImport} disabled={!backupCanImport || Boolean(busy)}>
+                {busy === "backup-import" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                Import Backup
+              </Button>
+            </div>
           </div>
           <div className="space-y-3">
             <div className="grid gap-2 grid-cols-[minmax(0,1fr)] md:grid-cols-[12rem_12rem_1fr_auto] md:items-center">
