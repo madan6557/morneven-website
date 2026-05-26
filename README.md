@@ -111,6 +111,7 @@ Active shared documentation:
 - [Website Feature Documentation](../Document/Documentation/Website/docs/2026-05-25-website-feature-documentation-v01.md)
 - [Website Guidebook](../Document/Guide/Website/docs/2026-05-25-website-guidebook-v01.md)
 - [Backend API Contract](../Document/Documentation/Backend/root-docs/2026-05-25-backend-api-contract-v01.md)
-- [Document Index](../Document/Documentation/General/2026-05-25-document-index-v01.md)
+- [Bot Manager Guide](../Document/Guide/General/2026-05-27-bot-manager-guide-v01.md)
+- [Document Index](../Document/Documentation/General/2026-05-27-document-index-v02.md)
 
 When feature behavior changes, update `Document/` first and keep this README as the concise repo entrypoint.
