@@ -135,6 +135,12 @@ type BotSettingsDraft = {
   maxTokens: string;
   temperature: string;
   maxToolIterations: string;
+  autoDreamEnabled: boolean;
+  autoDreamIntervalHours: string;
+  autoDreamModelOverride: string;
+  autoDreamMaxBatchSize: string;
+  autoDreamMaxIterations: string;
+  autoDreamAnnotateLineAges: boolean;
   webSearchApiKey: SecretFieldValue;
   webSearchMaxResults: string;
   execTimeout: string;
@@ -422,6 +428,8 @@ function createSettingsDraft(value: unknown): BotSettingsDraft {
   const settings = asRecord(value);
   const agents = asRecord(settings.agents);
   const defaults = asRecord(agents.defaults);
+  const dream = asRecord(defaults.dream);
+  const autoDream = asRecord(settings.autoDream);
   const tools = asRecord(settings.tools);
   const web = asRecord(tools.web);
   const search = asRecord(web.search);
@@ -432,6 +440,12 @@ function createSettingsDraft(value: unknown): BotSettingsDraft {
     maxTokens: readNumberText(defaults.maxTokens, 8192),
     temperature: readNumberText(defaults.temperature, 0.7),
     maxToolIterations: readNumberText(defaults.maxToolIterations, 20),
+    autoDreamEnabled: readBoolean(autoDream.enabled, true),
+    autoDreamIntervalHours: readNumberText(dream.intervalH ?? dream.interval_h, 2),
+    autoDreamModelOverride: readString(dream.modelOverride ?? dream.model_override),
+    autoDreamMaxBatchSize: readNumberText(dream.maxBatchSize ?? dream.max_batch_size, 20),
+    autoDreamMaxIterations: readNumberText(dream.maxIterations ?? dream.max_iterations, 15),
+    autoDreamAnnotateLineAges: readBoolean(dream.annotateLineAges ?? dream.annotate_line_ages, true),
     webSearchApiKey: readSecretDraft(search.apiKey),
     webSearchMaxResults: readNumberText(search.maxResults, 5),
     execTimeout: readNumberText(exec.timeout, 60),
@@ -447,7 +461,17 @@ function settingsDraftToConfig(draft: BotSettingsDraft): JsonRecord {
         maxTokens: numberFromText(draft.maxTokens, 8192),
         temperature: numberFromText(draft.temperature, 0.7),
         maxToolIterations: numberFromText(draft.maxToolIterations, 20),
+        dream: {
+          intervalH: Math.max(1, numberFromText(draft.autoDreamIntervalHours, 2)),
+          modelOverride: draft.autoDreamModelOverride.trim() || null,
+          maxBatchSize: Math.max(1, numberFromText(draft.autoDreamMaxBatchSize, 20)),
+          maxIterations: Math.max(1, numberFromText(draft.autoDreamMaxIterations, 15)),
+          annotateLineAges: draft.autoDreamAnnotateLineAges,
+        },
       },
+    },
+    autoDream: {
+      enabled: draft.autoDreamEnabled,
     },
     tools: {
       web: {
@@ -2945,6 +2969,32 @@ function SettingsEditor({
             <Field label="Max Tokens" type="number" value={settingsDraft.maxTokens} onChange={(maxTokens) => onSettingsChange({ maxTokens })} />
             <Field label="Temperature" type="number" value={settingsDraft.temperature} onChange={(temperature) => onSettingsChange({ temperature })} />
             <Field label="Max Tool Iterations" type="number" value={settingsDraft.maxToolIterations} onChange={(maxToolIterations) => onSettingsChange({ maxToolIterations })} />
+          </div>
+        </div>
+
+        <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+          <h3 className="font-heading text-sm text-foreground">Auto Dream</h3>
+          <div className="mt-4 space-y-3">
+            <ToggleControl
+              label="Scheduled Dream"
+              description="Runs nanobot memory consolidation for this personality runtime after Start or Restart."
+              value={settingsDraft.autoDreamEnabled}
+              onChange={(autoDreamEnabled) => onSettingsChange({ autoDreamEnabled })}
+            />
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Interval Hours" type="number" value={settingsDraft.autoDreamIntervalHours} onChange={(autoDreamIntervalHours) => onSettingsChange({ autoDreamIntervalHours })} />
+              <Field label="Dream Model Override" value={settingsDraft.autoDreamModelOverride} onChange={(autoDreamModelOverride) => onSettingsChange({ autoDreamModelOverride })} placeholder="Optional model id" />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Max Batch Size" type="number" value={settingsDraft.autoDreamMaxBatchSize} onChange={(autoDreamMaxBatchSize) => onSettingsChange({ autoDreamMaxBatchSize })} />
+              <Field label="Max Iterations" type="number" value={settingsDraft.autoDreamMaxIterations} onChange={(autoDreamMaxIterations) => onSettingsChange({ autoDreamMaxIterations })} />
+            </div>
+            <ToggleControl
+              label="Annotate Line Ages"
+              description="Adds memory line age context during Dream analysis."
+              value={settingsDraft.autoDreamAnnotateLineAges}
+              onChange={(autoDreamAnnotateLineAges) => onSettingsChange({ autoDreamAnnotateLineAges })}
+            />
           </div>
         </div>
 
