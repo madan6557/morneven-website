@@ -3053,36 +3053,42 @@ function ChannelFields({
 function normalizeTelegramTopicIdClient(value: unknown) {
   if (value === undefined || value === null || value === "") return "main";
   const text = String(value).trim();
-  if (!text || text === "0" || text.toLowerCase() === "main") return "main";
+  if (!text || text === "0" || text === "1" || text.toLowerCase() === "main") return "main";
   return text;
 }
 
 function normalizeTelegramTopicLockClient(value: unknown): TelegramTopicLock {
   const record = asRecord(value);
   const groups = Array.isArray(record.groups) ? record.groups : [];
+  const normalizedGroups = groups.map((entry) => {
+    const group = asRecord(entry);
+    const allowedTopicIds = Array.isArray(group.allowedTopicIds)
+      ? group.allowedTopicIds.map(normalizeTelegramTopicIdClient).filter((topicId) => topicId !== "main")
+      : [];
+    const allowMainTopic = typeof group.allowMainTopic === "boolean" ? group.allowMainTopic : true;
+    const rawPrimaryTopicId = normalizeTelegramTopicIdClient(group.primaryTopicId);
+    const allowedTopicSet = new Set(allowedTopicIds);
+    const primaryTopicAllowed = rawPrimaryTopicId === "main" ? allowMainTopic : allowedTopicSet.has(rawPrimaryTopicId);
+    const primaryTopicId = primaryTopicAllowed ? rawPrimaryTopicId : allowedTopicIds[0] ?? (allowMainTopic ? "main" : "");
+    return {
+      chatId: readString(group.chatId),
+      title: readString(group.title),
+      isForum: typeof group.isForum === "boolean" ? group.isForum : true,
+      allowedTopicIds: Array.from(new Set(allowedTopicIds)),
+      allowMainTopic,
+      primaryTopicId,
+      updatedAt: readString(group.updatedAt) || new Date().toISOString(),
+    };
+  }).filter((group) => group.chatId);
+  const hasGroupRules = normalizedGroups.some((group) =>
+    group.allowMainTopic === false ||
+    group.allowedTopicIds.length > 0 ||
+    Boolean(group.primaryTopicId && group.primaryTopicId !== "main")
+  );
   return {
-    enabled: record.enabled === true,
+    enabled: record.enabled === true || hasGroupRules,
     defaultPolicy: "allow",
-    groups: groups.map((entry) => {
-      const group = asRecord(entry);
-      const allowedTopicIds = Array.isArray(group.allowedTopicIds)
-        ? group.allowedTopicIds.map(normalizeTelegramTopicIdClient).filter((topicId) => topicId !== "main")
-        : [];
-      const allowMainTopic = typeof group.allowMainTopic === "boolean" ? group.allowMainTopic : true;
-      const rawPrimaryTopicId = normalizeTelegramTopicIdClient(group.primaryTopicId);
-      const allowedTopicSet = new Set(allowedTopicIds);
-      const primaryTopicAllowed = rawPrimaryTopicId === "main" ? allowMainTopic : allowedTopicSet.has(rawPrimaryTopicId);
-      const primaryTopicId = primaryTopicAllowed ? rawPrimaryTopicId : allowedTopicIds[0] ?? (allowMainTopic ? "main" : "");
-      return {
-        chatId: readString(group.chatId),
-        title: readString(group.title),
-        isForum: typeof group.isForum === "boolean" ? group.isForum : true,
-        allowedTopicIds: Array.from(new Set(allowedTopicIds)),
-        allowMainTopic,
-        primaryTopicId,
-        updatedAt: readString(group.updatedAt) || new Date().toISOString(),
-      };
-    }).filter((group) => group.chatId),
+    groups: normalizedGroups,
   };
 }
 
@@ -3154,6 +3160,7 @@ function TelegramTopicLockPanel({
     }
     return {
       ...lock,
+      enabled: true,
       groups: [...lock.groups.filter((item) => item.chatId !== chatId), group],
     };
   };
@@ -3174,7 +3181,7 @@ function TelegramTopicLockPanel({
           <p className="mt-1 text-xs text-muted-foreground">Discovered topics only. Add manually if Telegram has not sent an update from that topic yet.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <ToggleControl label="Enabled" value={lock.enabled} onChange={(enabled) => onSave({ ...lock, enabled })} />
+          <ToggleControl label="Topic Lock Active" value={lock.enabled} onChange={(enabled) => onSave({ ...lock, enabled })} />
           <Button type="button" variant="outline" size="sm" onClick={onRefresh} disabled={busy}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh Topics
