@@ -23,6 +23,7 @@ import {
   Play,
   Plus,
   Power,
+  Pencil,
   RefreshCw,
   Save,
   Search,
@@ -2969,6 +2970,17 @@ function ChannelFields({
       setTopicBusy(null);
     }
   };
+  const renameTopic = async (payload: { chatId: string; title: string; messageThreadId: string; topicTitle: string }) => {
+    setTopicBusy("rename");
+    try {
+      applyTopicResponse(await addTelegramTopicManual(identityId, payload));
+      toast({ title: "Telegram topic title saved" });
+    } catch (err) {
+      toast({ title: "Topic title save failed", description: err instanceof Error ? err.message : "Unable to save Telegram topic title." });
+    } finally {
+      setTopicBusy(null);
+    }
+  };
   useEffect(() => {
     if (channel === "telegram") void loadTopics();
   }, [channel, identityId]);
@@ -2992,6 +3004,7 @@ function ChannelFields({
           manualTopic={manualTopic}
           onAddManual={addManualTopic}
           onManualChange={setManualTopic}
+          onRenameTopic={renameTopic}
           onRefresh={refreshTopics}
           onSave={saveTopicLock}
         />
@@ -3126,6 +3139,7 @@ function TelegramTopicLockPanel({
   manualTopic,
   onAddManual,
   onManualChange,
+  onRenameTopic,
   onRefresh,
   onSave,
 }: {
@@ -3135,9 +3149,11 @@ function TelegramTopicLockPanel({
   manualTopic: { chatId: string; title: string; messageThreadId: string; topicTitle: string };
   onAddManual: () => void;
   onManualChange: (value: { chatId: string; title: string; messageThreadId: string; topicTitle: string }) => void;
+  onRenameTopic: (value: { chatId: string; title: string; messageThreadId: string; topicTitle: string }) => void;
   onRefresh: () => void;
   onSave: (lock: TelegramTopicLock) => void;
 }) {
+  const [editingTopic, setEditingTopic] = useState<{ key: string; title: string } | null>(null);
   const lockGroupsByChat = new Map(lock.groups.map((group) => [group.chatId, group]));
   const nextGroup = (chatId: string, patch: Partial<TelegramTopicLock["groups"][number]>) => {
     const registryGroup = registry.groups.find((group) => group.chatId === chatId);
@@ -3235,13 +3251,75 @@ function TelegramTopicLockPanel({
                 {group.topics.filter((topic) => topic.messageThreadId !== "main").map((topic) => {
                   const allowed = allowedTopicIds.includes(topic.messageThreadId);
                   const primary = primaryTopicId === topic.messageThreadId;
+                  const topicKey = `${group.chatId}:${topic.messageThreadId}`;
+                  const editing = editingTopic?.key === topicKey;
                   return (
                     <div key={`${group.chatId}:${topic.messageThreadId}`} className="flex items-center justify-between gap-3 rounded-sm border border-border bg-background p-2 text-sm">
                       <span className="min-w-0">
-                        <span className="block truncate text-foreground">{topic.title}</span>
+                        {editing ? (
+                          <input
+                            className={cn(inputClass, "h-8 py-1 text-xs")}
+                            value={editingTopic.title}
+                            onChange={(event) => setEditingTopic({ key: topicKey, title: event.target.value })}
+                            onKeyDown={(event) => {
+                              if (event.key === "Escape") setEditingTopic(null);
+                              if (event.key === "Enter" && editingTopic.title.trim()) {
+                                onRenameTopic({
+                                  chatId: group.chatId,
+                                  title: group.title,
+                                  messageThreadId: topic.messageThreadId,
+                                  topicTitle: editingTopic.title.trim(),
+                                });
+                                setEditingTopic(null);
+                              }
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          <span className="block truncate text-foreground">{topic.title}</span>
+                        )}
                         <span className="block text-xs text-muted-foreground">Topic {topic.messageThreadId} - {topic.source}</span>
                       </span>
                       <span className="flex shrink-0 items-center gap-3">
+                        {editing ? (
+                          <>
+                            <button
+                              type="button"
+                              className="inline-flex h-8 items-center gap-1 rounded-sm border border-primary bg-primary/15 px-2 text-[10px] font-heading uppercase tracking-[0.12em] text-primary"
+                              disabled={busy || !editingTopic.title.trim()}
+                              onClick={() => {
+                                onRenameTopic({
+                                  chatId: group.chatId,
+                                  title: group.title,
+                                  messageThreadId: topic.messageThreadId,
+                                  topicTitle: editingTopic.title.trim(),
+                                });
+                                setEditingTopic(null);
+                              }}
+                            >
+                              <Save className="h-3 w-3" />
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              className="inline-flex h-8 items-center gap-1 rounded-sm border border-border px-2 text-[10px] font-heading uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground"
+                              onClick={() => setEditingTopic(null)}
+                            >
+                              <X className="h-3 w-3" />
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="inline-flex h-8 items-center gap-1 rounded-sm border border-border px-2 text-[10px] font-heading uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground"
+                            disabled={busy}
+                            onClick={() => setEditingTopic({ key: topicKey, title: topic.title })}
+                          >
+                            <Pencil className="h-3 w-3" />
+                            Edit title
+                          </button>
+                        )}
                         <button
                           type="button"
                           className={cn(
