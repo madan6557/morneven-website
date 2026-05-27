@@ -133,6 +133,7 @@ export interface TelegramTopicLockGroup {
   isForum: boolean;
   allowedTopicIds: string[];
   allowMainTopic: boolean;
+  primaryTopicId: string;
   updatedAt: string;
 }
 

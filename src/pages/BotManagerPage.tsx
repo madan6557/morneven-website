@@ -3068,12 +3068,18 @@ function normalizeTelegramTopicLockClient(value: unknown): TelegramTopicLock {
       const allowedTopicIds = Array.isArray(group.allowedTopicIds)
         ? group.allowedTopicIds.map(normalizeTelegramTopicIdClient).filter((topicId) => topicId !== "main")
         : [];
+      const allowMainTopic = typeof group.allowMainTopic === "boolean" ? group.allowMainTopic : true;
+      const rawPrimaryTopicId = normalizeTelegramTopicIdClient(group.primaryTopicId);
+      const allowedTopicSet = new Set(allowedTopicIds);
+      const primaryTopicAllowed = rawPrimaryTopicId === "main" ? allowMainTopic : allowedTopicSet.has(rawPrimaryTopicId);
+      const primaryTopicId = primaryTopicAllowed ? rawPrimaryTopicId : allowedTopicIds[0] ?? (allowMainTopic ? "main" : "");
       return {
         chatId: readString(group.chatId),
         title: readString(group.title),
         isForum: typeof group.isForum === "boolean" ? group.isForum : true,
         allowedTopicIds: Array.from(new Set(allowedTopicIds)),
-        allowMainTopic: typeof group.allowMainTopic === "boolean" ? group.allowMainTopic : true,
+        allowMainTopic,
+        primaryTopicId,
         updatedAt: readString(group.updatedAt) || new Date().toISOString(),
       };
     }).filter((group) => group.chatId),
@@ -3136,9 +3142,16 @@ function TelegramTopicLockPanel({
       isForum: existing?.isForum ?? registryGroup?.isForum ?? true,
       allowedTopicIds: existing?.allowedTopicIds ?? [],
       allowMainTopic: existing?.allowMainTopic ?? true,
+      primaryTopicId: existing?.primaryTopicId ?? (existing?.allowedTopicIds?.[0] || ((existing?.allowMainTopic ?? true) ? "main" : "")),
       updatedAt: new Date().toISOString(),
       ...patch,
     };
+    const allowedTopicSet = new Set(group.allowedTopicIds);
+    const primaryTopicId = group.primaryTopicId || "";
+    const primaryAllowed = primaryTopicId === "main" ? group.allowMainTopic : allowedTopicSet.has(primaryTopicId);
+    if (!primaryAllowed) {
+      group.primaryTopicId = group.allowedTopicIds[0] ?? (group.allowMainTopic ? "main" : "");
+    }
     return {
       ...lock,
       groups: [...lock.groups.filter((item) => item.chatId !== chatId), group],
@@ -3151,6 +3164,7 @@ function TelegramTopicLockPanel({
     else ids.delete(topicId);
     return nextGroup(chatId, { allowedTopicIds: Array.from(ids) });
   };
+  const setPrimaryTopic = (chatId: string, topicId: string) => nextGroup(chatId, { primaryTopicId: topicId });
 
   return (
     <div className="rounded-sm border border-border/70 bg-background/35 p-4">
@@ -3176,6 +3190,9 @@ function TelegramTopicLockPanel({
         )}
         {registry.groups.map((group) => {
           const groupLock = lockGroupsByChat.get(group.chatId);
+          const allowMainTopic = groupLock?.allowMainTopic ?? true;
+          const allowedTopicIds = groupLock?.allowedTopicIds ?? [];
+          const primaryTopicId = groupLock?.primaryTopicId ?? (allowMainTopic ? "main" : allowedTopicIds[0] ?? "");
           return (
             <div key={group.chatId} className="rounded-sm border border-border/70 bg-background/35 p-3">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -3183,29 +3200,63 @@ function TelegramTopicLockPanel({
                   <p className="font-heading text-sm text-foreground">{group.title || group.chatId}</p>
                   <p className="text-xs text-muted-foreground">{group.chatId} - {group.isForum ? "forum group" : "group"} - {group.source}</p>
                 </div>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={groupLock?.allowMainTopic ?? true}
-                    onChange={(event) => onSave(nextGroup(group.chatId, { allowMainTopic: event.target.checked }))}
-                  />
-                  Allow main topic
-                </label>
-              </div>
-              <div className="mt-3 grid gap-2 md:grid-cols-2">
-                {group.topics.filter((topic) => topic.messageThreadId !== "main").map((topic) => (
-                  <label key={`${group.chatId}:${topic.messageThreadId}`} className="flex items-center justify-between gap-3 rounded-sm border border-border bg-background p-2 text-sm">
-                    <span className="min-w-0">
-                      <span className="block truncate text-foreground">{topic.title}</span>
-                      <span className="block text-xs text-muted-foreground">Topic {topic.messageThreadId} - {topic.source}</span>
-                    </span>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
                     <input
                       type="checkbox"
-                      checked={Boolean(groupLock?.allowedTopicIds.includes(topic.messageThreadId))}
-                      onChange={(event) => onSave(toggleTopic(group.chatId, topic.messageThreadId, event.target.checked))}
+                      checked={allowMainTopic}
+                      onChange={(event) => onSave(nextGroup(group.chatId, { allowMainTopic: event.target.checked }))}
                     />
+                    Allow main topic
                   </label>
-                ))}
+                  {allowMainTopic && (
+                    <button
+                      type="button"
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-sm border px-2 py-1 text-[10px] font-heading uppercase tracking-[0.12em] transition-colors",
+                        primaryTopicId === "main" ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"
+                      )}
+                      onClick={() => onSave(setPrimaryTopic(group.chatId, "main"))}
+                    >
+                      {primaryTopicId === "main" && <Check className="h-3 w-3" />}
+                      {primaryTopicId === "main" ? "Main primary" : "Set main primary"}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {group.topics.filter((topic) => topic.messageThreadId !== "main").map((topic) => {
+                  const allowed = allowedTopicIds.includes(topic.messageThreadId);
+                  const primary = primaryTopicId === topic.messageThreadId;
+                  return (
+                    <div key={`${group.chatId}:${topic.messageThreadId}`} className="flex items-center justify-between gap-3 rounded-sm border border-border bg-background p-2 text-sm">
+                      <span className="min-w-0">
+                        <span className="block truncate text-foreground">{topic.title}</span>
+                        <span className="block text-xs text-muted-foreground">Topic {topic.messageThreadId} - {topic.source}</span>
+                      </span>
+                      <span className="flex shrink-0 items-center gap-3">
+                        <button
+                          type="button"
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-sm border px-2 py-1 text-[10px] font-heading uppercase tracking-[0.12em] transition-colors",
+                            primary ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground",
+                            !allowed && "cursor-not-allowed opacity-50 hover:text-muted-foreground"
+                          )}
+                          disabled={!allowed}
+                          onClick={() => onSave(setPrimaryTopic(group.chatId, topic.messageThreadId))}
+                        >
+                          {primary && <Check className="h-3 w-3" />}
+                          {primary ? "Primary" : "Set primary"}
+                        </button>
+                        <input
+                          type="checkbox"
+                          checked={allowed}
+                          onChange={(event) => onSave(toggleTopic(group.chatId, topic.messageThreadId, event.target.checked))}
+                        />
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
