@@ -152,6 +152,7 @@ type BotSettingsDraft = {
 type GeneralConfigDraft = {
   runtimeMode: "single-active-personality" | "multi-active-personality";
   timezone: string;
+  generalInformation: string;
   globalRules: string;
   restartAfterSync: boolean;
   allowRuntimeReload: boolean;
@@ -316,6 +317,7 @@ function createGeneralConfigDraft(value: unknown): GeneralConfigDraft {
   return {
     runtimeMode,
     timezone: readString(config.timezone, "Asia/Singapore"),
+    generalInformation: readString(config.generalInformation),
     globalRules: readString(config.globalRules, "Follow Morneven website policy and active personality files."),
     restartAfterSync: readBoolean(gateway.restartAfterSync, false),
     allowRuntimeReload: readBoolean(gateway.allowRuntimeReload, true),
@@ -326,6 +328,7 @@ function generalConfigDraftToConfig(base: JsonRecord, draft: GeneralConfigDraft)
   return mergeRecord(base, {
     runtimeMode: draft.runtimeMode,
     timezone: draft.timezone,
+    generalInformation: draft.generalInformation,
     globalRules: draft.globalRules,
     gateway: {
       restartAfterSync: draft.restartAfterSync,
@@ -340,6 +343,7 @@ function sameGeneralConfigDraft(left: GeneralConfigDraft, right: GeneralConfigDr
   return (
     left.timezone === right.timezone &&
     left.runtimeMode === right.runtimeMode &&
+    left.generalInformation === right.generalInformation &&
     left.globalRules === right.globalRules &&
     left.restartAfterSync === right.restartAfterSync &&
     left.allowRuntimeReload === right.allowRuntimeReload
@@ -353,13 +357,14 @@ function readStoredGeneralConfigDraft(): GeneralConfigDraft | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { draft?: unknown };
     const draft = asRecord(parsed.draft ?? parsed);
-    if ("timezone" in draft || "globalRules" in draft || "runtimeMode" in draft || "restartAfterSync" in draft || "allowRuntimeReload" in draft) {
+    if ("timezone" in draft || "generalInformation" in draft || "globalRules" in draft || "runtimeMode" in draft || "restartAfterSync" in draft || "allowRuntimeReload" in draft) {
       const runtimeMode: GeneralConfigDraft["runtimeMode"] = readString(draft.runtimeMode, "single-active-personality") === "multi-active-personality"
         ? "multi-active-personality"
         : "single-active-personality";
       return {
         runtimeMode,
         timezone: readString(draft.timezone, "Asia/Singapore"),
+        generalInformation: readString(draft.generalInformation),
         globalRules: readString(draft.globalRules, "Follow Morneven website policy and active personality files."),
         restartAfterSync: readBoolean(draft.restartAfterSync, false),
         allowRuntimeReload: readBoolean(draft.allowRuntimeReload, true),
@@ -1868,6 +1873,15 @@ export default function BotManagerPage() {
                   </label>
                   <Field label="Timezone" value={generalDraft.timezone} onChange={(timezone) => updateGeneralDraft({ timezone })} placeholder="Asia/Singapore" />
                 </div>
+                <label className="block space-y-2">
+                  <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">General Information</span>
+                  <textarea
+                    className={cn(inputClass, "min-h-28 resize-y")}
+                    value={generalDraft.generalInformation}
+                    onChange={(event) => updateGeneralDraft({ generalInformation: event.target.value })}
+                    placeholder="Shared facts, context, or operating information for all personalities."
+                  />
+                </label>
                 <label className="block space-y-2">
                   <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Global Rules</span>
                   <textarea className={cn(inputClass, "min-h-28 resize-y")} value={generalDraft.globalRules} onChange={(event) => updateGeneralDraft({ globalRules: event.target.value })} />
