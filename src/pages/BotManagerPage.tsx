@@ -2734,17 +2734,22 @@ function BackupSection({
             )}
           </div>
           <div className="rounded-sm border border-border/70 bg-background/35 p-4">
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)]">
-              <label className="space-y-2">
+            <div className="grid gap-3 md:grid-cols-3">
+              <label className="block space-y-2">
                 <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Backup File</span>
                 <input
                   key={backupImportFile?.name ?? "empty-import-file"}
-                  className={inputClass}
+                  className="sr-only"
                   type="file"
                   accept=".zip,application/zip"
                   onChange={(event: ChangeEvent<HTMLInputElement>) => onImportFileChange(event.target.files?.[0] ?? null)}
                 />
-                {backupImportFile && <span className="block truncate text-xs text-muted-foreground">{backupImportFile.name}</span>}
+                <span className={cn(inputClass, "flex h-[42px] cursor-pointer items-center gap-2 overflow-hidden")}>
+                  <Upload className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className={cn("truncate", backupImportFile ? "text-foreground" : "text-muted-foreground/75")}>
+                    {backupImportFile?.name ?? "Select backup ZIP"}
+                  </span>
+                </span>
               </label>
               <Field label="Password" value={backupImportPassword} onChange={onImportPasswordChange} type="password" name="bot-manager-backup-import-password" />
               <Field label="Extraction Key" value={backupImportKey} onChange={onImportKeyChange} type="password" name="bot-manager-backup-import-extraction-key" />
