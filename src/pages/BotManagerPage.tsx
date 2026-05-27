@@ -2589,7 +2589,7 @@ function PersonalityEditor({
           </button>
         ))}
       </div>
-      {activeTab === "channels" && <ChannelEditor activeChannel={selectedChannel} busy={Boolean(busy)} channels={channelsDraft} identityId={selectedIdentity.id} onSave={onSaveChannels} onSelect={onChannelSelect} onUpdate={onChannelUpdate} />}
+      {activeTab === "channels" && <ChannelEditor activeChannel={selectedChannel} busy={Boolean(busy)} channels={channelsDraft} identityId={detail.id} onSave={onSaveChannels} onSelect={onChannelSelect} onUpdate={onChannelUpdate} />}
       {activeTab === "system" && (
         <div className="grid gap-3 md:grid-cols-2">
           <Metric label="Runtime Mode" value="Single active personality" />
