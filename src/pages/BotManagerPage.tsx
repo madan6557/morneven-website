@@ -48,6 +48,7 @@ import {
   activateBotIdentity,
   activateBotProvider,
   activateOpenRouterProfile,
+  addTelegramTopicManual,
   clearBotManagerBackups,
   controlBotRuntime,
   controlBotRuntimeForIdentity,
@@ -64,9 +65,11 @@ import {
   getBotIdentity,
   getBotManagerSummary,
   getBotRuntimeStatus,
+  getTelegramTopics,
   importBotManagerBackup,
   listBotManagerBackups,
   listOpenRouterProfiles,
+  refreshTelegramTopics,
   regenerateBotIdentityDefaultFiles,
   saveBotIdentityFile,
   setMainBotIdentity,
@@ -76,6 +79,7 @@ import {
   updateBotGeneralConfig,
   updateBotIdentity,
   updateOpenRouterProfile,
+  updateTelegramTopicLock,
   type BotManagerBackupJob,
   uploadBotProfileImage,
   type BotFileKind,
@@ -86,6 +90,8 @@ import {
   type BotRuntimeStatus,
   type BotSummary,
   type OpenRouterProfile,
+  type TelegramTopicLock,
+  type TelegramTopicsResponse,
 } from "@/services/botManagerApi";
 import { getCharactersPage } from "@/services/loreApi";
 import { ApiError } from "@/services/restClient";
@@ -2583,7 +2589,7 @@ function PersonalityEditor({
           </button>
         ))}
       </div>
-      {activeTab === "channels" && <ChannelEditor activeChannel={selectedChannel} busy={Boolean(busy)} channels={channelsDraft} onSave={onSaveChannels} onSelect={onChannelSelect} onUpdate={onChannelUpdate} />}
+      {activeTab === "channels" && <ChannelEditor activeChannel={selectedChannel} busy={Boolean(busy)} channels={channelsDraft} identityId={selectedIdentity.id} onSave={onSaveChannels} onSelect={onChannelSelect} onUpdate={onChannelUpdate} />}
       {activeTab === "system" && (
         <div className="grid gap-3 md:grid-cols-2">
           <Metric label="Runtime Mode" value="Single active personality" />
@@ -2823,6 +2829,7 @@ function ChannelEditor({
   activeChannel,
   busy,
   channels,
+  identityId,
   onSave,
   onSelect,
   onUpdate,
@@ -2830,6 +2837,7 @@ function ChannelEditor({
   activeChannel: ChannelKey;
   busy: boolean;
   channels: JsonRecord;
+  identityId: string;
   onSave: () => void;
   onSelect: (channel: ChannelKey) => void;
   onUpdate: (channel: ChannelKey, patch: JsonRecord) => void;
@@ -2879,7 +2887,7 @@ function ChannelEditor({
           />
         </div>
         <div className="mt-4">
-          <ChannelFields channel={activeChannel} config={config} onUpdate={(patch) => onUpdate(activeChannel, patch)} />
+          <ChannelFields channel={activeChannel} config={config} identityId={identityId} onUpdate={(patch) => onUpdate(activeChannel, patch)} />
         </div>
       </div>
 
@@ -2894,22 +2902,99 @@ function ChannelEditor({
 function ChannelFields({
   channel,
   config,
+  identityId,
   onUpdate,
 }: {
   channel: ChannelKey;
   config: JsonRecord;
+  identityId: string;
   onUpdate: (patch: JsonRecord) => void;
 }) {
+  const { toast } = useToast();
+  const [topicBusy, setTopicBusy] = useState<string | null>(null);
+  const [manualTopic, setManualTopic] = useState({ chatId: "", title: "", messageThreadId: "", topicTitle: "" });
+  const topicLock = normalizeTelegramTopicLockClient(config.topicLock);
+  const topicRegistry = normalizeTelegramTopicRegistryClient(config.topicRegistry);
+  const applyTopicResponse = (response: TelegramTopicsResponse) => {
+    onUpdate({ topicLock: response.topicLock, topicRegistry: response.topicRegistry });
+  };
+  const loadTopics = async () => {
+    if (channel !== "telegram") return;
+    setTopicBusy("load");
+    try {
+      applyTopicResponse(await getTelegramTopics(identityId));
+    } catch (err) {
+      toast({ title: "Topic Lock unavailable", description: err instanceof Error ? err.message : "Unable to load Telegram topics." });
+    } finally {
+      setTopicBusy(null);
+    }
+  };
+  const saveTopicLock = async (nextLock: TelegramTopicLock) => {
+    setTopicBusy("save");
+    try {
+      applyTopicResponse(await updateTelegramTopicLock(identityId, nextLock));
+      toast({ title: "Topic Lock saved" });
+    } catch (err) {
+      toast({ title: "Topic Lock save failed", description: err instanceof Error ? err.message : "Unable to save Topic Lock." });
+    } finally {
+      setTopicBusy(null);
+    }
+  };
+  const refreshTopics = async () => {
+    setTopicBusy("refresh");
+    try {
+      applyTopicResponse(await refreshTelegramTopics(identityId));
+      toast({ title: "Telegram topics refreshed" });
+    } catch (err) {
+      toast({ title: "Telegram topic refresh failed", description: err instanceof Error ? err.message : "Runtime unavailable or no topics observed yet." });
+    } finally {
+      setTopicBusy(null);
+    }
+  };
+  const addManualTopic = async () => {
+    if (!manualTopic.chatId.trim()) return;
+    setTopicBusy("manual");
+    try {
+      applyTopicResponse(await addTelegramTopicManual(identityId, {
+        chatId: manualTopic.chatId.trim(),
+        title: manualTopic.title.trim(),
+        messageThreadId: manualTopic.messageThreadId.trim() || undefined,
+        topicTitle: manualTopic.topicTitle.trim(),
+      }));
+      setManualTopic({ chatId: "", title: "", messageThreadId: "", topicTitle: "" });
+      toast({ title: "Telegram topic added" });
+    } catch (err) {
+      toast({ title: "Manual topic add failed", description: err instanceof Error ? err.message : "Unable to add Telegram topic." });
+    } finally {
+      setTopicBusy(null);
+    }
+  };
+  useEffect(() => {
+    if (channel === "telegram") void loadTopics();
+  }, [channel, identityId]);
+
   if (channel === "telegram") {
     return (
-      <div className="grid items-start gap-3 md:grid-cols-2">
-        <div className="space-y-3">
-          <SecretField label="Token" value={config.token} onChange={(token) => onUpdate({ token })} name="bot-manager-telegram-token" placeholder="Enter Telegram bot token" />
-          <Field label="Proxy" value={readString(config.proxy)} onChange={(proxy) => onUpdate({ proxy })} placeholder="Optional proxy URL" />
+      <div className="space-y-4">
+        <div className="grid items-start gap-3 md:grid-cols-2">
+          <div className="space-y-3">
+            <SecretField label="Token" value={config.token} onChange={(token) => onUpdate({ token })} name="bot-manager-telegram-token" placeholder="Enter Telegram bot token" />
+            <Field label="Proxy" value={readString(config.proxy)} onChange={(proxy) => onUpdate({ proxy })} placeholder="Optional proxy URL" />
+          </div>
+          <div>
+            <TagField label="Allowed User IDs" value={readStringArray(config.allowFrom)} onChange={(allowFrom) => onUpdate({ allowFrom })} placeholder="* or user ID" />
+          </div>
         </div>
-        <div>
-          <TagField label="Allowed User IDs" value={readStringArray(config.allowFrom)} onChange={(allowFrom) => onUpdate({ allowFrom })} placeholder="* or user ID" />
-        </div>
+        <TelegramTopicLockPanel
+          busy={Boolean(topicBusy)}
+          lock={topicLock}
+          registry={topicRegistry}
+          manualTopic={manualTopic}
+          onAddManual={addManualTopic}
+          onManualChange={setManualTopic}
+          onRefresh={refreshTopics}
+          onSave={saveTopicLock}
+        />
       </div>
     );
   }
@@ -2961,6 +3046,182 @@ function ChannelFields({
       <SecretField label="Webhook URL" value={config.webhookUrl} onChange={(webhookUrl) => onUpdate({ webhookUrl })} name="bot-manager-dingtalk-webhook-url" />
       <SecretField label="Secret" value={config.secret} onChange={(secret) => onUpdate({ secret })} name="bot-manager-dingtalk-secret" />
       <TagField label="Allowed Senders" value={readStringArray(config.allowFrom)} onChange={(allowFrom) => onUpdate({ allowFrom })} />
+    </div>
+  );
+}
+
+function normalizeTelegramTopicIdClient(value: unknown) {
+  if (value === undefined || value === null || value === "") return "main";
+  const text = String(value).trim();
+  if (!text || text === "0" || text.toLowerCase() === "main") return "main";
+  return text;
+}
+
+function normalizeTelegramTopicLockClient(value: unknown): TelegramTopicLock {
+  const record = asRecord(value);
+  const groups = Array.isArray(record.groups) ? record.groups : [];
+  return {
+    enabled: record.enabled === true,
+    defaultPolicy: "allow",
+    groups: groups.map((entry) => {
+      const group = asRecord(entry);
+      const allowedTopicIds = Array.isArray(group.allowedTopicIds)
+        ? group.allowedTopicIds.map(normalizeTelegramTopicIdClient).filter((topicId) => topicId !== "main")
+        : [];
+      return {
+        chatId: readString(group.chatId),
+        title: readString(group.title),
+        isForum: typeof group.isForum === "boolean" ? group.isForum : true,
+        allowedTopicIds: Array.from(new Set(allowedTopicIds)),
+        allowMainTopic: typeof group.allowMainTopic === "boolean" ? group.allowMainTopic : true,
+        updatedAt: readString(group.updatedAt) || new Date().toISOString(),
+      };
+    }).filter((group) => group.chatId),
+  };
+}
+
+function normalizeTelegramTopicRegistryClient(value: unknown) {
+  const record = asRecord(value);
+  const groups = Array.isArray(record.groups) ? record.groups : [];
+  return {
+    groups: groups.map((entry) => {
+      const group = asRecord(entry);
+      const topics = Array.isArray(group.topics) ? group.topics : [];
+      return {
+        chatId: readString(group.chatId),
+        title: readString(group.title),
+        isForum: typeof group.isForum === "boolean" ? group.isForum : true,
+        lastSeenAt: readString(group.lastSeenAt),
+        source: readString(group.source) === "manual" ? "manual" as const : "observed" as const,
+        topics: topics.map((topicEntry) => {
+          const topic = asRecord(topicEntry);
+          return {
+            messageThreadId: normalizeTelegramTopicIdClient(topic.messageThreadId),
+            title: readString(topic.title) || (normalizeTelegramTopicIdClient(topic.messageThreadId) === "main" ? "Main topic" : `Topic ${normalizeTelegramTopicIdClient(topic.messageThreadId)}`),
+            lastSeenAt: readString(topic.lastSeenAt),
+            source: readString(topic.source) === "manual" ? "manual" as const : "observed" as const,
+          };
+        }),
+      };
+    }).filter((group) => group.chatId),
+  };
+}
+
+function TelegramTopicLockPanel({
+  busy,
+  lock,
+  registry,
+  manualTopic,
+  onAddManual,
+  onManualChange,
+  onRefresh,
+  onSave,
+}: {
+  busy: boolean;
+  lock: TelegramTopicLock;
+  registry: ReturnType<typeof normalizeTelegramTopicRegistryClient>;
+  manualTopic: { chatId: string; title: string; messageThreadId: string; topicTitle: string };
+  onAddManual: () => void;
+  onManualChange: (value: { chatId: string; title: string; messageThreadId: string; topicTitle: string }) => void;
+  onRefresh: () => void;
+  onSave: (lock: TelegramTopicLock) => void;
+}) {
+  const lockGroupsByChat = new Map(lock.groups.map((group) => [group.chatId, group]));
+  const nextGroup = (chatId: string, patch: Partial<TelegramTopicLock["groups"][number]>) => {
+    const registryGroup = registry.groups.find((group) => group.chatId === chatId);
+    const existing = lockGroupsByChat.get(chatId);
+    const group = {
+      chatId,
+      title: existing?.title || registryGroup?.title || "",
+      isForum: existing?.isForum ?? registryGroup?.isForum ?? true,
+      allowedTopicIds: existing?.allowedTopicIds ?? [],
+      allowMainTopic: existing?.allowMainTopic ?? true,
+      updatedAt: new Date().toISOString(),
+      ...patch,
+    };
+    return {
+      ...lock,
+      groups: [...lock.groups.filter((item) => item.chatId !== chatId), group],
+    };
+  };
+  const toggleTopic = (chatId: string, topicId: string, checked: boolean) => {
+    const existing = lockGroupsByChat.get(chatId);
+    const ids = new Set(existing?.allowedTopicIds ?? []);
+    if (checked) ids.add(topicId);
+    else ids.delete(topicId);
+    return nextGroup(chatId, { allowedTopicIds: Array.from(ids) });
+  };
+
+  return (
+    <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h3 className="font-heading text-sm text-foreground">Topic Lock</h3>
+          <p className="mt-1 text-xs text-muted-foreground">Discovered topics only. Add manually if Telegram has not sent an update from that topic yet.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <ToggleControl label="Enabled" value={lock.enabled} onChange={(enabled) => onSave({ ...lock, enabled })} />
+          <Button type="button" variant="outline" size="sm" onClick={onRefresh} disabled={busy}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh Topics
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {registry.groups.length === 0 && (
+          <div className="rounded-sm border border-border bg-background/35 p-3 text-sm text-muted-foreground">
+            No Telegram group topics observed yet. Add one manually or send a message from the target group topic.
+          </div>
+        )}
+        {registry.groups.map((group) => {
+          const groupLock = lockGroupsByChat.get(group.chatId);
+          return (
+            <div key={group.chatId} className="rounded-sm border border-border/70 bg-background/35 p-3">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-heading text-sm text-foreground">{group.title || group.chatId}</p>
+                  <p className="text-xs text-muted-foreground">{group.chatId} - {group.isForum ? "forum group" : "group"} - {group.source}</p>
+                </div>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={groupLock?.allowMainTopic ?? true}
+                    onChange={(event) => onSave(nextGroup(group.chatId, { allowMainTopic: event.target.checked }))}
+                  />
+                  Allow main topic
+                </label>
+              </div>
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {group.topics.filter((topic) => topic.messageThreadId !== "main").map((topic) => (
+                  <label key={`${group.chatId}:${topic.messageThreadId}`} className="flex items-center justify-between gap-3 rounded-sm border border-border bg-background p-2 text-sm">
+                    <span className="min-w-0">
+                      <span className="block truncate text-foreground">{topic.title}</span>
+                      <span className="block text-xs text-muted-foreground">Topic {topic.messageThreadId} - {topic.source}</span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(groupLock?.allowedTopicIds.includes(topic.messageThreadId))}
+                      onChange={(event) => onSave(toggleTopic(group.chatId, topic.messageThreadId, event.target.checked))}
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem_minmax(0,1fr)_auto] lg:items-end">
+        <Field label="Manual Chat ID" value={manualTopic.chatId} onChange={(chatId) => onManualChange({ ...manualTopic, chatId })} placeholder="-100..." />
+        <Field label="Group Title" value={manualTopic.title} onChange={(title) => onManualChange({ ...manualTopic, title })} placeholder="Optional" />
+        <Field label="Topic ID" value={manualTopic.messageThreadId} onChange={(messageThreadId) => onManualChange({ ...manualTopic, messageThreadId })} placeholder="Main if empty" />
+        <Field label="Topic Title" value={manualTopic.topicTitle} onChange={(topicTitle) => onManualChange({ ...manualTopic, topicTitle })} placeholder="Optional" />
+        <Button type="button" variant="outline" onClick={onAddManual} disabled={busy || !manualTopic.chatId.trim()}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add
+        </Button>
+      </div>
     </div>
   );
 }

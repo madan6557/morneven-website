@@ -111,6 +111,45 @@ export interface BotIdentityDetail extends BotIdentity {
   files: BotIdentityFile[];
 }
 
+export interface TelegramTopicRegistryTopic {
+  messageThreadId: string;
+  title: string;
+  lastSeenAt: string;
+  source: "observed" | "manual";
+}
+
+export interface TelegramTopicRegistryGroup {
+  chatId: string;
+  title: string;
+  isForum: boolean;
+  lastSeenAt: string;
+  source: "observed" | "manual";
+  topics: TelegramTopicRegistryTopic[];
+}
+
+export interface TelegramTopicLockGroup {
+  chatId: string;
+  title: string;
+  isForum: boolean;
+  allowedTopicIds: string[];
+  allowMainTopic: boolean;
+  updatedAt: string;
+}
+
+export interface TelegramTopicLock {
+  enabled: boolean;
+  defaultPolicy: "allow";
+  groups: TelegramTopicLockGroup[];
+}
+
+export interface TelegramTopicsResponse {
+  identityId: string;
+  topicLock: TelegramTopicLock;
+  topicRegistry: { groups: TelegramTopicRegistryGroup[] };
+  runtimeSync?: BotSummary["runtimeSync"];
+  pull?: { importedCount: number; appliedPaths: string[]; skippedPaths: string[] };
+}
+
 export interface BotRuntimeStatus {
   ok?: boolean;
   action?: string;
@@ -327,6 +366,37 @@ export function deactivateBotIdentity(id: string) {
 export function setMainBotIdentity(id: string) {
   return apiRequest<BotIdentity>(`/bot-manager/identities/${id}/main`, {
     method: "PATCH",
+  });
+}
+
+export function getTelegramTopics(id: string) {
+  return apiRequest<TelegramTopicsResponse>(`/bot-manager/identities/${id}/telegram/topics`);
+}
+
+export function updateTelegramTopicLock(id: string, topicLock: TelegramTopicLock) {
+  return apiRequest<TelegramTopicsResponse>(`/bot-manager/identities/${id}/telegram/topic-lock`, {
+    method: "PUT",
+    body: { topicLock },
+  });
+}
+
+export function addTelegramTopicManual(id: string, payload: {
+  chatId: string;
+  title?: string;
+  isForum?: boolean;
+  messageThreadId?: string;
+  topicTitle?: string;
+}) {
+  return apiRequest<TelegramTopicsResponse>(`/bot-manager/identities/${id}/telegram/topics/manual`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function refreshTelegramTopics(id: string) {
+  return apiRequest<TelegramTopicsResponse>(`/bot-manager/identities/${id}/telegram/topics/refresh`, {
+    method: "POST",
+    timeoutMs: 30000,
   });
 }
 
