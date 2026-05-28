@@ -72,6 +72,7 @@ import {
   runStorageCleanupRemote,
   type StorageCleanupReport,
 } from "@/services/storageCleanupService";
+import { apiRequest } from "@/services/restClient";
 import { cn } from "@/lib/utils";
 import type { PersonnelReport, PersonnelReviewAction, PersonnelReviewDecision } from "@/types";
 import { subscribeRealtimeEvents } from "@/services/realtime";
@@ -161,6 +162,19 @@ const BACKUP_MEDIA_SOURCES: Array<{ value: BackupMediaSource; label: string }> =
   { value: "bot-manager", label: "Bot Manager" },
 ];
 
+const WEB_VERSION = __APP_VERSION__ || "unknown";
+
+type RuntimeVersion = {
+  service?: string;
+  version?: string;
+  buildVersion?: string;
+  commitSha?: string | null;
+  commit?: string | null;
+  env?: string;
+  generatedAt?: string;
+  startedAt?: string;
+};
+
 function describeRestrictionDuration(mode: RestrictionDurationMode, amount: number) {
   if (mode === "manual") return "until manual restore";
   const unit = amount === 1 ? { minutes: "minute", hours: "hour", days: "day" }[mode] : mode;
@@ -242,6 +256,8 @@ export default function SettingsPage() {
   const [chatError, setChatError] = useState<string | null>(null);
   const [storageLoading, setStorageLoading] = useState(personnelLevel >= 7);
   const [storageError, setStorageError] = useState<string | null>(null);
+  const [apiVersion, setApiVersion] = useState<RuntimeVersion | null>(null);
+  const [apiVersionError, setApiVersionError] = useState<string | null>(null);
   const processing = useMemo(() => history.some((job) => job.status === "processing"), [history]);
   const migrationProcessing = useMemo(
     () => migrationHistory.some((job) => job.status === "processing"),
@@ -263,6 +279,18 @@ export default function SettingsPage() {
       }, 0),
     [chatReport, chatResetScopes],
   );
+
+  useEffect(() => {
+    apiRequest<RuntimeVersion>("/version", { auth: false, retryOnUnauthorized: false })
+      .then((payload) => {
+        setApiVersion(payload);
+        setApiVersionError(null);
+      })
+      .catch((error) => {
+        setApiVersion(null);
+        setApiVersionError(toUserFacingError(error, "API version unavailable."));
+      });
+  }, []);
 
   useEffect(() => {
     if (personnelLevel < 7) {
@@ -864,6 +892,21 @@ export default function SettingsPage() {
               <Row label="Clearance" value={`L${personnelLevel}`} strong />
               <Row label="Track" value={`${trackInfo?.short} - ${trackInfo?.label}`} strong />
               <Row label="Title" value={title} />
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            icon={DatabaseZap}
+            title="System Version"
+            description="Current frontend and backend release metadata for deployment verification."
+          >
+            <div className="space-y-2 text-sm font-body">
+              <Row label="Website" value={WEB_VERSION} strong />
+              <Row label="API" value={apiVersion?.version ?? "Unknown"} strong active={!apiVersionError} />
+              <Row label="API Build" value={apiVersion?.buildVersion ?? "Unknown"} active={!apiVersionError} />
+              <Row label="API Env" value={apiVersion?.env ?? "Unknown"} active={!apiVersionError} />
+              <Row label="API Commit" value={(apiVersion?.commitSha ?? apiVersion?.commit ?? "Not provided").slice(0, 12)} active={!apiVersionError} />
+              {apiVersionError && <p className="text-xs leading-5 text-destructive">{apiVersionError}</p>}
             </div>
           </SectionCard>
 

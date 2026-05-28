@@ -52,6 +52,9 @@ function runtimeMetadataPlugin(mode: string) {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  define: {
+    __APP_VERSION__: JSON.stringify(readPackageVersion()),
+  },
   server: {
     host: "::",
     port: 3000,
