@@ -413,6 +413,7 @@ export interface NewsItem {
   id: string;
   text: string;
   date: string;
+  createdAt?: string;
   body?: string;
   thumbnail?: string;
   attachments?: NewsAttachment[];
