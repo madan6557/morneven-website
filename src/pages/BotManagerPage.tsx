@@ -1,9 +1,11 @@
 import { type CSSProperties, type ChangeEvent, type UIEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Navigate } from "react-router-dom";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   ArrowDownAZ,
   ArrowUpAZ,
+  BarChart3,
   Bot,
   Brain,
   Check,
@@ -41,6 +43,7 @@ import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import TagInput from "@/components/TagInput";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { canAccessBotManager } from "@/lib/pl";
@@ -66,6 +69,7 @@ import {
   getBotIdentity,
   getBotManagerSummary,
   getBotRuntimeStatus,
+  getProviderAnalytics,
   getTelegramTopics,
   importBotManagerBackup,
   listBotManagerBackups,
@@ -80,6 +84,7 @@ import {
   updateBotGeneralConfig,
   updateBotIdentity,
   updateOpenRouterProfile,
+  updateProviderAnalyticsCredential,
   updateTelegramTopicLock,
   type BotManagerBackupJob,
   uploadBotProfileImage,
@@ -88,6 +93,7 @@ import {
   type BotIdentityDetail,
   type BotIdentityFile,
   type BotProvider,
+  type BotProviderAnalytics,
   type BotRuntimeStatus,
   type BotSummary,
   type OpenRouterProfile,
@@ -176,6 +182,42 @@ type OpenRouterDraft = {
   notes: string;
 };
 
+type ProviderCredentialDraft = {
+  apiKey: string;
+  apiBase: string;
+  modelId: string;
+  analyticsApiKey: string;
+  analyticsOrganizationId: string;
+  analyticsProjectId: string;
+  analyticsApiKeyId: string;
+  analyticsBillingAccountId: string;
+};
+
+const defaultModelIds: Partial<Record<BotProvider, string>> = {
+  gemini: "gemini-2.5-flash",
+  anthropic: "claude-sonnet-4-5",
+  groq: "llama-3.1-8b-instant",
+  openai: "gpt-4.1-mini",
+  deepseek: "deepseek-chat",
+  zhipu: "glm-4.5",
+  vllm: "local-model",
+};
+
+const analyticsKeyProviders = new Set<BotProvider>(["openai", "anthropic"]);
+
+function createProviderCredentialDraft(provider: BotProvider, metadata: JsonRecord = {}, analyticsMetadata: JsonRecord = {}): ProviderCredentialDraft {
+  return {
+    apiKey: "",
+    apiBase: "",
+    modelId: readString(metadata.modelId, defaultModelIds[provider] ?? ""),
+    analyticsApiKey: "",
+    analyticsOrganizationId: readString(analyticsMetadata.organizationId),
+    analyticsProjectId: readString(analyticsMetadata.projectId),
+    analyticsApiKeyId: readString(analyticsMetadata.apiKeyId),
+    analyticsBillingAccountId: readString(analyticsMetadata.billingAccountId),
+  };
+}
+
 const inputClass =
   "min-w-0 w-full rounded-sm border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:ring-1 focus:ring-primary";
 const textareaClass = `${inputClass} min-h-40 resize-y font-mono text-xs leading-5`;
@@ -217,6 +259,16 @@ function readString(value: unknown, fallback = "") {
 
 function readNumberText(value: unknown, fallback: number) {
   return typeof value === "number" && Number.isFinite(value) ? String(value) : readString(value, String(fallback));
+}
+
+function formatCount(value: unknown) {
+  const number = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat().format(number);
+}
+
+function formatMoney(value: unknown, currency = "USD") {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "-";
+  return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 4 }).format(value);
 }
 
 function readBoolean(value: unknown, fallback: boolean) {
@@ -584,13 +636,15 @@ export default function BotManagerPage() {
     personalities: false,
     backup: false,
   });
-  type MainTab = "runtime" | "credentials" | "personalities" | "config" | "backups";
+  type MainTab = "runtime" | "providers" | "personalities" | "config" | "backups";
   const [activeMainTab, setActiveMainTab] = useState<MainTab>("runtime");
 
-  const [credentialProvider, setCredentialProvider] = useState<BotProvider>("gemini");
-  const [credentialApiKey, setCredentialApiKey] = useState("");
-  const [credentialApiBase, setCredentialApiBase] = useState("");
-  const [credentialModelId, setCredentialModelId] = useState("");
+  const [providerDrafts, setProviderDrafts] = useState<Partial<Record<BotProvider, ProviderCredentialDraft>>>({});
+  const [selectedAnalyticsProvider, setSelectedAnalyticsProvider] = useState<BotProvider>("deepseek");
+  const [analyticsRange, setAnalyticsRange] = useState<"7d" | "30d" | "90d">("30d");
+  const [providerAnalytics, setProviderAnalytics] = useState<BotProviderAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [credentialPassword, setCredentialPassword] = useState("");
   const [credentialKey, setCredentialKey] = useState("");
   const [credentialConfirm, setCredentialConfirm] = useState("");
@@ -681,12 +735,32 @@ export default function BotManagerPage() {
     credentialKey.trim().length >= 16 &&
     credentialConfirm === "CREDENTIALS";
 
-  const selectedCredentialConfigured = Boolean(summary?.credentials.some((item) => item.provider === credentialProvider && item.configured));
-  const canSubmitCredential =
-    credentialUnlocked &&
-    (credentialApiKey.trim().length > 0 || selectedCredentialConfigured) &&
-    credentialModelId.trim().length > 0 &&
-    canUnlockCredential;
+  const credentialForProvider = (provider: BotProvider) => summary?.credentials.find((item) => item.provider === provider);
+  const analyticsCredentialForProvider = (provider: BotProvider) => summary?.analyticsCredentials?.find((item) => item.provider === provider);
+  const draftForProvider = (provider: BotProvider) => {
+    const credential = credentialForProvider(provider);
+    const analyticsCredential = analyticsCredentialForProvider(provider);
+    return providerDrafts[provider] ?? createProviderCredentialDraft(provider, asRecord(credential?.metadata), asRecord(analyticsCredential?.metadata));
+  };
+  const updateProviderDraft = (provider: BotProvider, patch: Partial<ProviderCredentialDraft>) => {
+    setProviderDrafts((current) => ({
+      ...current,
+      [provider]: {
+        ...draftForProvider(provider),
+        ...patch,
+      },
+    }));
+  };
+  const canSubmitCredential = (provider: BotProvider) => {
+    const draft = draftForProvider(provider);
+    const configured = Boolean(credentialForProvider(provider)?.configured);
+    return credentialUnlocked && (draft.apiKey.trim().length > 0 || configured) && draft.modelId.trim().length > 0 && canUnlockCredential;
+  };
+  const canSubmitAnalyticsCredential = (provider: BotProvider) => {
+    const draft = draftForProvider(provider);
+    const configured = Boolean(analyticsCredentialForProvider(provider)?.configured);
+    return credentialUnlocked && (draft.analyticsApiKey.trim().length > 0 || configured) && canUnlockCredential;
+  };
 
   const loadSummary = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -738,6 +812,19 @@ export default function BotManagerPage() {
       toast({ title: "OpenRouter profiles unavailable", description: err instanceof Error ? err.message : "Unable to load OpenRouter profiles." });
     }
   }, [openRouterFilter, openRouterPage, openRouterSearch, toast]);
+
+  const loadProviderAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    try {
+      const next = await getProviderAnalytics(selectedAnalyticsProvider, analyticsRange);
+      setProviderAnalytics(next);
+    } catch (err) {
+      setAnalyticsError(err instanceof Error ? err.message : "Provider analytics unavailable.");
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [analyticsRange, selectedAnalyticsProvider]);
 
   const loadBackupJobs = useCallback(async () => {
     try {
@@ -831,6 +918,10 @@ export default function BotManagerPage() {
   }, [credentialUnlocked, credentialsVisible, loadOpenRouterProfiles]);
 
   useEffect(() => {
+    if (allowed && pageVisible && activeMainTab === "providers") void loadProviderAnalytics();
+  }, [activeMainTab, allowed, loadProviderAnalytics, pageVisible]);
+
+  useEffect(() => {
     if (backupVisible) void loadBackupJobs();
   }, [backupVisible, loadBackupJobs]);
 
@@ -921,6 +1012,7 @@ export default function BotManagerPage() {
   const refreshVisibleData = async () => {
     const tasks: Array<Promise<unknown>> = [loadSummary(), loadRuntimeStatus()];
     if (credentialsVisible && credentialUnlocked) tasks.push(loadOpenRouterProfiles());
+    if (activeMainTab === "providers") tasks.push(loadProviderAnalytics());
     if (backupVisible) tasks.push(loadBackupJobs());
     await Promise.all(tasks);
     if (personalitiesVisible && selectedId && editingIdentityId === selectedId) await loadDetail(selectedId);
@@ -978,9 +1070,7 @@ export default function BotManagerPage() {
 
   const lockCredentials = () => {
     setCredentialUnlocked(false);
-    setCredentialApiKey("");
-    setCredentialApiBase("");
-    setCredentialModelId("");
+    setProviderDrafts({});
     setCredentialPassword("");
     setCredentialKey("");
     setCredentialConfirm("");
@@ -1000,23 +1090,54 @@ export default function BotManagerPage() {
       "Credentials unlocked",
     );
 
-  const saveCredential = () =>
+  const saveCredential = (provider: Exclude<BotProvider, "openrouter">) =>
     runAction(
-      "credential",
+      `credential-${provider}`,
       async () => {
+        const draft = draftForProvider(provider);
         await updateBotCredential({
-          provider: credentialProvider,
-          apiKey: credentialApiKey,
-          apiBase: credentialApiBase.trim() || undefined,
-          modelId: credentialModelId.trim(),
+          provider,
+          apiKey: draft.apiKey,
+          apiBase: draft.apiBase.trim() || undefined,
+          modelId: draft.modelId.trim(),
           password: credentialPassword,
           botManagerKey: credentialKey,
           confirmText: "CREDENTIALS",
         });
-        lockCredentials();
+        setProviderDrafts((current) => ({
+          ...current,
+          [provider]: { ...draft, apiKey: "" },
+        }));
         await loadSummary();
+        if (selectedAnalyticsProvider === provider) await loadProviderAnalytics();
       },
       "Credential saved",
+    );
+
+  const saveAnalyticsCredential = (provider: BotProvider) =>
+    runAction(
+      `analytics-credential-${provider}`,
+      async () => {
+        const draft = draftForProvider(provider);
+        await updateProviderAnalyticsCredential({
+          provider,
+          apiKey: draft.analyticsApiKey,
+          organizationId: draft.analyticsOrganizationId.trim() || undefined,
+          projectId: draft.analyticsProjectId.trim() || undefined,
+          apiKeyId: draft.analyticsApiKeyId.trim() || undefined,
+          billingAccountId: draft.analyticsBillingAccountId.trim() || undefined,
+          password: credentialPassword,
+          botManagerKey: credentialKey,
+          confirmText: "CREDENTIALS",
+        });
+        setProviderDrafts((current) => ({
+          ...current,
+          [provider]: { ...draft, analyticsApiKey: "" },
+        }));
+        await loadSummary();
+        if (selectedAnalyticsProvider === provider) await loadProviderAnalytics();
+      },
+      "Analytics credential saved",
     );
 
   const saveGeneralConfig = () =>
@@ -1498,10 +1619,7 @@ export default function BotManagerPage() {
   const activeProvider = summary?.runtimeStatus.activeProvider ?? "";
   const activeOpenRouterProfileId = summary?.runtimeStatus.activeOpenRouterProfileId ?? "";
   const syncReasonText = runtimeDirty ? (summary?.runtimeSync.runtimeDirtyReason ?? "Runtime changes pending") : "No pending runtime changes";
-  const selectedCredential = summary?.credentials.find((item) => item.provider === credentialProvider);
-  const credentialApiKeyValue: SecretFieldValue = credentialApiKey || (selectedCredential?.configured
-    ? { __botManagerSecret: true, configured: true, preview: selectedCredential.keyPreview || "***" }
-    : "");
+  const currentProviderAnalytics = providerAnalytics?.provider === selectedAnalyticsProvider ? providerAnalytics : null;
   const personalityPageSize = 5;
   const filteredPersonalities = (summary?.identities ?? []).filter((identity) => {
     const haystack = `${identity.name} ${identity.roleTitle} ${identity.description}`.toLowerCase();
@@ -1592,7 +1710,7 @@ export default function BotManagerPage() {
         <div role="tablist" aria-label="Bot Manager sections" className="hud-border bg-card/40 p-1 flex gap-1 overflow-x-auto">
           {([
             { key: "runtime", label: "Runtime", icon: Bot },
-            { key: "credentials", label: "Credentials", icon: KeyRound },
+            { key: "providers", label: "Providers", icon: KeyRound },
             { key: "personalities", label: "Personalities", icon: Brain },
             { key: "config", label: "Config", icon: Settings },
             { key: "backups", label: "Backups", icon: Download },
@@ -1733,120 +1851,223 @@ export default function BotManagerPage() {
           </div>
 
           )}
-          {activeMainTab === "credentials" && (
+          {activeMainTab === "providers" && (
           <div className={panelClass}>
             <div className="flex items-center gap-2 text-primary">
               <KeyRound className="h-4 w-4" />
-              <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Credentials</h2>
+              <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Providers</h2>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap gap-2">
-                <Badge variant={activeProvider ? "default" : "outline"}>
-                  Active provider: {activeProvider || "none"}
-                </Badge>
-                {activeProvider === "openrouter" && (
-                  <Badge variant="outline">OpenRouter profile: {openRouterProfiles.find((profile) => profile.id === activeOpenRouterProfileId)?.name ?? "selected"}</Badge>
-                )}
-              </div>
-              {credentialUnlocked && (
-                <Button type="button" variant="outline" onClick={lockCredentials} disabled={Boolean(busy)}>
-                  Lock
-                </Button>
-              )}
-            </div>
-            {!credentialUnlocked ? (
-              <div className="mt-4 grid gap-3 grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
-                <Field label="Password" value={credentialPassword} onChange={setCredentialPassword} type="password" name="bot-manager-credential-password" />
-                <Field label="Bot Manager Key" value={credentialKey} onChange={setCredentialKey} type="password" name="bot-manager-credential-key" />
-                <Field label="Confirmation" value={credentialConfirm} onChange={setCredentialConfirm} placeholder='Type "CREDENTIALS"' />
-                <Button type="button" onClick={unlockCredentials} disabled={!canUnlockCredential || Boolean(busy)}>
-                  {busy === "credential-unlock" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
-                  Unlock
-                </Button>
-              </div>
-            ) : (
-              <div className="mt-4 space-y-5">
-                <div className="space-y-2">
-                  <p className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Active providers</p>
-                  <div className="grid gap-3">
-                  {normalProviders.map((provider) => {
-                    const credential = summary?.credentials.find((item) => item.provider === provider.value);
+            <div className="mt-4 space-y-5">
+              <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-center gap-2 text-primary">
+                    <BarChart3 className="h-4 w-4" />
+                    <h3 className="font-heading text-xs uppercase tracking-[0.14em]">Provider Analytics</h3>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select className={cn(inputClass, "h-9 w-28 py-1.5")} value={analyticsRange} onChange={(event) => setAnalyticsRange(event.target.value as "7d" | "30d" | "90d")}>
+                      <option value="7d">7 days</option>
+                      <option value="30d">30 days</option>
+                      <option value="90d">90 days</option>
+                    </select>
+                    <Button type="button" variant="outline" size="sm" onClick={() => void loadProviderAnalytics()} disabled={analyticsLoading}>
+                      {analyticsLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                      Refresh
+                    </Button>
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  {providers.map((provider) => {
+                    const credential = credentialForProvider(provider.value);
+                    const analyticsCredential = analyticsCredentialForProvider(provider.value);
+                    const isSelected = selectedAnalyticsProvider === provider.value;
                     const isActive = activeProvider === provider.value;
+                    const needsAnalyticsKey = analyticsKeyProviders.has(provider.value) && !analyticsCredential?.configured;
                     return (
-                      <div key={provider.value} className={cn("rounded-sm border bg-background/35 p-3", isActive ? "border-primary/60" : "border-border/70")}>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="font-heading text-sm text-foreground">{provider.label}</p>
-                              {credential?.configured ? <Badge variant="outline" className="text-[10px]">Configured</Badge> : <Badge variant="destructive" className="text-[10px]">Missing</Badge>}
-                              {isActive && <Badge className="text-[10px]"><Check className="mr-1 h-3 w-3" />Active</Badge>}
-                            </div>
-                            <p className="truncate text-xs text-muted-foreground">{credential?.configured ? `${credential.keyPreview} / ${readString(credential.metadata.modelId, "model not set")}` : "No credential configured"}</p>
-                          </div>
-                          <Button type="button" variant={isActive ? "outline" : "default"} size="sm" onClick={() => activateProvider(provider.value)} disabled={Boolean(busy) || !credential?.configured || isActive || !canUnlockCredential}>
-                            <Power className="mr-2 h-4 w-4" />
-                            {isActive ? "Active" : "Enable"}
-                          </Button>
+                      <button
+                        key={provider.value}
+                        type="button"
+                        onClick={() => setSelectedAnalyticsProvider(provider.value)}
+                        className={cn(
+                          "rounded-sm border bg-background/40 p-3 text-left transition hover:border-primary/60",
+                          isSelected ? "border-primary" : "border-border/70",
+                        )}
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-heading text-sm text-foreground">{provider.label}</span>
+                          {isActive && <Badge className="text-[10px]">Active</Badge>}
+                          {provider.value === "openrouter" ? (
+                            activeOpenRouterProfileId ? <Badge variant="outline" className="text-[10px]">Configured</Badge> : <Badge variant="destructive" className="text-[10px]">Missing</Badge>
+                          ) : credential?.configured ? (
+                            <Badge variant="outline" className="text-[10px]">Configured</Badge>
+                          ) : (
+                            <Badge variant="destructive" className="text-[10px]">Missing</Badge>
+                          )}
+                          {needsAnalyticsKey && <Badge variant="secondary" className="text-[10px]">Needs key</Badge>}
+                          {!analyticsKeyProviders.has(provider.value) && !["deepseek", "openrouter"].includes(provider.value) && <Badge variant="secondary" className="text-[10px]">Local</Badge>}
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
-                  </div>
                 </div>
-                <div className="space-y-2">
-                  <p className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Add / update credential</p>
-                  <div className="rounded-sm border border-border/70 bg-background/35 p-3">
-
-                    <div className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_minmax(16rem,1.2fr)_minmax(14rem,1fr)_auto]">
-                      <label className="space-y-2">
-                        <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Provider</span>
-                        <select className={inputClass} value={credentialProvider} onChange={(event) => setCredentialProvider(event.target.value as BotProvider)}>
-                          {normalProviders.map((provider) => (
-                            <option key={provider.value} value={provider.value}>{provider.label}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <Field label="Model ID" value={credentialModelId} onChange={setCredentialModelId} placeholder="deepseek-chat" />
-                      <SecretField
-                        label="API Key"
-                        value={credentialApiKeyValue}
-                        onChange={(apiKey) => setCredentialApiKey(typeof apiKey === "string" ? apiKey : "")}
-                        name={`bot-manager-${credentialProvider}-api-key`}
-                        placeholder="Enter provider API key"
-                      />
-                      <Field label="API Base" value={credentialApiBase} onChange={setCredentialApiBase} placeholder="Optional provider base URL" />
-                      <Button type="button" className="h-10 whitespace-nowrap" onClick={saveCredential} disabled={!canSubmitCredential || Boolean(busy)}>
-                        {busy === "credential" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
-                        Save Credential
-                      </Button>
+                <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                    <Metric label="Credit Balance" value={formatMoney(currentProviderAnalytics?.creditBalance, currentProviderAnalytics?.currency ?? "USD")} />
+                    <Metric label="Monthly Spend" value={formatMoney(currentProviderAnalytics?.monthlySpend, currentProviderAnalytics?.currency ?? "USD")} />
+                    <Metric label="Requests" value={formatCount(currentProviderAnalytics?.localRequestCount)} />
+                    <Metric label="Tokens" value={formatCount(currentProviderAnalytics?.localTotalTokens)} />
+                  </div>
+                  <div className="rounded-sm border border-border/70 bg-background/40 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={currentProviderAnalytics?.status === "provider_error" ? "destructive" : currentProviderAnalytics?.status === "ok" ? "default" : "outline"}>
+                          {currentProviderAnalytics?.status ?? "loading"}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">{currentProviderAnalytics?.statusMessage ?? analyticsError ?? "Loading provider analytics"}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{currentProviderAnalytics?.source ?? "local"}</span>
                     </div>
+                    {analyticsError && <div className="mt-3 rounded-sm border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">{analyticsError}</div>}
+                    <ChartContainer
+                      config={{
+                        totalTokens: { label: "Tokens", color: "hsl(var(--primary))" },
+                        requests: { label: "Requests", color: "hsl(var(--accent-foreground))" },
+                      }}
+                      className="mt-3 h-64 aspect-auto"
+                    >
+                      <AreaChart data={currentProviderAnalytics?.points ?? []} margin={{ left: 8, right: 8, top: 12, bottom: 0 }}>
+                        <CartesianGrid vertical={false} />
+                        <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} minTickGap={24} />
+                        <YAxis tickLine={false} axisLine={false} width={48} tickFormatter={(value) => formatCount(Number(value))} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Area type="monotone" dataKey="totalTokens" stroke="var(--color-totalTokens)" fill="var(--color-totalTokens)" fillOpacity={0.22} strokeWidth={2} />
+                        <Area type="monotone" dataKey="requests" stroke="var(--color-requests)" fill="var(--color-requests)" fillOpacity={0.14} strokeWidth={2} />
+                      </AreaChart>
+                    </ChartContainer>
                   </div>
                 </div>
-
-
-
-                <OpenRouterSection
-
-                  activeProfileId={activeOpenRouterProfileId}
-                  busy={busy}
-                  canUseCredentialGate={canUnlockCredential}
-                  draft={openRouterDraft}
-                  filter={openRouterFilter}
-                  onActivate={setActiveOpenRouterProfile}
-                  onDelete={removeOpenRouterProfile}
-                  onDraftChange={setOpenRouterDraft}
-                  onFilterChange={(value) => { setOpenRouterFilter(value); setOpenRouterPage(1); }}
-                  onPageChange={setOpenRouterPage}
-                  onSave={saveOpenRouterProfile}
-                  onSearchChange={(value) => { setOpenRouterSearch(value); setOpenRouterPage(1); }}
-                  page={openRouterPage}
-                  profiles={openRouterProfiles}
-                  search={openRouterSearch}
-                  totalPages={openRouterTotalPages}
-                />
               </div>
-            )}
+
+              <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant={activeProvider ? "default" : "outline"}>
+                      Active provider: {activeProvider || "none"}
+                    </Badge>
+                    {activeProvider === "openrouter" && (
+                      <Badge variant="outline">OpenRouter profile: {openRouterProfiles.find((profile) => profile.id === activeOpenRouterProfileId)?.name ?? "selected"}</Badge>
+                    )}
+                  </div>
+                  {credentialUnlocked && (
+                    <Button type="button" variant="outline" onClick={lockCredentials} disabled={Boolean(busy)}>
+                      Lock
+                    </Button>
+                  )}
+                </div>
+                {!credentialUnlocked ? (
+                  <div className="mt-4 grid gap-3 grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+                    <Field label="Password" value={credentialPassword} onChange={setCredentialPassword} type="password" name="bot-manager-credential-password" />
+                    <Field label="Bot Manager Key" value={credentialKey} onChange={setCredentialKey} type="password" name="bot-manager-credential-key" />
+                    <Field label="Confirmation" value={credentialConfirm} onChange={setCredentialConfirm} placeholder='Type "CREDENTIALS"' />
+                    <Button type="button" onClick={unlockCredentials} disabled={!canUnlockCredential || Boolean(busy)}>
+                      {busy === "credential-unlock" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+                      Unlock
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-5">
+                    <div className="space-y-3">
+                      <p className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Provider credentials</p>
+                      <div className="grid gap-3 xl:grid-cols-2">
+                        {normalProviders.map((provider) => {
+                          const credential = credentialForProvider(provider.value);
+                          const analyticsCredential = analyticsCredentialForProvider(provider.value);
+                          const draft = draftForProvider(provider.value);
+                          const isActive = activeProvider === provider.value;
+                          const apiKeyValue: SecretFieldValue = draft.apiKey || (credential?.configured
+                            ? { __botManagerSecret: true, configured: true, preview: credential.keyPreview || "***" }
+                            : "");
+                          const analyticsKeyValue: SecretFieldValue = draft.analyticsApiKey || (analyticsCredential?.configured
+                            ? { __botManagerSecret: true, configured: true, preview: analyticsCredential.keyPreview || "***" }
+                            : "");
+                          return (
+                            <div key={provider.value} className={cn("rounded-sm border bg-background/40 p-3", isActive ? "border-primary/60" : "border-border/70")}>
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="font-heading text-sm text-foreground">{provider.label}</p>
+                                    {credential?.configured ? <Badge variant="outline" className="text-[10px]">Configured</Badge> : <Badge variant="destructive" className="text-[10px]">Missing</Badge>}
+                                    {isActive && <Badge className="text-[10px]"><Check className="mr-1 h-3 w-3" />Active</Badge>}
+                                  </div>
+                                  <p className="mt-1 truncate text-xs text-muted-foreground">{credential?.configured ? `${credential.keyPreview} / ${readString(credential.metadata.modelId, "model not set")}` : "No credential configured"}</p>
+                                </div>
+                                <Button type="button" variant={isActive ? "outline" : "default"} size="sm" onClick={() => activateProvider(provider.value)} disabled={Boolean(busy) || !credential?.configured || isActive || !canUnlockCredential}>
+                                  <Power className="mr-2 h-4 w-4" />
+                                  {isActive ? "Active" : "Enable"}
+                                </Button>
+                              </div>
+                              <div className="mt-3 grid items-end gap-3 md:grid-cols-2">
+                                <Field label="Model ID" value={draft.modelId} onChange={(modelId) => updateProviderDraft(provider.value, { modelId })} placeholder={defaultModelIds[provider.value] ?? "model-id"} />
+                                <Field label="API Base" value={draft.apiBase} onChange={(apiBase) => updateProviderDraft(provider.value, { apiBase })} placeholder="Optional provider base URL" />
+                                <SecretField
+                                  label="API Key"
+                                  value={apiKeyValue}
+                                  onChange={(apiKey) => updateProviderDraft(provider.value, { apiKey: typeof apiKey === "string" ? apiKey : "" })}
+                                  name={`bot-manager-${provider.value}-api-key`}
+                                  placeholder="Enter provider API key"
+                                />
+                                <Button type="button" className="h-10 whitespace-nowrap" onClick={() => saveCredential(provider.value)} disabled={!canSubmitCredential(provider.value) || Boolean(busy)}>
+                                  {busy === `credential-${provider.value}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+                                  Save
+                                </Button>
+                              </div>
+                              {analyticsKeyProviders.has(provider.value) && (
+                                <div className="mt-3 grid items-end gap-3 md:grid-cols-2">
+                                  <SecretField
+                                    label="Analytics Key"
+                                    value={analyticsKeyValue}
+                                    onChange={(apiKey) => updateProviderDraft(provider.value, { analyticsApiKey: typeof apiKey === "string" ? apiKey : "" })}
+                                    name={`bot-manager-${provider.value}-analytics-key`}
+                                    placeholder="Enter admin analytics key"
+                                  />
+                                  <Field label="Organization ID" value={draft.analyticsOrganizationId} onChange={(analyticsOrganizationId) => updateProviderDraft(provider.value, { analyticsOrganizationId })} placeholder="Optional" />
+                                  <Field label="Project ID" value={draft.analyticsProjectId} onChange={(analyticsProjectId) => updateProviderDraft(provider.value, { analyticsProjectId })} placeholder="Optional" />
+                                  <Button type="button" variant="outline" className="h-10 whitespace-nowrap" onClick={() => saveAnalyticsCredential(provider.value)} disabled={!canSubmitAnalyticsCredential(provider.value) || Boolean(busy)}>
+                                    {busy === `analytics-credential-${provider.value}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+                                    Save Analytics
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <OpenRouterSection
+
+                      activeProfileId={activeOpenRouterProfileId}
+                      busy={busy}
+                      canUseCredentialGate={canUnlockCredential}
+                      draft={openRouterDraft}
+                      filter={openRouterFilter}
+                      onActivate={setActiveOpenRouterProfile}
+                      onDelete={removeOpenRouterProfile}
+                      onDraftChange={setOpenRouterDraft}
+                      onFilterChange={(value) => { setOpenRouterFilter(value); setOpenRouterPage(1); }}
+                      onPageChange={setOpenRouterPage}
+                      onSave={saveOpenRouterProfile}
+                      onSearchChange={(value) => { setOpenRouterSearch(value); setOpenRouterPage(1); }}
+                      page={openRouterPage}
+                      profiles={openRouterProfiles}
+                      search={openRouterSearch}
+                      totalPages={openRouterTotalPages}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
           )}
 

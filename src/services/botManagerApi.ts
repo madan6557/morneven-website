@@ -11,6 +11,49 @@ export interface BotCredentialSummary {
   updatedAt: string | null;
 }
 
+export interface BotProviderAnalyticsCredentialSummary {
+  provider: BotProvider;
+  configured: boolean;
+  keyPreview: string;
+  metadata: Record<string, unknown>;
+  updatedAt: string | null;
+}
+
+export interface BotProviderUsagePoint {
+  date: string;
+  requests: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cachedTokens: number;
+  cost: number;
+}
+
+export interface BotProviderAnalytics {
+  provider: BotProvider;
+  range: "7d" | "30d" | "90d";
+  status: "ok" | "not_configured" | "needs_analytics_key" | "unsupported" | "provider_error";
+  statusMessage: string;
+  source: "provider_api" | "local" | "unsupported";
+  configured: boolean;
+  active: boolean;
+  analyticsCredentialConfigured: boolean;
+  requiresAnalyticsCredential: boolean;
+  supportsProviderBalance: boolean;
+  currency: string;
+  creditBalance: number | null;
+  creditLimit: number | null;
+  monthlySpend: number | null;
+  localRequestCount: number;
+  localTotalTokens: number;
+  localPromptTokens: number;
+  localCompletionTokens: number;
+  localCachedTokens: number;
+  runtimeUsageIngest?: { ok: boolean; imported: number; error?: string };
+  points: BotProviderUsagePoint[];
+  fetchedAt: string;
+}
+
 export interface OpenRouterProfile {
   id: string;
   name: string;
@@ -82,6 +125,7 @@ export interface BotIdentityFile {
 
 export interface BotSummary {
   credentials: BotCredentialSummary[];
+  analyticsCredentials?: BotProviderAnalyticsCredentialSummary[];
   openRouterProfiles?: OpenRouterProfile[];
   generalConfig: Record<string, unknown>;
   identities: BotIdentity[];
@@ -200,6 +244,30 @@ export function updateBotCredential(payload: {
   confirmText: "CREDENTIALS";
 }) {
   return apiRequest<BotCredentialSummary>("/bot-manager/credentials", {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function getProviderAnalytics(provider: BotProvider, range: "7d" | "30d" | "90d" = "30d") {
+  const query = new URLSearchParams({ provider, range });
+  return apiRequest<BotProviderAnalytics>(`/bot-manager/providers/analytics?${query.toString()}`, {
+    timeoutMs: 30000,
+  });
+}
+
+export function updateProviderAnalyticsCredential(payload: {
+  provider: BotProvider;
+  apiKey: string;
+  organizationId?: string;
+  projectId?: string;
+  apiKeyId?: string;
+  billingAccountId?: string;
+  password: string;
+  botManagerKey: string;
+  confirmText: "CREDENTIALS";
+}) {
+  return apiRequest<BotProviderAnalyticsCredentialSummary>("/bot-manager/providers/analytics-credentials", {
     method: "PUT",
     body: payload,
   });
