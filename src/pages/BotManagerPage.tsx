@@ -18,6 +18,7 @@ import {
   FileText,
   Filter,
   Hash,
+  Info,
   KeyRound,
   Loader2,
   MessageCircle,
@@ -294,6 +295,14 @@ function formatCreditBalanceMetric(analytics: BotProviderAnalytics | null) {
     parts.push(formatSignedMoney(topUpAmount, currency));
   }
   return parts.length ? `${balance} (${parts.join(" ")})` : balance;
+}
+
+function creditBalanceInfo(analytics: BotProviderAnalytics | null) {
+  if (!analytics) return "Balance and spend are loaded after provider analytics refresh.";
+  const spendSource = typeof analytics.currentSpend === "number" && Number.isFinite(analytics.currentSpend)
+    ? analytics.monthlySpend === analytics.currentSpend && analytics.source === "provider_api" ? "provider API" : "local usage events"
+    : "not available";
+  return `Spend follows the selected range and uses ${spendSource} when provider spend data is unavailable. Local estimates depend on recorded runtime token usage and known provider pricing, so they may differ from the provider billing page.`;
 }
 
 function readBoolean(value: unknown, fallback: boolean) {
@@ -1938,7 +1947,7 @@ export default function BotManagerPage() {
                 </div>
                 <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                    <Metric label="Credit Balance" value={formatCreditBalanceMetric(currentProviderAnalytics)} />
+                    <Metric label="Credit Balance" value={formatCreditBalanceMetric(currentProviderAnalytics)} info={creditBalanceInfo(currentProviderAnalytics)} />
                     <Metric label="Monthly Spend" value={formatMoney(currentProviderAnalytics?.monthlySpend, currentProviderAnalytics?.currency ?? "USD")} />
                     <Metric label="Requests" value={formatCount(currentProviderAnalytics?.localRequestCount)} />
                     <Metric label="Tokens" value={formatCount(currentProviderAnalytics?.localTotalTokens)} />
@@ -4038,10 +4047,20 @@ function TagField({
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value, info }: { label: string; value: string; info?: string }) {
   return (
     <div className="rounded-sm border border-border/70 bg-background/40 p-3">
-      <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+      <div className="flex items-center gap-1.5">
+        <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+        {info && (
+          <span className="group relative inline-flex">
+            <Info className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-72 -translate-x-1/2 rounded-sm border border-border bg-popover p-2 text-xs normal-case tracking-normal text-popover-foreground shadow-lg group-hover:block">
+              {info}
+            </span>
+          </span>
+        )}
+      </div>
       <p className="mt-1 break-words text-sm font-heading text-foreground">{value}</p>
     </div>
   );
