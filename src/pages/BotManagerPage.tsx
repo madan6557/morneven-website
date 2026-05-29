@@ -278,23 +278,21 @@ function formatSignedMoney(value: unknown, currency = "USD") {
   return `${sign}${formatMoney(Math.abs(value), currency)}`;
 }
 
-function formatCreditBalanceMetric(analytics: BotProviderAnalytics | null) {
+function creditBalanceMetricParts(analytics: BotProviderAnalytics | null) {
   const currency = analytics?.currency ?? "USD";
-  const balance = formatMoney(analytics?.creditBalance, currency);
-  if (!analytics || typeof analytics.creditBalance !== "number" || !Number.isFinite(analytics.creditBalance)) return balance;
-  const parts: string[] = [];
+  const base = formatMoney(analytics?.creditBalance, currency);
+  const parts: Array<{ value: string; kind: "down" | "up" }> = [];
+  if (!analytics || typeof analytics.creditBalance !== "number" || !Number.isFinite(analytics.creditBalance)) return { base, parts };
   if (typeof analytics.currentSpend === "number" && Number.isFinite(analytics.currentSpend) && analytics.currentSpend > 0) {
-    parts.push(`-${formatMoney(analytics.currentSpend, currency)}`);
+    parts.push({ value: `-${formatMoney(analytics.currentSpend, currency)}`, kind: "down" });
   }
   const topUpAmount = typeof analytics.topUpAmount === "number" && Number.isFinite(analytics.topUpAmount)
     ? analytics.topUpAmount
-    : typeof analytics.creditLimit === "number" && Number.isFinite(analytics.creditLimit)
-      ? analytics.creditLimit
-      : null;
+    : null;
   if (typeof topUpAmount === "number" && topUpAmount > 0 && (parts.length > 0 || topUpAmount !== analytics.creditBalance)) {
-    parts.push(formatSignedMoney(topUpAmount, currency));
+    parts.push({ value: formatSignedMoney(topUpAmount, currency), kind: "up" });
   }
-  return parts.length ? `${balance} (${parts.join(" ")})` : balance;
+  return { base, parts };
 }
 
 function creditBalanceInfo(analytics: BotProviderAnalytics | null) {
@@ -1947,7 +1945,7 @@ export default function BotManagerPage() {
                 </div>
                 <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                    <Metric label="Credit Balance" value={formatCreditBalanceMetric(currentProviderAnalytics)} info={creditBalanceInfo(currentProviderAnalytics)} />
+                    <Metric label="Credit Balance" value={creditBalanceMetricParts(currentProviderAnalytics)} info={creditBalanceInfo(currentProviderAnalytics)} />
                     <Metric label="Monthly Spend" value={formatMoney(currentProviderAnalytics?.monthlySpend, currentProviderAnalytics?.currency ?? "USD")} />
                     <Metric label="Requests" value={formatCount(currentProviderAnalytics?.localRequestCount)} />
                     <Metric label="Tokens" value={formatCount(currentProviderAnalytics?.localTotalTokens)} />
@@ -4047,7 +4045,15 @@ function TagField({
   );
 }
 
-function Metric({ label, value, info }: { label: string; value: string; info?: string }) {
+function Metric({
+  label,
+  value,
+  info,
+}: {
+  label: string;
+  value: string | { base: string; parts: Array<{ value: string; kind: "down" | "up" }> };
+  info?: string;
+}) {
   return (
     <div className="rounded-sm border border-border/70 bg-background/40 p-3">
       <div className="flex items-center gap-1.5">
@@ -4061,7 +4067,24 @@ function Metric({ label, value, info }: { label: string; value: string; info?: s
           </span>
         )}
       </div>
-      <p className="mt-1 break-words text-sm font-heading text-foreground">{value}</p>
+      {typeof value === "string" ? (
+        <p className="mt-1 break-words text-sm font-heading text-foreground">{value}</p>
+      ) : (
+        <p className="mt-1 break-words text-sm font-heading text-foreground">
+          {value.base}
+          {value.parts.length > 0 && (
+            <span className="ml-1">
+              (
+              {value.parts.map((part, index) => (
+                <span key={`${part.kind}-${index}`} className={cn(index > 0 && "ml-1", part.kind === "down" ? "text-destructive" : "text-emerald-400")}>
+                  {part.value}
+                </span>
+              ))}
+              )
+            </span>
+          )}
+        </p>
+      )}
     </div>
   );
 }
