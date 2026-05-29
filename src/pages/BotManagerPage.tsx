@@ -271,6 +271,31 @@ function formatMoney(value: unknown, currency = "USD") {
   return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 4 }).format(value);
 }
 
+function formatSignedMoney(value: unknown, currency = "USD") {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "";
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+  return `${sign}${formatMoney(Math.abs(value), currency)}`;
+}
+
+function formatCreditBalanceMetric(analytics: BotProviderAnalytics | null) {
+  const currency = analytics?.currency ?? "USD";
+  const balance = formatMoney(analytics?.creditBalance, currency);
+  if (!analytics || typeof analytics.creditBalance !== "number" || !Number.isFinite(analytics.creditBalance)) return balance;
+  const parts: string[] = [];
+  if (typeof analytics.currentSpend === "number" && Number.isFinite(analytics.currentSpend) && analytics.currentSpend > 0) {
+    parts.push(`-${formatMoney(analytics.currentSpend, currency)}`);
+  }
+  const topUpAmount = typeof analytics.topUpAmount === "number" && Number.isFinite(analytics.topUpAmount)
+    ? analytics.topUpAmount
+    : typeof analytics.creditLimit === "number" && Number.isFinite(analytics.creditLimit)
+      ? analytics.creditLimit
+      : null;
+  if (typeof topUpAmount === "number" && topUpAmount > 0 && (parts.length > 0 || topUpAmount !== analytics.creditBalance)) {
+    parts.push(formatSignedMoney(topUpAmount, currency));
+  }
+  return parts.length ? `${balance} (${parts.join(" ")})` : balance;
+}
+
 function readBoolean(value: unknown, fallback: boolean) {
   if (typeof value === "string") {
     const normalized = value.trim().toLowerCase();
@@ -1913,7 +1938,7 @@ export default function BotManagerPage() {
                 </div>
                 <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                    <Metric label="Credit Balance" value={formatMoney(currentProviderAnalytics?.creditBalance, currentProviderAnalytics?.currency ?? "USD")} />
+                    <Metric label="Credit Balance" value={formatCreditBalanceMetric(currentProviderAnalytics)} />
                     <Metric label="Monthly Spend" value={formatMoney(currentProviderAnalytics?.monthlySpend, currentProviderAnalytics?.currency ?? "USD")} />
                     <Metric label="Requests" value={formatCount(currentProviderAnalytics?.localRequestCount)} />
                     <Metric label="Tokens" value={formatCount(currentProviderAnalytics?.localTotalTokens)} />

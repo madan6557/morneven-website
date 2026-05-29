@@ -43,6 +43,8 @@ export interface BotProviderAnalytics {
   currency: string;
   creditBalance: number | null;
   creditLimit: number | null;
+  currentSpend: number | null;
+  topUpAmount: number | null;
   monthlySpend: number | null;
   localRequestCount: number;
   localTotalTokens: number;
