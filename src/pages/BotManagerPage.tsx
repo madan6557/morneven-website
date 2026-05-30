@@ -1,7 +1,7 @@
 import { type CSSProperties, type ChangeEvent, type UIEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Navigate } from "react-router-dom";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, CartesianGrid, Line, XAxis, YAxis } from "recharts";
 import {
   ArrowDownAZ,
   ArrowUpAZ,
@@ -265,6 +265,11 @@ function readNumberText(value: unknown, fallback: number) {
 function formatCount(value: unknown) {
   const number = typeof value === "number" && Number.isFinite(value) ? value : 0;
   return new Intl.NumberFormat().format(number);
+}
+
+function formatAxisCount(value: unknown) {
+  const number = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(number);
 }
 
 function formatMoney(value: unknown, currency = "USD") {
@@ -1652,6 +1657,28 @@ export default function BotManagerPage() {
   const activeOpenRouterProfileId = summary?.runtimeStatus.activeOpenRouterProfileId ?? "";
   const syncReasonText = runtimeDirty ? (summary?.runtimeSync.runtimeDirtyReason ?? "Runtime changes pending") : "No pending runtime changes";
   const currentProviderAnalytics = providerAnalytics?.provider === selectedAnalyticsProvider ? providerAnalytics : null;
+  const providerAnalyticsChartData = useMemo(() => {
+    const points = currentProviderAnalytics?.points ?? [];
+    const creditBalance = currentProviderAnalytics?.creditBalance;
+    const hasCreditBalance = typeof creditBalance === "number" && Number.isFinite(creditBalance);
+    if (!hasCreditBalance) return points.map((point) => ({ ...point, creditBalance: null }));
+    if (points.length === 0) {
+      return [{
+        date: new Date().toISOString().slice(0, 10),
+        requests: 0,
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        cachedTokens: 0,
+        cost: 0,
+        creditBalance,
+      }];
+    }
+    return points.map((point, index) => ({
+      ...point,
+      creditBalance: index === points.length - 1 ? creditBalance : null,
+    }));
+  }, [currentProviderAnalytics]);
   const personalityPageSize = 5;
   const filteredPersonalities = (summary?.identities ?? []).filter((identity) => {
     const haystack = `${identity.name} ${identity.roleTitle} ${identity.description}`.toLowerCase();
@@ -1964,17 +1991,21 @@ export default function BotManagerPage() {
                     <ChartContainer
                       config={{
                         totalTokens: { label: "Tokens", color: "hsl(var(--primary))" },
-                        requests: { label: "Requests", color: "hsl(var(--accent-foreground))" },
+                        requests: { label: "Requests", color: "hsl(var(--info))" },
+                        creditBalance: { label: "Balance", color: "hsl(var(--success))" },
                       }}
                       className="mt-3 h-64 aspect-auto"
                     >
-                      <AreaChart data={currentProviderAnalytics?.points ?? []} margin={{ left: 8, right: 8, top: 12, bottom: 0 }}>
+                      <AreaChart data={providerAnalyticsChartData} margin={{ left: 8, right: 8, top: 12, bottom: 0 }}>
                         <CartesianGrid vertical={false} />
                         <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} minTickGap={24} />
-                        <YAxis tickLine={false} axisLine={false} width={48} tickFormatter={(value) => formatCount(Number(value))} />
+                        <YAxis yAxisId="tokens" tickLine={false} axisLine={false} width={48} tickFormatter={(value) => formatAxisCount(Number(value))} domain={[0, "dataMax"]} />
+                        <YAxis yAxisId="requests" orientation="right" tickLine={false} axisLine={false} width={36} tickFormatter={(value) => formatAxisCount(Number(value))} domain={[0, "dataMax"]} allowDecimals={false} />
+                        <YAxis yAxisId="balance" hide domain={["auto", "auto"]} />
                         <ChartTooltip content={<ChartTooltipContent />} />
-                        <Area type="monotone" dataKey="totalTokens" stroke="var(--color-totalTokens)" fill="var(--color-totalTokens)" fillOpacity={0.22} strokeWidth={2} />
-                        <Area type="monotone" dataKey="requests" stroke="var(--color-requests)" fill="var(--color-requests)" fillOpacity={0.14} strokeWidth={2} />
+                        <Area yAxisId="tokens" type="monotone" dataKey="totalTokens" stroke="var(--color-totalTokens)" fill="var(--color-totalTokens)" fillOpacity={0.22} strokeWidth={2} />
+                        <Area yAxisId="requests" type="monotone" dataKey="requests" stroke="var(--color-requests)" fill="var(--color-requests)" fillOpacity={0.14} strokeWidth={2} />
+                        <Line yAxisId="balance" type="monotone" dataKey="creditBalance" stroke="var(--color-creditBalance)" strokeWidth={2} dot={{ r: 3.5, strokeWidth: 2 }} activeDot={{ r: 5 }} connectNulls={false} />
                       </AreaChart>
                     </ChartContainer>
                   </div>
