@@ -272,6 +272,10 @@ function formatAxisCount(value: unknown) {
   return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(number);
 }
 
+function formatChartDate(value: unknown) {
+  return typeof value === "string" && value.length >= 10 ? value.slice(5, 10) : String(value ?? "");
+}
+
 function formatMoney(value: unknown, currency = "USD") {
   if (typeof value !== "number" || !Number.isFinite(value)) return "-";
   return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 4 }).format(value);
@@ -1977,10 +1981,10 @@ export default function BotManagerPage() {
                           config={{
                             creditBalance: { label: "Balance", color: "hsl(var(--success))" },
                           }}
-                          className="h-16 aspect-auto"
+                          className="h-20 aspect-auto"
                         >
                           <AreaChart data={balanceSparklineData} margin={{ left: 0, right: 0, top: 6, bottom: 0 }}>
-                            <XAxis dataKey="date" hide />
+                            <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={4} minTickGap={12} tickFormatter={formatChartDate} />
                             <YAxis
                               hide
                               domain={[
@@ -1988,7 +1992,7 @@ export default function BotManagerPage() {
                                 (value: number) => value + Math.max(Math.abs(value) * 0.04, 0.25),
                               ]}
                             />
-                            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                            <ChartTooltip content={<ChartTooltipContent />} />
                             <Area type="monotone" dataKey="creditBalance" stroke="var(--color-creditBalance)" fill="var(--color-creditBalance)" fillOpacity={0.16} strokeWidth={2} dot={{ r: 2.8, strokeWidth: 1.5 }} activeDot={{ r: 4 }} />
                           </AreaChart>
                         </ChartContainer>
