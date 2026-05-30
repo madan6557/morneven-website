@@ -1,7 +1,7 @@
-import { type CSSProperties, type ChangeEvent, type UIEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type ChangeEvent, type ReactNode, type UIEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Navigate } from "react-router-dom";
-import { Area, AreaChart, CartesianGrid, Line, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   ArrowDownAZ,
   ArrowUpAZ,
@@ -1657,27 +1657,26 @@ export default function BotManagerPage() {
   const activeOpenRouterProfileId = summary?.runtimeStatus.activeOpenRouterProfileId ?? "";
   const syncReasonText = runtimeDirty ? (summary?.runtimeSync.runtimeDirtyReason ?? "Runtime changes pending") : "No pending runtime changes";
   const currentProviderAnalytics = providerAnalytics?.provider === selectedAnalyticsProvider ? providerAnalytics : null;
-  const providerAnalyticsChartData = useMemo(() => {
-    const points = currentProviderAnalytics?.points ?? [];
+  const balanceSparklineData = useMemo(() => {
     const creditBalance = currentProviderAnalytics?.creditBalance;
-    const hasCreditBalance = typeof creditBalance === "number" && Number.isFinite(creditBalance);
-    if (!hasCreditBalance) return points.map((point) => ({ ...point, creditBalance: null }));
+    if (typeof creditBalance !== "number" || !Number.isFinite(creditBalance)) return [];
+    const points = currentProviderAnalytics?.points ?? [];
     if (points.length === 0) {
       return [{
         date: new Date().toISOString().slice(0, 10),
-        requests: 0,
-        promptTokens: 0,
-        completionTokens: 0,
-        totalTokens: 0,
-        cachedTokens: 0,
-        cost: 0,
         creditBalance,
       }];
     }
-    return points.map((point) => ({
-      ...point,
-      creditBalance,
-    }));
+    const totalCost = points.reduce((total, point) => total + (Number.isFinite(point.cost) ? Math.max(point.cost, 0) : 0), 0);
+    let spentThroughPoint = 0;
+    return points.map((point) => {
+      const pointCost = Number.isFinite(point.cost) ? Math.max(point.cost, 0) : 0;
+      spentThroughPoint += pointCost;
+      return {
+        date: point.date,
+        creditBalance: creditBalance + Math.max(totalCost - spentThroughPoint, 0),
+      };
+    });
   }, [currentProviderAnalytics]);
   const personalityPageSize = 5;
   const filteredPersonalities = (summary?.identities ?? []).filter((identity) => {
@@ -1972,7 +1971,29 @@ export default function BotManagerPage() {
                 </div>
                 <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                    <Metric label="Credit Balance" value={creditBalanceMetricParts(currentProviderAnalytics)} info={creditBalanceInfo(currentProviderAnalytics)} />
+                    <Metric label="Credit Balance" value={creditBalanceMetricParts(currentProviderAnalytics)} info={creditBalanceInfo(currentProviderAnalytics)}>
+                      {balanceSparklineData.length > 0 && (
+                        <ChartContainer
+                          config={{
+                            creditBalance: { label: "Balance", color: "hsl(var(--success))" },
+                          }}
+                          className="h-16 aspect-auto"
+                        >
+                          <AreaChart data={balanceSparklineData} margin={{ left: 0, right: 0, top: 6, bottom: 0 }}>
+                            <XAxis dataKey="date" hide />
+                            <YAxis
+                              hide
+                              domain={[
+                                (value: number) => Math.max(0, value - Math.max(Math.abs(value) * 0.04, 0.25)),
+                                (value: number) => value + Math.max(Math.abs(value) * 0.04, 0.25),
+                              ]}
+                            />
+                            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                            <Area type="monotone" dataKey="creditBalance" stroke="var(--color-creditBalance)" fill="var(--color-creditBalance)" fillOpacity={0.16} strokeWidth={2} dot={{ r: 2.8, strokeWidth: 1.5 }} activeDot={{ r: 4 }} />
+                          </AreaChart>
+                        </ChartContainer>
+                      )}
+                    </Metric>
                     <Metric label="Monthly Spend" value={formatMoney(currentProviderAnalytics?.monthlySpend, currentProviderAnalytics?.currency ?? "USD")} />
                     <Metric label="Requests" value={formatCount(currentProviderAnalytics?.localRequestCount)} />
                     <Metric label="Tokens" value={formatCount(currentProviderAnalytics?.localTotalTokens)} />
@@ -1992,27 +2013,17 @@ export default function BotManagerPage() {
                       config={{
                         totalTokens: { label: "Tokens", color: "hsl(var(--primary))" },
                         requests: { label: "Requests", color: "hsl(var(--info))" },
-                        creditBalance: { label: "Balance", color: "hsl(var(--success))" },
                       }}
                       className="mt-3 h-64 aspect-auto"
                     >
-                      <AreaChart data={providerAnalyticsChartData} margin={{ left: 8, right: 8, top: 12, bottom: 0 }}>
+                      <AreaChart data={currentProviderAnalytics?.points ?? []} margin={{ left: 8, right: 8, top: 12, bottom: 0 }}>
                         <CartesianGrid vertical={false} />
                         <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} minTickGap={24} />
                         <YAxis yAxisId="tokens" tickLine={false} axisLine={false} width={48} tickFormatter={(value) => formatAxisCount(Number(value))} domain={[0, "dataMax"]} />
                         <YAxis yAxisId="requests" orientation="right" tickLine={false} axisLine={false} width={36} tickFormatter={(value) => formatAxisCount(Number(value))} domain={[0, "dataMax"]} allowDecimals={false} />
-                        <YAxis
-                          yAxisId="balance"
-                          hide
-                          domain={[
-                            (value: number) => Math.max(0, value - Math.max(Math.abs(value) * 0.1, 1)),
-                            (value: number) => value + Math.max(Math.abs(value) * 0.1, 1),
-                          ]}
-                        />
                         <ChartTooltip content={<ChartTooltipContent />} />
                         <Area yAxisId="tokens" type="monotone" dataKey="totalTokens" stroke="var(--color-totalTokens)" fill="var(--color-totalTokens)" fillOpacity={0.22} strokeWidth={2} />
                         <Area yAxisId="requests" type="monotone" dataKey="requests" stroke="var(--color-requests)" fill="var(--color-requests)" fillOpacity={0.14} strokeWidth={2} />
-                        <Line yAxisId="balance" type="monotone" dataKey="creditBalance" stroke="var(--color-creditBalance)" strokeWidth={2} dot={{ r: 3.5, strokeWidth: 2 }} activeDot={{ r: 5 }} connectNulls={false} />
                       </AreaChart>
                     </ChartContainer>
                   </div>
@@ -4087,10 +4098,12 @@ function Metric({
   label,
   value,
   info,
+  children,
 }: {
   label: string;
   value: string | { base: string; parts: Array<{ value: string; kind: "down" | "up" }> };
   info?: string;
+  children?: ReactNode;
 }) {
   return (
     <div className="rounded-sm border border-border/70 bg-background/40 p-3">
@@ -4123,6 +4136,7 @@ function Metric({
           )}
         </p>
       )}
+      {children ? <div className="mt-2">{children}</div> : null}
     </div>
   );
 }
