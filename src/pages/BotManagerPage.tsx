@@ -1669,6 +1669,7 @@ export default function BotManagerPage() {
       return [{
         date: new Date().toISOString().slice(0, 10),
         creditBalance,
+        dailySpend: 0,
       }];
     }
     const totalCost = points.reduce((total, point) => total + (Number.isFinite(point.cost) ? Math.max(point.cost, 0) : 0), 0);
@@ -1679,6 +1680,7 @@ export default function BotManagerPage() {
       return {
         date: point.date,
         creditBalance: creditBalance + Math.max(totalCost - spentThroughPoint, 0),
+        dailySpend: pointCost,
       };
     });
   }, [currentProviderAnalytics]);
@@ -1992,7 +1994,7 @@ export default function BotManagerPage() {
                                 (value: number) => value + Math.max(Math.abs(value) * 0.04, 0.25),
                               ]}
                             />
-                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <ChartTooltip content={<BalanceSparklineTooltip currency={currentProviderAnalytics?.currency ?? "USD"} />} />
                             <Area type="monotone" dataKey="creditBalance" stroke="var(--color-creditBalance)" fill="var(--color-creditBalance)" fillOpacity={0.16} strokeWidth={2} dot={{ r: 2.8, strokeWidth: 1.5 }} activeDot={{ r: 4 }} />
                           </AreaChart>
                         </ChartContainer>
@@ -4141,6 +4143,46 @@ function Metric({
         </p>
       )}
       {children ? <div className="mt-2">{children}</div> : null}
+    </div>
+  );
+}
+
+type BalanceSparklinePoint = {
+  date?: string;
+  creditBalance?: number;
+  dailySpend?: number;
+};
+
+function BalanceSparklineTooltip({
+  active,
+  payload,
+  label,
+  currency,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload?: BalanceSparklinePoint }>;
+  label?: unknown;
+  currency: string;
+}) {
+  if (!active || !payload?.length) return null;
+  const point = payload[0]?.payload ?? {};
+  const date = typeof point.date === "string" ? point.date : String(label ?? "");
+  const balance = typeof point.creditBalance === "number" && Number.isFinite(point.creditBalance) ? point.creditBalance : null;
+  const dailySpend = typeof point.dailySpend === "number" && Number.isFinite(point.dailySpend) ? Math.max(point.dailySpend, 0) : 0;
+
+  return (
+    <div className="grid min-w-36 gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+      <div className="font-medium">{date}</div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-muted-foreground">Balance</span>
+        <span className="font-mono font-medium tabular-nums text-foreground">{formatMoney(balance, currency)}</span>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-muted-foreground">Spend</span>
+        <span className={cn("font-mono font-medium tabular-nums", dailySpend > 0 ? "text-destructive" : "text-muted-foreground")}>
+          {dailySpend > 0 ? `-${formatMoney(dailySpend, currency)}` : formatMoney(0, currency)}
+        </span>
+      </div>
     </div>
   );
 }
