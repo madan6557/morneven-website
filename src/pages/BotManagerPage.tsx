@@ -678,7 +678,7 @@ export default function BotManagerPage() {
 
   const [providerDrafts, setProviderDrafts] = useState<Partial<Record<BotProvider, ProviderCredentialDraft>>>({});
   const [selectedAnalyticsProvider, setSelectedAnalyticsProvider] = useState<BotProvider>("deepseek");
-  const [analyticsRange, setAnalyticsRange] = useState<"7d" | "30d" | "90d">("30d");
+  const [analyticsRange, setAnalyticsRange] = useState<"7d" | "30d" | "90d">("7d");
   const [providerAnalytics, setProviderAnalytics] = useState<BotProviderAnalytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
@@ -1674,9 +1674,9 @@ export default function BotManagerPage() {
         creditBalance,
       }];
     }
-    return points.map((point, index) => ({
+    return points.map((point) => ({
       ...point,
-      creditBalance: index === points.length - 1 ? creditBalance : null,
+      creditBalance,
     }));
   }, [currentProviderAnalytics]);
   const personalityPageSize = 5;
@@ -2001,7 +2001,14 @@ export default function BotManagerPage() {
                         <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} minTickGap={24} />
                         <YAxis yAxisId="tokens" tickLine={false} axisLine={false} width={48} tickFormatter={(value) => formatAxisCount(Number(value))} domain={[0, "dataMax"]} />
                         <YAxis yAxisId="requests" orientation="right" tickLine={false} axisLine={false} width={36} tickFormatter={(value) => formatAxisCount(Number(value))} domain={[0, "dataMax"]} allowDecimals={false} />
-                        <YAxis yAxisId="balance" hide domain={["auto", "auto"]} />
+                        <YAxis
+                          yAxisId="balance"
+                          hide
+                          domain={[
+                            (value: number) => Math.max(0, value - Math.max(Math.abs(value) * 0.1, 1)),
+                            (value: number) => value + Math.max(Math.abs(value) * 0.1, 1),
+                          ]}
+                        />
                         <ChartTooltip content={<ChartTooltipContent />} />
                         <Area yAxisId="tokens" type="monotone" dataKey="totalTokens" stroke="var(--color-totalTokens)" fill="var(--color-totalTokens)" fillOpacity={0.22} strokeWidth={2} />
                         <Area yAxisId="requests" type="monotone" dataKey="requests" stroke="var(--color-requests)" fill="var(--color-requests)" fillOpacity={0.14} strokeWidth={2} />
