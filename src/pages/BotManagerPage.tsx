@@ -194,6 +194,26 @@ type ProviderCredentialDraft = {
   analyticsBillingAccountId: string;
 };
 
+type ZeroClawAuditIdentity = {
+  identityId: string;
+  slug: string;
+  name: string;
+  isMain: boolean;
+  audit: {
+    canonicalFileCount: number;
+    workspaceFileCount: number;
+    cronJobCount: number;
+    cronSkippedCount: number;
+    memoryReferenceCount: number;
+  };
+};
+
+type ZeroClawAudit = {
+  translationVersion: number | null;
+  identityCount: number;
+  identities: ZeroClawAuditIdentity[];
+};
+
 const defaultModelIds: Partial<Record<BotProvider, string>> = {
   gemini: "gemini-2.5-flash",
   anthropic: "claude-sonnet-4-5",
@@ -256,6 +276,40 @@ function asRecord(value: unknown): JsonRecord {
 
 function readString(value: unknown, fallback = "") {
   return typeof value === "string" ? value : fallback;
+}
+
+function readNumber(value: unknown, fallback = 0) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function extractZeroClawAudit(value: unknown): ZeroClawAudit | null {
+  const bundle = asRecord(asRecord(value).runtimeBundle);
+  const zeroClaw = asRecord(bundle.zeroclaw);
+  const identities = Array.isArray(zeroClaw.identities)
+    ? zeroClaw.identities.map((entry) => {
+      const record = asRecord(entry);
+      const audit = asRecord(record.audit);
+      return {
+        identityId: readString(record.identityId),
+        slug: readString(record.slug),
+        name: readString(record.name),
+        isMain: readBoolean(record.isMain, false),
+        audit: {
+          canonicalFileCount: readNumber(audit.canonicalFileCount),
+          workspaceFileCount: readNumber(audit.workspaceFileCount),
+          cronJobCount: readNumber(audit.cronJobCount),
+          cronSkippedCount: readNumber(audit.cronSkippedCount),
+          memoryReferenceCount: readNumber(audit.memoryReferenceCount),
+        },
+      };
+    }).filter((entry) => entry.identityId || entry.slug || entry.name)
+    : [];
+  if (!identities.length && typeof zeroClaw.translationVersion !== "number") return null;
+  return {
+    translationVersion: typeof zeroClaw.translationVersion === "number" ? zeroClaw.translationVersion : null,
+    identityCount: readNumber(zeroClaw.identityCount, identities.length),
+    identities,
+  };
 }
 
 function readNumberText(value: unknown, fallback: number) {
@@ -669,6 +723,7 @@ export default function BotManagerPage() {
   const [generalDraftDirty, setGeneralDraftDirty] = useState(() => Boolean(readStoredGeneralConfigDraft()));
   const generalDraftDirtyRef = useRef(generalDraftDirty);
   const [syncLog, setSyncLog] = useState("");
+  const [zeroClawAudit, setZeroClawAudit] = useState<ZeroClawAudit | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<BotRuntimeStatus | null>(null);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
@@ -919,14 +974,17 @@ export default function BotManagerPage() {
       const nextRuntime = await loadRuntimeStatus(true);
       if (!nextSummary.runtimeStatus.nanobotConfigured || !nextRuntime) {
         setSyncLog(toJsonText({ autoSync: true, skipped: true, reason: "Nanobot unavailable", runtime: nextRuntime }));
+        setZeroClawAudit(null);
         return;
       }
       const result = await syncBotManagerRuntime();
       setSyncLog(toJsonText({ autoSync: true, ...result }));
+      setZeroClawAudit(extractZeroClawAudit(result));
       if (result.nanobot && typeof result.nanobot === "object") setRuntimeStatus(result.nanobot as BotRuntimeStatus);
       await Promise.all([loadSummary(true), loadRuntimeStatus(true)]);
     } catch (err) {
       setSyncLog(toJsonText({ autoSync: true, error: err instanceof Error ? err.message : "Request failed." }));
+      setZeroClawAudit(null);
       await Promise.all([loadSummary(true), loadRuntimeStatus(true)]);
     } finally {
       setBusy(null);
@@ -1512,6 +1570,7 @@ export default function BotManagerPage() {
 
       const result = await syncBotManagerRuntime();
       setSyncLog(toJsonText(result));
+      setZeroClawAudit(extractZeroClawAudit(result));
       if (result.nanobot && typeof result.nanobot === "object") setRuntimeStatus(result.nanobot as BotRuntimeStatus);
       await refreshVisibleData();
       toast({
@@ -1521,6 +1580,7 @@ export default function BotManagerPage() {
     } catch (err) {
       await loadSummary();
       await loadRuntimeStatus(true);
+      setZeroClawAudit(null);
       toast({ title: "Bot Manager action failed", description: formatBotManagerError(err) });
     } finally {
       setBusy(null);
@@ -1840,6 +1900,47 @@ export default function BotManagerPage() {
               <Metric label="Nanobot Link" value={nanobotConfigured ? "Configured" : "Not configured"} />
               <Metric label="Sync State" value={syncState} />
             </div>
+            {zeroClawAudit && (
+              <div className="mt-4 rounded-sm border border-border/70 bg-background/35 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Check className="h-4 w-4" />
+                    <h3 className="font-heading text-xs uppercase tracking-[0.14em]">ZeroClaw Translation Audit</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">v{zeroClawAudit.translationVersion ?? "?"}</Badge>
+                    <Badge variant="outline">{zeroClawAudit.identityCount} identities</Badge>
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                  {zeroClawAudit.identities.map((identity) => (
+                    <div key={identity.identityId || identity.slug || identity.name} className="rounded-sm border border-border/70 bg-card/50 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-heading text-sm text-foreground">{identity.name || identity.slug || identity.identityId}</p>
+                          <p className="truncate text-xs text-muted-foreground">{identity.slug || identity.identityId}</p>
+                        </div>
+                        {identity.isMain && <Badge variant="outline">Main</Badge>}
+                      </div>
+                      <div className="mt-3 grid gap-2 text-xs sm:grid-cols-5">
+                        {[
+                          ["Canonical", identity.audit.canonicalFileCount],
+                          ["Workspace", identity.audit.workspaceFileCount],
+                          ["Cron", identity.audit.cronJobCount],
+                          ["Skipped", identity.audit.cronSkippedCount],
+                          ["Memory", identity.audit.memoryReferenceCount],
+                        ].map(([label, value]) => (
+                          <div key={String(label)} className="min-w-0 rounded-sm border border-border/60 bg-background/35 p-2">
+                            <p className="truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+                            <p className="mt-1 font-heading text-sm text-foreground">{formatCount(value)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {isMultiRuntime && (
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
                 {activeRuntimeIdentities.map((identity) => {
