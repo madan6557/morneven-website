@@ -894,7 +894,7 @@ export default function BotManagerPage() {
       setRuntimeError(null);
       return next;
     } catch (err) {
-      setRuntimeError(err instanceof Error ? err.message : "Nanobot runtime unavailable.");
+      setRuntimeError(err instanceof Error ? err.message : "ZeroClaw runtime unavailable.");
       return null;
     }
   }, []);
@@ -972,15 +972,17 @@ export default function BotManagerPage() {
       const nextSummary = await loadSummary(true);
       if (!nextSummary) throw new Error("Bot Manager unavailable.");
       const nextRuntime = await loadRuntimeStatus(true);
-      if (!nextSummary.runtimeStatus.nanobotConfigured || !nextRuntime) {
-        setSyncLog(toJsonText({ autoSync: true, skipped: true, reason: "Nanobot unavailable", runtime: nextRuntime }));
+      const nextRuntimeConfigured = Boolean(nextSummary.runtimeStatus.runtimeConfigured);
+      if (!nextRuntimeConfigured || !nextRuntime) {
+        setSyncLog(toJsonText({ autoSync: true, skipped: true, reason: "ZeroClaw unavailable", runtime: nextRuntime }));
         setZeroClawAudit(null);
         return;
       }
       const result = await syncBotManagerRuntime();
       setSyncLog(toJsonText({ autoSync: true, ...result }));
       setZeroClawAudit(extractZeroClawAudit(result));
-      if (result.nanobot && typeof result.nanobot === "object") setRuntimeStatus(result.nanobot as BotRuntimeStatus);
+      const runtimePayload = result.runtime;
+      if (runtimePayload && typeof runtimePayload === "object") setRuntimeStatus(runtimePayload as BotRuntimeStatus);
       await Promise.all([loadSummary(true), loadRuntimeStatus(true)]);
     } catch (err) {
       setSyncLog(toJsonText({ autoSync: true, error: err instanceof Error ? err.message : "Request failed." }));
@@ -1571,7 +1573,8 @@ export default function BotManagerPage() {
       const result = await syncBotManagerRuntime();
       setSyncLog(toJsonText(result));
       setZeroClawAudit(extractZeroClawAudit(result));
-      if (result.nanobot && typeof result.nanobot === "object") setRuntimeStatus(result.nanobot as BotRuntimeStatus);
+      const runtimePayload = result.runtime;
+      if (runtimePayload && typeof runtimePayload === "object") setRuntimeStatus(runtimePayload as BotRuntimeStatus);
       await refreshVisibleData();
       toast({
         title: result.reloadSkipped ? "Runtime reload skipped" : result.restartGateway ? "Runtime synced and restarted" : "Runtime synced",
@@ -1596,7 +1599,7 @@ export default function BotManagerPage() {
         setRuntimeError(null);
         setSyncLog(toJsonText(result));
       },
-      `Nanobot ${action} requested`,
+      `ZeroClaw ${action} requested`,
     );
 
   const controlRuntimeIdentity = (identity: BotIdentity, action: "start" | "stop" | "restart") =>
@@ -1674,9 +1677,9 @@ export default function BotManagerPage() {
   const cronFiles = detail?.files.filter(isCronFile) ?? [];
   const sessionFiles = detail?.files.filter(isSessionFile) ?? [];
   const workspaceFiles = detail?.files.filter((file) => !isMemoryFile(file) && !isCronFile(file) && !isSessionFile(file)) ?? [];
-  const nanobotConfigured = Boolean(summary?.runtimeStatus.nanobotConfigured);
-  const runtimeActionDisabled = Boolean(busy) || !nanobotConfigured;
-  const gatewayState = runtimeStatus?.gateway?.state ?? (nanobotConfigured ? "unknown" : "not configured");
+  const runtimeConfigured = Boolean(summary?.runtimeStatus.runtimeConfigured);
+  const runtimeActionDisabled = Boolean(busy) || !runtimeConfigured;
+  const gatewayState = runtimeStatus?.gateway?.state ?? (runtimeConfigured ? "unknown" : "not configured");
   const gatewayRunning = gatewayState === "running";
   const gatewayTransitioning = gatewayState === "starting" || gatewayState === "stopping";
   const gatewayStartedAtMs = runtimeStatus?.gateway?.startedAt ? Date.parse(runtimeStatus.gateway.startedAt) : Number.NaN;
@@ -1703,7 +1706,7 @@ export default function BotManagerPage() {
     : syncBlockedByLocalDraft
       ? "Save config first"
     : runtimeError
-      ? "Nanobot unavailable"
+      ? "ZeroClaw unavailable"
       : runtimeConflictCount > 0
         ? `Sync conflict (${runtimeConflictCount})`
       : runtimeDirty && summary?.runtimeSync.lastRuntimeSyncError
@@ -1712,7 +1715,7 @@ export default function BotManagerPage() {
           ? "Sync needed"
           : "Up to date";
   const syncStateVariant: "default" | "outline" | "destructive" =
-    syncState === "Sync failed" || syncState === "Nanobot unavailable" || syncState.startsWith("Sync conflict") ? "destructive" : syncState === "Sync needed" || syncState === "Save config first" ? "default" : "outline";
+    syncState === "Sync failed" || syncState === "ZeroClaw unavailable" || syncState.startsWith("Sync conflict") ? "destructive" : syncState === "Sync needed" || syncState === "Save config first" ? "default" : "outline";
   const lastSyncRaw = runtimeStatus?.morneven?.syncedAt ?? summary?.runtimeSync.lastRuntimeSyncAt;
   const lastSync = lastSyncRaw
     ? new Date(lastSyncRaw).toLocaleString()
@@ -1721,7 +1724,7 @@ export default function BotManagerPage() {
   const activeOpenRouterProfileId = summary?.runtimeStatus.activeOpenRouterProfileId ?? "";
   const syncReasonText = runtimeDirty ? (summary?.runtimeSync.runtimeDirtyReason ?? "Runtime changes pending") : "No pending runtime changes";
   const currentProviderAnalytics = providerAnalytics?.provider === selectedAnalyticsProvider ? providerAnalytics : null;
-  const balanceSparklineData = useMemo(() => {
+  const balanceSparklineData = (() => {
     const creditBalance = currentProviderAnalytics?.creditBalance;
     if (typeof creditBalance !== "number" || !Number.isFinite(creditBalance)) return [];
     const points = currentProviderAnalytics?.points ?? [];
@@ -1743,7 +1746,7 @@ export default function BotManagerPage() {
         dailySpend: pointCost,
       };
     });
-  }, [currentProviderAnalytics]);
+  })();
   const personalityPageSize = 5;
   const filteredPersonalities = (summary?.identities ?? []).filter((identity) => {
     const haystack = `${identity.name} ${identity.roleTitle} ${identity.description}`.toLowerCase();
@@ -1897,7 +1900,7 @@ export default function BotManagerPage() {
               <Metric label={isMultiRuntime ? "Enabled Channels" : "Last Sync"} value={isMultiRuntime ? String(enabledRuntimeChannelCount) : lastSync} />
               <Metric label={isMultiRuntime ? "Main Personality" : "Provider"} value={isMultiRuntime ? ((summary?.identities.find((identity) => identity.isMain) ?? activeIdentity)?.name ?? "None") : (activeProvider || "default provider")} />
               <Metric label="Saved Personalities" value={String(summary?.identities.length ?? 0)} />
-              <Metric label="Nanobot Link" value={nanobotConfigured ? "Configured" : "Not configured"} />
+              <Metric label="ZeroClaw Link" value={runtimeConfigured ? "Configured" : "Not configured"} />
               <Metric label="Sync State" value={syncState} />
             </div>
             {zeroClawAudit && (
@@ -2311,7 +2314,7 @@ export default function BotManagerPage() {
                   />
                   <ToggleControl
                     label="Allow Runtime Reload"
-                    description="Lets Sync apply backend config and workspace changes to Nanobot runtimes."
+                    description="Lets Sync apply backend config and workspace changes to ZeroClaw runtimes."
                     value={generalDraft.allowRuntimeReload}
                     onChange={(allowRuntimeReload) => updateGeneralDraft({ allowRuntimeReload })}
                   />
@@ -3887,7 +3890,7 @@ function SettingsEditor({
           <div className="mt-4 space-y-3">
             <ToggleControl
               label="Scheduled Dream"
-              description="Runs nanobot memory consolidation for this personality runtime after Start or Restart."
+              description="Runs ZeroClaw memory consolidation for this personality runtime after Start or Restart."
               value={settingsDraft.autoDreamEnabled}
               onChange={(autoDreamEnabled) => onSettingsChange({ autoDreamEnabled })}
             />

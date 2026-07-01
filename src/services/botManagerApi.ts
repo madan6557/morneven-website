@@ -142,7 +142,7 @@ export interface BotSummary {
     lastRuntimePullConflictCount?: number;
   };
   runtimeStatus: {
-    nanobotConfigured: boolean;
+    runtimeConfigured: boolean;
     singleActivePersonality: boolean;
     runtimeMode?: "single-active-personality" | "multi-active-personality" | string;
     activeIdentityId: string | null;
@@ -517,7 +517,7 @@ export function syncBotManagerRuntime() {
       skipped?: Array<{ path: string; reason: string }>;
     };
     runtimeBundle?: unknown;
-    nanobot?: unknown;
+    runtime?: unknown;
   }>("/bot-manager/sync", {
     method: "POST",
     timeoutMs: 60000,

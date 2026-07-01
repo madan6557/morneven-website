@@ -39,12 +39,41 @@ const contentTypes = {
   ".woff2": "font/woff2",
 };
 
-function sendFile(response, filePath) {
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "script-src 'self' https://va.vercel-scripts.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https: http:",
+  "font-src 'self' data:",
+  "media-src 'self' data: blob: https: http:",
+  "connect-src 'self' https: http://localhost:* http://127.0.0.1:* ws: wss:",
+  "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
+].join("; ");
+
+const securityHeaders = {
+  "Content-Security-Policy": contentSecurityPolicy,
+  "Cross-Origin-Opener-Policy": "same-origin",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), magnetometer=(), gyroscope=()",
+};
+
+function fileHeaders(filePath) {
   const extension = extname(filePath).toLowerCase();
-  response.writeHead(200, {
+  return {
+    ...securityHeaders,
     "Content-Type": contentTypes[extension] || "application/octet-stream",
     "Cache-Control": extension === ".html" ? "no-cache" : "public, max-age=31536000, immutable",
-  });
+  };
+}
+
+function sendFile(response, filePath) {
+  response.writeHead(200, fileHeaders(filePath));
   createReadStream(filePath).pipe(response);
 }
 
@@ -66,32 +95,32 @@ function resolvePublicPath(requestUrl) {
 
 createServer((request, response) => {
   if (request.url === "/health" || request.url === "/ready") {
-    response.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    response.writeHead(200, { ...securityHeaders, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
     response.end(JSON.stringify({ ok: true, env: frontendVersion.env }));
     return;
   }
 
   if (request.url === "/version") {
-    response.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    response.writeHead(200, { ...securityHeaders, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
     response.end(JSON.stringify(frontendVersion));
     return;
   }
 
   if (request.method !== "GET" && request.method !== "HEAD") {
-    response.writeHead(405, { "Content-Type": "text/plain; charset=utf-8" });
+    response.writeHead(405, { ...securityHeaders, "Content-Type": "text/plain; charset=utf-8" });
     response.end("Method Not Allowed");
     return;
   }
 
   const filePath = resolvePublicPath(request.url || "/");
   if (!filePath || !existsSync(filePath)) {
-    response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+    response.writeHead(404, { ...securityHeaders, "Content-Type": "text/plain; charset=utf-8" });
     response.end("Not Found");
     return;
   }
 
   if (request.method === "HEAD") {
-    response.writeHead(200);
+    response.writeHead(200, fileHeaders(filePath));
     response.end();
     return;
   }

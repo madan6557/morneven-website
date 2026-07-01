@@ -7,21 +7,52 @@ import { getApiBaseUrl, getAccessToken } from "./restClient";
 
 const blobUrlCache = new Map<string, string>();
 const pendingBlobUrlCache = new Map<string, Promise<string>>();
+const allowedObjectFolders = new Set(["gallery", "lore", "projects", "news", "map", "chat", "bot-manager", "exports", "uploads"]);
+const safeDataUrlPattern =
+  /^data:(?:image\/(?:png|jpeg|webp|gif)|video\/(?:mp4|webm|ogg|quicktime)|application\/pdf|text\/plain|text\/markdown)(?:;charset=[a-z0-9_-]+)?;base64,/i;
+
+function normalizeObjectPathCandidate(value: string): string | null {
+  const normalized = value.trim().replace(/^\/+/, "");
+  if (!normalized || normalized.length > 2048 || normalized.includes("\\") || !/^[a-zA-Z0-9._/-]+$/.test(normalized)) return null;
+  const segments = normalized.split("/");
+  if (segments.some((segment) => !segment || segment === "." || segment === "..")) return null;
+  const [folder] = segments;
+  return allowedObjectFolders.has(folder) ? normalized : null;
+}
+
+export function isSafeFileUrl(url: string): boolean {
+  const value = url.trim();
+  if (!value) return false;
+  if (value.startsWith("//")) return false;
+  if (value.startsWith("blob:")) return true;
+  if (value.startsWith("data:")) return safeDataUrlPattern.test(value);
+  if (normalizeObjectPathCandidate(value)) return true;
+  if (isProxyUrl(value)) return true;
+
+  try {
+    const origin = globalThis.location?.origin ?? "http://localhost";
+    const parsed = new URL(value, origin);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" || parsed.protocol === "s3:";
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Extract storage path/key from S3-compatible URLs.
  */
 export function extractStoragePath(url: string): string | null {
-  if (!url || url.startsWith("data:") || url.startsWith("blob:")) return null;
+  const value = url.trim();
+  if (!value || value.startsWith("data:") || value.startsWith("blob:")) return null;
 
   try {
-    const storageMatch = url.match(/https?:\/\/(?:[^/]+\.)?storageapi\.dev\/[^/]+\/(.+)/);
+    const storageMatch = value.match(/https?:\/\/(?:[^/]+\.)?storageapi\.dev\/[^/]+\/(.+)/);
     if (storageMatch?.[1]) return storageMatch[1];
 
-    const s3Match = url.match(/https?:\/\/[^/]+\.s3\.(?:amazonaws\.com|[^/]+)\/(.+)/);
+    const s3Match = value.match(/https?:\/\/[^/]+\.s3\.(?:amazonaws\.com|[^/]+)\/(.+)/);
     if (s3Match?.[1]) return s3Match[1];
 
-    const s3ProtocolMatch = url.match(/s3:\/\/[^/]+\/(.+)/);
+    const s3ProtocolMatch = value.match(/s3:\/\/[^/]+\/(.+)/);
     if (s3ProtocolMatch?.[1]) return s3ProtocolMatch[1];
 
     return null;
@@ -31,14 +62,22 @@ export function extractStoragePath(url: string): string | null {
 }
 
 export function getProxyUrl(url: string): string {
-  if (!url) return "";
-  if (url.startsWith("data:") || url.startsWith("blob:")) return url;
-  if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("s3://")) {
-    return url;
+  const value = url.trim();
+  if (!value || !isSafeFileUrl(value)) return "";
+  if (value.startsWith("data:") || value.startsWith("blob:")) return value;
+
+  const objectPath = normalizeObjectPathCandidate(value);
+  if (objectPath) {
+    const baseUrl = getApiBaseUrl();
+    return `${baseUrl}/files/object?path=${encodeURIComponent(objectPath)}`;
   }
 
-  const storagePath = extractStoragePath(url);
-  if (!storagePath) return url;
+  if (!value.startsWith("http://") && !value.startsWith("https://") && !value.startsWith("s3://")) {
+    return value;
+  }
+
+  const storagePath = extractStoragePath(value);
+  if (!storagePath) return value;
 
   const baseUrl = getApiBaseUrl();
   return `${baseUrl}/files/object?path=${encodeURIComponent(storagePath)}`;
@@ -60,7 +99,7 @@ export function isDirectStorageUrl(url: string): boolean {
 }
 
 export async function getAuthenticatedFileUrl(url: string, accept = "*/*"): Promise<string> {
-  if (!url) return "";
+  if (!url || !isSafeFileUrl(url)) return "";
   if (url.startsWith("data:") || url.startsWith("blob:")) return url;
 
   const proxyUrl = getProxyUrl(url);
