@@ -1,7 +1,7 @@
 import { apiRequest, getApiBaseUrl, unwrapPageItems, type BackendPage } from "@/services/restClient";
 
 export type ExtractionMode = "db" | "images" | "all";
-export type ExtractionStatus = "processing" | "completed" | "failed";
+export type ExtractionStatus = "processing" | "completed" | "failed" | "stopped";
 export type BackupMediaSource =
   | "chat"
   | "gallery"
@@ -31,6 +31,7 @@ export interface ExtractionJob {
     percent: number;
     stage: string;
     message: string;
+    updatedAt?: string;
   };
 }
 
@@ -68,6 +69,22 @@ export async function startExtractionRemote(
   return apiRequest<ExtractionJob>("/settings/extractions", {
     method: "POST",
     body: { mode, autoDownload, ...payload },
+  });
+}
+
+export async function retryExtractionRemote(
+  id: string,
+  payload: { autoDownload?: boolean; confirmText?: string; password?: string; secretKey?: string; mediaSources?: BackupMediaSource[] } = {},
+): Promise<ExtractionJob> {
+  return apiRequest<ExtractionJob>(`/settings/extractions/${id}/retry`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function stopExtractionRemote(id: string): Promise<ExtractionJob> {
+  return apiRequest<ExtractionJob>(`/settings/extractions/${id}/stop`, {
+    method: "POST",
   });
 }
 

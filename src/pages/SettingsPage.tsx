@@ -42,7 +42,9 @@ import {
   clearExtractionHistory,
   downloadExtractionJob,
   listExtractionHistoryRemote,
+  retryExtractionRemote,
   startExtractionRemote,
+  stopExtractionRemote,
   type BackupMediaSource,
   type ExtractionJob,
   type ExtractionMode,
@@ -163,6 +165,16 @@ const BACKUP_MEDIA_SOURCES: Array<{ value: BackupMediaSource; label: string }> =
 ];
 
 const WEB_VERSION = __APP_VERSION__ || "unknown";
+const backupDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
+function formatBackupDate(value: string) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? backupDateFormatter.format(date) : value;
+}
 
 type RuntimeVersion = {
   service?: string;
@@ -527,12 +539,17 @@ export default function SettingsPage() {
 
   const trackInfo = PERSONNEL_TRACKS.find((item) => item.key === track);
   const title = trackInfo?.titles[personnelLevel] ?? "Unknown";
-  const canRun =
+  const canAuthenticateExtraction =
     isPl7Author &&
     confirmText === "CONFIRM" &&
     verifyPassword(password) &&
-    extractionSecretKey.trim().length >= 16 &&
+    extractionSecretKey.trim().length >= 16;
+  const canRun =
+    canAuthenticateExtraction &&
     (mode === "db" || mediaSources.length > 0);
+  const canRetryExtraction = (job: ExtractionJob) =>
+    canAuthenticateExtraction &&
+    (job.mode === "db" || mediaSources.length > 0);
   const canRunMigration =
     isPl7Author &&
     migrationConfirmText === "MIGRATION" &&
@@ -1892,7 +1909,7 @@ export default function SettingsPage() {
                             Select job
                           </label>
                           <p className="break-words text-foreground">
-                            {job.mode.toUpperCase()} / {job.status} / expires {new Date(job.expiresAt).toLocaleDateString()}
+                            {job.mode.toUpperCase()} / {job.status} / expires {formatBackupDate(job.expiresAt)}
                           </p>
                           {job.progress && (
                             <div className="space-y-2 pt-1">
@@ -1905,7 +1922,34 @@ export default function SettingsPage() {
                             </div>
                           )}
                         </div>
-                        <div className="shrink-0">
+                        <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                          {job.status === "processing" && (
+                            <button
+                              type="button"
+                              className="text-sm text-destructive underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-60"
+                              disabled={busyAction === `stop-${job.id}`}
+                              onClick={() => showValidation({
+                                variant: "warning",
+                                title: "Stop backup job",
+                                description: "This stops the running backup job. You can retry it from 0 afterward.",
+                                confirmLabel: "Stop job",
+                                cancelLabel: "Cancel",
+                                critical: true,
+                                onConfirm: async () => {
+                                  await runWithFeedback(`stop-${job.id}`, async () => {
+                                    const stopped = await stopExtractionRemote(job.id);
+                                    setHistory((current) => {
+                                      const next = current.map((item) => item.id === stopped.id ? stopped : item);
+                                      setShouldPollExtraction(next.some((item) => item.status === "processing"));
+                                      return next;
+                                    });
+                                  }, "Backup stopped", "Stop failed");
+                                },
+                              })}
+                            >
+                              {busyAction === `stop-${job.id}` ? "Stopping..." : "Stop"}
+                            </button>
+                          )}
                           {job.status === "completed" && (
                             <button
                               type="button"
@@ -1920,6 +1964,38 @@ export default function SettingsPage() {
                               title={extractionSecretKey.trim().length < 16 ? "Enter EXTRACTION_KEY to download backup archives." : undefined}
                             >
                               {busyAction === `download-${job.id}` ? "Downloading..." : "Download ZIP"}
+                            </button>
+                          )}
+                          {(job.status === "failed" || job.status === "stopped") && (
+                            <button
+                              type="button"
+                              className="text-sm text-primary underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-60"
+                              disabled={busyAction === `retry-${job.id}` || !canRetryExtraction(job)}
+                              title={!canRetryExtraction(job) ? 'Enter password, EXTRACTION_KEY, confirmation, and at least one attachment source when needed.' : undefined}
+                              onClick={() => showValidation({
+                                variant: "warning",
+                                title: "Retry backup from 0",
+                                description: "This creates a new backup job using the same mode and starts progress from 0%.",
+                                confirmLabel: "Retry from 0",
+                                cancelLabel: "Cancel",
+                                critical: true,
+                                confirmDelaySeconds: 3,
+                                onConfirm: async () => {
+                                  await runWithFeedback(`retry-${job.id}`, async () => {
+                                    const retry = await retryExtractionRemote(job.id, {
+                                      autoDownload,
+                                      confirmText: "CONFIRM",
+                                      password,
+                                      secretKey: extractionSecretKey,
+                                      mediaSources,
+                                    });
+                                    setHistory((current) => [retry, ...current]);
+                                    setShouldPollExtraction(retry.status === "processing");
+                                  }, "Backup retry started", "Retry failed");
+                                },
+                              })}
+                            >
+                              {busyAction === `retry-${job.id}` ? "Retrying..." : "Retry from 0"}
                             </button>
                           )}
                         </div>
