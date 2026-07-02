@@ -176,6 +176,22 @@ function formatBackupDate(value: string) {
   return Number.isFinite(date.getTime()) ? backupDateFormatter.format(date) : value;
 }
 
+function upsertHistoryJob<T extends { id: string }>(current: T[], job: T): T[] {
+  let replaced = false;
+  const next: T[] = [];
+  current.forEach((item) => {
+    if (item.id !== job.id) {
+      next.push(item);
+      return;
+    }
+    if (!replaced) {
+      next.push(job);
+      replaced = true;
+    }
+  });
+  return replaced ? next : [job, ...next];
+}
+
 type RuntimeVersion = {
   service?: string;
   version?: string;
@@ -432,26 +448,14 @@ export default function SettingsPage() {
 
         if (envelope.event === "settings.extraction.updated") {
           const job = maybeJob as ExtractionJob;
-          setHistory((current) => {
-            const index = current.findIndex((item) => item.id === job.id);
-            if (index === -1) return [job, ...current];
-            const next = [...current];
-            next[index] = job;
-            return next;
-          });
+          setHistory((current) => upsertHistoryJob(current, job));
           setShouldPollExtraction(job.status === "processing");
           return;
         }
 
         if (envelope.event === "settings.migration.updated") {
           const job = maybeJob as MigrationJob;
-          setMigrationHistory((current) => {
-            const index = current.findIndex((item) => item.id === job.id);
-            if (index === -1) return [job, ...current];
-            const next = [...current];
-            next[index] = job;
-            return next;
-          });
+          setMigrationHistory((current) => upsertHistoryJob(current, job));
           setShouldPollMigration(job.status === "processing");
         }
       },
@@ -1802,7 +1806,7 @@ export default function SettingsPage() {
                           secretKey: extractionSecretKey,
                           mediaSources,
                         });
-                        setHistory((current) => [job, ...current]);
+                        setHistory((current) => upsertHistoryJob(current, job));
                         setShouldPollExtraction(job.status === "processing");
                       }, "Backup started", "Backup failed");
                     },
@@ -1939,7 +1943,7 @@ export default function SettingsPage() {
                                   await runWithFeedback(`stop-${job.id}`, async () => {
                                     const stopped = await stopExtractionRemote(job.id);
                                     setHistory((current) => {
-                                      const next = current.map((item) => item.id === stopped.id ? stopped : item);
+                                      const next = upsertHistoryJob(current, stopped);
                                       setShouldPollExtraction(next.some((item) => item.status === "processing"));
                                       return next;
                                     });
@@ -1989,7 +1993,7 @@ export default function SettingsPage() {
                                       secretKey: extractionSecretKey,
                                       mediaSources,
                                     });
-                                    setHistory((current) => [retry, ...current]);
+                                    setHistory((current) => upsertHistoryJob(current, retry));
                                     setShouldPollExtraction(retry.status === "processing");
                                   }, "Backup retry started", "Retry failed");
                                 },
@@ -2257,7 +2261,7 @@ export default function SettingsPage() {
                         setMigrationUploadProgress(null);
                         job = await startMigrationRemote(commonPayload);
                       }
-                      setMigrationHistory((current) => [job, ...current]);
+                      setMigrationHistory((current) => upsertHistoryJob(current, job));
                       setShouldPollMigration(job.status === "processing");
                     }, "Migration started", "Migration failed");
                   },
