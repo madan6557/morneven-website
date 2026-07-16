@@ -5,7 +5,33 @@ import { getNewsItem } from "@/services/newsApi";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import { AuthenticatedVideo } from "@/components/AuthenticatedVideo";
 import { useResolvedImageUrl } from "@/hooks/useResolvedImageUrl";
+import { safeNavigationUrl } from "@/lib/safeUrl";
 import type { NewsItem } from "@/types";
+
+function AttachmentLink({ url, caption }: { url: string; caption?: string }) {
+  const safeUrl = safeNavigationUrl(url);
+  if (!safeUrl) return null;
+
+  const content = (
+    <>
+      <span className="text-xs font-heading text-foreground truncate">
+        {caption || url}
+      </span>
+      <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+    </>
+  );
+  const className = "flex items-center justify-between gap-2 p-3 hover:bg-muted/50 transition-colors";
+
+  if (safeUrl.startsWith("/")) {
+    return <Link to={safeUrl} className={className}>{content}</Link>;
+  }
+
+  return (
+    <a href={safeUrl} target="_blank" rel="noopener noreferrer" className={className}>
+      {content}
+    </a>
+  );
+}
 
 export default function NewsDetail() {
   const { id } = useParams<{ id: string }>();
@@ -82,15 +108,7 @@ export default function NewsDetail() {
                       <AuthenticatedVideo src={a.url} className="h-full w-full" title={a.caption || "video"} />
                     </div>
                   ) : a.type === "link" && a.url ? (
-                    <Link
-                      to={a.url}
-                      className="flex items-center justify-between gap-2 p-3 hover:bg-muted/50 transition-colors"
-                    >
-                      <span className="text-xs font-heading text-foreground truncate">
-                        {a.caption || a.url}
-                      </span>
-                      <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                    </Link>
+                    <AttachmentLink url={a.url} caption={a.caption} />
                   ) : (
                     <div className="aspect-video bg-muted flex items-center justify-center">
                       <span className="text-xs text-muted-foreground font-heading tracking-wider">ATTACHMENT</span>

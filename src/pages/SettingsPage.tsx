@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ScheduleEditor } from "@/components/ScheduleEditor";
 import { useRevealTimer } from "@/hooks/useRevealTimer";
 import { ContentState } from "@/components/ContentState";
 import { Button } from "@/components/ui/button";
@@ -40,15 +41,24 @@ import {
 import { getQuota, monthKey, pl2Status, pl3Status, pl4Status, yearKey } from "@/services/managementApi";
 import {
   clearExtractionHistory,
+  deleteExtractionSchedule,
   downloadExtractionJob,
+  getExtractionSchedule,
   listExtractionHistoryRemote,
   retryExtractionRemote,
   startExtractionRemote,
   stopExtractionRemote,
+  updateExtractionSchedule,
   type BackupMediaSource,
   type ExtractionJob,
   type ExtractionMode,
 } from "@/services/extractionService";
+import {
+  createDefaultScheduleInput,
+  scheduleInputFromTask,
+  type ScheduleInput,
+  type ScheduledTask,
+} from "@/services/schedulerTypes";
 import {
   downloadMigrationReport,
   listMigrationHistoryRemote,
@@ -169,11 +179,19 @@ const backupDateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
   month: "short",
   year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  timeZoneName: "short",
 });
 
 function formatBackupDate(value: string) {
   const date = new Date(value);
   return Number.isFinite(date.getTime()) ? backupDateFormatter.format(date) : value;
+}
+
+function isExtractionActive(job: ExtractionJob) {
+  return job.status === "queued" || job.status === "processing";
 }
 
 function upsertHistoryJob<T extends { id: string }>(current: T[], job: T): T[] {
@@ -227,6 +245,11 @@ export default function SettingsPage() {
   const [autoDownload, setAutoDownload] = useState(true);
   const [password, setPassword] = useState("");
   const [extractionSecretKey, setExtractionSecretKey] = useState("");
+  const [backupSchedule, setBackupSchedule] = useState<ScheduleInput>(() => createDefaultScheduleInput());
+  const [backupScheduleTask, setBackupScheduleTask] = useState<ScheduledTask | null>(null);
+  const [backupRetentionCount, setBackupRetentionCount] = useState(3);
+  const [backupRetentionDays, setBackupRetentionDays] = useState(7);
+  const [backupScheduleLoading, setBackupScheduleLoading] = useState(personnelLevel >= 7 && role === "author");
   const [migrationPassword, setMigrationPassword] = useState("");
   const [migrationSecretKey, setMigrationSecretKey] = useState("");
   const [migrationBaseUrl, setMigrationBaseUrl] = useState("");
@@ -286,7 +309,7 @@ export default function SettingsPage() {
   const [storageError, setStorageError] = useState<string | null>(null);
   const [apiVersion, setApiVersion] = useState<RuntimeVersion | null>(null);
   const [apiVersionError, setApiVersionError] = useState<string | null>(null);
-  const processing = useMemo(() => history.some((job) => job.status === "processing"), [history]);
+  const processing = useMemo(() => history.some(isExtractionActive), [history]);
   const migrationProcessing = useMemo(
     () => migrationHistory.some((job) => job.status === "processing"),
     [migrationHistory],
@@ -321,7 +344,7 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (personnelLevel < 7) {
+    if (personnelLevel < 7 || role !== "author") {
       setHistory([]);
       setHistoryLoading(false);
       setHistoryError(null);
@@ -332,13 +355,43 @@ export default function SettingsPage() {
     listExtractionHistoryRemote()
       .then((items) => {
         setHistory(items);
-        setShouldPollExtraction(items.some((job) => job.status === "processing"));
+        setShouldPollExtraction(items.some(isExtractionActive));
       })
       .catch((error) => {
         setHistoryError(toUserFacingError(error, "Backup history could not be loaded."));
       })
       .finally(() => setHistoryLoading(false));
-  }, [personnelLevel]);
+  }, [personnelLevel, role]);
+
+  useEffect(() => {
+    if (personnelLevel < 7 || role !== "author") {
+      setBackupScheduleTask(null);
+      setBackupScheduleLoading(false);
+      return;
+    }
+    setBackupScheduleLoading(true);
+    getExtractionSchedule()
+      .then((task) => {
+        setBackupScheduleTask(task);
+        setBackupSchedule(scheduleInputFromTask(task));
+        const retentionCount = Number(task?.payload?.retentionCount);
+        const retentionDays = Number(task?.payload?.retentionDays);
+        if (Number.isInteger(retentionCount) && retentionCount >= 1 && retentionCount <= 10) {
+          setBackupRetentionCount(retentionCount);
+        }
+        if (Number.isInteger(retentionDays) && retentionDays >= 1 && retentionDays <= 30) {
+          setBackupRetentionDays(retentionDays);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: "destructive",
+          title: "Backup schedule unavailable",
+          description: toUserFacingError(error, "Backup schedule could not be loaded."),
+        });
+      })
+      .finally(() => setBackupScheduleLoading(false));
+  }, [personnelLevel, role, toast]);
 
   useEffect(() => {
     if (personnelLevel < 7 || role !== "author") {
@@ -403,7 +456,7 @@ export default function SettingsPage() {
       listExtractionHistoryRemote().then((nextHistory) => {
         setHistory(nextHistory);
         setHistoryError(null);
-        if (!nextHistory.some((job) => job.status === "processing")) {
+        if (!nextHistory.some(isExtractionActive)) {
           setShouldPollExtraction(false);
         }
       }).catch((error) => {
@@ -449,7 +502,7 @@ export default function SettingsPage() {
         if (envelope.event === "settings.extraction.updated") {
           const job = maybeJob as ExtractionJob;
           setHistory((current) => upsertHistoryJob(current, job));
-          setShouldPollExtraction(job.status === "processing");
+          setShouldPollExtraction(isExtractionActive(job));
           return;
         }
 
@@ -551,6 +604,13 @@ export default function SettingsPage() {
   const canRun =
     canAuthenticateExtraction &&
     (mode === "db" || mediaSources.length > 0);
+  const canAuthenticateBackupSchedule =
+    isPl7Author &&
+    verifyPassword(password) &&
+    extractionSecretKey.trim().length >= 16;
+  const canSaveBackupSchedule =
+    canAuthenticateBackupSchedule &&
+    (mode === "db" || mediaSources.length > 0);
   const canRetryExtraction = (job: ExtractionJob) =>
     canAuthenticateExtraction &&
     (job.mode === "db" || mediaSources.length > 0);
@@ -577,7 +637,7 @@ export default function SettingsPage() {
     try {
       const nextHistory = await listExtractionHistoryRemote();
       setHistory(nextHistory);
-      setShouldPollExtraction(nextHistory.some((job) => job.status === "processing"));
+      setShouldPollExtraction(nextHistory.some(isExtractionActive));
     } catch (error) {
       setHistoryError(toUserFacingError(error, "Backup history could not be loaded."));
     } finally {
@@ -1735,7 +1795,7 @@ export default function SettingsPage() {
               accentClass="text-warning"
             >
               <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                <p className="text-sm text-muted-foreground">History is retained for 30 days. Completed archives include restore guidance inside the attachment README.</p>
+                <p className="text-sm text-muted-foreground">Backup archives expire after 7 days by default. Scheduled retention is configurable below.</p>
                 {processing && <p className="text-sm text-muted-foreground">Backup in progress...</p>}
               </div>
 
@@ -1807,7 +1867,7 @@ export default function SettingsPage() {
                           mediaSources,
                         });
                         setHistory((current) => upsertHistoryJob(current, job));
-                        setShouldPollExtraction(job.status === "processing");
+                        setShouldPollExtraction(isExtractionActive(job));
                       }, "Backup started", "Backup failed");
                     },
                   })}
@@ -1868,6 +1928,89 @@ export default function SettingsPage() {
                 <span>Auto download when completed</span>
               </label>
 
+              <div className="space-y-3 border-t border-border/70 pt-4">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs font-heading uppercase text-foreground">Scheduled Backup</p>
+                  <p className="text-xs text-muted-foreground">
+                    {backupScheduleTask?.nextRunAt
+                      ? `Next: ${formatBackupDate(backupScheduleTask.nextRunAt)}`
+                      : "Disabled"}
+                  </p>
+                </div>
+                <ScheduleEditor
+                  value={backupSchedule}
+                  onChange={setBackupSchedule}
+                  disabled={backupScheduleLoading || Boolean(busyAction)}
+                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="text-xs font-heading uppercase text-muted-foreground">Keep Archives</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      className={inputClass}
+                      value={backupRetentionCount}
+                      onChange={(event) => setBackupRetentionCount(Math.min(10, Math.max(1, Number(event.target.value) || 1)))}
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-xs font-heading uppercase text-muted-foreground">Retention Days</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={30}
+                      className={inputClass}
+                      value={backupRetentionDays}
+                      onChange={(event) => setBackupRetentionDays(Math.min(30, Math.max(1, Number(event.target.value) || 1)))}
+                    />
+                  </label>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!backupScheduleTask || !canAuthenticateBackupSchedule}
+                    isLoading={busyAction === "delete-backup-schedule"}
+                    onClick={() => showValidation({
+                      variant: "warning",
+                      title: "Disable scheduled backup",
+                      description: "The current backup schedule will be removed.",
+                      confirmLabel: "Disable schedule",
+                      cancelLabel: "Cancel",
+                      onConfirm: async () => {
+                        await runWithFeedback("delete-backup-schedule", async () => {
+                          await deleteExtractionSchedule({ password, secretKey: extractionSecretKey });
+                          setBackupScheduleTask(null);
+                        }, "Backup schedule disabled", "Schedule update failed");
+                      },
+                    })}
+                  >
+                    Disable
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={!canSaveBackupSchedule}
+                    isLoading={busyAction === "save-backup-schedule"}
+                    onClick={() => runWithFeedback("save-backup-schedule", async () => {
+                      const task = await updateExtractionSchedule({
+                        ...backupSchedule,
+                        mode,
+                        mediaSources,
+                        retentionCount: backupRetentionCount,
+                        retentionDays: backupRetentionDays,
+                        password,
+                        secretKey: extractionSecretKey,
+                      });
+                      setBackupScheduleTask(task);
+                      setBackupSchedule(scheduleInputFromTask(task));
+                    }, "Backup schedule saved", "Schedule update failed")}
+                  >
+                    Save Schedule
+                  </Button>
+                </div>
+              </div>
+
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-xs font-heading tracking-[0.12em] text-foreground uppercase">Backup History</p>
@@ -1913,7 +2056,10 @@ export default function SettingsPage() {
                             Select job
                           </label>
                           <p className="break-words text-foreground">
-                            {job.mode.toUpperCase()} / {job.status} / expires {formatBackupDate(job.expiresAt)}
+                            {job.mode.toUpperCase()} / {job.status}
+                          </p>
+                          <p className="break-words text-xs text-muted-foreground">
+                            Created {formatBackupDate(job.createdAt)} / Expires {formatBackupDate(job.expiresAt)}
                           </p>
                           {job.progress && (
                             <div className="space-y-2 pt-1">
@@ -1927,7 +2073,7 @@ export default function SettingsPage() {
                           )}
                         </div>
                         <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-                          {job.status === "processing" && (
+                          {isExtractionActive(job) && (
                             <button
                               type="button"
                               className="text-sm text-destructive underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-60"
@@ -1944,7 +2090,7 @@ export default function SettingsPage() {
                                     const stopped = await stopExtractionRemote(job.id);
                                     setHistory((current) => {
                                       const next = upsertHistoryJob(current, stopped);
-                                      setShouldPollExtraction(next.some((item) => item.status === "processing"));
+                                      setShouldPollExtraction(next.some(isExtractionActive));
                                       return next;
                                     });
                                   }, "Backup stopped", "Stop failed");
@@ -1994,7 +2140,7 @@ export default function SettingsPage() {
                                       mediaSources,
                                     });
                                     setHistory((current) => upsertHistoryJob(current, retry));
-                                    setShouldPollExtraction(retry.status === "processing");
+                                    setShouldPollExtraction(isExtractionActive(retry));
                                   }, "Backup retry started", "Retry failed");
                                 },
                               })}

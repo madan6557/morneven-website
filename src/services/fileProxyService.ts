@@ -8,16 +8,48 @@ import { getApiBaseUrl, getAccessToken } from "./restClient";
 const blobUrlCache = new Map<string, string>();
 const pendingBlobUrlCache = new Map<string, Promise<string>>();
 const allowedObjectFolders = new Set(["gallery", "lore", "projects", "news", "map", "chat", "bot-manager", "exports", "uploads"]);
+const publicObjectPrefixes = ["gallery/", "lore/", "projects/", "news/", "map/", "bot-manager/profiles/"];
+const publicStorageBasePath = "/storage";
 const safeDataUrlPattern =
   /^data:(?:image\/(?:png|jpeg|webp|gif)|video\/(?:mp4|webm|ogg|quicktime)|application\/pdf|text\/plain|text\/markdown)(?:;charset=[a-z0-9_-]+)?;base64,/i;
 
 function normalizeObjectPathCandidate(value: string): string | null {
-  const normalized = value.trim().replace(/^\/+/, "");
-  if (!normalized || normalized.length > 2048 || normalized.includes("\\") || !/^[a-zA-Z0-9._/-]+$/.test(normalized)) return null;
-  const segments = normalized.split("/");
+  const trimmed = value.trim().replace(/^\/+/, "");
+  if (!trimmed || trimmed.length > 2048 || trimmed.includes("\\") || !/^[a-zA-Z0-9._/-]+$/.test(trimmed)) return null;
+  const segments = trimmed.split("/");
   if (segments.some((segment) => !segment || segment === "." || segment === "..")) return null;
   const [folder] = segments;
-  return allowedObjectFolders.has(folder) ? normalized : null;
+  return allowedObjectFolders.has(folder) ? trimmed : null;
+}
+
+function isPublicObjectPath(objectPath: string): boolean {
+  const normalized = objectPath.toLowerCase();
+  return publicObjectPrefixes.some((prefix) => normalized.startsWith(prefix));
+}
+
+function getBackendOrigin(): string {
+  const currentOrigin = globalThis.location?.origin ?? "http://localhost";
+  return new URL(getApiBaseUrl(), currentOrigin).origin;
+}
+
+function getExplicitStoragePath(value: string): string | null {
+  try {
+    const currentOrigin = globalThis.location?.origin ?? "http://localhost";
+    const parsed = new URL(value, currentOrigin);
+    if (!parsed.pathname.startsWith(`${publicStorageBasePath}/`)) return null;
+    return normalizeObjectPathCandidate(
+      decodeURIComponent(parsed.pathname.slice(publicStorageBasePath.length + 1)),
+    );
+  } catch {
+    return null;
+  }
+}
+
+function buildBackendFileUrl(objectPath: string): string {
+  if (isPublicObjectPath(objectPath)) {
+    return `${getBackendOrigin()}${publicStorageBasePath}/${objectPath}`;
+  }
+  return `${getApiBaseUrl()}/files/object?path=${encodeURIComponent(objectPath)}`;
 }
 
 export function isSafeFileUrl(url: string): boolean {
@@ -45,6 +77,9 @@ export function extractStoragePath(url: string): string | null {
   const value = url.trim();
   if (!value || value.startsWith("data:") || value.startsWith("blob:")) return null;
 
+  const explicitStoragePath = getExplicitStoragePath(value);
+  if (explicitStoragePath) return explicitStoragePath;
+
   try {
     const storageMatch = value.match(/https?:\/\/(?:[^/]+\.)?storageapi\.dev\/[^/]+\/(.+)/);
     if (storageMatch?.[1]) return storageMatch[1];
@@ -66,11 +101,11 @@ export function getProxyUrl(url: string): string {
   if (!value || !isSafeFileUrl(value)) return "";
   if (value.startsWith("data:") || value.startsWith("blob:")) return value;
 
+  const explicitStoragePath = getExplicitStoragePath(value);
+  if (explicitStoragePath) return buildBackendFileUrl(explicitStoragePath);
+
   const objectPath = normalizeObjectPathCandidate(value);
-  if (objectPath) {
-    const baseUrl = getApiBaseUrl();
-    return `${baseUrl}/files/object?path=${encodeURIComponent(objectPath)}`;
-  }
+  if (objectPath) return buildBackendFileUrl(objectPath);
 
   if (!value.startsWith("http://") && !value.startsWith("https://") && !value.startsWith("s3://")) {
     return value;
@@ -79,8 +114,7 @@ export function getProxyUrl(url: string): string {
   const storagePath = extractStoragePath(value);
   if (!storagePath) return value;
 
-  const baseUrl = getApiBaseUrl();
-  return `${baseUrl}/files/object?path=${encodeURIComponent(storagePath)}`;
+  return buildBackendFileUrl(storagePath);
 }
 
 export function isProxyUrl(url: string): boolean {
@@ -95,7 +129,19 @@ export function isProxyUrl(url: string): boolean {
 
 export function isDirectStorageUrl(url: string): boolean {
   if (!url) return false;
-  return extractStoragePath(url) !== null;
+  return normalizeObjectPathCandidate(url) !== null || extractStoragePath(url) !== null;
+}
+
+export function isPublicStorageUrl(url: string): boolean {
+  if (!url) return false;
+  const objectPath = getExplicitStoragePath(url);
+  if (!objectPath || !isPublicObjectPath(objectPath)) return false;
+  try {
+    const currentOrigin = globalThis.location?.origin ?? "http://localhost";
+    return new URL(url, currentOrigin).origin === getBackendOrigin();
+  } catch {
+    return false;
+  }
 }
 
 export async function getAuthenticatedFileUrl(url: string, accept = "*/*"): Promise<string> {
@@ -103,7 +149,9 @@ export async function getAuthenticatedFileUrl(url: string, accept = "*/*"): Prom
   if (url.startsWith("data:") || url.startsWith("blob:")) return url;
 
   const proxyUrl = getProxyUrl(url);
-  if (!isProxyUrl(proxyUrl) && !isDirectStorageUrl(url)) {
+  const publicStorageUrl = isPublicStorageUrl(proxyUrl);
+  const proxyRequiresAuth = isProxyUrl(proxyUrl);
+  if (!proxyRequiresAuth && !publicStorageUrl && !isDirectStorageUrl(url)) {
     return proxyUrl;
   }
 
@@ -116,13 +164,13 @@ export async function getAuthenticatedFileUrl(url: string, accept = "*/*"): Prom
 
   const loadPromise = (async () => {
     const token = getAccessToken();
-    if (!token) return "";
+    if (proxyRequiresAuth && !token) return "";
 
     const response = await fetch(proxyUrl, {
       method: "GET",
       headers: {
         Accept: accept,
-        Authorization: `Bearer ${token}`,
+        ...(proxyRequiresAuth && token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
 

@@ -41,6 +41,7 @@ import {
 
 
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { ScheduleEditor } from "@/components/ScheduleEditor";
 import TagInput from "@/components/TagInput";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,8 @@ import {
   createBotManagerBackupDownloadTicket,
   deleteBotIdentity,
   deleteBotIdentityFile,
+  deleteBotRuntimeFreeze,
+  deleteBotRuntimeSchedule,
   deactivateBotIdentity,
   deleteOpenRouterProfile,
   getBotManagerBackupDownloadUrl,
@@ -70,6 +73,8 @@ import {
   getBotIdentity,
   getBotManagerSummary,
   getBotRuntimeStatus,
+  getBotRuntimeFreeze,
+  getBotRuntimeSchedule,
   getProviderAnalytics,
   getTelegramTopics,
   importBotManagerBackup,
@@ -84,6 +89,8 @@ import {
   updateBotCredential,
   updateBotGeneralConfig,
   updateBotIdentity,
+  updateBotRuntimeFreeze,
+  updateBotRuntimeSchedule,
   updateOpenRouterProfile,
   updateProviderAnalyticsCredential,
   updateTelegramTopicLock,
@@ -96,11 +103,18 @@ import {
   type BotProvider,
   type BotProviderAnalytics,
   type BotRuntimeStatus,
+  type BotRuntimeFreeze,
+  type BotRuntimeSchedule,
   type BotSummary,
   type OpenRouterProfile,
   type TelegramTopicLock,
   type TelegramTopicsResponse,
 } from "@/services/botManagerApi";
+import {
+  createDefaultScheduleInput,
+  scheduleInputFromTask,
+  type ScheduleInput,
+} from "@/services/schedulerTypes";
 import { getCharactersPage } from "@/services/loreApi";
 import { ApiError } from "@/services/restClient";
 import type { Character } from "@/types";
@@ -2323,6 +2337,7 @@ export default function BotManagerPage() {
                   <Save className="mr-2 h-4 w-4" />
                   Save General Config
                 </Button>
+                <RuntimeFreezeControl canManage={role === "author" && personnelLevel >= 7} />
               </div>
           </div>
           )}
@@ -2485,6 +2500,7 @@ export default function BotManagerPage() {
                               <PersonalityEditor
                                 activeTab={activeTab}
                                 busy={busy}
+                                canManageSchedules={role === "author" && personnelLevel >= 7}
                                 channelsDraft={channelsDraft}
                                 cronFiles={cronFiles}
                                 defaultRegenerateConfirm={defaultRegenerateConfirm}
@@ -2899,6 +2915,7 @@ function OpenRouterSection({
 function PersonalityEditor({
   activeTab,
   busy,
+  canManageSchedules,
   channelsDraft,
   cronFiles,
   defaultRegenerateConfirm,
@@ -2935,6 +2952,7 @@ function PersonalityEditor({
 }: {
   activeTab: BotTab;
   busy: string | null;
+  canManageSchedules: boolean;
   channelsDraft: JsonRecord;
   cronFiles: BotIdentityFile[];
   defaultRegenerateConfirm: string;
@@ -3019,7 +3037,17 @@ function PersonalityEditor({
       {activeTab === "sessions" && <FileEditor files={sessionFiles} fileDraft={fileDraft} setFileDraft={onFileDraftChange} onSave={onSaveFile} onDelete={onFileDelete} busy={busy === "file"} defaultKind="session" newFilePath="sessions/session-notes.md" allowedKinds={["session"]} />}
       {activeTab === "settings" && (
         <div className="space-y-4">
-          <SettingsEditor busy={Boolean(busy)} identityDraft={identityDraft} openRouterProfiles={openRouterProfiles} settingsDraft={settingsDraft} onIdentityChange={onIdentityChange} onSave={onSaveIdentity} onSettingsChange={onSettingsChange} />
+          <SettingsEditor
+            busy={Boolean(busy)}
+            canManageSchedules={canManageSchedules}
+            identityId={detail.id}
+            identityDraft={identityDraft}
+            openRouterProfiles={openRouterProfiles}
+            settingsDraft={settingsDraft}
+            onIdentityChange={onIdentityChange}
+            onSave={onSaveIdentity}
+            onSettingsChange={onSettingsChange}
+          />
           <LorePicker options={loreOptions} search={loreSearch} selectedId={selectedLoreId} onSearchChange={onLoreSearchChange} onSelect={onLoreSelect} />
           <DefaultFilesRegenerator
             busy={busy === "default-files"}
@@ -3816,6 +3844,8 @@ function DefaultFilesRegenerator({
 
 function SettingsEditor({
   busy,
+  canManageSchedules,
+  identityId,
   identityDraft,
   openRouterProfiles,
   settingsDraft,
@@ -3824,6 +3854,8 @@ function SettingsEditor({
   onSettingsChange,
 }: {
   busy: boolean;
+  canManageSchedules: boolean;
+  identityId: string;
   identityDraft: BotIdentityDraft;
   openRouterProfiles: OpenRouterProfile[];
   settingsDraft: BotSettingsDraft;
@@ -3928,10 +3960,320 @@ function SettingsEditor({
         </div>
       </div>
 
+      <RuntimeScheduleEditor
+        identityId={identityId}
+        canManage={canManageSchedules}
+        disabled={busy}
+      />
+
       <Button type="button" onClick={onSave} disabled={busy}>
         <Save className="mr-2 h-4 w-4" />
         Save Personality
       </Button>
+    </div>
+  );
+}
+
+function formatScheduleTimestamp(value?: string | null) {
+  if (!value) return "Disabled";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
+  }).format(date);
+}
+
+function RuntimeScheduleEditor({
+  identityId,
+  canManage,
+  disabled,
+}: {
+  identityId: string;
+  canManage: boolean;
+  disabled: boolean;
+}) {
+  const { toast } = useToast();
+  const [schedule, setSchedule] = useState<BotRuntimeSchedule | null>(null);
+  const [startEnabled, setStartEnabled] = useState(false);
+  const [stopEnabled, setStopEnabled] = useState(false);
+  const [startInput, setStartInput] = useState<ScheduleInput>(() => createDefaultScheduleInput());
+  const [stopInput, setStopInput] = useState<ScheduleInput>(() => createDefaultScheduleInput());
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    getBotRuntimeSchedule(identityId)
+      .then((next) => {
+        if (!active) return;
+        setSchedule(next);
+        setStartEnabled(Boolean(next.start));
+        setStopEnabled(Boolean(next.stop));
+        setStartInput(scheduleInputFromTask(next.start));
+        setStopInput(scheduleInputFromTask(next.stop));
+      })
+      .catch((error) => {
+        if (!active) return;
+        toast({
+          variant: "destructive",
+          title: "Runtime schedule unavailable",
+          description: error instanceof Error ? error.message : "Runtime schedule could not be loaded.",
+        });
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [identityId, toast]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const next = await updateBotRuntimeSchedule(identityId, {
+        password,
+        start: startEnabled ? startInput : null,
+        stop: stopEnabled ? stopInput : null,
+      });
+      setSchedule(next);
+      setStartInput(scheduleInputFromTask(next.start));
+      setStopInput(scheduleInputFromTask(next.stop));
+      setPassword("");
+      toast({ title: "Runtime schedule saved" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Runtime schedule failed",
+        description: error instanceof Error ? error.message : "Runtime schedule could not be saved.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const clear = async () => {
+    setSaving(true);
+    try {
+      await deleteBotRuntimeSchedule(identityId, password);
+      setSchedule((current) => current ? { ...current, start: null, stop: null } : current);
+      setStartEnabled(false);
+      setStopEnabled(false);
+      setPassword("");
+      toast({ title: "Runtime schedule disabled" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Runtime schedule failed",
+        description: error instanceof Error ? error.message : "Runtime schedule could not be disabled.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const controlsDisabled = disabled || loading || saving || !canManage;
+  return (
+    <div className="space-y-3 rounded-sm border border-border/70 bg-background/35 p-4">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="font-heading text-sm text-foreground">Runtime Start And Stop</h3>
+        <span className="text-xs text-muted-foreground">
+          Start {formatScheduleTimestamp(schedule?.start?.nextRunAt)} / Stop {formatScheduleTimestamp(schedule?.stop?.nextRunAt)}
+        </span>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={startEnabled}
+              disabled={controlsDisabled}
+              onChange={(event) => setStartEnabled(event.target.checked)}
+            />
+            Scheduled start
+          </label>
+          <ScheduleEditor value={startInput} onChange={setStartInput} disabled={controlsDisabled || !startEnabled} />
+        </div>
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={stopEnabled}
+              disabled={controlsDisabled}
+              onChange={(event) => setStopEnabled(event.target.checked)}
+            />
+            Scheduled stop
+          </label>
+          <ScheduleEditor value={stopInput} onChange={setStopInput} disabled={controlsDisabled || !stopEnabled} />
+        </div>
+      </div>
+      {canManage && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <Field label="Password Confirmation" type="password" value={password} onChange={setPassword} />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={saving || !password || (!schedule?.start && !schedule?.stop)}
+            onClick={() => { void clear(); }}
+          >
+            Disable
+          </Button>
+          <Button
+            type="button"
+            disabled={saving || !password || (!startEnabled && !stopEnabled)}
+            onClick={() => { void save(); }}
+          >
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
+            Save Runtime Schedule
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RuntimeFreezeControl({ canManage }: { canManage: boolean }) {
+  const { toast } = useToast();
+  const [freeze, setFreeze] = useState<BotRuntimeFreeze | null>(null);
+  const [schedule, setSchedule] = useState<ScheduleInput>(() => createDefaultScheduleInput("relative"));
+  const [password, setPassword] = useState("");
+  const [reason, setReason] = useState("Project freeze");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getBotRuntimeFreeze()
+      .then((next) => {
+        if (!active) return;
+        setFreeze(next);
+        if (next.schedule) {
+          setSchedule(scheduleInputFromTask(next.schedule));
+          const nextReason = next.schedule.payload?.reason;
+          if (typeof nextReason === "string" && nextReason.trim()) setReason(nextReason);
+        }
+      })
+      .catch((error) => {
+        if (!active) return;
+        toast({
+          variant: "destructive",
+          title: "Runtime freeze unavailable",
+          description: error instanceof Error ? error.message : "Runtime freeze state could not be loaded.",
+        });
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [toast]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const task = await updateBotRuntimeFreeze({ ...schedule, password, reason });
+      setFreeze((current) => ({
+        schedule: task,
+        state: current?.state ?? {
+          frozen: false,
+          frozenAt: null,
+          reason: null,
+          updatedBy: null,
+          updatedAt: new Date().toISOString(),
+        },
+      }));
+      setSchedule(scheduleInputFromTask(task));
+      setPassword("");
+      toast({ title: "Runtime freeze scheduled" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Runtime freeze failed",
+        description: error instanceof Error ? error.message : "Runtime freeze could not be scheduled.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cancel = async () => {
+    setSaving(true);
+    try {
+      await deleteBotRuntimeFreeze(password);
+      setFreeze((current) => current ? {
+        schedule: null,
+        state: {
+          ...current.state,
+          frozen: false,
+          frozenAt: null,
+          reason: null,
+          updatedAt: new Date().toISOString(),
+        },
+      } : current);
+      setPassword("");
+      toast({ title: "Runtime freeze cancelled" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Runtime freeze failed",
+        description: error instanceof Error ? error.message : "Runtime freeze could not be cancelled.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 border-t border-border/70 pt-4">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="font-heading text-sm text-foreground">Global Runtime Freeze</h3>
+        <Badge variant={freeze?.state.frozen ? "destructive" : "outline"}>
+          {freeze?.state.frozen
+            ? "Frozen"
+            : freeze?.schedule
+              ? formatScheduleTimestamp(freeze.schedule.nextRunAt)
+              : "Disabled"}
+        </Badge>
+      </div>
+      <ScheduleEditor
+        value={schedule}
+        onChange={setSchedule}
+        allowWeekly={false}
+        disabled={loading || saving || !canManage}
+      />
+      {canManage && (
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Reason" value={reason} onChange={setReason} />
+          <Field label="Password Confirmation" type="password" value={password} onChange={setPassword} />
+        </div>
+      )}
+      {canManage && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={saving || !password || (!freeze?.schedule && !freeze?.state.frozen)}
+            onClick={() => { void cancel(); }}
+          >
+            Cancel / Unfreeze
+          </Button>
+          <Button type="button" disabled={saving || !password || !reason.trim()} onClick={() => { void save(); }}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Power className="mr-2 h-4 w-4" />}
+            Schedule Freeze
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { apiRequest, apiUploadForm, getApiBaseUrl } from "@/services/restClient";
+import type { ScheduleInput, ScheduledTask } from "@/services/schedulerTypes";
 
 export type BotProvider = "openai" | "anthropic" | "gemini" | "groq" | "openrouter" | "deepseek" | "zhipu" | "vllm";
 export type BotFileKind = "identity" | "memory" | "cron" | "skill" | "session" | "tool" | "user" | "system" | "other";
@@ -249,6 +250,23 @@ export function updateBotCredential(payload: {
     method: "PUT",
     body: payload,
   });
+}
+
+export interface BotRuntimeSchedule {
+  identityId: string;
+  start: ScheduledTask | null;
+  stop: ScheduledTask | null;
+}
+
+export interface BotRuntimeFreeze {
+  schedule: ScheduledTask | null;
+  state: {
+    frozen: boolean;
+    frozenAt: string | null;
+    reason: string | null;
+    updatedBy: string | null;
+    updatedAt: string;
+  };
 }
 
 export function getProviderAnalytics(provider: BotProvider, range: "7d" | "30d" | "90d" = "30d") {
@@ -615,6 +633,46 @@ export function controlBotRuntimeForIdentity(identityId: string, action: "start"
   return apiRequest<BotRuntimeStatus>(`/bot-manager/runtime/${identityId}/${action}`, {
     method: "POST",
     timeoutMs: 60000,
+  });
+}
+
+export function getBotRuntimeSchedule(identityId: string) {
+  return apiRequest<BotRuntimeSchedule>(`/bot-manager/identities/${identityId}/runtime-schedule`);
+}
+
+export function updateBotRuntimeSchedule(identityId: string, payload: {
+  password: string;
+  start?: ScheduleInput | null;
+  stop?: ScheduleInput | null;
+}) {
+  return apiRequest<BotRuntimeSchedule>(`/bot-manager/identities/${identityId}/runtime-schedule`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function deleteBotRuntimeSchedule(identityId: string, password: string) {
+  return apiRequest<{ deletedStart: boolean; deletedStop: boolean }>(`/bot-manager/identities/${identityId}/runtime-schedule`, {
+    method: "DELETE",
+    body: { password },
+  });
+}
+
+export function getBotRuntimeFreeze() {
+  return apiRequest<BotRuntimeFreeze>("/bot-manager/runtime-freeze");
+}
+
+export function updateBotRuntimeFreeze(payload: ScheduleInput & { password: string; reason?: string }) {
+  return apiRequest<ScheduledTask>("/bot-manager/runtime-freeze", {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function deleteBotRuntimeFreeze(password: string) {
+  return apiRequest<{ deletedSchedule: boolean; frozen: boolean }>("/bot-manager/runtime-freeze", {
+    method: "DELETE",
+    body: { password },
   });
 }
 

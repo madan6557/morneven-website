@@ -46,12 +46,16 @@ const contentSecurityPolicy = [
   "frame-ancestors 'none'",
   "form-action 'self'",
   "script-src 'self' https://va.vercel-scripts.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "img-src 'self' data: blob: https: http:",
-  "font-src 'self' data: https://fonts.gstatic.com",
-  "media-src 'self' data: blob: https: http:",
-  "connect-src 'self' https: http://localhost:* http://127.0.0.1:* ws: wss:",
+  "script-src-attr 'none'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "media-src 'self' data: blob:",
+  "connect-src 'self' https://backend.dev.morneven.com wss://backend.dev.morneven.com https://backend.morneven.com wss://backend.morneven.com https://morneven-backend-production.up.railway.app wss://morneven-backend-production.up.railway.app https://va.vercel-scripts.com https://vitals.vercel-insights.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
   "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "upgrade-insecure-requests",
 ].join("; ");
 
 const securityHeaders = {
@@ -65,31 +69,44 @@ const securityHeaders = {
 
 function fileHeaders(filePath) {
   const extension = extname(filePath).toLowerCase();
+  const size = statSync(filePath).size;
   return {
     ...securityHeaders,
     "Content-Type": contentTypes[extension] || "application/octet-stream",
+    "Content-Length": String(size),
     "Cache-Control": extension === ".html" ? "no-cache" : "public, max-age=31536000, immutable",
   };
 }
 
 function sendFile(response, filePath) {
+  const stream = createReadStream(filePath);
+  stream.on("error", () => response.destroy());
   response.writeHead(200, fileHeaders(filePath));
-  createReadStream(filePath).pipe(response);
+  stream.pipe(response);
 }
 
 function resolvePublicPath(requestUrl) {
-  const url = new URL(requestUrl, `http://localhost:${port}`);
-  const decodedPath = decodeURIComponent(url.pathname);
-  const candidate = normalize(join(distDir, decodedPath));
+  let decodedPath;
+  try {
+    const url = new URL(requestUrl, `http://localhost:${port}`);
+    decodedPath = decodeURIComponent(url.pathname);
+  } catch {
+    return null;
+  }
+  if (decodedPath.includes("\\") || /[\u0000-\u001f\u007f]/.test(decodedPath)) return null;
 
-  if (!candidate.startsWith(distDir + sep) && candidate !== distDir) {
+  const candidate = normalize(join(distDir, decodedPath));
+  if (!candidate.startsWith(distDir + sep) && candidate !== distDir) return null;
+
+  try {
+    if (existsSync(candidate) && statSync(candidate).isFile()) {
+      return candidate;
+    }
+  } catch {
     return null;
   }
 
-  if (existsSync(candidate) && statSync(candidate).isFile()) {
-    return candidate;
-  }
-
+  if (extname(decodedPath)) return null;
   return indexPath;
 }
 

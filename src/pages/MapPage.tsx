@@ -4,6 +4,7 @@ import { getMapMarkers, getMapImageRemote } from "@/services/api";
 import type { MapMarker, MapZoneStatus } from "@/types";
 import { Plus, Minus, RotateCcw, MapPin, ExternalLink } from "lucide-react";
 import { ContentState } from "@/components/ContentState";
+import { useResolvedImageUrl } from "@/hooks/useResolvedImageUrl";
 
 const STATUS_STYLES: Record<MapZoneStatus, { label: string; color: string; ring: string }> = {
   safe: { label: "Safe", color: "bg-success", ring: "ring-success/40" },
@@ -25,6 +26,7 @@ export default function MapPage() {
   const dragRef = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(null);
   const activePointerRef = useRef<number | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const resolvedMapImage = useResolvedImageUrl(mapImage);
 
   const refresh = async () => {
     setMapStatus("loading");
@@ -171,9 +173,9 @@ export default function MapPage() {
             className="absolute inset-0 origin-center transition-transform duration-100 ease-out"
             style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})` }}
           >
-            {mapImage ? (
+            {resolvedMapImage ? (
               <img
-                src={mapImage}
+                src={resolvedMapImage}
                 alt="Gemora map"
                 className="w-full h-full object-contain pointer-events-none"
                 draggable={false}
