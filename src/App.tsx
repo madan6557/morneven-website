@@ -42,6 +42,8 @@ const NewsDetail = lazy(() => import("./pages/NewsDetail"));
 const ManagementPage = lazy(() => import("./pages/ManagementPage"));
 const ChatPage = lazy(() => import("./pages/ChatPage"));
 const BotManagerPage = lazy(() => import("./pages/BotManagerPage"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 function RouteFallback() {
@@ -72,6 +74,8 @@ function App() {
                 <Route path="/" element={<Landing />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/auth/password-reset/confirm" element={<PasswordResetConfirmationPage />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsOfService />} />
                 <Route element={<AppLayout />}>
                   <Route path="/home" element={<HomePage />} />
                   <Route path="/activity" element={<ActivityPage />} />
