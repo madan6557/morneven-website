@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { BookOpen, Users, FlaskConical, Globe, ArrowRight, ExternalLink } from "lucide-react";
 import logoColor from "@/assets/logo-color.png";
+import kronLogo from "@/assets/kron-logo.svg";
+import omniLogo from "@/assets/omni-logo.svg";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -55,6 +57,7 @@ export default function Landing() {
           <div className="hidden md:flex items-center gap-8 text-xs font-heading font-normal tracking-wider text-muted-foreground uppercase">
             <a href="#about" className="hover:text-primary transition-colors">About</a>
             <a href="#features" className="hover:text-primary transition-colors">Features</a>
+            <a href="#technologies" className="hover:text-primary transition-colors">Technologies</a>
             <a href="#community" className="hover:text-primary transition-colors">Community</a>
           </div>
           <Link
@@ -71,6 +74,7 @@ export default function Landing() {
           {[
             { href: "#about", label: "About" },
             { href: "#features", label: "Features" },
+            { href: "#technologies", label: "Technologies" },
             { href: "#community", label: "Community" },
           ].map((item) => (
             <a
@@ -303,6 +307,81 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ───── TECHNOLOGIES ───── */}
+      <section id="technologies" className="relative py-24 px-6 border-t border-border">
+        <div className="max-w-5xl mx-auto">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            className="space-y-16"
+          >
+            <motion.div variants={fadeUp} custom={0} className="text-center space-y-3">
+              <p className="font-display text-[10px] tracking-[0.4em] text-accent-orange uppercase">Powered By</p>
+              <h2 className="font-display text-2xl md:text-3xl tracking-[0.1em] text-primary">
+                TECHNOLOGIES
+              </h2>
+              <div className="mecha-line w-32 mx-auto mt-3" />
+              <p className="font-body text-sm text-muted-foreground max-w-md mx-auto">
+                Aplikasi dan perangkat lunak yang dikembangkan oleh Morneven Institute.
+              </p>
+            </motion.div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* OMNI */}
+              <motion.div
+                variants={fadeUp}
+                custom={1}
+                className="group p-8 rounded-lg border border-border bg-card/40 hover:bg-card/80 hover:border-primary/30 transition-all duration-300 space-y-5"
+              >
+                <div className="flex items-center gap-4">
+                  <img src={omniLogo} alt="OMNI Logo" className="h-14 w-14 drop-shadow-md" />
+                  <div>
+                    <h3 className="font-display text-lg tracking-[0.1em] text-primary">OMNI</h3>
+                    <p className="font-heading text-xs tracking-wider text-muted-foreground uppercase">Software</p>
+                  </div>
+                </div>
+                <p className="font-body text-sm text-foreground/85 leading-relaxed">
+                  Aplikasi desktop Windows 11 untuk restorasi dan rekonstruksi gambar serta video menggunakan teknologi AI. Mendukung upscaling, inpainting, dan optical flow propagation untuk kualitas visual terbaik.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {["AI Restoration", "Windows 11", "Offline-First", "Modular"].map((tag) => (
+                    <span key={tag} className="rounded-sm border border-border/70 px-2.5 py-1 text-[10px] font-heading tracking-wider text-muted-foreground uppercase">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* KRON */}
+              <motion.div
+                variants={fadeUp}
+                custom={2}
+                className="group p-8 rounded-lg border border-border bg-card/40 hover:bg-card/80 hover:border-primary/30 transition-all duration-300 space-y-5"
+              >
+                <div className="flex items-center gap-4">
+                  <img src={kronLogo} alt="KRON Logo" className="h-14 w-14 drop-shadow-md" />
+                  <div>
+                    <h3 className="font-display text-lg tracking-[0.1em] text-primary">KRON</h3>
+                    <p className="font-heading text-xs tracking-wider text-muted-foreground uppercase">Aplikasi</p>
+                  </div>
+                </div>
+                <p className="font-body text-sm text-foreground/85 leading-relaxed">
+                  Aplikasi pencatatan keuangan pribadi untuk Android yang bekerja sepenuhnya secara lokal. Data terenkripsi di perangkat, tanpa server, tanpa akun cloud. Setiap rupiah punya jejak.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {["Local-First", "Android", "Encrypted", "Google Drive"].map((tag) => (
+                    <span key={tag} className="rounded-sm border border-border/70 px-2.5 py-1 text-[10px] font-heading tracking-wider text-muted-foreground uppercase">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* ───── FOOTER ───── */}
       <footer className="border-t border-border py-12 px-6">
         <div className="max-w-5xl mx-auto">
@@ -324,6 +403,7 @@ export default function Landing() {
               <div className="flex flex-col gap-2">
                 <a href="#about" className="font-body text-xs text-muted-foreground hover:text-primary transition-colors">About</a>
                 <a href="#features" className="font-body text-xs text-muted-foreground hover:text-primary transition-colors">Features</a>
+                <a href="#technologies" className="font-body text-xs text-muted-foreground hover:text-primary transition-colors">Technologies</a>
                 <a href="#community" className="font-body text-xs text-muted-foreground hover:text-primary transition-colors">Community</a>
                 <Link to="/auth" className="font-body text-xs text-muted-foreground hover:text-primary transition-colors">Enter Archive</Link>
                 <Link to="/privacy" className="font-body text-xs text-muted-foreground hover:text-primary transition-colors">Privacy Policy</Link>
