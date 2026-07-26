@@ -376,6 +376,10 @@ export default function Landing() {
                     </span>
                   ))}
                 </div>
+                <div className="flex gap-3 pt-2">
+                  <Link to="/privacy" className="font-body text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-4">Privacy Policy</Link>
+                  <Link to="/terms" className="font-body text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-4">Terms of Service</Link>
+                </div>
               </motion.div>
             </div>
           </motion.div>
