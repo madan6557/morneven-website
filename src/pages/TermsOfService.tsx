@@ -23,120 +23,122 @@ export default function TermsOfService() {
 
       <main className="max-w-3xl mx-auto px-6 py-12 md:py-16">
         <h1 className="font-display text-2xl md:text-3xl tracking-[0.1em] text-primary mb-2">
-          SYARAT DAN KETENTUAN PENGGUNAAN KRON
+          KRON TERMS OF SERVICE
         </h1>
         <p className="font-body text-xs text-muted-foreground mb-8">
-          Tanggal berlaku: 19 Juli 2026
+          Effective Date: July 19, 2026
         </p>
 
         <div className="mecha-line w-24 mb-8" />
 
         <div className="space-y-8 font-body text-sm leading-relaxed text-foreground/85">
           <section>
-            <h2 className="font-heading text-base tracking-wider text-primary mb-3">1. Penerimaan Ketentuan</h2>
+            <h2 className="font-heading text-base tracking-wider text-primary mb-3">1. Acceptance of Terms</h2>
             <p>
-              Dengan mengunduh, menginstal, atau menggunakan KRON, pengguna menyetujui
-              seluruh syarat dan ketentuan ini. Jika tidak setuju, jangan gunakan aplikasi ini.
+              By downloading, installing, or using KRON, the user agrees to all of
+              these terms and conditions. If you do not agree, do not use this
+              application.
             </p>
           </section>
 
           <section>
-            <h2 className="font-heading text-base tracking-wider text-primary mb-3">2. Deskripsi Layanan</h2>
+            <h2 className="font-heading text-base tracking-wider text-primary mb-3">2. Service Description</h2>
             <p className="mb-3">
-              KRON adalah aplikasi pencatatan keuangan local-first. Seluruh data pengguna
-              disimpan pada perangkat pengguna dalam bentuk terenkripsi. KRON tidak memiliki
-              server backend dan tidak mengumpulkan data pengguna secara otomatis.
+              KRON is a local-first personal finance recording application. All user
+              data is stored on the user's device in encrypted form. KRON has no
+              backend server and does not collect user data automatically.
             </p>
             <p>
-              Fitur sinkronisasi Google Drive bersifat opsional dan hanya aktif jika pengguna
-              secara sukarela menghubungkan akun Google mereka.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="font-heading text-base tracking-wider text-primary mb-3">3. Lisensi</h2>
-            <p>
-              Pengguna diberikan lisensi non-eksklusif, tidak dapat dialihkan, dan terbatas
-              untuk menggunakan KRON pada perangkat yang pengguna miliki atau kendalikan.
-              Lisensi ini tidak memberikan hak untuk memodifikasi, merekayasa ulang,
-              mendistribusikan, atau menjual aplikasi tanpa izin tertulis dari pengembang.
+              Google Drive synchronization is optional and only active when the user
+              voluntarily connects their Google account.
             </p>
           </section>
 
           <section>
-            <h2 className="font-heading text-base tracking-wider text-primary mb-3">4. Data dan Privasi</h2>
+            <h2 className="font-heading text-base tracking-wider text-primary mb-3">3. License</h2>
             <p>
-              KRON tidak mengumpulkan, menyimpan, atau mengirimkan data pengguna ke server
-              mana pun milik pengembang. Data keuangan, catatan, dan foto bukti tetap berada
-              pada perangkat pengguna. Detail lebih lanjut tersedia di{" "}
+              The user is granted a non-exclusive, non-transferable, and limited
+              license to use KRON on devices the user owns or controls. This license
+              does not grant the right to modify, reverse engineer, distribute, or
+              sell the application without written permission from the developer.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-heading text-base tracking-wider text-primary mb-3">4. Data and Privacy</h2>
+            <p>
+              KRON does not collect, store, or transmit user data to any server
+              owned by the developer. Financial data, notes, and photo receipts
+              remain on the user's device. Further details are available in the{" "}
               <Link to="/privacy" className="text-primary underline hover:text-primary/90">
-                Kebijakan Privasi
+                Privacy Policy
               </Link>.
             </p>
           </section>
 
           <section>
-            <h2 className="font-heading text-base tracking-wider text-primary mb-3">5. Sinkronisasi Google Drive</h2>
-            <p className="mb-3">Fitur sinkronisasi Google Drive bersifat opsional. Saat diaktifkan:</p>
+            <h2 className="font-heading text-base tracking-wider text-primary mb-3">5. Google Drive Synchronization</h2>
+            <p className="mb-3">Google Drive synchronization is optional. When enabled:</p>
             <ul className="list-disc pl-5 space-y-2 mb-3">
               <li>
-                KRON meminta scope <code className="bg-muted px-1.5 py-0.5 rounded text-xs">drive.appdata</code>{" "}
-                yang hanya mengakses folder data aplikasi tersembunyi.
+                KRON requests the <code className="bg-muted px-1.5 py-0.5 rounded text-xs">drive.appdata</code> scope
+                which only accesses the hidden application data folder.
               </li>
               <li>
-                Snapshot yang dikirim ke Google Drive telah dienkripsi pada perangkat sebelum diunggah.
+                Snapshots sent to Google Drive are encrypted on the device before
+                upload.
               </li>
-              <li>Pengguna dapat memutuskan koneksi kapan saja melalui Pengaturan.</li>
+              <li>Users can disconnect at any time through Settings.</li>
               <li>
-                Pengembang tidak bertanggung jawab atas data yang hilang atau berubah akibat
-                penggunaan sinkronisasi.
+                The developer is not responsible for data lost or altered due to
+                synchronization usage.
               </li>
             </ul>
           </section>
 
           <section>
-            <h2 className="font-heading text-base tracking-wider text-primary mb-3">6. Tidak Ada Jaminan</h2>
+            <h2 className="font-heading text-base tracking-wider text-primary mb-3">6. No Warranties</h2>
             <p>
-              KRON disediakan sebagaimana adanya tanpa jaminan apa pun, baik tersurat maupun
-              tersirat. Pengembang tidak menjamin aplikasi bebas dari kesalahan, gangguan,
-              atau kehilangan data. Pengguna bertanggung jawab untuk mencadangkan data secara
-              berkala.
+              KRON is provided as-is without any warranties, whether express or
+              implied. The developer does not guarantee the application is free from
+              errors, interruptions, or data loss. Users are responsible for
+              backing up their data regularly.
             </p>
           </section>
 
           <section>
-            <h2 className="font-heading text-base tracking-wider text-primary mb-3">7. Batasan Tanggung Jawab</h2>
+            <h2 className="font-heading text-base tracking-wider text-primary mb-3">7. Limitation of Liability</h2>
             <p>
-              Pengembang tidak bertanggung jawab atas kerugian langsung, tidak langsung,
-              insidental, atau konsekuensial yang timbul dari penggunaan atau ketidakmampuan
-              menggunakan KRON, termasuk namun tidak terbatas pada kehilangan data keuangan
-              atau kerugian finansial.
+              The developer shall not be liable for any direct, indirect,
+              incidental, or consequential damages arising from the use of or
+              inability to use KRON, including but not limited to loss of financial
+              data or financial losses.
             </p>
           </section>
 
           <section>
-            <h2 className="font-heading text-base tracking-wider text-primary mb-3">8. Perubahan Ketentuan</h2>
+            <h2 className="font-heading text-base tracking-wider text-primary mb-3">8. Changes to Terms</h2>
             <p>
-              Pengembang dapat mengubah syarat dan ketentuan ini sewaktu-waktu. Perubahan
-              akan diumumkan melalui pembaruan aplikasi. Penggunaan lanjutan setelah perubahan
-              berlaku menyatakan penerimaan terhadap ketentuan yang telah diperbarui.
+              The developer may modify these terms and conditions at any time.
+              Changes will be announced through application updates. Continued use
+              after changes take effect constitutes acceptance of the updated terms.
             </p>
           </section>
 
           <section>
-            <h2 className="font-heading text-base tracking-wider text-primary mb-3">9. Hukum yang Berlaku</h2>
+            <h2 className="font-heading text-base tracking-wider text-primary mb-3">9. Governing Law</h2>
             <p>
-              Ketentuan ini tunduk pada hukum Indonesia. Segala perselisihan diselesaikan
-              melalui musyawarah terlebih dahulu.
+              These terms are governed by the laws of Indonesia. All disputes shall
+              be resolved through mutual deliberation first.
             </p>
           </section>
 
           <section>
-            <h2 className="font-heading text-base tracking-wider text-primary mb-3">10. Kontak</h2>
+            <h2 className="font-heading text-base tracking-wider text-primary mb-3">10. Contact</h2>
             <p>
-              Pertanyaan mengenai ketentuan ini dapat disampaikan melalui alamat dukungan
-              resmi yang tercantum pada halaman distribusi KRON dan layar persetujuan Google
-              OAuth.
+              Inquiries regarding these terms can be submitted through the official
+              support address listed on the KRON distribution page and the Google
+              OAuth consent screen.
             </p>
           </section>
         </div>

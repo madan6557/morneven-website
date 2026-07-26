@@ -323,7 +323,7 @@ export default function Landing() {
               </h2>
               <div className="mecha-line w-32 mx-auto mt-3" />
               <p className="font-body text-sm text-muted-foreground max-w-md mx-auto">
-                Aplikasi dan perangkat lunak yang dikembangkan oleh Morneven Institute.
+                Applications and software developed by Morneven Institute.
               </p>
             </motion.div>
 
@@ -342,7 +342,7 @@ export default function Landing() {
                   </div>
                 </div>
                 <p className="font-body text-sm text-foreground/85 leading-relaxed">
-                  Aplikasi desktop Windows 11 untuk restorasi dan rekonstruksi gambar serta video menggunakan teknologi AI. Mendukung upscaling, inpainting, dan optical flow propagation untuk kualitas visual terbaik.
+                  Desktop application for Windows 11 designed for image and video restoration and reconstruction using AI technology. Supports upscaling, inpainting, and optical flow propagation for optimal visual quality.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {["AI Restoration", "Windows 11", "Offline-First", "Modular"].map((tag) => (
@@ -363,11 +363,11 @@ export default function Landing() {
                   <img src={kronLogo} alt="KRON Logo" className="h-14 w-14 drop-shadow-md" />
                   <div>
                     <h3 className="font-display text-lg tracking-[0.1em] text-primary">KRON</h3>
-                    <p className="font-heading text-xs tracking-wider text-muted-foreground uppercase">Aplikasi</p>
+                    <p className="font-heading text-xs tracking-wider text-muted-foreground uppercase">Application</p>
                   </div>
                 </div>
                 <p className="font-body text-sm text-foreground/85 leading-relaxed">
-                  Aplikasi pencatatan keuangan pribadi untuk Android yang bekerja sepenuhnya secara lokal. Data terenkripsi di perangkat, tanpa server, tanpa akun cloud. Setiap rupiah punya jejak.
+                  Personal financial tracking application for Android that works entirely offline. Data is encrypted on-device, no server, no cloud account required. Every transaction leaves a trace.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {["Local-First", "Android", "Encrypted", "Google Drive"].map((tag) => (
