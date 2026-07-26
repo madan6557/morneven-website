@@ -410,8 +410,6 @@ export default function Landing() {
                 <a href="#technologies" className="font-body text-xs text-muted-foreground hover:text-primary transition-colors">Technologies</a>
                 <a href="#community" className="font-body text-xs text-muted-foreground hover:text-primary transition-colors">Community</a>
                 <Link to="/auth" className="font-body text-xs text-muted-foreground hover:text-primary transition-colors">Enter Archive</Link>
-                <Link to="/privacy" className="font-body text-xs text-muted-foreground hover:text-primary transition-colors">Privacy Policy</Link>
-                <Link to="/terms" className="font-body text-xs text-muted-foreground hover:text-primary transition-colors">Terms of Service</Link>
               </div>
             </div>
 
