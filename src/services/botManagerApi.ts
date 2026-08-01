@@ -1,7 +1,7 @@
 import { apiRequest, apiUploadForm, getApiBaseUrl } from "@/services/restClient";
 import type { ScheduleInput, ScheduledTask } from "@/services/schedulerTypes";
 
-export type BotProvider = "openai" | "anthropic" | "gemini" | "groq" | "openrouter" | "deepseek" | "zhipu" | "vllm";
+export type BotProvider = "openai" | "anthropic" | "gemini" | "groq" | "openrouter" | "opencode" | "deepseek" | "zhipu" | "vllm";
 export type BotFileKind = "identity" | "memory" | "cron" | "skill" | "session" | "tool" | "user" | "system" | "other";
 
 export interface BotCredentialSummary {
