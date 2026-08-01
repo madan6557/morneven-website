@@ -1,4 +1,4 @@
-import { apiRequest, apiUploadForm, getAccessToken, getApiBaseUrl, type UploadProgress } from "@/services/restClient";
+import { ApiError, apiRequest, apiUploadForm, getAccessToken, getApiBaseUrl, type UploadProgress } from "@/services/restClient";
 
 const BACKUP_MIGRATION_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -24,7 +24,21 @@ export interface MigrationJob {
     assetCount: number;
     uploadedAssetCount: number;
     failedAssets: Array<{ objectPath: string; error: string }>;
+    skippedAssets?: Array<{ objectPath: string; reason: string }>;
   };
+}
+
+export interface ScannerBlockedFile {
+  objectPath: string;
+  reason: string;
+}
+
+export function getScannerBlockedFiles(error: unknown): ScannerBlockedFile[] | null {
+  if (!(error instanceof ApiError) || error.errorCode !== "BACKUP_SCANNER_APPROVAL_REQUIRED") return null;
+  const files = error.errors
+    .filter((item) => Boolean(item.path))
+    .map((item) => ({ objectPath: item.path!, reason: item.message }));
+  return files.length > 0 ? files : null;
 }
 
 export async function listMigrationHistoryRemote(): Promise<MigrationJob[]> {
@@ -49,6 +63,7 @@ export async function startMigrationFromBackupRemote(payload: {
   password: string;
   secretKey: string;
   confirmText: "MIGRATION";
+  allowBlockedFiles?: string[];
   onUploadProgress?: (progress: UploadProgress) => void;
 }): Promise<MigrationJob> {
   const form = new FormData();
@@ -56,6 +71,7 @@ export async function startMigrationFromBackupRemote(payload: {
   form.append("password", payload.password);
   form.append("secretKey", payload.secretKey);
   form.append("confirmText", payload.confirmText);
+  if (payload.allowBlockedFiles) form.append("allowBlockedFiles", JSON.stringify(payload.allowBlockedFiles));
   return apiUploadForm<MigrationJob>("/settings/migrations/from-backup", form, {
     timeoutMs: BACKUP_MIGRATION_TIMEOUT_MS,
     onProgress: payload.onUploadProgress,

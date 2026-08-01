@@ -61,10 +61,12 @@ import {
 } from "@/services/schedulerTypes";
 import {
   downloadMigrationReport,
+  getScannerBlockedFiles,
   listMigrationHistoryRemote,
   startMigrationFromBackupRemote,
   startMigrationRemote,
   type MigrationJob,
+  type ScannerBlockedFile,
 } from "@/services/migrationService";
 import {
   changePassword,
@@ -256,6 +258,8 @@ export default function SettingsPage() {
   const [migrationEndpoint, setMigrationEndpoint] = useState("");
   const [migrationMode, setMigrationMode] = useState<"live" | "backup">("live");
   const [migrationBackupFile, setMigrationBackupFile] = useState<File | null>(null);
+  const [migrationScannerFiles, setMigrationScannerFiles] = useState<ScannerBlockedFile[]>([]);
+  const [migrationAllowedScannerFiles, setMigrationAllowedScannerFiles] = useState<string[]>([]);
   const [migrationUploadProgress, setMigrationUploadProgress] = useState<{
     percent: number;
     loaded: number;
@@ -2233,6 +2237,8 @@ export default function SettingsPage() {
                   onClick={() => {
                     setMigrationMode("live");
                     setMigrationUploadProgress(null);
+                    setMigrationScannerFiles([]);
+                    setMigrationAllowedScannerFiles([]);
                   }}
                   className={`rounded-sm border px-3 py-2 text-left text-xs font-heading uppercase tracking-[0.12em] ${
                     migrationMode === "live" ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"
@@ -2245,6 +2251,8 @@ export default function SettingsPage() {
                   onClick={() => {
                     setMigrationMode("backup");
                     setMigrationUploadProgress(null);
+                    setMigrationScannerFiles([]);
+                    setMigrationAllowedScannerFiles([]);
                   }}
                   className={`rounded-sm border px-3 py-2 text-left text-xs font-heading uppercase tracking-[0.12em] ${
                     migrationMode === "backup" ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"
@@ -2282,12 +2290,44 @@ export default function SettingsPage() {
                     onChange={(event) => {
                       setMigrationBackupFile(event.target.files?.[0] ?? null);
                       setMigrationUploadProgress(null);
+                      setMigrationScannerFiles([]);
+                      setMigrationAllowedScannerFiles([]);
                     }}
                     className={inputClass}
                   />
                   <span className="block text-xs text-muted-foreground">
                     {migrationBackupFile ? `${migrationBackupFile.name} (${Math.round(migrationBackupFile.size / 1024 / 1024)} MB)` : "Choose a backup_ddbbyyhhss.zip archive."}
                   </span>
+                  {migrationScannerFiles.length > 0 && (
+                    <div className="space-y-2 rounded-sm border border-amber-500/40 bg-amber-500/5 p-3">
+                      <p className="text-xs font-heading uppercase tracking-[0.12em] text-amber-700 dark:text-amber-300">
+                        Scanner approval required
+                      </p>
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        Choose the blocked backup files you explicitly want to restore. Unchecked files stay skipped.
+                      </p>
+                      <div className="space-y-2">
+                        {migrationScannerFiles.map((file) => (
+                          <label key={file.objectPath} className="flex items-start gap-2 text-xs text-foreground">
+                            <input
+                              type="checkbox"
+                              checked={migrationAllowedScannerFiles.includes(file.objectPath)}
+                              onChange={(event) => {
+                                setMigrationAllowedScannerFiles((current) => event.target.checked
+                                  ? [...new Set([...current, file.objectPath])]
+                                  : current.filter((path) => path !== file.objectPath));
+                              }}
+                              className="mt-0.5 h-4 w-4 accent-primary"
+                            />
+                            <span className="min-w-0 break-all">
+                              <span className="block font-medium">{file.objectPath}</span>
+                              <span className="block text-muted-foreground">{file.reason}</span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {migrationUploadProgress && (
                     <div className="space-y-2 rounded-sm border border-primary/25 bg-primary/5 p-3">
                       <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
@@ -2375,6 +2415,7 @@ export default function SettingsPage() {
                             password: migrationPassword,
                             secretKey: migrationSecretKey,
                             confirmText: "MIGRATION",
+                            allowBlockedFiles: migrationScannerFiles.length > 0 ? migrationAllowedScannerFiles : undefined,
                             onUploadProgress: (progress) => {
                               const total = progress.total ?? migrationBackupFile.size;
                               const percent = progress.percent ?? Math.round((progress.loaded / total) * 100);
@@ -2391,8 +2432,17 @@ export default function SettingsPage() {
                             },
                           });
                         } catch (error) {
+                          const blockedFiles = getScannerBlockedFiles(error);
+                          if (blockedFiles) {
+                            setMigrationScannerFiles(blockedFiles);
+                            setMigrationAllowedScannerFiles((current) => current.filter((path) => blockedFiles.some((file) => file.objectPath === path)));
+                          }
                           setMigrationUploadProgress((current) => current
-                            ? { ...current, stage: "upload-failed", message: "Backup upload or restore start failed." }
+                            ? {
+                              ...current,
+                              stage: blockedFiles ? "scanner-review" : "upload-failed",
+                              message: blockedFiles ? "Review the blocked files above, then start restore again." : "Backup upload or restore start failed.",
+                            }
                             : null);
                           throw error;
                         }
@@ -2403,6 +2453,8 @@ export default function SettingsPage() {
                           stage: "restore-tracked",
                           message: "Backup ZIP uploaded. Restore progress is now tracked in Migration History.",
                         });
+                        setMigrationScannerFiles([]);
+                        setMigrationAllowedScannerFiles([]);
                       } else {
                         setMigrationUploadProgress(null);
                         job = await startMigrationRemote(commonPayload);
