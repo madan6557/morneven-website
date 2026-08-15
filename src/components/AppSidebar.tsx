@@ -344,13 +344,14 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
 
       {/* Nav items */}
       <ScrollArea className="flex-1">
-        <nav className="py-3 space-y-1 px-2">
+        <nav aria-label="Primary navigation" className="py-3 space-y-1 px-2">
           {filteredNav.map((item) => {
             const active = isActive(item.url);
             const badgeCount = badgeCountFor(item);
             const link = (
               <Link
                 to={item.url}
+                aria-current={active ? "page" : undefined}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all group relative
                   ${active
                     ? "bg-primary/10 text-primary font-medium"
