@@ -350,6 +350,9 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
         <nav aria-label="Primary navigation" className="py-3 space-y-1 px-2">
           {groupedNav.map((item, index) => {
             const active = isActive(item.url);
+            const group = groupForUrl(item.url);
+            const previousGroup = index > 0 ? groupForUrl(groupedNav[index - 1].url) : null;
+            const showGroupLabel = isExpanded && group !== previousGroup;
             const badgeCount = badgeCountFor(item);
             const link = (
               <Link
@@ -393,7 +396,16 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
               );
             }
 
-            return <div key={item.title}>{link}</div>;
+            return (
+              <div key={item.title}>
+                {showGroupLabel && (
+                  <div className="px-3 pt-4 pb-1 text-[10px] font-display uppercase tracking-[0.2em] text-primary/70">
+                    {group}
+                  </div>
+                )}
+                {link}
+              </div>
+            );
           })}
         </nav>
       </ScrollArea>
