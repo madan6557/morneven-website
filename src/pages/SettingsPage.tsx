@@ -2699,7 +2699,7 @@ function PasswordField({
       <div className="relative">
         <input
           type={revealed ? "text" : "password"}
-          name={name}
+          id={name} name={name}
           autoComplete={autoComplete}
           autoCorrect="off"
           autoCapitalize="none"
@@ -2749,3 +2749,4 @@ function Metric({ icon: Icon, label, value }: { icon: typeof DatabaseZap; label:
     </div>
   );
 }
+
