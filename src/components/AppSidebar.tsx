@@ -153,7 +153,10 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
     window.addEventListener("online", updateOnlineStatus);
     window.addEventListener("offline", updateOnlineStatus);
 
-    return () => {
+    const groupOrder: Record<string, number> = { "/home": 0, "/activity": 1, "/gallery": 2, "/lore": 3, "/maps": 4, "/projects": 5, "/chat": 6, "/author": 7, "/management": 8, "/bot-manager": 9, "/security": 10, "/personnel": 11, "/settings": 12 };
+  const groupedNav = [...filteredNav].sort((a, b) => groupOrder[a.url] - groupOrder[b.url]);
+  const groupForUrl = (url: string) => ["/home", "/activity", "/gallery", "/lore", "/maps"].includes(url) ? "Explore" : ["/projects", "/chat", "/author"].includes(url) ? "Workspace" : ["/management", "/bot-manager", "/security", "/personnel"].includes(url) ? "Operations" : "System";
+  return () => {
       window.removeEventListener("online", updateOnlineStatus);
       window.removeEventListener("offline", updateOnlineStatus);
     };
@@ -345,8 +348,11 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
       {/* Nav items */}
       <ScrollArea className="flex-1">
         <nav aria-label="Primary navigation" className="py-3 space-y-1 px-2">
-          {filteredNav.map((item) => {
+          {groupedNav.map((item, index) => {
             const active = isActive(item.url);
+            const group = groupForUrl(item.url);
+            const previousGroup = index > 0 ? groupForUrl(groupedNav[index - 1].url) : null;
+            const showGroupLabel = isExpanded && group !== previousGroup;
             const badgeCount = badgeCountFor(item);
             const link = (
               <Link
@@ -390,7 +396,7 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
               );
             }
 
-            return <div key={item.title}>{link}</div>;
+            return <div key={item.title}>{showGroupLabel ? <div className="px-3 pb-1 pt-3 text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/45">{group}</div> : null}{link}</div>;
           })}
         </nav>
       </ScrollArea>
