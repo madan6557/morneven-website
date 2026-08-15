@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, HashRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,9 +10,14 @@ import { AuthorRoute } from "@/components/AuthorRoute";
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { lazy, Suspense } from "react";
+import type { ReactNode } from "react";
 import { applyTheme, resolveInitialTheme } from "@/lib/theme";
+import { isDesktopApp, isDesktopPathAllowed } from "@/services/desktop/runtime";
+import { DesktopWorkspaceGate } from "@/components/DesktopWorkspaceGate";
+import { Navigate, useLocation } from "react-router-dom";
 
 const queryClient = new QueryClient();
+const AppRouter = isDesktopApp ? HashRouter : BrowserRouter;
 
 import { useEffect } from "react";
 
@@ -54,6 +59,14 @@ function RouteFallback() {
   );
 }
 
+function DesktopRouteGuard({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  if (isDesktopApp && !isDesktopPathAllowed(location.pathname) && location.pathname !== "/") {
+    return <Navigate to="/author" replace />;
+  }
+  return children;
+}
+
 function App() {
   useEffect(() => {
     applyTheme(resolveInitialTheme());
@@ -61,17 +74,19 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SpeedInsights />
-      <Analytics />
-      <AuthProvider>
-        <TooltipProvider>
-          <ValidationDialogProvider>
-            <Toaster />
-            <Sonner />
-          <BrowserRouter>
-            <Suspense fallback={<RouteFallback />}>
-              <Routes>
-                <Route path="/" element={<Landing />} />
+      {!isDesktopApp ? <SpeedInsights /> : null}
+      {!isDesktopApp ? <Analytics /> : null}
+      <DesktopWorkspaceGate>
+        <AuthProvider>
+          <TooltipProvider>
+            <ValidationDialogProvider>
+              <Toaster />
+              <Sonner />
+            <AppRouter>
+              <DesktopRouteGuard>
+                <Suspense fallback={<RouteFallback />}>
+                <Routes>
+                <Route path="/" element={isDesktopApp ? <Navigate to="/author" replace /> : <Landing />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/auth/password-reset/confirm" element={<PasswordResetConfirmationPage />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -103,12 +118,14 @@ function App() {
                   <Route path="/bot-manager" element={<BotManagerPage />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-          </ValidationDialogProvider>
-        </TooltipProvider>
-      </AuthProvider>
+                </Routes>
+                </Suspense>
+              </DesktopRouteGuard>
+            </AppRouter>
+            </ValidationDialogProvider>
+          </TooltipProvider>
+        </AuthProvider>
+      </DesktopWorkspaceGate>
     </QueryClientProvider>
   );
 }

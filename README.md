@@ -25,7 +25,11 @@ Backend authorization remains the security boundary.
 ```dotenv
 VITE_API_BASE_URL=https://<backend-host>/api
 VITE_DEMO_FALLBACK=false
+VITE_DESKTOP_APP=false
 ```
+
+The Electron shell sets `VITE_DESKTOP_APP=true` automatically and uses the local-first
+author workspace; normal web builds keep this flag `false`.
 
 If the backend hostname changes, update the CSP `connect-src` allowlist in both
 `server.mjs` and `vercel.json`.

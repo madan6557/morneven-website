@@ -52,6 +52,7 @@ function runtimeMetadataPlugin(mode: string) {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  base: process.env.VITE_DESKTOP_APP === "true" ? "./" : "/",
   define: {
     __APP_VERSION__: JSON.stringify(readPackageVersion()),
   },

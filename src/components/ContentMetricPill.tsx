@@ -1,5 +1,6 @@
 import { Eye, MessageCircle, Star, ThumbsDown, ThumbsUp } from "lucide-react";
 import { formatCompactNumber } from "@/lib/formatNumber";
+import { isDesktopApp } from "@/services/desktop/runtime";
 
 type MetricKind = "views" | "likes" | "dislikes" | "stars" | "comments";
 
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function ContentMetricPill({ kind, value = 0, active = false, label }: Props) {
+  if (isDesktopApp) return null;
   const Icon = metricIcons[kind];
   return (
     <span

@@ -46,6 +46,7 @@ import {
   type NavigationBadges,
 } from "@/services/navigationBadgesApi";
 import logoColor from "@/assets/logo-color.png";
+import { isDesktopApp } from "@/services/desktop/runtime";
 
 interface NavItem {
   title: string;
@@ -130,9 +131,10 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
   );
   const isActive = (path: string) => location.pathname.startsWith(path);
 
-  const filteredNav = navItems.filter((item) =>
-    item.visible ? item.visible({ role, level: personnelLevel, track, isAuthenticated, userId }) : true,
-  );
+  const filteredNav = navItems.filter((item) => {
+    if (isDesktopApp && !["/author", "/projects", "/gallery", "/lore"].includes(item.url)) return false;
+    return item.visible ? item.visible({ role, level: personnelLevel, track, isAuthenticated, userId }) : true;
+  });
 
   // Authors can preview every tier including the hidden L7 (Full Authority).
   // Everyone else stops at the public ladder (L0-L6).
@@ -159,6 +161,12 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
 
   useEffect(() => {
     let cancelled = false;
+
+    if (isDesktopApp) {
+      setChatBadgeCount(0);
+      setManagementBadgeCount(0);
+      return () => { cancelled = true; };
+    }
 
     const refreshBadges = async (badges?: NavigationBadges) => {
       if (role === "guest") {
@@ -268,7 +276,9 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
             <label htmlFor="pl-switch" className="text-[10px] font-display tracking-wider text-sidebar-foreground/70 uppercase">
               Clearance
             </label>
-            {role === "author" ? (
+            {isDesktopApp ? (
+              <span className="text-[10px] font-display tracking-wider bg-sidebar-accent border border-sidebar-border rounded-sm px-1.5 py-0.5 text-sidebar-foreground/85">L7 (LOCAL)</span>
+            ) : role === "author" ? (
               <select
                 id="pl-switch"
                 value={personnelLevel}
@@ -301,7 +311,9 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
             </label>
             <div className="flex items-center gap-1.5">
               <TrackEmblem track={track} size={22} title={PERSONNEL_TRACKS.find((t) => t.key === track)?.label} />
-              {role === "author" || personnelLevel >= PL_FULL_AUTHORITY ? (
+              {isDesktopApp ? (
+                <span className="text-[10px] font-display tracking-wider bg-sidebar-accent border border-sidebar-border rounded-sm px-1.5 py-0.5 text-sidebar-foreground/85">EXEC</span>
+              ) : role === "author" || personnelLevel >= PL_FULL_AUTHORITY ? (
                 <select
                   id="track-switch"
                   value={track}

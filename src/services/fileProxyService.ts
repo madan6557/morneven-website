@@ -4,6 +4,9 @@
  */
 
 import { getApiBaseUrl, getAccessToken } from "./restClient";
+import { isDesktopApp } from "@/services/desktop/runtime";
+import { resolveDesktopMediaUrl } from "@/services/desktop/media";
+import { getSyncToken } from "@/services/desktop/sync";
 
 const blobUrlCache = new Map<string, string>();
 const pendingBlobUrlCache = new Map<string, Promise<string>>();
@@ -55,6 +58,7 @@ function buildBackendFileUrl(objectPath: string): string {
 export function isSafeFileUrl(url: string): boolean {
   const value = url.trim();
   if (!value) return false;
+  if (value.startsWith("local-media://")) return true;
   if (value.startsWith("//")) return false;
   if (value.startsWith("blob:")) return true;
   if (value.startsWith("data:")) return safeDataUrlPattern.test(value);
@@ -146,6 +150,11 @@ export function isPublicStorageUrl(url: string): boolean {
 
 export async function getAuthenticatedFileUrl(url: string, accept = "*/*"): Promise<string> {
   if (!url || !isSafeFileUrl(url)) return "";
+  if (url.startsWith("local-media://")) return resolveDesktopMediaUrl(url);
+  if (isDesktopApp) {
+    const cachedUrl = await resolveDesktopMediaUrl(url);
+    if (cachedUrl) return cachedUrl;
+  }
   if (url.startsWith("data:") || url.startsWith("blob:")) return url;
 
   const proxyUrl = getProxyUrl(url);
@@ -163,7 +172,7 @@ export async function getAuthenticatedFileUrl(url: string, accept = "*/*"): Prom
   if (pending) return pending;
 
   const loadPromise = (async () => {
-    const token = getAccessToken();
+    const token = isDesktopApp ? (getSyncToken() ?? getAccessToken()) : getAccessToken();
     if (proxyRequiresAuth && !token) return "";
 
     const response = await fetch(proxyUrl, {
@@ -198,6 +207,16 @@ export async function getAuthenticatedImageUrl(url: string): Promise<string> {
 export async function downloadAuthenticatedFile(url: string, filename?: string): Promise<void> {
   const fileUrl = await getAuthenticatedFileUrl(url, "*/*");
   if (!fileUrl) return;
+  if (isDesktopApp && !url.startsWith("local-media://") && fileUrl.startsWith("blob:")) {
+    try {
+      const blob = await fetch(fileUrl).then((response) => response.blob());
+      const { cacheDesktopMedia } = await import("@/services/desktop/media");
+      const folder = url.includes("/gallery/") ? "gallery" : url.includes("/lore/") ? "lore" : "projects";
+      await cacheDesktopMedia(url, new File([blob], filename || "offline-media", { type: blob.type || "application/octet-stream" }), folder);
+    } catch {
+      // The browser download remains available even when the offline copy cannot be saved.
+    }
+  }
   const link = document.createElement("a");
   link.href = fileUrl;
   link.download = filename || "download";
