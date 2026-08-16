@@ -13,7 +13,7 @@ interface TrackEmblemProps {
 function ExecutiveShape() {
   return (
     <path
-      d="M32 6 52 18v28L32 58 12 46V18L32 6Zm0 0-2.3 14v24L32 58l2.3-14V20L32 6Z"
+      d="M32 6 52 18v28L32 58 12 46V18L32 6Zm0 0-2.4 14v24L32 58l2.4-14V20L32 6Z"
       fill="currentColor"
       fillRule="evenodd"
     />
