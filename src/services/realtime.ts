@@ -1,11 +1,18 @@
 import { getAccessToken, getApiBaseUrl } from "@/services/restClient";
 
+export interface RealtimeEventMeta {
+  eventId?: string;
+  sequence?: number;
+  emittedAt?: string;
+}
+
 export interface RealtimeEnvelope<T = unknown> {
   event: string;
   payload: T;
+  meta?: RealtimeEventMeta;
 }
 
-export type RealtimeStatus = "idle" | "connecting" | "open" | "closed";
+export type RealtimeStatus = "idle" | "connecting" | "resuming" | "open" | "reconnecting" | "offline" | "closed";
 export type RealtimeEventHandler<T = unknown> = (
   payload: T,
   envelope: RealtimeEnvelope<T>,
@@ -18,6 +25,17 @@ let status: RealtimeStatus = "idle";
 let reconnectAttempt = 0;
 let reconnectTimer: number | null = null;
 let manualDisconnect = false;
+let lastSequence = 0;
+const seenEventIds = new Set<string>();
+const MAX_SEEN_EVENTS = 512;
+
+type RealtimeOutboxEntry = {
+  clientEventId: string;
+  event: string;
+  payload: Record<string, unknown>;
+  attempts: number;
+};
+const outbox: RealtimeOutboxEntry[] = [];
 
 const listeners = new Map<string, Set<RealtimeEventHandler>>();
 const statusListeners = new Set<RealtimeStatusHandler>();
@@ -42,8 +60,8 @@ function buildRealtimeUrl(token: string) {
   return realtimeUrl.toString();
 }
 
-function emitEvent<T>(event: string, payload: T) {
-  const envelope: RealtimeEnvelope<T> = { event, payload };
+function emitEvent<T>(event: string, payload: T, meta?: RealtimeEventMeta) {
+  const envelope: RealtimeEnvelope<T> = { event, payload, meta };
   listeners.get(event)?.forEach((listener) => {
     listener(payload, envelope);
   });
@@ -58,7 +76,7 @@ function scheduleReconnect() {
     return;
   }
 
-  const delayMs = Math.min(30000, 1000 * 2 ** Math.min(reconnectAttempt, 5));
+  const delayMs = Math.min(30000, 1000 * 2 ** Math.min(reconnectAttempt, 5)) * (0.9 + Math.random() * 0.2);
   reconnectAttempt += 1;
   reconnectTimer = window.setTimeout(() => {
     reconnectTimer = null;
@@ -79,7 +97,7 @@ function handleSocketClosed(currentSocket: WebSocket) {
     return;
   }
 
-  setStatus("closed");
+  setStatus(reconnectAttempt >= 5 ? "offline" : "reconnecting");
   scheduleReconnect();
 }
 
@@ -121,15 +139,30 @@ export function connectRealtime() {
   nextSocket.addEventListener("open", () => {
     if (socket !== nextSocket) return;
     reconnectAttempt = 0;
-    setStatus("open");
-    emitEvent("socket.ready", {});
+    setStatus("resuming");
+    emitEvent("socket.ready", { resumeSupported: true });
+    nextSocket.send(JSON.stringify({ event: "chat.resume", payload: { afterSequence: lastSequence } }));
   });
 
   nextSocket.addEventListener("message", (event) => {
     try {
       const envelope = JSON.parse(String(event.data)) as RealtimeEnvelope;
       if (!envelope || typeof envelope.event !== "string") return;
-      emitEvent(envelope.event, envelope.payload);
+      const eventId = envelope.meta?.eventId;
+      if (eventId) {
+        if (seenEventIds.has(eventId)) return;
+        seenEventIds.add(eventId);
+        if (seenEventIds.size > MAX_SEEN_EVENTS) {
+          const first = seenEventIds.values().next().value;
+          if (first) seenEventIds.delete(first);
+        }
+      }
+      if (typeof envelope.meta?.sequence === "number") lastSequence = Math.max(lastSequence, envelope.meta.sequence);
+      if (envelope.event === "socket.resume.completed") {
+        setStatus("open");
+        flushRealtimeOutbox();
+      }
+      emitEvent(envelope.event, envelope.payload, envelope.meta);
     } catch {
       // Ignore malformed frames and keep the socket alive.
     }
@@ -151,6 +184,7 @@ export function disconnectRealtime() {
   reconnectAttempt = 0;
   clearReconnectTimer();
   setStatus("idle");
+  outbox.length = 0;
   emitEvent("socket.closed", {});
 
   const currentSocket = socket;
@@ -165,10 +199,32 @@ export function disconnectRealtime() {
   }
 }
 
+function sendOutboxEntry(entry: RealtimeOutboxEntry) {
+  if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+  entry.attempts += 1;
+  socket.send(JSON.stringify({ event: entry.event, clientEventId: entry.clientEventId, payload: entry.payload }));
+  return true;
+}
+
+function flushRealtimeOutbox() {
+  if (!socket || socket.readyState !== WebSocket.OPEN) return;
+  outbox.splice(0).forEach((entry) => { sendOutboxEntry(entry); });
+}
+
 export function sendRealtimeEvent(event: string, payload: Record<string, unknown>) {
   if (!socket || socket.readyState !== WebSocket.OPEN) return false;
   socket.send(JSON.stringify({ event, payload }));
   return true;
+}
+
+export function queueRealtimeEvent(event: string, payload: Record<string, unknown>, clientEventId = crypto.randomUUID()) {
+  const entry: RealtimeOutboxEntry = { clientEventId, event, payload, attempts: 0 };
+  if (!sendOutboxEntry(entry)) outbox.push(entry);
+  return clientEventId;
+}
+
+export function getRealtimeLastSequence() {
+  return lastSequence;
 }
 
 export function subscribeRealtimeEvent<T = unknown>(

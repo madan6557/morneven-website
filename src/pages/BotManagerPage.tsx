@@ -99,6 +99,8 @@ import {
   type BotFileKind,
   type BotIdentity,
   type BotIdentityDetail,
+  type BotChatAccess,
+  type BotChatAccessMode,
   type BotIdentityFile,
   type BotProvider,
   type BotProviderAnalytics,
@@ -156,12 +158,29 @@ const channelTabs: Array<{ key: ChannelKey; label: string; detail: string; icon:
   { key: "dingtalk", label: "DingTalk", detail: "Robot webhook", icon: MessageCircle },
 ];
 
+const defaultChatAccess: BotChatAccess = {
+  mode: "disabled",
+  allowedConversationIds: [],
+  allowBotToBot: false,
+  maxTurns: 2,
+  maxTokensPerRun: 1200,
+};
+
+function normalizeChatAccess(value?: Partial<BotChatAccess> | null): BotChatAccess {
+  return {
+    ...defaultChatAccess,
+    ...(value ?? {}),
+    allowedConversationIds: [...(value?.allowedConversationIds ?? [])],
+  };
+}
+
 type BotIdentityDraft = {
   name: string;
   roleTitle: string;
   description: string;
   runtimeProvider: string;
   runtimeOpenRouterProfileId: string;
+  chatAccess: BotChatAccess;
 };
 
 type BotSettingsDraft = {
@@ -794,7 +813,7 @@ export default function BotManagerPage() {
   const [selectedLoreId, setSelectedLoreId] = useState("");
   const [defaultRegenerateMode, setDefaultRegenerateMode] = useState<"safe" | "force">("safe");
   const [defaultRegenerateConfirm, setDefaultRegenerateConfirm] = useState("");
-  const [identityDraft, setIdentityDraft] = useState<BotIdentityDraft>({ name: "", roleTitle: "", description: "", runtimeProvider: "", runtimeOpenRouterProfileId: "" });
+  const [identityDraft, setIdentityDraft] = useState<BotIdentityDraft>({ name: "", roleTitle: "", description: "", runtimeProvider: "", runtimeOpenRouterProfileId: "", chatAccess: normalizeChatAccess() });
   const [channelsDraft, setChannelsDraft] = useState<JsonRecord>(createDefaultChannels());
   const channelsDraftRef = useRef<JsonRecord>(channelsDraft);
   const [selectedChannel, setSelectedChannel] = useState<ChannelKey>("telegram");
@@ -967,6 +986,7 @@ export default function BotManagerPage() {
         description: next.description,
         runtimeProvider: next.runtimeProvider ?? "",
         runtimeOpenRouterProfileId: next.runtimeOpenRouterProfileId ?? "",
+        chatAccess: normalizeChatAccess(next.chatAccess),
       });
       const nextChannels = normalizeChannels(next.channels);
       const nextSettingsBase = asRecord(next.settings);
@@ -1492,6 +1512,7 @@ export default function BotManagerPage() {
           description: identityDraft.description,
           runtimeProvider: identityDraft.runtimeProvider || undefined,
           runtimeOpenRouterProfileId: identityDraft.runtimeProvider === "openrouter" ? identityDraft.runtimeOpenRouterProfileId || undefined : "",
+          chatAccess: normalizeChatAccess(identityDraft.chatAccess),
           channels: submittedChannels,
           settings: submittedSettings,
           loreCharacterId: selectedLoreId || undefined,
@@ -1503,6 +1524,7 @@ export default function BotManagerPage() {
           description: updated.description,
           runtimeProvider: updated.runtimeProvider ?? "",
           runtimeOpenRouterProfileId: updated.runtimeOpenRouterProfileId ?? "",
+          chatAccess: normalizeChatAccess(updated.chatAccess),
         });
         const nextChannels = normalizeChannels(updated.channels);
         const nextSettingsBase = asRecord(updated.settings);
@@ -3968,6 +3990,59 @@ function SettingsEditor({
             />
           </div>
         </div>
+      </div>
+
+      <div className="rounded-sm border border-primary/35 bg-primary/5 p-4">
+        <div className="flex items-start gap-3">
+          <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <div className="min-w-0">
+            <h3 className="font-heading text-sm text-foreground">Chat Access</h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Atur apakah personality ini dapat membaca, merespons, atau memulai interaksi di chat Morneven. Default aman adalah disabled.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <label className="space-y-2">
+            <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Access Mode</span>
+            <select
+              className={inputClass}
+              value={identityDraft.chatAccess.mode}
+              onChange={(event) => {
+                const mode = event.target.value as BotChatAccessMode;
+                onIdentityChange({ chatAccess: { ...identityDraft.chatAccess, mode } });
+              }}
+            >
+              <option value="disabled">Disabled</option>
+              <option value="mention-only">Mention only</option>
+              <option value="respond">Respond in chat</option>
+            </select>
+          </label>
+          <div className="flex items-end">
+            <ToggleControl
+              label="Allow bot-to-bot"
+              description="Requires conversation policy allowBotToBot and remains rate-limited by the backend."
+              value={identityDraft.chatAccess.allowBotToBot}
+              onChange={(allowBotToBot) => onIdentityChange({ chatAccess: { ...identityDraft.chatAccess, allowBotToBot } })}
+            />
+          </div>
+        </div>
+        {identityDraft.chatAccess.mode !== "disabled" && (
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <Field
+              label="Max Turns"
+              type="number"
+              value={String(identityDraft.chatAccess.maxTurns)}
+              onChange={(value) => onIdentityChange({ chatAccess: { ...identityDraft.chatAccess, maxTurns: Math.max(0, Math.min(6, Number(value) || 0)) } })}
+            />
+            <Field
+              label="Max Tokens Per Run"
+              type="number"
+              value={String(identityDraft.chatAccess.maxTokensPerRun)}
+              onChange={(value) => onIdentityChange({ chatAccess: { ...identityDraft.chatAccess, maxTokensPerRun: Math.max(128, Math.min(4096, Number(value) || 128)) } })}
+            />
+          </div>
+        )}
       </div>
 
       <RuntimeScheduleEditor

@@ -96,6 +96,16 @@ export interface BotManagerBackupJob {
   progress: { percent?: number; stage?: string; message?: string };
 }
 
+export type BotChatAccessMode = "disabled" | "mention-only" | "respond";
+
+export interface BotChatAccess {
+  mode: BotChatAccessMode;
+  allowedConversationIds: string[];
+  allowBotToBot: boolean;
+  maxTurns: number;
+  maxTokensPerRun: number;
+}
+
 export interface BotIdentity {
   id: string;
   slug: string;
@@ -110,6 +120,7 @@ export interface BotIdentity {
   profileImageUrl?: string | null;
   channels: Record<string, unknown>;
   settings: Record<string, unknown>;
+  chatAccess?: BotChatAccess;
   createdAt: string;
   updatedAt: string;
   fileCount?: number;
@@ -401,6 +412,7 @@ export function createBotIdentity(payload: {
   loreCharacterId?: string;
   runtimeProvider?: BotProvider | string;
   runtimeOpenRouterProfileId?: string;
+  chatAccess?: BotChatAccess;
 }) {
   return apiRequest<BotIdentity>("/bot-manager/identities", {
     method: "POST",
@@ -412,7 +424,7 @@ export function getBotIdentity(id: string) {
   return apiRequest<BotIdentityDetail>(`/bot-manager/identities/${id}`);
 }
 
-export function updateBotIdentity(id: string, payload: Partial<Pick<BotIdentity, "name" | "roleTitle" | "description" | "profileImageUrl" | "channels" | "settings" | "runtimeProvider" | "runtimeOpenRouterProfileId">> & { loreCharacterId?: string }) {
+export function updateBotIdentity(id: string, payload: Partial<Pick<BotIdentity, "name" | "roleTitle" | "description" | "profileImageUrl" | "channels" | "settings" | "runtimeProvider" | "runtimeOpenRouterProfileId" | "chatAccess">> & { loreCharacterId?: string }) {
   return apiRequest<BotIdentity>(`/bot-manager/identities/${id}`, {
     method: "PUT",
     body: payload,
