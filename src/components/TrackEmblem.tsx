@@ -13,9 +13,8 @@ interface TrackEmblemProps {
 function ExecutiveShape() {
   return (
     <g fill="currentColor">
-      <path d="M32 5 51 17l4 24-23 18L9 41l4-24L32 5Z" />
-      <path d="m32 12 12 8-2 18-10 8-10-8-2-18 12-8Z" fillOpacity={0.4} />
-      <path d="m32 23 7 5-1 8-6 4-6-4-1-8 7-5Z" fillOpacity={0.9} />
+      <polygon points="32,6 52,18 52,46 32,58 12,46 12,18" />
+      <rect x="27" y="20" width="10" height="24" fillOpacity={0.42} />
     </g>
   );
 }
@@ -23,9 +22,8 @@ function ExecutiveShape() {
 function FieldShape() {
   return (
     <g fill="currentColor">
-      <path d="M7 11 57 32 7 53l13-21L7 11Z" />
-      <path d="m18 18 27 14-27 14 8-14-8-14Z" fillOpacity={0.4} />
-      <path d="m36 27 12 5-12 5 5-5-5-5Z" fillOpacity={0.9} />
+      <polygon points="7,32 21,16 57,32 21,48" />
+      <rect x="25" y="29" width="16" height="6" fillOpacity={0.42} />
     </g>
   );
 }
@@ -33,9 +31,8 @@ function FieldShape() {
 function MechanicShape() {
   return (
     <g fill="currentColor">
-      <path d="m32 5 14 8 9 13-4 15-19 18-19-18-4-15 9-13 14-8Z" />
-      <path d="m32 13 9 5 6 9-3 10-12 12-12-12-3-10 6-9 9-5Z" fillOpacity={0.4} />
-      <path d="m32 24 7 4v8l-7 5-7-5v-8l7-4Z" fillOpacity={0.9} />
+      <polygon points="22,8 42,8 56,22 56,42 42,56 22,56 8,42 8,22" />
+      <rect x="24" y="24" width="16" height="16" fillOpacity={0.42} />
     </g>
   );
 }
@@ -43,9 +40,8 @@ function MechanicShape() {
 function LogisticsShape() {
   return (
     <g fill="currentColor">
-      <path d="m32 5 24 14-10 6 10 6-24 14-24-14 10-6-10-6L32 5Z" />
-      <path d="m32 14 13 8-13 8-13-8 13-8Zm0 17 13 8-13 8-13-8 13-8Z" fillOpacity={0.4} />
-      <path d="m32 23 8 5-8 5-8-5 8-5Z" fillOpacity={0.9} />
+      <rect x="10" y="14" width="44" height="36" />
+      <polygon points="32,22 44,32 32,42 20,32" fillOpacity={0.42} />
     </g>
   );
 }
@@ -68,6 +64,7 @@ export function TrackEmblem({ track, size = 32, className, title, style }: Track
       className={cn("shrink-0", className)}
       height={size}
       role={title ? "img" : undefined}
+      shapeRendering="geometricPrecision"
       style={style}
       viewBox="0 0 64 64"
       width={size}
