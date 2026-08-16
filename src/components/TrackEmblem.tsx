@@ -21,6 +21,13 @@ const masks: Record<PersonnelTrack, string> = {
   logistics: logisticsMask,
 };
 
+const emblemColors: Record<PersonnelTrack, string> = {
+  executive: "#18C8DC",
+  field: "#FF7A00",
+  mechanic: "#FFC21A",
+  logistics: "#4F83BD",
+};
+
 export function TrackEmblem({ track, size = 32, className, title, style }: TrackEmblemProps) {
   const accessibleLabel = title ?? `${track} division emblem`;
   const mask = masks[track];
@@ -33,6 +40,7 @@ export function TrackEmblem({ track, size = 32, className, title, style }: Track
       role={title ? "img" : undefined}
       style={{
         ...style,
+        color: emblemColors[track],
         backgroundColor: "currentColor",
         height: size,
         maskImage: `url(${mask})`,
