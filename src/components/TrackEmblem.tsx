@@ -10,69 +10,55 @@ interface TrackEmblemProps {
   style?: CSSProperties;
 }
 
-const strokeProps = {
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 2,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
-};
-
-function ExecutiveGlyph() {
+function ExecutiveShape() {
   return (
-    <g {...strokeProps}>
-      <path d="M32 7 51 18v28L32 57 13 46V18L32 7Z" />
-      <path d="m24 28 8-5 8 5-8 5-8-5Z" />
-      <path d="M24 28v9l8 5 8-5v-9" />
-      <path d="M32 33v9" />
-      <path d="M20 16h24" opacity={0.55} />
+    <g fill="currentColor">
+      <path d="M32 5 51 17l4 24-23 18L9 41l4-24L32 5Z" />
+      <path d="m32 12 12 8-2 18-10 8-10-8-2-18 12-8Z" fillOpacity={0.4} />
+      <path d="m32 23 7 5-1 8-6 4-6-4-1-8 7-5Z" fillOpacity={0.9} />
     </g>
   );
 }
 
-function FieldGlyph() {
+function FieldShape() {
   return (
-    <g {...strokeProps}>
-      <path d="M32 7v50" opacity={0.45} />
-      <path d="m32 11 8 10h-5v10h-6V21h-5l8-10Z" />
-      <path d="M16 43h32" opacity={0.55} />
-      <path d="m20 36 12 7 12-7" />
-      <path d="M25 49h14" />
+    <g fill="currentColor">
+      <path d="M7 11 57 32 7 53l13-21L7 11Z" />
+      <path d="m18 18 27 14-27 14 8-14-8-14Z" fillOpacity={0.4} />
+      <path d="m36 27 12 5-12 5 5-5-5-5Z" fillOpacity={0.9} />
     </g>
   );
 }
 
-function MechanicGlyph() {
+function MechanicShape() {
   return (
-    <g {...strokeProps}>
-      <path d="m32 9 5 5 7-1 1 7 5 5-5 5 1 7-7-1-5 5-5-5-7 1 1-7-5-5 5-5-1-7 7 1 5-5Z" />
-      <circle cx="32" cy="32" r="8" />
-      <path d="M32 24v16M24 32h16" opacity={0.55} />
-      <circle cx="32" cy="32" r="2" fill="currentColor" stroke="none" />
+    <g fill="currentColor">
+      <path d="m32 5 14 8 9 13-4 15-19 18-19-18-4-15 9-13 14-8Z" />
+      <path d="m32 13 9 5 6 9-3 10-12 12-12-12-3-10 6-9 9-5Z" fillOpacity={0.4} />
+      <path d="m32 24 7 4v8l-7 5-7-5v-8l7-4Z" fillOpacity={0.9} />
     </g>
   );
 }
 
-function LogisticsGlyph() {
+function LogisticsShape() {
   return (
-    <g {...strokeProps}>
-      <path d="m32 10 18 10v24L32 54 14 44V20l18-10Z" />
-      <path d="m14 20 18 10 18-10M32 30v24" />
-      <path d="M24 24h16v8H24z" opacity={0.75} />
-      <path d="m23 42 9 5 9-5" opacity={0.55} />
+    <g fill="currentColor">
+      <path d="m32 5 24 14-10 6 10 6-24 14-24-14 10-6-10-6L32 5Z" />
+      <path d="m32 14 13 8-13 8-13-8 13-8Zm0 17 13 8-13 8-13-8 13-8Z" fillOpacity={0.4} />
+      <path d="m32 23 8 5-8 5-8-5 8-5Z" fillOpacity={0.9} />
     </g>
   );
 }
 
-const glyphs: Record<PersonnelTrack, () => JSX.Element> = {
-  executive: ExecutiveGlyph,
-  field: FieldGlyph,
-  mechanic: MechanicGlyph,
-  logistics: LogisticsGlyph,
+const shapes: Record<PersonnelTrack, () => JSX.Element> = {
+  executive: ExecutiveShape,
+  field: FieldShape,
+  mechanic: MechanicShape,
+  logistics: LogisticsShape,
 };
 
 export function TrackEmblem({ track, size = 32, className, title, style }: TrackEmblemProps) {
-  const Glyph = glyphs[track];
+  const Shape = shapes[track];
   const accessibleTitle = title ?? `${track} division emblem`;
 
   return (
@@ -87,8 +73,7 @@ export function TrackEmblem({ track, size = 32, className, title, style }: Track
       width={size}
     >
       <title>{accessibleTitle}</title>
-      <circle cx="32" cy="32" r="25" fill="currentColor" fillOpacity={0.06} stroke="currentColor" strokeOpacity={0.16} />
-      <Glyph />
+      <Shape />
     </svg>
   );
 }
