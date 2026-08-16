@@ -22,7 +22,7 @@ const masks: Record<PersonnelTrack, string> = {
 };
 
 const emblemColors: Record<PersonnelTrack, string> = {
-  executive: "#18C8DC",
+  executive: "hsl(0 78% 58%)",
   field: "#FF7A00",
   mechanic: "#FFC21A",
   logistics: "#4F83BD",
