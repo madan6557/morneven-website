@@ -200,13 +200,31 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
       }
     };
 
-    void refreshBadges();
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (
+        callback: () => void,
+        options?: { timeout: number },
+      ) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    const initialRefreshHandle = idleWindow.requestIdleCallback
+      ? idleWindow.requestIdleCallback(() => void refreshBadges(), { timeout: 1500 })
+      : window.setTimeout(() => void refreshBadges(), 700);
+    const cancelInitialRefresh = () => {
+      if (idleWindow.cancelIdleCallback && idleWindow.requestIdleCallback) {
+        idleWindow.cancelIdleCallback(initialRefreshHandle);
+      } else {
+        window.clearTimeout(initialRefreshHandle);
+      }
+    };
+
     const unsubscribeBadges = subscribeNavigationBadges((badges) => {
       void refreshBadges(badges);
     });
 
     return () => {
       cancelled = true;
+      cancelInitialRefresh();
       unsubscribeBadges();
     };
   }, [personnelLevel, role, track, username]);
