@@ -409,7 +409,7 @@ export default function ChatPage() {
 
   // Scroll behavior:
   // 1) after sending -> scroll to latest
-  // 2) when opening conversation -> restore saved position, else oldest unread, else bottom
+  // 2) when opening conversation -> oldest unread, else latest message
   // 3) on new incoming messages -> auto-scroll only if user is near the bottom
   useEffect(() => {
     if (!active || messages.length === 0) return;
@@ -428,42 +428,29 @@ export default function ChatPage() {
     }
 
     if (pendingOpenScrollRef.current || isNewConversation) {
-      const saved = readScrollPositions()[active];
-      const viewport = getConversationViewport();
+      const lastReadAt = readMap[active];
+      const oldestUnread = messages.find(
+        (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
+      );
 
-      if (typeof saved === "number" && viewport) {
-        // Restore previously saved scroll position.
-        requestAnimationFrame(() => {
-          viewport.scrollTo({ top: saved, behavior: "auto" });
-          const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-          nearBottomRef.current = distanceFromBottom <= NEAR_BOTTOM_THRESHOLD;
-          setShowJumpToLatest(distanceFromBottom > NEAR_BOTTOM_THRESHOLD);
-        });
-      } else {
-        const lastReadAt = readMap[active];
-        const oldestUnread = messages.find(
-          (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
-        );
-
-        if (oldestUnread) {
-          const didScroll = scrollMessageIntoView(oldestUnread.id, "center");
-          if (didScroll) {
-            setHighlightId(oldestUnread.id);
-            window.setTimeout(
-              () => setHighlightId((cur) => (cur === oldestUnread.id ? null : cur)),
-              1600,
-            );
-          }
-        } else {
-          scrollConversationToBottom("auto");
-          nearBottomRef.current = true;
+      if (oldestUnread) {
+        const didScroll = scrollMessageIntoView(oldestUnread.id, "center");
+        if (didScroll) {
+          setHighlightId(oldestUnread.id);
+          window.setTimeout(
+            () => setHighlightId((cur) => (cur === oldestUnread.id ? null : cur)),
+            1600,
+          );
         }
+      } else {
+        scrollConversationToBottom("auto");
+        nearBottomRef.current = true;
+        setShowJumpToLatest(false);
       }
 
       pendingOpenScrollRef.current = false;
       return;
     }
-
     // New messages arrived in the same conversation.
     if (messages.length > prevLen && nearBottomRef.current) {
       scrollConversationToBottom("smooth");
