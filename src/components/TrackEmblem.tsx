@@ -13,7 +13,7 @@ interface TrackEmblemProps {
 function ExecutiveShape() {
   return (
     <path
-      d="M32 6 52 18v28L32 58 12 46V18L32 6Zm0 7-3 7v30l3 7 3-7V20l-3-7Z"
+      d="M32 6 52 18v28L32 58 12 46V18L32 6Zm0 0-2.3 14v24L32 58l2.3-14V20L32 6Z"
       fill="currentColor"
       fillRule="evenodd"
     />
@@ -23,7 +23,7 @@ function ExecutiveShape() {
 function FieldShape() {
   return (
     <path
-      d="M8 32 22 13l34 19-34 19L8 32Zm17 0 18-10 5 10-5 10-18-10Z"
+      d="M32 6 54 19 45 43 33 58 21 49 12 32 24 17 32 6Zm0 0-1.2 25-10 16 4 4 11-17V17L32 6Z"
       fill="currentColor"
       fillRule="evenodd"
     />
@@ -32,18 +32,19 @@ function FieldShape() {
 
 function MechanicShape() {
   return (
-    <path
-      d="M22 8h20l14 14v20L42 56H22L8 42V22L22 8Zm10 16 12 8-12 8-12-8 12-8Z"
-      fill="currentColor"
-      fillRule="evenodd"
-    />
+    <g fill="currentColor">
+      <path d="M22 8h10v12L20 32H8V22L22 8Z" />
+      <path d="M42 8 56 22v10H44L32 20V8h10Z" />
+      <path d="M8 36h12l12 12v12H22L8 46V36Z" />
+      <path d="M44 36h12v10L42 60H32V48l12-12Z" />
+    </g>
   );
 }
 
 function LogisticsShape() {
   return (
     <path
-      d="m10 16 22-10 22 10v14H40v4h14v14L32 58 10 48V34h14v-4H10V16Z"
+      d="M32 6 54 16v15H40v4h14v14L32 58 10 49V35h14v-4H10V16L32 6Z"
       fill="currentColor"
     />
   );
