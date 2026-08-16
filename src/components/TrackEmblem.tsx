@@ -12,37 +12,40 @@ interface TrackEmblemProps {
 
 function ExecutiveShape() {
   return (
-    <g fill="currentColor">
-      <polygon points="32,6 52,18 52,46 32,58 12,46 12,18" />
-      <rect x="27" y="20" width="10" height="24" fillOpacity={0.42} />
-    </g>
+    <path
+      d="M32 6 52 18v28L32 58 12 46V18L32 6Zm0 7-3 7v30l3 7 3-7V20l-3-7Z"
+      fill="currentColor"
+      fillRule="evenodd"
+    />
   );
 }
 
 function FieldShape() {
   return (
-    <g fill="currentColor">
-      <polygon points="7,32 21,16 57,32 21,48" />
-      <rect x="25" y="29" width="16" height="6" fillOpacity={0.42} />
-    </g>
+    <path
+      d="M8 32 22 13l34 19-34 19L8 32Zm17 0 18-10 5 10-5 10-18-10Z"
+      fill="currentColor"
+      fillRule="evenodd"
+    />
   );
 }
 
 function MechanicShape() {
   return (
-    <g fill="currentColor">
-      <polygon points="22,8 42,8 56,22 56,42 42,56 22,56 8,42 8,22" />
-      <rect x="24" y="24" width="16" height="16" fillOpacity={0.42} />
-    </g>
+    <path
+      d="M22 8h20l14 14v20L42 56H22L8 42V22L22 8Zm10 16 12 8-12 8-12-8 12-8Z"
+      fill="currentColor"
+      fillRule="evenodd"
+    />
   );
 }
 
 function LogisticsShape() {
   return (
-    <g fill="currentColor">
-      <rect x="10" y="14" width="44" height="36" />
-      <polygon points="32,22 44,32 32,42 20,32" fillOpacity={0.42} />
-    </g>
+    <path
+      d="m10 16 22-10 22 10v14H40v4h14v14L32 58 10 48V34h14v-4H10V16Z"
+      fill="currentColor"
+    />
   );
 }
 
