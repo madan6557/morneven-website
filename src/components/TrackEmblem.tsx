@@ -10,152 +10,86 @@ interface TrackEmblemProps {
   style?: CSSProperties;
 }
 
-/**
- * Authentic faction insignia for each personnel division.
- * Each emblem is built around a 64x64 grid with a uniform outer ring
- * for visual cohesion across divisions, and a unique inner glyph.
- *
- *  - Executive: crowned hexagonal command sigil (authority / oversight)
- *  - Field:     scope crosshair with arrow vector (recon / combat ops)
- *  - Mechanic:  cogged tri-bolt with circuit traces (engineering)
- *  - Logistics: stacked cargo prism with directional chevrons (supply)
- */
-export function TrackEmblem({ track, size = 28, className, title, style }: TrackEmblemProps) {
-  const accent = TRACK_ACCENT[track];
-
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 64 64"
-      className={cn("shrink-0", className)}
-      style={{ color: `hsl(${accent})`, ...style }}
-      role="img"
-      aria-label={title ?? `${track} division emblem`}
-    >
-      <title>{title ?? `${track} division emblem`}</title>
-
-      {/* Shared outer mecha ring — keeps the family identity */}
-      <g fill="none" stroke="currentColor" strokeWidth={1.4} opacity={0.85}>
-        <polygon
-          points="32,3 56,17 56,47 32,61 8,47 8,17"
-          fill="currentColor"
-          fillOpacity={0.06}
-        />
-        <polygon points="32,7 53,18.5 53,45.5 32,57 11,45.5 11,18.5" />
-        {/* Bolt notches on each vertex */}
-        <circle cx="32" cy="5" r="1.2" fill="currentColor" />
-        <circle cx="55" cy="17.5" r="1.2" fill="currentColor" />
-        <circle cx="55" cy="46.5" r="1.2" fill="currentColor" />
-        <circle cx="32" cy="59" r="1.2" fill="currentColor" />
-        <circle cx="9" cy="46.5" r="1.2" fill="currentColor" />
-        <circle cx="9" cy="17.5" r="1.2" fill="currentColor" />
-      </g>
-
-      <g fill="currentColor" stroke="currentColor" strokeLinejoin="miter" strokeLinecap="square">
-        {track === "executive" && <ExecutiveGlyph />}
-        {track === "field" && <FieldGlyph />}
-        {track === "mechanic" && <MechanicGlyph />}
-        {track === "logistics" && <LogisticsGlyph />}
-      </g>
-    </svg>
-  );
-}
-
-const TRACK_ACCENT: Record<PersonnelTrack, string> = {
-  executive: "0 78% 58%",
-  field: "24 88% 50%",
-  mechanic: "46 92% 50%",
-  logistics: "226 25% 70%",
+const strokeProps = {
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
 };
 
-/* ---------- Glyphs ---------- */
-
 function ExecutiveGlyph() {
-  // Crowned command sigil: three-prong crown over a hex shield with a center star
   return (
-    <g>
-      {/* Crown */}
-      <path d="M22 22 L26 16 L32 21 L38 16 L42 22 L42 25 L22 25 Z" fillOpacity={0.95} stroke="none" />
-      {/* Shield body */}
-      <path
-        d="M22 27 L42 27 L42 38 L32 46 L22 38 Z"
-        fill="none"
-        strokeWidth={1.6}
-      />
-      {/* Inner star — centered on the shield's visual mass */}
-      <path
-        d="M32 30.5 L33.4 33.6 L36.8 34 L34.3 36.3 L35 39.7 L32 38 L29 39.7 L29.7 36.3 L27.2 34 L30.6 33.6 Z"
-        stroke="none"
-      />
+    <g {...strokeProps}>
+      <path d="M32 7 51 18v28L32 57 13 46V18L32 7Z" />
+      <path d="m24 28 8-5 8 5-8 5-8-5Z" />
+      <path d="M24 28v9l8 5 8-5v-9" />
+      <path d="M32 33v9" />
+      <path d="M20 16h24" opacity={0.55} />
     </g>
   );
 }
 
 function FieldGlyph() {
-  // Scope crosshair pierced by an upward vector arrow
   return (
-    <g fill="none" strokeWidth={1.6}>
-      <circle cx="32" cy="34" r="11" />
-      <circle cx="32" cy="34" r="3" fill="currentColor" stroke="none" />
-      {/* Crosshair ticks */}
-      <line x1="32" y1="19" x2="32" y2="24" />
-      <line x1="32" y1="44" x2="32" y2="49" />
-      <line x1="17" y1="34" x2="22" y2="34" />
-      <line x1="42" y1="34" x2="47" y2="34" />
-      {/* Arrow vector */}
-      <path d="M32 16 L37 22 L34 22 L34 30 L30 30 L30 22 L27 22 Z" fill="currentColor" stroke="none" />
+    <g {...strokeProps}>
+      <path d="M32 7v50" opacity={0.45} />
+      <path d="m32 11 8 10h-5v10h-6V21h-5l8-10Z" />
+      <path d="M16 43h32" opacity={0.55} />
+      <path d="m20 36 12 7 12-7" />
+      <path d="M25 49h14" />
     </g>
   );
 }
 
 function MechanicGlyph() {
-  // Cog with three bolt arms + center hex aperture
-  const teeth = Array.from({ length: 8 }, (_, i) => {
-    const angle = (i * 360) / 8;
-    return (
-      <rect
-        key={i}
-        x={30.5}
-        y={14}
-        width={3}
-        height={5}
-        transform={`rotate(${angle} 32 33)`}
-        stroke="none"
-      />
-    );
-  });
   return (
-    <g>
-      {teeth}
-      <circle cx="32" cy="33" r="11" fill="none" strokeWidth={1.6} />
-      <circle cx="32" cy="33" r="7.5" fill="none" strokeWidth={1.2} opacity={0.7} />
-      {/* Hex aperture */}
-      <polygon
-        points="32,28 36,30.5 36,35.5 32,38 28,35.5 28,30.5"
-        fill="currentColor"
-        stroke="none"
-      />
+    <g {...strokeProps}>
+      <path d="m32 9 5 5 7-1 1 7 5 5-5 5 1 7-7-1-5 5-5-5-7 1 1-7-5-5 5-5-1-7 7 1 5-5Z" />
+      <circle cx="32" cy="32" r="8" />
+      <path d="M32 24v16M24 32h16" opacity={0.55} />
+      <circle cx="32" cy="32" r="2" fill="currentColor" stroke="none" />
     </g>
   );
 }
 
 function LogisticsGlyph() {
-  // Stacked cargo prism with directional chevrons beneath
   return (
-    <g fill="none" strokeWidth={1.5}>
-      {/* Top crate */}
-      <rect x="24" y="20" width="16" height="8" fill="currentColor" fillOpacity={0.25} />
-      <line x1="32" y1="20" x2="32" y2="28" />
-      {/* Bottom crates */}
-      <rect x="20" y="28" width="10" height="9" fill="currentColor" fillOpacity={0.15} />
-      <rect x="34" y="28" width="10" height="9" fill="currentColor" fillOpacity={0.15} />
-      <line x1="25" y1="28" x2="25" y2="37" />
-      <line x1="39" y1="28" x2="39" y2="37" />
-      {/* Direction chevrons */}
-      <path d="M22 42 L32 47 L42 42" />
-      <path d="M22 46 L32 51 L42 46" opacity={0.55} />
+    <g {...strokeProps}>
+      <path d="m32 10 18 10v24L32 54 14 44V20l18-10Z" />
+      <path d="m14 20 18 10 18-10M32 30v24" />
+      <path d="M24 24h16v8H24z" opacity={0.75} />
+      <path d="m23 42 9 5 9-5" opacity={0.55} />
     </g>
+  );
+}
+
+const glyphs: Record<PersonnelTrack, () => JSX.Element> = {
+  executive: ExecutiveGlyph,
+  field: FieldGlyph,
+  mechanic: MechanicGlyph,
+  logistics: LogisticsGlyph,
+};
+
+export function TrackEmblem({ track, size = 32, className, title, style }: TrackEmblemProps) {
+  const Glyph = glyphs[track];
+  const accessibleTitle = title ?? `${track} division emblem`;
+
+  return (
+    <svg
+      aria-hidden={title ? undefined : true}
+      aria-label={title}
+      className={cn("shrink-0", className)}
+      height={size}
+      role={title ? "img" : undefined}
+      style={style}
+      viewBox="0 0 64 64"
+      width={size}
+    >
+      <title>{accessibleTitle}</title>
+      <circle cx="32" cy="32" r="25" fill="currentColor" fillOpacity={0.06} stroke="currentColor" strokeOpacity={0.16} />
+      <Glyph />
+    </svg>
   );
 }
 

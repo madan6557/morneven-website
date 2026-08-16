@@ -131,6 +131,9 @@ const providers: Array<{ value: BotProvider; label: string }> = [
   { value: "vllm", label: "vLLM" },
 ];
 const normalProviders = providers.filter((provider) => provider.value !== "openrouter") as Array<{ value: Exclude<BotProvider, "openrouter">; label: string }>;
+const providerValues = new Set(providers.map((provider) => provider.value));
+const isBotProvider = (value: unknown): value is BotProvider =>
+  typeof value === "string" && providerValues.has(value as BotProvider);
 
 const fileKinds: BotFileKind[] = ["identity", "memory", "cron", "skill", "session", "tool", "user", "system", "other"];
 const tabs = ["channels", "system", "files", "memory", "cron", "sessions", "settings", "logs"] as const;
@@ -753,6 +756,10 @@ export default function BotManagerPage() {
 
   const [providerDrafts, setProviderDrafts] = useState<Partial<Record<BotProvider, ProviderCredentialDraft>>>({});
   const [selectedAnalyticsProvider, setSelectedAnalyticsProvider] = useState<BotProvider>("deepseek");
+  useEffect(() => {
+    const runtimeProvider = summary?.runtimeStatus.activeProvider;
+    if (isBotProvider(runtimeProvider)) setSelectedAnalyticsProvider(runtimeProvider);
+  }, [summary?.runtimeStatus.activeProvider]);
   const [analyticsRange, setAnalyticsRange] = useState<"7d" | "30d" | "90d">("7d");
   const [providerAnalytics, setProviderAnalytics] = useState<BotProviderAnalytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
@@ -926,6 +933,7 @@ export default function BotManagerPage() {
   }, [openRouterFilter, openRouterPage, openRouterSearch, toast]);
 
   const loadProviderAnalytics = useCallback(async () => {
+    if (!isBotProvider(summary?.runtimeStatus.activeProvider)) return;
     setAnalyticsLoading(true);
     setAnalyticsError(null);
     try {
@@ -936,7 +944,7 @@ export default function BotManagerPage() {
     } finally {
       setAnalyticsLoading(false);
     }
-  }, [analyticsRange, selectedAnalyticsProvider]);
+  }, [analyticsRange, selectedAnalyticsProvider, summary?.runtimeStatus.activeProvider]);
 
   const loadBackupJobs = useCallback(async () => {
     try {
