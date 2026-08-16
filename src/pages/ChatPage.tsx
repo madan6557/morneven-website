@@ -5,7 +5,7 @@ import {
   listConversationsForRemote,
   listInvitesForRemote,
   listMessagesRemote,
-  sendMessageRemote,
+  sendMessageWithRetryRemote,
   editMessageRemote,
   deleteMessageRemote,
   createDMRemote,
@@ -722,7 +722,7 @@ export default function ChatPage() {
           ),
         );
       }
-      await sendMessageRemote(active, draftText, attachments, draftReplyTo ?? undefined);
+      await sendMessageWithRetryRemote(active, draftText, attachments, draftReplyTo ?? undefined);
       refresh();
     } catch (error) {
       toast({

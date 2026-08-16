@@ -490,6 +490,25 @@ export async function sendMessageRemote(
   return message;
 }
 
+export async function sendMessageWithRetryRemote(
+  conversationId: string,
+  text: string,
+  attachments?: ChatAttachment[],
+  replyTo?: ReplyPreview,
+  clientId = uid("client"),
+): Promise<ChatMessage> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await sendMessageRemote(conversationId, text, attachments, replyTo, clientId);
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await new Promise((resolve) => window.setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Message delivery failed");
+}
+
 export function updateMessage(
   messageId: string,
   updater: (message: ChatMessage) => ChatMessage,
