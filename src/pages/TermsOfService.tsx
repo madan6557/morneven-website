@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import logoColor from "@/assets/logo-color.png";
+import logoColor from "@/assets/logo-color.webp";
 
 export default function TermsOfService() {
   return (

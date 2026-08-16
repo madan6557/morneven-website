@@ -75,7 +75,7 @@ export default defineConfig(({ mode }) => ({
     rolldownOptions: {
       output: {
         // Single-bundle output avoids environments that aggressively cap file requests.
-        codeSplitting: false,
+        codeSplitting: true,
       },
     },
   },

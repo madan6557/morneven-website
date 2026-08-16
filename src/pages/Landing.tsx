@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { BookOpen, Users, FlaskConical, Globe, ArrowRight, ExternalLink } from "lucide-react";
-import logoColor from "@/assets/logo-color.png";
+import logoColor from "@/assets/logo-color.webp";
 import kronLogo from "@/assets/kron-logo.svg";
 import omniLogo from "@/assets/omni-logo.svg";
 

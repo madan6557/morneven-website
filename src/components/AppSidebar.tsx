@@ -45,7 +45,7 @@ import {
   subscribeNavigationBadges,
   type NavigationBadges,
 } from "@/services/navigationBadgesApi";
-import logoColor from "@/assets/logo-color.png";
+import logoColor from "@/assets/logo-color.webp";
 import { isDesktopApp } from "@/services/desktop/runtime";
 
 interface NavItem {
