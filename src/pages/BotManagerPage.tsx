@@ -2004,6 +2004,7 @@ export default function BotManagerPage() {
             );
           })}
         </div>
+        <RuntimeFreezeControl canManage={role === "author" && personnelLevel >= 7} />
         <div className="space-y-4">
           {activeMainTab === "runtime" && (
           <div className={panelClass}>
@@ -2426,7 +2427,6 @@ export default function BotManagerPage() {
                   <Save className="mr-2 h-4 w-4" />
                   Save General Config
                 </Button>
-                <RuntimeFreezeControl canManage={role === "author" && personnelLevel >= 7} />
               </div>
           </div>
           )}
