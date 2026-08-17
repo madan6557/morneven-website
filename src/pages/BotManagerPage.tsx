@@ -52,6 +52,7 @@ import { canAccessBotManager } from "@/lib/pl";
 import { cn } from "@/lib/utils";
 import {
   activateBotIdentity,
+  activateProviderAccount,
   activateBotProvider,
   activateOpenRouterProfile,
   addTelegramTopicManual,
@@ -60,6 +61,7 @@ import {
   controlBotRuntimeForIdentity,
   createBotManagerBackup,
   createBotIdentity,
+  createProviderAccount,
   createOpenRouterProfile,
   createBotManagerBackupDownloadTicket,
   deleteBotIdentity,
@@ -68,6 +70,7 @@ import {
   deleteBotRuntimeSchedule,
   deactivateBotIdentity,
   deleteOpenRouterProfile,
+  deleteProviderAccount,
   getBotManagerBackupDownloadUrl,
   getBotManagerFileProxyUrl,
   getBotIdentity,
@@ -92,6 +95,7 @@ import {
   updateBotRuntimeFreeze,
   updateBotRuntimeSchedule,
   updateOpenRouterProfile,
+  updateProviderAccount,
   updateProviderAnalyticsCredential,
   updateTelegramTopicLock,
   type BotManagerBackupJob,
@@ -103,6 +107,7 @@ import {
   type BotChatAccessMode,
   type BotIdentityFile,
   type BotProvider,
+  type BotProviderAccount,
   type BotProviderAnalytics,
   type BotRuntimeStatus,
   type BotRuntimeFreeze,
@@ -179,6 +184,7 @@ type BotIdentityDraft = {
   roleTitle: string;
   description: string;
   runtimeProvider: string;
+  runtimeProviderAccountId: string;
   runtimeOpenRouterProfileId: string;
   chatAccess: BotChatAccess;
 };
@@ -211,6 +217,18 @@ type GeneralConfigDraft = {
 
 type OpenRouterDraft = {
   id?: string;
+  name: string;
+  apiKey: string;
+  keyPreview?: string;
+  apiBase: string;
+  modelId: string;
+  tags: string[];
+  notes: string;
+};
+
+type ProviderAccountDraft = {
+  id?: string;
+  provider: BotProvider;
   name: string;
   apiKey: string;
   keyPreview?: string;
@@ -787,6 +805,11 @@ export default function BotManagerPage() {
   const [credentialKey, setCredentialKey] = useState("");
   const [credentialConfirm, setCredentialConfirm] = useState("");
   const [credentialUnlocked, setCredentialUnlocked] = useState(false);
+  const [providerAccounts, setProviderAccounts] = useState<BotProviderAccount[]>([]);
+  const [providerAccountProvider, setProviderAccountProvider] = useState<BotProvider>("openai");
+  const [providerAccountSearch, setProviderAccountSearch] = useState("");
+  const [providerAccountFilter, setProviderAccountFilter] = useState("all");
+  const [providerAccountDraft, setProviderAccountDraft] = useState<ProviderAccountDraft>({ provider: "openai", name: "", apiKey: "", apiBase: "", modelId: defaultModelIds.openai ?? "", tags: [], notes: "" });
   const [openRouterProfiles, setOpenRouterProfiles] = useState<OpenRouterProfile[]>([]);
   const [openRouterSearch, setOpenRouterSearch] = useState("");
   const [openRouterFilter, setOpenRouterFilter] = useState("all");
@@ -813,7 +836,7 @@ export default function BotManagerPage() {
   const [selectedLoreId, setSelectedLoreId] = useState("");
   const [defaultRegenerateMode, setDefaultRegenerateMode] = useState<"safe" | "force">("safe");
   const [defaultRegenerateConfirm, setDefaultRegenerateConfirm] = useState("");
-  const [identityDraft, setIdentityDraft] = useState<BotIdentityDraft>({ name: "", roleTitle: "", description: "", runtimeProvider: "", runtimeOpenRouterProfileId: "", chatAccess: normalizeChatAccess() });
+  const [identityDraft, setIdentityDraft] = useState<BotIdentityDraft>({ name: "", roleTitle: "", description: "", runtimeProvider: "", runtimeProviderAccountId: "", runtimeOpenRouterProfileId: "", chatAccess: normalizeChatAccess() });
   const [channelsDraft, setChannelsDraft] = useState<JsonRecord>(createDefaultChannels());
   const channelsDraftRef = useRef<JsonRecord>(channelsDraft);
   const [selectedChannel, setSelectedChannel] = useState<ChannelKey>("telegram");
@@ -906,6 +929,12 @@ export default function BotManagerPage() {
     try {
       const next = await getBotManagerSummary();
       setSummary(next);
+      const nextProviderAccounts = next.providerAccounts ?? (next.openRouterProfiles ?? []).map((profile) => ({
+        ...profile,
+        provider: "openrouter" as BotProvider,
+        metadata: {},
+      }));
+      setProviderAccounts(nextProviderAccounts);
       setGeneralBase(next.generalConfig);
       const savedDraft = createGeneralConfigDraft(next.generalConfig);
       const storedDraft = readStoredGeneralConfigDraft();
@@ -985,6 +1014,7 @@ export default function BotManagerPage() {
         roleTitle: next.roleTitle,
         description: next.description,
         runtimeProvider: next.runtimeProvider ?? "",
+        runtimeProviderAccountId: next.runtimeProviderAccountId ?? next.runtimeOpenRouterProfileId ?? "",
         runtimeOpenRouterProfileId: next.runtimeOpenRouterProfileId ?? "",
         chatAccess: normalizeChatAccess(next.chatAccess),
       });
@@ -1057,10 +1087,6 @@ export default function BotManagerPage() {
     }, RUNTIME_STATUS_POLL_MS);
     return () => window.clearInterval(interval);
   }, [allowed, loadRuntimeStatus, pageVisible]);
-
-  useEffect(() => {
-    if (credentialsVisible && credentialUnlocked) void loadOpenRouterProfiles();
-  }, [credentialUnlocked, credentialsVisible, loadOpenRouterProfiles]);
 
   useEffect(() => {
     if (allowed && pageVisible && activeMainTab === "providers") void loadProviderAnalytics();
@@ -1156,7 +1182,6 @@ export default function BotManagerPage() {
 
   const refreshVisibleData = async () => {
     const tasks: Array<Promise<unknown>> = [loadSummary(), loadRuntimeStatus()];
-    if (credentialsVisible && credentialUnlocked) tasks.push(loadOpenRouterProfiles());
     if (activeMainTab === "providers") tasks.push(loadProviderAnalytics());
     if (backupVisible) tasks.push(loadBackupJobs());
     await Promise.all(tasks);
@@ -1448,6 +1473,71 @@ export default function BotManagerPage() {
       "Provider activated",
     );
 
+  const resetProviderAccountDraft = (provider: BotProvider = providerAccountProvider) => {
+    setProviderAccountDraft({
+      provider,
+      name: "",
+      apiKey: "",
+      apiBase: "",
+      modelId: defaultModelIds[provider] ?? "",
+      tags: [],
+      notes: "",
+    });
+  };
+
+  const saveProviderAccount = () =>
+    runAction(
+      providerAccountDraft.id ? `provider-account-${providerAccountDraft.id}` : "provider-account-create",
+      async () => {
+        const payload = {
+          provider: providerAccountDraft.provider,
+          name: providerAccountDraft.name.trim(),
+          apiKey: providerAccountDraft.apiKey,
+          apiBase: providerAccountDraft.apiBase.trim() || undefined,
+          modelId: providerAccountDraft.modelId.trim(),
+          tags: providerAccountDraft.tags,
+          notes: providerAccountDraft.notes,
+          password: credentialPassword,
+          botManagerKey: credentialKey,
+          confirmText: "CREDENTIALS" as const,
+        };
+        if (providerAccountDraft.id) await updateProviderAccount(providerAccountDraft.id, payload);
+        else await createProviderAccount(payload);
+        resetProviderAccountDraft(providerAccountDraft.provider);
+        await refreshVisibleData();
+      },
+      providerAccountDraft.id ? "Provider account updated" : "Provider account created",
+    );
+
+  const setActiveProviderAccount = (account: BotProviderAccount) =>
+    runAction(
+      `provider-account-activate-${account.id}`,
+      async () => {
+        await activateProviderAccount(account.id, {
+          password: credentialPassword,
+          botManagerKey: credentialKey,
+          confirmText: "CREDENTIALS",
+        });
+        await refreshVisibleData();
+      },
+      "Provider account activated",
+    );
+
+  const removeProviderAccount = (account: BotProviderAccount) =>
+    runAction(
+      `provider-account-delete-${account.id}`,
+      async () => {
+        await deleteProviderAccount(account.id, {
+          password: credentialPassword,
+          botManagerKey: credentialKey,
+          confirmText: "CREDENTIALS",
+        });
+        if (providerAccountDraft.id === account.id) resetProviderAccountDraft(account.provider as BotProvider);
+        await refreshVisibleData();
+      },
+      "Provider account deleted",
+    );
+
   const saveOpenRouterProfile = () =>
     runAction(
       openRouterDraft.id ? `openrouter-${openRouterDraft.id}` : "openrouter-create",
@@ -1511,7 +1601,8 @@ export default function BotManagerPage() {
           roleTitle: identityDraft.roleTitle,
           description: identityDraft.description,
           runtimeProvider: identityDraft.runtimeProvider || undefined,
-          runtimeOpenRouterProfileId: identityDraft.runtimeProvider === "openrouter" ? identityDraft.runtimeOpenRouterProfileId || undefined : "",
+          runtimeProviderAccountId: identityDraft.runtimeProvider ? identityDraft.runtimeProviderAccountId || undefined : "",
+          runtimeOpenRouterProfileId: "",
           chatAccess: normalizeChatAccess(identityDraft.chatAccess),
           channels: submittedChannels,
           settings: submittedSettings,
@@ -1523,6 +1614,7 @@ export default function BotManagerPage() {
           roleTitle: updated.roleTitle,
           description: updated.description,
           runtimeProvider: updated.runtimeProvider ?? "",
+          runtimeProviderAccountId: updated.runtimeProviderAccountId ?? updated.runtimeOpenRouterProfileId ?? "",
           runtimeOpenRouterProfileId: updated.runtimeOpenRouterProfileId ?? "",
           chatAccess: normalizeChatAccess(updated.chatAccess),
         });
@@ -1768,6 +1860,8 @@ export default function BotManagerPage() {
     : "Never";
   const activeProvider = summary?.runtimeStatus.activeProvider ?? "";
   const activeOpenRouterProfileId = summary?.runtimeStatus.activeOpenRouterProfileId ?? "";
+  const activeProviderAccountId = summary?.runtimeStatus.activeProviderAccountId ?? activeOpenRouterProfileId;
+  const activeProviderAccountName = providerAccounts.find((account) => account.id === activeProviderAccountId)?.name ?? "";
   const syncReasonText = runtimeDirty ? (summary?.runtimeSync.runtimeDirtyReason ?? "Runtime changes pending") : "No pending runtime changes";
   const currentProviderAnalytics = providerAnalytics?.provider === selectedAnalyticsProvider ? providerAnalytics : null;
   const balanceSparklineData = (() => {
@@ -1944,7 +2038,7 @@ export default function BotManagerPage() {
               <Metric label={isMultiRuntime ? "Active Runtimes" : "Gateway State"} value={isMultiRuntime ? String(activeRuntimeIdentities.length) : gatewayState} />
               <Metric label={isMultiRuntime ? "Running Runtimes" : "Gateway Uptime"} value={isMultiRuntime ? `${runningRuntimeCount} running / ${Math.max(activeRuntimeIdentities.length - runningRuntimeCount, 0)} stopped` : formatUptime(gatewayUptimeSeconds)} />
               <Metric label={isMultiRuntime ? "Enabled Channels" : "Last Sync"} value={isMultiRuntime ? String(enabledRuntimeChannelCount) : lastSync} />
-              <Metric label={isMultiRuntime ? "Main Personality" : "Provider"} value={isMultiRuntime ? ((summary?.identities.find((identity) => identity.isMain) ?? activeIdentity)?.name ?? "None") : (activeProvider || "default provider")} />
+              <Metric label={isMultiRuntime ? "Main Personality" : "Provider / Account"} value={isMultiRuntime ? ((summary?.identities.find((identity) => identity.isMain) ?? activeIdentity)?.name ?? "None") : `${activeProvider || "default provider"}${activeProviderAccountName ? ` / ${activeProviderAccountName}` : ""}`} />
               <Metric label="Saved Personalities" value={String(summary?.identities.length ?? 0)} />
               <Metric label="ZeroClaw Link" value={runtimeConfigured ? "Configured" : "Not configured"} />
               <Metric label="Sync State" value={syncState} />
@@ -2004,6 +2098,8 @@ export default function BotManagerPage() {
                       : status?.uptime ?? 0
                     : 0;
                   const providerLabel = identity.runtimeProvider || activeProvider || "default provider";
+                  const runtimeAccountId = identity.runtimeProviderAccountId || identity.runtimeOpenRouterProfileId || (providerLabel === activeProvider ? activeProviderAccountId : "");
+                  const accountLabel = providerAccounts.find((account) => account.id === runtimeAccountId)?.name;
                   const enabledChannels = Object.entries(asRecord(identity.channels))
                     .filter(([, value]) => asRecord(value).enabled === true)
                     .map(([key]) => key)
@@ -2018,7 +2114,7 @@ export default function BotManagerPage() {
                               <h3 className="truncate font-heading text-base text-foreground">{identity.name}</h3>
                               {identity.isMain && <Badge variant="outline">Main</Badge>}
                             </div>
-                            <p className="truncate text-sm text-muted-foreground">{providerLabel}</p>
+                            <p className="truncate text-sm text-muted-foreground">{providerLabel}{accountLabel ? ` / ${accountLabel}` : ""}</p>
                             <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{enabledChannels}</p>
                           </div>
                         </div>
@@ -2112,7 +2208,7 @@ export default function BotManagerPage() {
                           <span className="font-heading text-sm text-foreground">{provider.label}</span>
                           {isActive && <Badge className="text-[10px]">Active</Badge>}
                           {provider.value === "openrouter" ? (
-                            activeOpenRouterProfileId ? <Badge variant="outline" className="text-[10px]">Configured</Badge> : <Badge variant="destructive" className="text-[10px]">Missing</Badge>
+                            providerAccounts.some((account) => account.provider === provider.value) ? <Badge variant="outline" className="text-[10px]">Configured</Badge> : <Badge variant="destructive" className="text-[10px]">Missing</Badge>
                           ) : credential?.configured ? (
                             <Badge variant="outline" className="text-[10px]">Configured</Badge>
                           ) : (
@@ -2192,8 +2288,8 @@ export default function BotManagerPage() {
                     <Badge variant={activeProvider ? "default" : "outline"}>
                       Active provider: {activeProvider || "none"}
                     </Badge>
-                    {activeProvider === "openrouter" && (
-                      <Badge variant="outline">OpenRouter profile: {openRouterProfiles.find((profile) => profile.id === activeOpenRouterProfileId)?.name ?? "selected"}</Badge>
+                    {activeProvider && (
+                      <Badge variant="outline">Account: {providerAccounts.find((account) => account.id === activeProviderAccountId)?.name ?? "default"}</Badge>
                     )}
                   </div>
                   {credentialUnlocked && (
@@ -2214,93 +2310,54 @@ export default function BotManagerPage() {
                   </div>
                 ) : (
                   <div className="mt-4 space-y-5">
-                    <div className="space-y-3">
-                      <p className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Provider credentials</p>
-                      <div className="grid gap-3 xl:grid-cols-2">
-                        {normalProviders.map((provider) => {
-                          const credential = credentialForProvider(provider.value);
-                          const analyticsCredential = analyticsCredentialForProvider(provider.value);
+                    <ProviderAccountsSection
+                      accounts={providerAccounts}
+                      activeProvider={activeProvider}
+                      activeProviderAccountId={activeProviderAccountId}
+                      busy={busy}
+                      canUseCredentialGate={canUnlockCredential}
+                      draft={providerAccountDraft}
+                      filter={providerAccountFilter}
+                      onActivate={setActiveProviderAccount}
+                      onDelete={removeProviderAccount}
+                      onDraftChange={setProviderAccountDraft}
+                      onFilterChange={setProviderAccountFilter}
+                      onProviderChange={(provider) => { setProviderAccountProvider(provider); resetProviderAccountDraft(provider); }}
+                      onSave={saveProviderAccount}
+                      onSearchChange={setProviderAccountSearch}
+                      providers={providers}
+                      search={providerAccountSearch}
+                      selectedProvider={providerAccountProvider}
+                    />
+                    <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+                      <div>
+                        <h3 className="font-heading text-base text-foreground">Provider analytics credentials</h3>
+                        <p className="text-xs text-muted-foreground">Analytics keys stay provider-level and are separate from runtime provider accounts.</p>
+                      </div>
+                      <div className="mt-4 grid gap-3 xl:grid-cols-2">
+                        {providers.filter((provider) => analyticsKeyProviders.has(provider.value)).map((provider) => {
                           const draft = draftForProvider(provider.value);
-                          const isActive = activeProvider === provider.value;
-                          const apiKeyValue: SecretFieldValue = draft.apiKey || (credential?.configured
-                            ? { __botManagerSecret: true, configured: true, preview: credential.keyPreview || "***" }
-                            : "");
+                          const analyticsCredential = analyticsCredentialForProvider(provider.value);
                           const analyticsKeyValue: SecretFieldValue = draft.analyticsApiKey || (analyticsCredential?.configured
                             ? { __botManagerSecret: true, configured: true, preview: analyticsCredential.keyPreview || "***" }
                             : "");
                           return (
-                            <div key={provider.value} className={cn("rounded-sm border bg-background/40 p-3", isActive ? "border-primary/60" : "border-border/70")}>
-                              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                                <div className="min-w-0">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <p className="font-heading text-sm text-foreground">{provider.label}</p>
-                                    {credential?.configured ? <Badge variant="outline" className="text-[10px]">Configured</Badge> : <Badge variant="destructive" className="text-[10px]">Missing</Badge>}
-                                    {isActive && <Badge className="text-[10px]"><Check className="mr-1 h-3 w-3" />Active</Badge>}
-                                  </div>
-                                  <p className="mt-1 truncate text-xs text-muted-foreground">{credential?.configured ? `${credential.keyPreview} / ${readString(credential.metadata.modelId, "model not set")}` : "No credential configured"}</p>
-                                </div>
-                                <Button type="button" variant={isActive ? "outline" : "default"} size="sm" onClick={() => activateProvider(provider.value)} disabled={Boolean(busy) || !credential?.configured || isActive || !canUnlockCredential}>
-                                  <Power className="mr-2 h-4 w-4" />
-                                  {isActive ? "Active" : "Enable"}
-                                </Button>
-                              </div>
+                            <div key={provider.value} className="rounded-sm border border-border/70 bg-background/40 p-3">
+                              <p className="font-heading text-sm text-foreground">{provider.label}</p>
                               <div className="mt-3 grid items-end gap-3 md:grid-cols-2">
-                                <Field label="Model ID" value={draft.modelId} onChange={(modelId) => updateProviderDraft(provider.value, { modelId })} placeholder={defaultModelIds[provider.value] ?? "model-id"} />
-                                <Field label="API Base" value={draft.apiBase} onChange={(apiBase) => updateProviderDraft(provider.value, { apiBase })} placeholder="Optional provider base URL" />
-                                <SecretField
-                                  label="API Key"
-                                  value={apiKeyValue}
-                                  onChange={(apiKey) => updateProviderDraft(provider.value, { apiKey: typeof apiKey === "string" ? apiKey : "" })}
-                                  name={`bot-manager-${provider.value}-api-key`}
-                                  placeholder="Enter provider API key"
-                                />
-                                <Button type="button" className="h-10 whitespace-nowrap" onClick={() => saveCredential(provider.value)} disabled={!canSubmitCredential(provider.value) || Boolean(busy)}>
-                                  {busy === `credential-${provider.value}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
-                                  Save
+                                <SecretField label="Analytics Key" value={analyticsKeyValue} onChange={(apiKey) => updateProviderDraft(provider.value, { analyticsApiKey: typeof apiKey === "string" ? apiKey : "" })} name={`bot-manager-${provider.value}-analytics-key`} placeholder="Enter admin analytics key" />
+                                <Field label="Organization ID" value={draft.analyticsOrganizationId} onChange={(analyticsOrganizationId) => updateProviderDraft(provider.value, { analyticsOrganizationId })} placeholder="Optional" />
+                                <Field label="Project ID" value={draft.analyticsProjectId} onChange={(analyticsProjectId) => updateProviderDraft(provider.value, { analyticsProjectId })} placeholder="Optional" />
+                                <Button type="button" variant="outline" className="h-10 whitespace-nowrap" onClick={() => saveAnalyticsCredential(provider.value)} disabled={!canSubmitAnalyticsCredential(provider.value) || Boolean(busy)}>
+                                  {busy === `analytics-credential-${provider.value}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+                                  Save Analytics
                                 </Button>
                               </div>
-                              {analyticsKeyProviders.has(provider.value) && (
-                                <div className="mt-3 grid items-end gap-3 md:grid-cols-2">
-                                  <SecretField
-                                    label="Analytics Key"
-                                    value={analyticsKeyValue}
-                                    onChange={(apiKey) => updateProviderDraft(provider.value, { analyticsApiKey: typeof apiKey === "string" ? apiKey : "" })}
-                                    name={`bot-manager-${provider.value}-analytics-key`}
-                                    placeholder="Enter admin analytics key"
-                                  />
-                                  <Field label="Organization ID" value={draft.analyticsOrganizationId} onChange={(analyticsOrganizationId) => updateProviderDraft(provider.value, { analyticsOrganizationId })} placeholder="Optional" />
-                                  <Field label="Project ID" value={draft.analyticsProjectId} onChange={(analyticsProjectId) => updateProviderDraft(provider.value, { analyticsProjectId })} placeholder="Optional" />
-                                  <Button type="button" variant="outline" className="h-10 whitespace-nowrap" onClick={() => saveAnalyticsCredential(provider.value)} disabled={!canSubmitAnalyticsCredential(provider.value) || Boolean(busy)}>
-                                    {busy === `analytics-credential-${provider.value}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
-                                    Save Analytics
-                                  </Button>
-                                </div>
-                              )}
                             </div>
                           );
                         })}
                       </div>
                     </div>
-
-                    <OpenRouterSection
-
-                      activeProfileId={activeOpenRouterProfileId}
-                      busy={busy}
-                      canUseCredentialGate={canUnlockCredential}
-                      draft={openRouterDraft}
-                      filter={openRouterFilter}
-                      onActivate={setActiveOpenRouterProfile}
-                      onDelete={removeOpenRouterProfile}
-                      onDraftChange={setOpenRouterDraft}
-                      onFilterChange={(value) => { setOpenRouterFilter(value); setOpenRouterPage(1); }}
-                      onPageChange={setOpenRouterPage}
-                      onSave={saveOpenRouterProfile}
-                      onSearchChange={(value) => { setOpenRouterSearch(value); setOpenRouterPage(1); }}
-                      page={openRouterPage}
-                      profiles={openRouterProfiles}
-                      search={openRouterSearch}
-                      totalPages={openRouterTotalPages}
-                    />
                   </div>
                 )}
               </div>
@@ -2445,6 +2502,8 @@ export default function BotManagerPage() {
                     const loreReference = asRecord(asRecord(identity.settings).loreReference);
                     const rowEditing = editingIdentityId === identity.id;
                     const rowLoaded = rowEditing && detail?.id === identity.id;
+                    const identityAccountId = identity.runtimeProviderAccountId || identity.runtimeOpenRouterProfileId || "";
+                    const identityAccountName = providerAccounts.find((account) => account.id === identityAccountId)?.name;
                     return (
                       <div key={identity.id} className={cn("rounded-sm border border-border/80 bg-background/25", selectedId === identity.id && "border-primary")}>
                         <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
@@ -2454,6 +2513,7 @@ export default function BotManagerPage() {
                               <h3 className="truncate font-heading text-base text-foreground">{identity.name}</h3>
                               {identity.isActive && <Badge><Check className="mr-1 h-3 w-3" />Active</Badge>}
                               {identity.isMain && <Badge variant="outline">Main</Badge>}
+                              {identityAccountName && <Badge variant="outline">Account: {identityAccountName}</Badge>}
                               {readString(loreReference.id) ? <Badge variant="outline">Lore</Badge> : <Badge variant="destructive">No Lore</Badge>}
                             </div>
                             <p className="truncate text-sm text-muted-foreground">{identity.roleTitle}</p>
@@ -2550,7 +2610,7 @@ export default function BotManagerPage() {
                                 onIdentityChange={(patch) => setIdentityDraft((current) => ({ ...current, ...patch }))}
                                 onLoreSearchChange={setLoreSearch}
                                 onLoreSelect={(character) => { setSelectedLoreId(character.id); setLoreSearch(formatCharacterLabel(character)); }}
-                                openRouterProfiles={openRouterProfiles}
+                                providerAccounts={providerAccounts}
                                 onRegenerateConfirmChange={setDefaultRegenerateConfirm}
                                 onRegenerateDefaults={regenerateDefaults}
                                 onRegenerateModeChange={setDefaultRegenerateMode}
@@ -2828,6 +2888,150 @@ function SelectedCharacterPreview({ character, onClear }: { character: Character
   );
 }
 
+function ProviderAccountsSection({
+  accounts,
+  activeProvider,
+  activeProviderAccountId,
+  busy,
+  canUseCredentialGate,
+  draft,
+  filter,
+  onActivate,
+  onDelete,
+  onDraftChange,
+  onFilterChange,
+  onProviderChange,
+  onSave,
+  onSearchChange,
+  providers,
+  search,
+  selectedProvider,
+}: {
+  accounts: BotProviderAccount[];
+  activeProvider: string;
+  activeProviderAccountId: string;
+  busy: string | null;
+  canUseCredentialGate: boolean;
+  draft: ProviderAccountDraft;
+  filter: string;
+  onActivate: (account: BotProviderAccount) => void;
+  onDelete: (account: BotProviderAccount) => void;
+  onDraftChange: (draft: ProviderAccountDraft) => void;
+  onFilterChange: (value: string) => void;
+  onProviderChange: (provider: BotProvider) => void;
+  onSave: () => void;
+  onSearchChange: (value: string) => void;
+  providers: Array<{ value: BotProvider; label: string }>;
+  search: string;
+  selectedProvider: BotProvider;
+}) {
+  const visibleAccounts = accounts.filter((account) => {
+    if (account.provider !== selectedProvider) return false;
+    const matchesSearch = !search.trim() || `${account.name} ${account.modelId} ${account.tags.join(" ")} ${account.notes}`.toLowerCase().includes(search.trim().toLowerCase());
+    const matchesFilter = filter === "all" || (filter === "active" && account.isActive) || (filter === "complete" && account.configured && Boolean(account.modelId)) || (filter === "incomplete" && (!account.configured || !account.modelId));
+    return matchesSearch && matchesFilter;
+  });
+  const providerLabel = providers.find((provider) => provider.value === selectedProvider)?.label ?? selectedProvider;
+
+  return (
+    <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h3 className="font-heading text-base text-foreground">Provider accounts</h3>
+          <p className="text-xs text-muted-foreground">Named runtime accounts. Each provider has one default active account; personalities can override it.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input className={cn(inputClass, "h-9 w-48 py-1.5")} value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Search accounts" />
+          <select className={cn(inputClass, "h-9 w-36 py-1.5")} value={filter} onChange={(event) => onFilterChange(event.target.value)}>
+            <option value="all">All accounts</option>
+            <option value="active">Active</option>
+            <option value="complete">Complete</option>
+            <option value="incomplete">Incomplete</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        {providers.map((provider) => {
+          const providerAccounts = accounts.filter((account) => account.provider === provider.value);
+          const active = providerAccounts.find((account) => account.isActive);
+          return (
+            <button key={provider.value} type="button" onClick={() => onProviderChange(provider.value)} className={cn("rounded-sm border p-3 text-left", selectedProvider === provider.value ? "border-primary bg-primary/10" : "border-border/70 bg-background/40 hover:border-primary/60")}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-heading text-sm text-foreground">{provider.label}</span>
+                {activeProvider === provider.value && <Badge className="text-[10px]">Runtime</Badge>}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{providerAccounts.length} account{providerAccounts.length === 1 ? "" : "s"}</p>
+              <p className="truncate text-xs text-muted-foreground">Default: {active?.name ?? "not set"}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h4 className="font-heading text-sm text-foreground">{providerLabel} accounts</h4>
+          <Badge variant="outline">{visibleAccounts.length}</Badge>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={() => onProviderChange(selectedProvider)} disabled={Boolean(busy)}>
+          <Plus className="mr-2 h-4 w-4" />
+          New account
+        </Button>
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        {visibleAccounts.map((account) => {
+          const isActive = account.isActive || activeProviderAccountId === account.id;
+          return (
+            <div key={account.id} className={cn("rounded-sm border border-border/70 bg-card/60 p-3", isActive && "border-primary")}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-heading text-sm text-foreground">{account.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{account.keyPreview} / {account.modelId}</p>
+                  {account.tags.length > 0 && <p className="mt-1 truncate text-xs text-muted-foreground">{account.tags.join(", ")}</p>}
+                </div>
+                {isActive && <Badge>Default</Badge>}
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <Button type="button" size="sm" variant="outline" onClick={() => onDraftChange({ id: account.id, provider: account.provider as BotProvider, name: account.name, apiKey: "", keyPreview: account.keyPreview, apiBase: account.apiBase, modelId: account.modelId, tags: account.tags, notes: account.notes })}>
+                  <Pencil className="mr-2 h-4 w-4" />Edit
+                </Button>
+                <Button type="button" size="sm" onClick={() => onActivate(account)} disabled={!canUseCredentialGate || isActive || Boolean(busy)}>
+                  <Power className="mr-2 h-4 w-4" />{isActive ? "Default" : "Activate"}
+                </Button>
+                <Button type="button" size="sm" variant="destructive" onClick={() => onDelete(account)} disabled={!canUseCredentialGate || isActive || Boolean(busy)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+        {visibleAccounts.length === 0 && <p className="rounded-sm border border-dashed border-border/70 p-4 text-sm text-muted-foreground lg:col-span-2">No accounts for {providerLabel} yet.</p>}
+      </div>
+
+      <div className="mt-4 rounded-sm border border-border/70 bg-background/40 p-3">
+        <div className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <Field label="Account Name" value={draft.name} onChange={(name) => onDraftChange({ ...draft, name })} placeholder={`${providerLabel} default`} />
+          <Field label="Model ID" value={draft.modelId} onChange={(modelId) => onDraftChange({ ...draft, modelId })} placeholder={defaultModelIds[selectedProvider] ?? "model-id"} />
+          <Field label="API Base" value={draft.apiBase} onChange={(apiBase) => onDraftChange({ ...draft, apiBase })} placeholder="Optional provider base URL" />
+        </div>
+        <div className="mt-4 grid items-end gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <TagField label="Tags" value={draft.tags} onChange={(tags) => onDraftChange({ ...draft, tags })} placeholder="production, reasoning" />
+          <Field label="Notes" value={draft.notes} onChange={(notes) => onDraftChange({ ...draft, notes })} />
+          <Button type="button" className="h-10 whitespace-nowrap" onClick={onSave} disabled={!draft.name.trim() || (!draft.id && !draft.apiKey.trim()) || !draft.modelId.trim() || !canUseCredentialGate || Boolean(busy)}>
+            <Save className="mr-2 h-4 w-4" />
+            {draft.id ? "Update account" : "Create account"}
+          </Button>
+        </div>
+        <div className="mt-4">
+          <SecretField label="API Key / Token" value={draft.apiKey || (draft.id && draft.keyPreview ? { __botManagerSecret: true, configured: true, preview: draft.keyPreview } : "")} onChange={(apiKey) => onDraftChange({ ...draft, apiKey: typeof apiKey === "string" ? apiKey : "" })} name={`bot-manager-${selectedProvider}-account-api-key`} placeholder="Enter provider API key or token" />
+        </div>
+        {draft.id && <div className="mt-3 flex justify-end"><Button type="button" variant="outline" onClick={() => onProviderChange(selectedProvider)}>Cancel</Button></div>}
+      </div>
+    </div>
+  );
+}
+
 function OpenRouterSection({
   activeProfileId,
   busy,
@@ -2965,7 +3169,7 @@ function PersonalityEditor({
   onIdentityChange,
   onLoreSearchChange,
   onLoreSelect,
-  openRouterProfiles,
+  providerAccounts,
   onRegenerateConfirmChange,
   onRegenerateDefaults,
   onRegenerateModeChange,
@@ -3002,7 +3206,7 @@ function PersonalityEditor({
   onIdentityChange: (patch: Partial<BotIdentityDraft>) => void;
   onLoreSearchChange: (value: string) => void;
   onLoreSelect: (character: Character) => void;
-  openRouterProfiles: OpenRouterProfile[];
+  providerAccounts: BotProviderAccount[];
   onRegenerateConfirmChange: (value: string) => void;
   onRegenerateDefaults: () => void;
   onRegenerateModeChange: (value: "safe" | "force") => void;
@@ -3074,7 +3278,7 @@ function PersonalityEditor({
             canManageSchedules={canManageSchedules}
             identityId={detail.id}
             identityDraft={identityDraft}
-            openRouterProfiles={openRouterProfiles}
+            providerAccounts={providerAccounts}
             settingsDraft={settingsDraft}
             onIdentityChange={onIdentityChange}
             onSave={onSaveIdentity}
@@ -3879,7 +4083,7 @@ function SettingsEditor({
   canManageSchedules,
   identityId,
   identityDraft,
-  openRouterProfiles,
+  providerAccounts,
   settingsDraft,
   onIdentityChange,
   onSave,
@@ -3889,7 +4093,7 @@ function SettingsEditor({
   canManageSchedules: boolean;
   identityId: string;
   identityDraft: BotIdentityDraft;
-  openRouterProfiles: OpenRouterProfile[];
+  providerAccounts: BotProviderAccount[];
   settingsDraft: BotSettingsDraft;
   onIdentityChange: (patch: Partial<BotIdentityDraft>) => void;
   onSave: () => void;
@@ -3914,7 +4118,7 @@ function SettingsEditor({
             <select
               className={inputClass}
               value={identityDraft.runtimeProvider}
-              onChange={(event) => onIdentityChange({ runtimeProvider: event.target.value, runtimeOpenRouterProfileId: event.target.value === "openrouter" ? identityDraft.runtimeOpenRouterProfileId : "" })}
+              onChange={(event) => onIdentityChange({ runtimeProvider: event.target.value, runtimeProviderAccountId: "", runtimeOpenRouterProfileId: "" })}
             >
               <option value="">Use global default</option>
               {providers.map((provider) => (
@@ -3923,16 +4127,16 @@ function SettingsEditor({
             </select>
           </label>
           <label className="space-y-2">
-            <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">OpenRouter Profile</span>
+            <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Provider account</span>
             <select
               className={inputClass}
-              value={identityDraft.runtimeOpenRouterProfileId}
-              onChange={(event) => onIdentityChange({ runtimeOpenRouterProfileId: event.target.value })}
-              disabled={identityDraft.runtimeProvider !== "openrouter"}
+              value={identityDraft.runtimeProviderAccountId}
+              onChange={(event) => onIdentityChange({ runtimeProviderAccountId: event.target.value, runtimeOpenRouterProfileId: "" })}
+              disabled={!identityDraft.runtimeProvider}
             >
-              <option value="">Use active OpenRouter profile</option>
-              {openRouterProfiles.map((profile) => (
-                <option key={profile.id} value={profile.id}>{profile.name} - {profile.modelId}</option>
+              <option value="">Use default provider account</option>
+              {providerAccounts.filter((account) => account.provider === identityDraft.runtimeProvider).map((account) => (
+                <option key={account.id} value={account.id}>{account.name}{account.isActive ? " (default)" : ""} - {account.modelId}</option>
               ))}
             </select>
           </label>

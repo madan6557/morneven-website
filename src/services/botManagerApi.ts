@@ -72,6 +72,11 @@ export interface OpenRouterProfile {
   updatedAt: string;
 }
 
+export interface BotProviderAccount extends OpenRouterProfile {
+  provider: BotProvider | string;
+  metadata: Record<string, unknown>;
+}
+
 export interface BotManagerPageResponse<T> {
   items: T[];
   page: number;
@@ -115,6 +120,7 @@ export interface BotIdentity {
   isActive: boolean;
   isMain: boolean;
   runtimeProvider?: BotProvider | string | null;
+  runtimeProviderAccountId?: string | null;
   runtimeOpenRouterProfileId?: string | null;
   profileImageObjectPath?: string | null;
   profileImageUrl?: string | null;
@@ -140,6 +146,7 @@ export interface BotIdentityFile {
 export interface BotSummary {
   credentials: BotCredentialSummary[];
   analyticsCredentials?: BotProviderAnalyticsCredentialSummary[];
+  providerAccounts?: BotProviderAccount[];
   openRouterProfiles?: OpenRouterProfile[];
   generalConfig: Record<string, unknown>;
   identities: BotIdentity[];
@@ -161,6 +168,7 @@ export interface BotSummary {
     activeIdentityIds?: string[];
     mainIdentityId?: string | null;
     activeProvider?: BotProvider | string | null;
+    activeProviderAccountId?: string | null;
     activeOpenRouterProfileId?: string | null;
   };
 }
@@ -259,6 +267,73 @@ export function updateBotCredential(payload: {
 }) {
   return apiRequest<BotCredentialSummary>("/bot-manager/credentials", {
     method: "PUT",
+    body: payload,
+  });
+}
+
+export function listProviderAccounts(params: { provider?: BotProvider | string; search?: string; filter?: string; page?: number; pageSize?: number } = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  });
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest<BotManagerPageResponse<BotProviderAccount>>(`/bot-manager/provider-accounts${suffix}`);
+}
+
+export function createProviderAccount(payload: {
+  provider: BotProvider;
+  name: string;
+  apiKey: string;
+  apiBase?: string;
+  modelId: string;
+  tags?: string[];
+  notes?: string;
+  password: string;
+  botManagerKey: string;
+  confirmText: "CREDENTIALS";
+}) {
+  return apiRequest<BotProviderAccount>("/bot-manager/provider-accounts", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function updateProviderAccount(id: string, payload: {
+  provider: BotProvider;
+  name: string;
+  apiKey?: string;
+  apiBase?: string;
+  modelId: string;
+  tags?: string[];
+  notes?: string;
+  password: string;
+  botManagerKey: string;
+  confirmText: "CREDENTIALS";
+}) {
+  return apiRequest<BotProviderAccount>(`/bot-manager/provider-accounts/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function activateProviderAccount(id: string, payload: {
+  password: string;
+  botManagerKey: string;
+  confirmText: "CREDENTIALS";
+}) {
+  return apiRequest<{ account: BotProviderAccount; config: Record<string, unknown>; runtimeSync: BotSummary["runtimeSync"] }>(`/bot-manager/provider-accounts/${id}/activate`, {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export function deleteProviderAccount(id: string, payload: {
+  password: string;
+  botManagerKey: string;
+  confirmText: "CREDENTIALS";
+}) {
+  return apiRequest<{ deleted: boolean }>(`/bot-manager/provider-accounts/${id}`, {
+    method: "DELETE",
     body: payload,
   });
 }
@@ -411,6 +486,7 @@ export function createBotIdentity(payload: {
   settings?: Record<string, unknown>;
   loreCharacterId?: string;
   runtimeProvider?: BotProvider | string;
+  runtimeProviderAccountId?: string;
   runtimeOpenRouterProfileId?: string;
   chatAccess?: BotChatAccess;
 }) {
@@ -424,7 +500,7 @@ export function getBotIdentity(id: string) {
   return apiRequest<BotIdentityDetail>(`/bot-manager/identities/${id}`);
 }
 
-export function updateBotIdentity(id: string, payload: Partial<Pick<BotIdentity, "name" | "roleTitle" | "description" | "profileImageUrl" | "channels" | "settings" | "runtimeProvider" | "runtimeOpenRouterProfileId" | "chatAccess">> & { loreCharacterId?: string }) {
+export function updateBotIdentity(id: string, payload: Partial<Pick<BotIdentity, "name" | "roleTitle" | "description" | "profileImageUrl" | "channels" | "settings" | "runtimeProvider" | "runtimeProviderAccountId" | "runtimeOpenRouterProfileId" | "chatAccess">> & { loreCharacterId?: string }) {
   return apiRequest<BotIdentity>(`/bot-manager/identities/${id}`, {
     method: "PUT",
     body: payload,
