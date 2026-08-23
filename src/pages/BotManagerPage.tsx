@@ -1382,8 +1382,9 @@ export default function BotManagerPage() {
           }
           : current);
         setDetail((current) => current?.id === activated.id ? { ...current, ...activated } : current);
+        toast({ title: "Jangan lupa Sync Runtime", description: `Personality ${activated.name} aktif, klik Sync Runtime agar Zeroclaw pakai akun ${activated.runtimeProvider || "default"} yang terikat.` });
       },
-      "Active personality updated",
+      "Active personality updated — Sync Runtime untuk apply",
     );
 
   const deactivateIdentity = (identity: BotIdentity) =>
@@ -1441,8 +1442,9 @@ export default function BotManagerPage() {
           }
           : current);
         setDetail((current) => current?.id === updated.id ? { ...current, ...updated } : current);
+        toast({ title: "Jangan lupa Sync Runtime", description: `Main personality ${updated.name} aktif, klik Sync Runtime agar Zeroclaw pakai akun yang terikat.` });
       },
-      "Main personality updated",
+      "Main personality updated — Sync Runtime untuk apply",
     );
 
   const removeIdentity = (identity: BotIdentity) =>
@@ -1596,13 +1598,19 @@ export default function BotManagerPage() {
       async () => {
         const submittedChannels = channelsDraftRef.current;
         const submittedSettings = mergeRecord(settingsBaseRef.current, settingsDraftToConfig(settingsDraftRef.current));
+        // ponytail: ensure explicit account when provider set, avoid silent global fallback
+        const provider = identityDraft.runtimeProvider || "";
+        const accountId = identityDraft.runtimeProviderAccountId || "";
+        const effectiveAccountId = provider && !accountId
+          ? (providerAccounts.find((a) => a.provider === provider && a.isActive)?.id || providerAccounts.find((a) => a.provider === provider)?.id || "")
+          : accountId;
         const updated = await updateBotIdentity(detail.id, {
           name: identityDraft.name,
           roleTitle: identityDraft.roleTitle,
           description: identityDraft.description,
-          runtimeProvider: identityDraft.runtimeProvider || undefined,
-          runtimeProviderAccountId: identityDraft.runtimeProvider ? identityDraft.runtimeProviderAccountId || undefined : "",
-          runtimeOpenRouterProfileId: "",
+          runtimeProvider: provider || undefined,
+          runtimeProviderAccountId: provider ? effectiveAccountId || undefined : "",
+          runtimeOpenRouterProfileId: provider === "openrouter" ? effectiveAccountId || undefined : undefined,
           chatAccess: normalizeChatAccess(identityDraft.chatAccess),
           channels: submittedChannels,
           settings: submittedSettings,
@@ -4118,7 +4126,12 @@ function SettingsEditor({
             <select
               className={inputClass}
               value={identityDraft.runtimeProvider}
-              onChange={(event) => onIdentityChange({ runtimeProvider: event.target.value, runtimeProviderAccountId: "", runtimeOpenRouterProfileId: "" })}
+              onChange={(event) => {
+                const newProvider = event.target.value;
+                // ponytail: auto-bind to active account when provider changes, so personality doesn't silently follow global default
+                const activeForProvider = providerAccounts.find((a) => a.provider === newProvider && a.isActive)?.id || providerAccounts.find((a) => a.provider === newProvider)?.id || "";
+                onIdentityChange({ runtimeProvider: newProvider, runtimeProviderAccountId: activeForProvider, runtimeOpenRouterProfileId: newProvider === "openrouter" ? activeForProvider : "" });
+              }}
             >
               <option value="">Use global default</option>
               {providers.map((provider) => (
@@ -4131,16 +4144,25 @@ function SettingsEditor({
             <select
               className={inputClass}
               value={identityDraft.runtimeProviderAccountId}
-              onChange={(event) => onIdentityChange({ runtimeProviderAccountId: event.target.value, runtimeOpenRouterProfileId: "" })}
+              onChange={(event) => onIdentityChange({ runtimeProviderAccountId: event.target.value, runtimeOpenRouterProfileId: event.target.value })}
               disabled={!identityDraft.runtimeProvider}
             >
-              <option value="">Use default provider account</option>
+              <option value="">{(() => {
+                const active = providerAccounts.find((a) => a.provider === identityDraft.runtimeProvider && a.isActive);
+                return active ? `Use active global: ${active.name} - ${active.modelId}` : "Use default provider account";
+              })()}</option>
               {providerAccounts.filter((account) => account.provider === identityDraft.runtimeProvider).map((account) => (
-                <option key={account.id} value={account.id}>{account.name}{account.isActive ? " (default)" : ""} - {account.modelId}</option>
+                <option key={account.id} value={account.id}>{account.name}{account.isActive ? " (default)" : ""} - {account.modelId} {account.keyPreview ? `(${account.keyPreview})` : ""}</option>
               ))}
             </select>
           </label>
         </div>
+        {identityDraft.runtimeProvider && providerAccounts.filter((a) => a.provider === identityDraft.runtimeProvider).length > 1 && !identityDraft.runtimeProviderAccountId && (
+          <p className="mt-2 text-xs text-amber-600">Multiple accounts for {identityDraft.runtimeProvider}. Pilih akun spesifik agar personality tidak ikut default global saat switch.</p>
+        )}
+        {identityDraft.runtimeProvider && providerAccounts.filter((a) => a.provider === identityDraft.runtimeProvider).length === 0 && (
+          <p className="mt-2 text-xs text-destructive">No accounts for {identityDraft.runtimeProvider}. Buat akun di tab Providers dulu.</p>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
