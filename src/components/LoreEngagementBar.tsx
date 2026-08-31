@@ -2,6 +2,7 @@ import { Eye, Star } from "lucide-react";
 import { setLoreStar } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatCompactNumber } from "@/lib/formatNumber";
+import { isDesktopApp } from "@/services/desktop/runtime";
 
 interface Props {
   category: string;
@@ -15,6 +16,8 @@ interface Props {
 export function LoreEngagementBar({ category, id, views = 0, stars = 0, viewerStarred = false, onChange }: Props) {
   const { role } = useAuth();
   const canStar = role !== "guest";
+
+  if (isDesktopApp) return null;
 
   const toggleStar = async () => {
     if (!canStar) return;

@@ -1,83 +1,81 @@
 # Morneven Website
 
-Morneven Website is the stable frontend application for the Morneven platform. It provides the user interface for public content, personnel collaboration, authoring, administration, security operations, analytics, backup, migration, and Bot Manager control.
+Morneven Website is the React frontend for public content, personnel
+collaboration, authoring, security operations, data backup, and ZeroClaw Bot
+Manager control.
 
-The canonical documentation lives in the shared workspace `Document/` folder.
-
-## Repository Role
-
-`morneven-website` is responsible for:
+## Responsibilities
 
 - Vite React single-page application.
-- Responsive themed UI.
-- Route-level feature pages.
-- Auth-aware navigation and UX guards.
-- REST client integration with Morneven backend.
-- WebSocket client integration for chat, notifications, badges, and presence-related updates.
-- Authenticated media rendering through backend object proxy URLs.
-- Authoring tools for content and media workflows.
+- REST and WebSocket integration with Morneven Backend.
+- Auth-aware navigation and user workflows.
+- Authenticated media loading through backend object proxy endpoints.
+- Data extraction, restore, scheduled backup, and storage cleanup UI.
+- ZeroClaw personality, runtime schedule, and global freeze controls.
 
-The frontend does not own authorization. Backend responses and backend RBAC are the source of truth.
+Backend authorization remains the security boundary.
 
-## Related Repositories
-
-| Repository | Relationship |
-| --- | --- |
-| `morneven-backend` | Provides API, auth, database, storage, websocket, security, backup, migration, extraction, and Bot Manager data |
-| `morneven_nanobot` | Runs the managed Nanobot gateway controlled by Bot Manager through backend sync endpoints |
-| `morneven-website` | Presents the product UI and calls backend APIs |
-
-## Available Features
-
-- Landing page, login, registration, guest mode, and password reset flows.
-- Command Center with configurable global presets.
-- Activity analytics with visitors, views, engagement, and content drilldown.
-- Projects with detail pages, metadata, patches, docs, features, and discussion.
-- Gallery with images, videos, thumbnails, views, likes, dislikes, tags, publisher identity, and discussion.
-- Lore / Wiki for characters, creatures, places, technology, events, other content, and personnel level information.
-- Maps with markers and restricted marker tooling.
-- Management workflows for personnel requests and review queues.
-- Chat with direct messages, manual groups, system groups, attachments, replies, mentions, edits, and realtime updates.
-- Bot Manager for PL7 Admin and PL7 Author control of Nanobot runtime personalities.
-- Author Panel for projects, lore, gallery, news, command center, and map content.
-- Security console for authorized security operators.
-- Personnel management with search, filters, statuses, authority-aware actions, and last-online information.
-- Settings for account, appearance, reports, chat reconciliation, chat reset, storage cleanup, extraction, backup, and migration.
-
-## Runtime Configuration
-
-Create environment variables in the deploy provider or local `.env` file:
-
-```env
-VITE_API_BASE_URL=https://<backend-host>/api
-VITE_DEMO_FALLBACK=false
-```
-
-API base behavior:
-
-- If `VITE_API_BASE_URL` already ends in `/api` or `/v1`, it is used as-is.
-- If it points to a host root, the client appends `/api`.
-- In local development without a configured value, localhost defaults to `http://localhost:3000/api`.
-- Production host fallback points to the Morneven production backend.
-
-## Development
-
-Requirements:
+## Requirements
 
 - Node.js 24 or newer.
 - npm 10 or newer.
 
-Commands:
+## Runtime Configuration
+
+```dotenv
+VITE_API_BASE_URL=https://<backend-host>/api
+VITE_DEMO_FALLBACK=false
+VITE_DESKTOP_APP=false
+```
+
+The Electron shell sets `VITE_DESKTOP_APP=true` automatically and uses the local-first
+author workspace; normal web builds keep this flag `false`.
+
+If the backend hostname changes, update the CSP `connect-src` allowlist in both
+`server.mjs` and `vercel.json`.
+
+## Security Posture
+
+- Inter, Orbitron, and Rajdhani are bundled locally.
+- Google Fonts is not required.
+- External scripts are restricted to the Vercel analytics script.
+- Image and media rendering is restricted to self, data, and blob URLs.
+- Storage media is fetched through authenticated backend proxy endpoints.
+- Frames are limited to trusted YouTube and Vimeo embed hosts.
+- Active script attributes, objects, framing, and external base URLs are
+  blocked by CSP.
+- Content navigation accepts internal paths and HTTP(S) URLs only.
+- Static path resolution rejects traversal, backslashes, malformed encoding,
+  and control characters.
+
+## Available Operations
+
+- Manual and scheduled data backup.
+- One-time, relative-day, and weekly schedules with IANA timezone.
+- Retention count and retention-day controls.
+- Extraction stop and Retry from 0.
+- Polling only while a job is queued or processing.
+- Local date, time, and timezone display for backup timestamps.
+- Scheduled start and stop for every ZeroClaw personality.
+- Global runtime freeze for PL7 Author.
+
+## Development
 
 ```bash
 npm install
 npm run dev
-npm run build
-npm run lint
-npm run test
 ```
 
-Local development example:
+Quality gate:
+
+```bash
+npm run lint
+npm test
+npm run build
+npm audit
+```
+
+Local API example:
 
 ```powershell
 $env:VITE_API_BASE_URL="http://localhost:3000/api"
@@ -86,16 +84,15 @@ npm run dev
 
 ## Deployment
 
-The frontend can be deployed on Vercel or any static hosting setup that supports the included server entrypoint.
+The app can run on Vercel or through `server.mjs`.
 
-Recommended production settings:
+```bash
+npm ci
+npm run build
+npm start
+```
 
-- Node.js 24 or newer.
-- `VITE_API_BASE_URL` set to the target backend `/api` URL.
-- Commit metadata passed by the deploy platform where available, such as `VERCEL_GIT_COMMIT_SHA`.
-- No demo fallback in production unless explicitly testing degraded mode.
-
-Health endpoints are provided by the static server when deployed through `server.mjs`:
+Health endpoints from `server.mjs`:
 
 ```text
 /health
@@ -103,15 +100,15 @@ Health endpoints are provided by the static server when deployed through `server
 /version
 ```
 
-## Documentation
+The static server must keep the same security headers as `vercel.json`.
 
-Active shared documentation:
+Detailed hardening, backup, restore, scheduler, ZeroClaw mount, redeployment,
+and shutdown procedures are in the backend
+[guide.md](../morneven-backend/guide.md).
 
-- [Platform Architecture](../Document/Documentation/General/2026-05-25-platform-architecture-v01.md)
-- [Website Feature Documentation](../Document/Documentation/Website/docs/2026-05-25-website-feature-documentation-v01.md)
-- [Website Guidebook](../Document/Guide/Website/docs/2026-05-25-website-guidebook-v01.md)
-- [Backend API Contract](../Document/Documentation/Backend/root-docs/2026-05-25-backend-api-contract-v01.md)
-- [Bot Manager Guide](../Document/Guide/General/2026-05-27-bot-manager-guide-v01.md)
-- [Document Index](../Document/Documentation/General/2026-05-27-document-index-v02.md)
+## License
 
-When feature behavior changes, update `Document/` first and keep this README as the concise repo entrypoint.
+Copyright (c) 2026 madan6557.
+
+No license is granted to use, copy, modify, or distribute this repository's
+contents without explicit written permission from the owner.

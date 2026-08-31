@@ -1,9 +1,11 @@
-import { type CSSProperties, type ChangeEvent, type UIEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type ChangeEvent, type ReactNode, type UIEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Navigate } from "react-router-dom";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   ArrowDownAZ,
   ArrowUpAZ,
+  BarChart3,
   Bot,
   Brain,
   Check,
@@ -16,6 +18,7 @@ import {
   FileText,
   Filter,
   Hash,
+  Info,
   KeyRound,
   Loader2,
   MessageCircle,
@@ -38,15 +41,18 @@ import {
 
 
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { ScheduleEditor } from "@/components/ScheduleEditor";
 import TagInput from "@/components/TagInput";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { canAccessBotManager } from "@/lib/pl";
 import { cn } from "@/lib/utils";
 import {
   activateBotIdentity,
+  activateProviderAccount,
   activateBotProvider,
   activateOpenRouterProfile,
   addTelegramTopicManual,
@@ -55,17 +61,24 @@ import {
   controlBotRuntimeForIdentity,
   createBotManagerBackup,
   createBotIdentity,
+  createProviderAccount,
   createOpenRouterProfile,
   createBotManagerBackupDownloadTicket,
   deleteBotIdentity,
   deleteBotIdentityFile,
+  deleteBotRuntimeFreeze,
+  deleteBotRuntimeSchedule,
   deactivateBotIdentity,
   deleteOpenRouterProfile,
+  deleteProviderAccount,
   getBotManagerBackupDownloadUrl,
   getBotManagerFileProxyUrl,
   getBotIdentity,
   getBotManagerSummary,
   getBotRuntimeStatus,
+  getBotRuntimeFreeze,
+  getBotRuntimeSchedule,
+  getProviderAnalytics,
   getTelegramTopics,
   importBotManagerBackup,
   listBotManagerBackups,
@@ -79,21 +92,36 @@ import {
   updateBotCredential,
   updateBotGeneralConfig,
   updateBotIdentity,
+  updateBotRuntimeFreeze,
+  updateBotRuntimeSchedule,
   updateOpenRouterProfile,
+  updateProviderAccount,
+  updateProviderAnalyticsCredential,
   updateTelegramTopicLock,
   type BotManagerBackupJob,
   uploadBotProfileImage,
   type BotFileKind,
   type BotIdentity,
   type BotIdentityDetail,
+  type BotChatAccess,
+  type BotChatAccessMode,
   type BotIdentityFile,
   type BotProvider,
+  type BotProviderAccount,
+  type BotProviderAnalytics,
   type BotRuntimeStatus,
+  type BotRuntimeFreeze,
+  type BotRuntimeSchedule,
   type BotSummary,
   type OpenRouterProfile,
   type TelegramTopicLock,
   type TelegramTopicsResponse,
 } from "@/services/botManagerApi";
+import {
+  createDefaultScheduleInput,
+  scheduleInputFromTask,
+  type ScheduleInput,
+} from "@/services/schedulerTypes";
 import { getCharactersPage } from "@/services/loreApi";
 import { ApiError } from "@/services/restClient";
 import type { Character } from "@/types";
@@ -104,11 +132,15 @@ const providers: Array<{ value: BotProvider; label: string }> = [
   { value: "groq", label: "Groq" },
   { value: "openai", label: "OpenAI" },
   { value: "openrouter", label: "OpenRouter" },
+  { value: "opencode", label: "OpenCode" },
   { value: "deepseek", label: "DeepSeek" },
   { value: "zhipu", label: "Zhipu" },
   { value: "vllm", label: "vLLM" },
 ];
 const normalProviders = providers.filter((provider) => provider.value !== "openrouter") as Array<{ value: Exclude<BotProvider, "openrouter">; label: string }>;
+const providerValues = new Set(providers.map((provider) => provider.value));
+const isBotProvider = (value: unknown): value is BotProvider =>
+  typeof value === "string" && providerValues.has(value as BotProvider);
 
 const fileKinds: BotFileKind[] = ["identity", "memory", "cron", "skill", "session", "tool", "user", "system", "other"];
 const tabs = ["channels", "system", "files", "memory", "cron", "sessions", "settings", "logs"] as const;
@@ -131,12 +163,30 @@ const channelTabs: Array<{ key: ChannelKey; label: string; detail: string; icon:
   { key: "dingtalk", label: "DingTalk", detail: "Robot webhook", icon: MessageCircle },
 ];
 
+const defaultChatAccess: BotChatAccess = {
+  mode: "disabled",
+  allowedConversationIds: [],
+  allowBotToBot: false,
+  maxTurns: 2,
+  maxTokensPerRun: 1200,
+};
+
+function normalizeChatAccess(value?: Partial<BotChatAccess> | null): BotChatAccess {
+  return {
+    ...defaultChatAccess,
+    ...(value ?? {}),
+    allowedConversationIds: [...(value?.allowedConversationIds ?? [])],
+  };
+}
+
 type BotIdentityDraft = {
   name: string;
   roleTitle: string;
   description: string;
   runtimeProvider: string;
+  runtimeProviderAccountId: string;
   runtimeOpenRouterProfileId: string;
+  chatAccess: BotChatAccess;
 };
 
 type BotSettingsDraft = {
@@ -175,6 +225,75 @@ type OpenRouterDraft = {
   tags: string[];
   notes: string;
 };
+
+type ProviderAccountDraft = {
+  id?: string;
+  provider: BotProvider;
+  name: string;
+  apiKey: string;
+  keyPreview?: string;
+  apiBase: string;
+  modelId: string;
+  tags: string[];
+  notes: string;
+};
+
+type ProviderCredentialDraft = {
+  apiKey: string;
+  apiBase: string;
+  modelId: string;
+  analyticsApiKey: string;
+  analyticsOrganizationId: string;
+  analyticsProjectId: string;
+  analyticsApiKeyId: string;
+  analyticsBillingAccountId: string;
+};
+
+type ZeroClawAuditIdentity = {
+  identityId: string;
+  slug: string;
+  name: string;
+  isMain: boolean;
+  audit: {
+    canonicalFileCount: number;
+    workspaceFileCount: number;
+    cronJobCount: number;
+    cronSkippedCount: number;
+    memoryReferenceCount: number;
+  };
+};
+
+type ZeroClawAudit = {
+  translationVersion: number | null;
+  identityCount: number;
+  identities: ZeroClawAuditIdentity[];
+};
+
+const defaultModelIds: Partial<Record<BotProvider, string>> = {
+  gemini: "gemini-2.5-flash",
+  anthropic: "claude-sonnet-4-5",
+  groq: "llama-3.1-8b-instant",
+  openai: "gpt-4.1-mini",
+  opencode: "mimo-v2.5-free",
+  deepseek: "deepseek-chat",
+  zhipu: "glm-4.5",
+  vllm: "local-model",
+};
+
+const analyticsKeyProviders = new Set<BotProvider>(["openai", "anthropic"]);
+
+function createProviderCredentialDraft(provider: BotProvider, metadata: JsonRecord = {}, analyticsMetadata: JsonRecord = {}): ProviderCredentialDraft {
+  return {
+    apiKey: "",
+    apiBase: "",
+    modelId: readString(metadata.modelId, defaultModelIds[provider] ?? ""),
+    analyticsApiKey: "",
+    analyticsOrganizationId: readString(analyticsMetadata.organizationId),
+    analyticsProjectId: readString(analyticsMetadata.projectId),
+    analyticsApiKeyId: readString(analyticsMetadata.apiKeyId),
+    analyticsBillingAccountId: readString(analyticsMetadata.billingAccountId),
+  };
+}
 
 const inputClass =
   "min-w-0 w-full rounded-sm border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:ring-1 focus:ring-primary";
@@ -215,8 +334,92 @@ function readString(value: unknown, fallback = "") {
   return typeof value === "string" ? value : fallback;
 }
 
+function readNumber(value: unknown, fallback = 0) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function extractZeroClawAudit(value: unknown): ZeroClawAudit | null {
+  const bundle = asRecord(asRecord(value).runtimeBundle);
+  const zeroClaw = asRecord(bundle.zeroclaw);
+  const identities = Array.isArray(zeroClaw.identities)
+    ? zeroClaw.identities.map((entry) => {
+      const record = asRecord(entry);
+      const audit = asRecord(record.audit);
+      return {
+        identityId: readString(record.identityId),
+        slug: readString(record.slug),
+        name: readString(record.name),
+        isMain: readBoolean(record.isMain, false),
+        audit: {
+          canonicalFileCount: readNumber(audit.canonicalFileCount),
+          workspaceFileCount: readNumber(audit.workspaceFileCount),
+          cronJobCount: readNumber(audit.cronJobCount),
+          cronSkippedCount: readNumber(audit.cronSkippedCount),
+          memoryReferenceCount: readNumber(audit.memoryReferenceCount),
+        },
+      };
+    }).filter((entry) => entry.identityId || entry.slug || entry.name)
+    : [];
+  if (!identities.length && typeof zeroClaw.translationVersion !== "number") return null;
+  return {
+    translationVersion: typeof zeroClaw.translationVersion === "number" ? zeroClaw.translationVersion : null,
+    identityCount: readNumber(zeroClaw.identityCount, identities.length),
+    identities,
+  };
+}
+
 function readNumberText(value: unknown, fallback: number) {
   return typeof value === "number" && Number.isFinite(value) ? String(value) : readString(value, String(fallback));
+}
+
+function formatCount(value: unknown) {
+  const number = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat().format(number);
+}
+
+function formatAxisCount(value: unknown) {
+  const number = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(number);
+}
+
+function formatChartDate(value: unknown) {
+  return typeof value === "string" && value.length >= 10 ? value.slice(5, 10) : String(value ?? "");
+}
+
+function formatMoney(value: unknown, currency = "USD") {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "-";
+  return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 4 }).format(value);
+}
+
+function formatSignedMoney(value: unknown, currency = "USD") {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "";
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+  return `${sign}${formatMoney(Math.abs(value), currency)}`;
+}
+
+function creditBalanceMetricParts(analytics: BotProviderAnalytics | null) {
+  const currency = analytics?.currency ?? "USD";
+  const base = formatMoney(analytics?.creditBalance, currency);
+  const parts: Array<{ value: string; kind: "down" | "up" }> = [];
+  if (!analytics || typeof analytics.creditBalance !== "number" || !Number.isFinite(analytics.creditBalance)) return { base, parts };
+  if (typeof analytics.currentSpend === "number" && Number.isFinite(analytics.currentSpend) && analytics.currentSpend > 0) {
+    parts.push({ value: `-${formatMoney(analytics.currentSpend, currency)}`, kind: "down" });
+  }
+  const topUpAmount = typeof analytics.topUpAmount === "number" && Number.isFinite(analytics.topUpAmount)
+    ? analytics.topUpAmount
+    : null;
+  if (typeof topUpAmount === "number" && topUpAmount > 0 && (parts.length > 0 || topUpAmount !== analytics.creditBalance)) {
+    parts.push({ value: formatSignedMoney(topUpAmount, currency), kind: "up" });
+  }
+  return { base, parts };
+}
+
+function creditBalanceInfo(analytics: BotProviderAnalytics | null) {
+  if (!analytics) return "Balance and spend are loaded after provider analytics refresh.";
+  const spendSource = typeof analytics.currentSpend === "number" && Number.isFinite(analytics.currentSpend)
+    ? analytics.monthlySpend === analytics.currentSpend && analytics.source === "provider_api" ? "provider API" : "local usage events"
+    : "not available";
+  return `Spend follows the selected range and uses ${spendSource} when provider spend data is unavailable. Local estimates depend on recorded runtime token usage and known provider pricing, so they may differ from the provider billing page.`;
 }
 
 function readBoolean(value: unknown, fallback: boolean) {
@@ -576,6 +779,7 @@ export default function BotManagerPage() {
   const [generalDraftDirty, setGeneralDraftDirty] = useState(() => Boolean(readStoredGeneralConfigDraft()));
   const generalDraftDirtyRef = useRef(generalDraftDirty);
   const [syncLog, setSyncLog] = useState("");
+  const [zeroClawAudit, setZeroClawAudit] = useState<ZeroClawAudit | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<BotRuntimeStatus | null>(null);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
@@ -584,17 +788,28 @@ export default function BotManagerPage() {
     personalities: false,
     backup: false,
   });
-  type MainTab = "runtime" | "credentials" | "personalities" | "config" | "backups";
+  type MainTab = "runtime" | "providers" | "personalities" | "config" | "backups";
   const [activeMainTab, setActiveMainTab] = useState<MainTab>("runtime");
 
-  const [credentialProvider, setCredentialProvider] = useState<BotProvider>("gemini");
-  const [credentialApiKey, setCredentialApiKey] = useState("");
-  const [credentialApiBase, setCredentialApiBase] = useState("");
-  const [credentialModelId, setCredentialModelId] = useState("");
+  const [providerDrafts, setProviderDrafts] = useState<Partial<Record<BotProvider, ProviderCredentialDraft>>>({});
+  const [selectedAnalyticsProvider, setSelectedAnalyticsProvider] = useState<BotProvider>("deepseek");
+  useEffect(() => {
+    const runtimeProvider = summary?.runtimeStatus.activeProvider;
+    if (isBotProvider(runtimeProvider)) setSelectedAnalyticsProvider(runtimeProvider);
+  }, [summary?.runtimeStatus.activeProvider]);
+  const [analyticsRange, setAnalyticsRange] = useState<"7d" | "30d" | "90d">("7d");
+  const [providerAnalytics, setProviderAnalytics] = useState<BotProviderAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [credentialPassword, setCredentialPassword] = useState("");
   const [credentialKey, setCredentialKey] = useState("");
   const [credentialConfirm, setCredentialConfirm] = useState("");
   const [credentialUnlocked, setCredentialUnlocked] = useState(false);
+  const [providerAccounts, setProviderAccounts] = useState<BotProviderAccount[]>([]);
+  const [providerAccountProvider, setProviderAccountProvider] = useState<BotProvider>("openai");
+  const [providerAccountSearch, setProviderAccountSearch] = useState("");
+  const [providerAccountFilter, setProviderAccountFilter] = useState("all");
+  const [providerAccountDraft, setProviderAccountDraft] = useState<ProviderAccountDraft>({ provider: "openai", name: "", apiKey: "", apiBase: "", modelId: defaultModelIds.openai ?? "", tags: [], notes: "" });
   const [openRouterProfiles, setOpenRouterProfiles] = useState<OpenRouterProfile[]>([]);
   const [openRouterSearch, setOpenRouterSearch] = useState("");
   const [openRouterFilter, setOpenRouterFilter] = useState("all");
@@ -621,7 +836,7 @@ export default function BotManagerPage() {
   const [selectedLoreId, setSelectedLoreId] = useState("");
   const [defaultRegenerateMode, setDefaultRegenerateMode] = useState<"safe" | "force">("safe");
   const [defaultRegenerateConfirm, setDefaultRegenerateConfirm] = useState("");
-  const [identityDraft, setIdentityDraft] = useState<BotIdentityDraft>({ name: "", roleTitle: "", description: "", runtimeProvider: "", runtimeOpenRouterProfileId: "" });
+  const [identityDraft, setIdentityDraft] = useState<BotIdentityDraft>({ name: "", roleTitle: "", description: "", runtimeProvider: "", runtimeProviderAccountId: "", runtimeOpenRouterProfileId: "", chatAccess: normalizeChatAccess() });
   const [channelsDraft, setChannelsDraft] = useState<JsonRecord>(createDefaultChannels());
   const channelsDraftRef = useRef<JsonRecord>(channelsDraft);
   const [selectedChannel, setSelectedChannel] = useState<ChannelKey>("telegram");
@@ -681,12 +896,32 @@ export default function BotManagerPage() {
     credentialKey.trim().length >= 16 &&
     credentialConfirm === "CREDENTIALS";
 
-  const selectedCredentialConfigured = Boolean(summary?.credentials.some((item) => item.provider === credentialProvider && item.configured));
-  const canSubmitCredential =
-    credentialUnlocked &&
-    (credentialApiKey.trim().length > 0 || selectedCredentialConfigured) &&
-    credentialModelId.trim().length > 0 &&
-    canUnlockCredential;
+  const credentialForProvider = (provider: BotProvider) => summary?.credentials.find((item) => item.provider === provider);
+  const analyticsCredentialForProvider = (provider: BotProvider) => summary?.analyticsCredentials?.find((item) => item.provider === provider);
+  const draftForProvider = (provider: BotProvider) => {
+    const credential = credentialForProvider(provider);
+    const analyticsCredential = analyticsCredentialForProvider(provider);
+    return providerDrafts[provider] ?? createProviderCredentialDraft(provider, asRecord(credential?.metadata), asRecord(analyticsCredential?.metadata));
+  };
+  const updateProviderDraft = (provider: BotProvider, patch: Partial<ProviderCredentialDraft>) => {
+    setProviderDrafts((current) => ({
+      ...current,
+      [provider]: {
+        ...draftForProvider(provider),
+        ...patch,
+      },
+    }));
+  };
+  const canSubmitCredential = (provider: BotProvider) => {
+    const draft = draftForProvider(provider);
+    const configured = Boolean(credentialForProvider(provider)?.configured);
+    return credentialUnlocked && (draft.apiKey.trim().length > 0 || configured) && draft.modelId.trim().length > 0 && canUnlockCredential;
+  };
+  const canSubmitAnalyticsCredential = (provider: BotProvider) => {
+    const draft = draftForProvider(provider);
+    const configured = Boolean(analyticsCredentialForProvider(provider)?.configured);
+    return credentialUnlocked && (draft.analyticsApiKey.trim().length > 0 || configured) && canUnlockCredential;
+  };
 
   const loadSummary = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -694,6 +929,12 @@ export default function BotManagerPage() {
     try {
       const next = await getBotManagerSummary();
       setSummary(next);
+      const nextProviderAccounts = next.providerAccounts ?? (next.openRouterProfiles ?? []).map((profile) => ({
+        ...profile,
+        provider: "openrouter" as BotProvider,
+        metadata: {},
+      }));
+      setProviderAccounts(nextProviderAccounts);
       setGeneralBase(next.generalConfig);
       const savedDraft = createGeneralConfigDraft(next.generalConfig);
       const storedDraft = readStoredGeneralConfigDraft();
@@ -724,7 +965,7 @@ export default function BotManagerPage() {
       setRuntimeError(null);
       return next;
     } catch (err) {
-      setRuntimeError(err instanceof Error ? err.message : "Nanobot runtime unavailable.");
+      setRuntimeError(err instanceof Error ? err.message : "ZeroClaw runtime unavailable.");
       return null;
     }
   }, []);
@@ -738,6 +979,20 @@ export default function BotManagerPage() {
       toast({ title: "OpenRouter profiles unavailable", description: err instanceof Error ? err.message : "Unable to load OpenRouter profiles." });
     }
   }, [openRouterFilter, openRouterPage, openRouterSearch, toast]);
+
+  const loadProviderAnalytics = useCallback(async () => {
+    if (!isBotProvider(summary?.runtimeStatus.activeProvider)) return;
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    try {
+      const next = await getProviderAnalytics(selectedAnalyticsProvider, analyticsRange);
+      setProviderAnalytics(next);
+    } catch (err) {
+      setAnalyticsError(err instanceof Error ? err.message : "Provider analytics unavailable.");
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [analyticsRange, selectedAnalyticsProvider, summary?.runtimeStatus.activeProvider]);
 
   const loadBackupJobs = useCallback(async () => {
     try {
@@ -759,7 +1014,9 @@ export default function BotManagerPage() {
         roleTitle: next.roleTitle,
         description: next.description,
         runtimeProvider: next.runtimeProvider ?? "",
+        runtimeProviderAccountId: next.runtimeProviderAccountId ?? next.runtimeOpenRouterProfileId ?? "",
         runtimeOpenRouterProfileId: next.runtimeOpenRouterProfileId ?? "",
+        chatAccess: normalizeChatAccess(next.chatAccess),
       });
       const nextChannels = normalizeChannels(next.channels);
       const nextSettingsBase = asRecord(next.settings);
@@ -789,16 +1046,21 @@ export default function BotManagerPage() {
       const nextSummary = await loadSummary(true);
       if (!nextSummary) throw new Error("Bot Manager unavailable.");
       const nextRuntime = await loadRuntimeStatus(true);
-      if (!nextSummary.runtimeStatus.nanobotConfigured || !nextRuntime) {
-        setSyncLog(toJsonText({ autoSync: true, skipped: true, reason: "Nanobot unavailable", runtime: nextRuntime }));
+      const nextRuntimeConfigured = Boolean(nextSummary.runtimeStatus.runtimeConfigured);
+      if (!nextRuntimeConfigured || !nextRuntime) {
+        setSyncLog(toJsonText({ autoSync: true, skipped: true, reason: "ZeroClaw unavailable", runtime: nextRuntime }));
+        setZeroClawAudit(null);
         return;
       }
       const result = await syncBotManagerRuntime();
       setSyncLog(toJsonText({ autoSync: true, ...result }));
-      if (result.nanobot && typeof result.nanobot === "object") setRuntimeStatus(result.nanobot as BotRuntimeStatus);
+      setZeroClawAudit(extractZeroClawAudit(result));
+      const runtimePayload = result.runtime;
+      if (runtimePayload && typeof runtimePayload === "object") setRuntimeStatus(runtimePayload as BotRuntimeStatus);
       await Promise.all([loadSummary(true), loadRuntimeStatus(true)]);
     } catch (err) {
       setSyncLog(toJsonText({ autoSync: true, error: err instanceof Error ? err.message : "Request failed." }));
+      setZeroClawAudit(null);
       await Promise.all([loadSummary(true), loadRuntimeStatus(true)]);
     } finally {
       setBusy(null);
@@ -827,8 +1089,8 @@ export default function BotManagerPage() {
   }, [allowed, loadRuntimeStatus, pageVisible]);
 
   useEffect(() => {
-    if (credentialsVisible && credentialUnlocked) void loadOpenRouterProfiles();
-  }, [credentialUnlocked, credentialsVisible, loadOpenRouterProfiles]);
+    if (allowed && pageVisible && activeMainTab === "providers") void loadProviderAnalytics();
+  }, [activeMainTab, allowed, loadProviderAnalytics, pageVisible]);
 
   useEffect(() => {
     if (backupVisible) void loadBackupJobs();
@@ -920,7 +1182,7 @@ export default function BotManagerPage() {
 
   const refreshVisibleData = async () => {
     const tasks: Array<Promise<unknown>> = [loadSummary(), loadRuntimeStatus()];
-    if (credentialsVisible && credentialUnlocked) tasks.push(loadOpenRouterProfiles());
+    if (activeMainTab === "providers") tasks.push(loadProviderAnalytics());
     if (backupVisible) tasks.push(loadBackupJobs());
     await Promise.all(tasks);
     if (personalitiesVisible && selectedId && editingIdentityId === selectedId) await loadDetail(selectedId);
@@ -978,9 +1240,7 @@ export default function BotManagerPage() {
 
   const lockCredentials = () => {
     setCredentialUnlocked(false);
-    setCredentialApiKey("");
-    setCredentialApiBase("");
-    setCredentialModelId("");
+    setProviderDrafts({});
     setCredentialPassword("");
     setCredentialKey("");
     setCredentialConfirm("");
@@ -1000,23 +1260,54 @@ export default function BotManagerPage() {
       "Credentials unlocked",
     );
 
-  const saveCredential = () =>
+  const saveCredential = (provider: Exclude<BotProvider, "openrouter">) =>
     runAction(
-      "credential",
+      `credential-${provider}`,
       async () => {
+        const draft = draftForProvider(provider);
         await updateBotCredential({
-          provider: credentialProvider,
-          apiKey: credentialApiKey,
-          apiBase: credentialApiBase.trim() || undefined,
-          modelId: credentialModelId.trim(),
+          provider,
+          apiKey: draft.apiKey,
+          apiBase: draft.apiBase.trim() || undefined,
+          modelId: draft.modelId.trim(),
           password: credentialPassword,
           botManagerKey: credentialKey,
           confirmText: "CREDENTIALS",
         });
-        lockCredentials();
+        setProviderDrafts((current) => ({
+          ...current,
+          [provider]: { ...draft, apiKey: "" },
+        }));
         await loadSummary();
+        if (selectedAnalyticsProvider === provider) await loadProviderAnalytics();
       },
       "Credential saved",
+    );
+
+  const saveAnalyticsCredential = (provider: BotProvider) =>
+    runAction(
+      `analytics-credential-${provider}`,
+      async () => {
+        const draft = draftForProvider(provider);
+        await updateProviderAnalyticsCredential({
+          provider,
+          apiKey: draft.analyticsApiKey,
+          organizationId: draft.analyticsOrganizationId.trim() || undefined,
+          projectId: draft.analyticsProjectId.trim() || undefined,
+          apiKeyId: draft.analyticsApiKeyId.trim() || undefined,
+          billingAccountId: draft.analyticsBillingAccountId.trim() || undefined,
+          password: credentialPassword,
+          botManagerKey: credentialKey,
+          confirmText: "CREDENTIALS",
+        });
+        setProviderDrafts((current) => ({
+          ...current,
+          [provider]: { ...draft, analyticsApiKey: "" },
+        }));
+        await loadSummary();
+        if (selectedAnalyticsProvider === provider) await loadProviderAnalytics();
+      },
+      "Analytics credential saved",
     );
 
   const saveGeneralConfig = () =>
@@ -1091,8 +1382,9 @@ export default function BotManagerPage() {
           }
           : current);
         setDetail((current) => current?.id === activated.id ? { ...current, ...activated } : current);
+        toast({ title: "Jangan lupa Sync Runtime", description: `Personality ${activated.name} aktif, klik Sync Runtime agar Zeroclaw pakai akun ${activated.runtimeProvider || "default"} yang terikat.` });
       },
-      "Active personality updated",
+      "Active personality updated — Sync Runtime untuk apply",
     );
 
   const deactivateIdentity = (identity: BotIdentity) =>
@@ -1150,8 +1442,9 @@ export default function BotManagerPage() {
           }
           : current);
         setDetail((current) => current?.id === updated.id ? { ...current, ...updated } : current);
+        toast({ title: "Jangan lupa Sync Runtime", description: `Main personality ${updated.name} aktif, klik Sync Runtime agar Zeroclaw pakai akun yang terikat.` });
       },
-      "Main personality updated",
+      "Main personality updated — Sync Runtime untuk apply",
     );
 
   const removeIdentity = (identity: BotIdentity) =>
@@ -1180,6 +1473,71 @@ export default function BotManagerPage() {
         await refreshVisibleData();
       },
       "Provider activated",
+    );
+
+  const resetProviderAccountDraft = (provider: BotProvider = providerAccountProvider) => {
+    setProviderAccountDraft({
+      provider,
+      name: "",
+      apiKey: "",
+      apiBase: "",
+      modelId: defaultModelIds[provider] ?? "",
+      tags: [],
+      notes: "",
+    });
+  };
+
+  const saveProviderAccount = () =>
+    runAction(
+      providerAccountDraft.id ? `provider-account-${providerAccountDraft.id}` : "provider-account-create",
+      async () => {
+        const payload = {
+          provider: providerAccountDraft.provider,
+          name: providerAccountDraft.name.trim(),
+          apiKey: providerAccountDraft.apiKey,
+          apiBase: providerAccountDraft.apiBase.trim() || undefined,
+          modelId: providerAccountDraft.modelId.trim(),
+          tags: providerAccountDraft.tags,
+          notes: providerAccountDraft.notes,
+          password: credentialPassword,
+          botManagerKey: credentialKey,
+          confirmText: "CREDENTIALS" as const,
+        };
+        if (providerAccountDraft.id) await updateProviderAccount(providerAccountDraft.id, payload);
+        else await createProviderAccount(payload);
+        resetProviderAccountDraft(providerAccountDraft.provider);
+        await refreshVisibleData();
+      },
+      providerAccountDraft.id ? "Provider account updated" : "Provider account created",
+    );
+
+  const setActiveProviderAccount = (account: BotProviderAccount) =>
+    runAction(
+      `provider-account-activate-${account.id}`,
+      async () => {
+        await activateProviderAccount(account.id, {
+          password: credentialPassword,
+          botManagerKey: credentialKey,
+          confirmText: "CREDENTIALS",
+        });
+        await refreshVisibleData();
+      },
+      "Provider account activated",
+    );
+
+  const removeProviderAccount = (account: BotProviderAccount) =>
+    runAction(
+      `provider-account-delete-${account.id}`,
+      async () => {
+        await deleteProviderAccount(account.id, {
+          password: credentialPassword,
+          botManagerKey: credentialKey,
+          confirmText: "CREDENTIALS",
+        });
+        if (providerAccountDraft.id === account.id) resetProviderAccountDraft(account.provider as BotProvider);
+        await refreshVisibleData();
+      },
+      "Provider account deleted",
     );
 
   const saveOpenRouterProfile = () =>
@@ -1240,12 +1598,20 @@ export default function BotManagerPage() {
       async () => {
         const submittedChannels = channelsDraftRef.current;
         const submittedSettings = mergeRecord(settingsBaseRef.current, settingsDraftToConfig(settingsDraftRef.current));
+        // ponytail: ensure explicit account when provider set, avoid silent global fallback
+        const provider = identityDraft.runtimeProvider || "";
+        const accountId = identityDraft.runtimeProviderAccountId || "";
+        const effectiveAccountId = provider && !accountId
+          ? (providerAccounts.find((a) => a.provider === provider && a.isActive)?.id || providerAccounts.find((a) => a.provider === provider)?.id || "")
+          : accountId;
         const updated = await updateBotIdentity(detail.id, {
           name: identityDraft.name,
           roleTitle: identityDraft.roleTitle,
           description: identityDraft.description,
-          runtimeProvider: identityDraft.runtimeProvider || undefined,
-          runtimeOpenRouterProfileId: identityDraft.runtimeProvider === "openrouter" ? identityDraft.runtimeOpenRouterProfileId || undefined : "",
+          runtimeProvider: provider || undefined,
+          runtimeProviderAccountId: provider ? effectiveAccountId || undefined : "",
+          runtimeOpenRouterProfileId: provider === "openrouter" ? effectiveAccountId || undefined : undefined,
+          chatAccess: normalizeChatAccess(identityDraft.chatAccess),
           channels: submittedChannels,
           settings: submittedSettings,
           loreCharacterId: selectedLoreId || undefined,
@@ -1256,7 +1622,9 @@ export default function BotManagerPage() {
           roleTitle: updated.roleTitle,
           description: updated.description,
           runtimeProvider: updated.runtimeProvider ?? "",
+          runtimeProviderAccountId: updated.runtimeProviderAccountId ?? updated.runtimeOpenRouterProfileId ?? "",
           runtimeOpenRouterProfileId: updated.runtimeOpenRouterProfileId ?? "",
+          chatAccess: normalizeChatAccess(updated.chatAccess),
         });
         const nextChannels = normalizeChannels(updated.channels);
         const nextSettingsBase = asRecord(updated.settings);
@@ -1350,7 +1718,9 @@ export default function BotManagerPage() {
 
       const result = await syncBotManagerRuntime();
       setSyncLog(toJsonText(result));
-      if (result.nanobot && typeof result.nanobot === "object") setRuntimeStatus(result.nanobot as BotRuntimeStatus);
+      setZeroClawAudit(extractZeroClawAudit(result));
+      const runtimePayload = result.runtime;
+      if (runtimePayload && typeof runtimePayload === "object") setRuntimeStatus(runtimePayload as BotRuntimeStatus);
       await refreshVisibleData();
       toast({
         title: result.reloadSkipped ? "Runtime reload skipped" : result.restartGateway ? "Runtime synced and restarted" : "Runtime synced",
@@ -1359,6 +1729,7 @@ export default function BotManagerPage() {
     } catch (err) {
       await loadSummary();
       await loadRuntimeStatus(true);
+      setZeroClawAudit(null);
       toast({ title: "Bot Manager action failed", description: formatBotManagerError(err) });
     } finally {
       setBusy(null);
@@ -1374,7 +1745,7 @@ export default function BotManagerPage() {
         setRuntimeError(null);
         setSyncLog(toJsonText(result));
       },
-      `Nanobot ${action} requested`,
+      `ZeroClaw ${action} requested`,
     );
 
   const controlRuntimeIdentity = (identity: BotIdentity, action: "start" | "stop" | "restart") =>
@@ -1452,9 +1823,9 @@ export default function BotManagerPage() {
   const cronFiles = detail?.files.filter(isCronFile) ?? [];
   const sessionFiles = detail?.files.filter(isSessionFile) ?? [];
   const workspaceFiles = detail?.files.filter((file) => !isMemoryFile(file) && !isCronFile(file) && !isSessionFile(file)) ?? [];
-  const nanobotConfigured = Boolean(summary?.runtimeStatus.nanobotConfigured);
-  const runtimeActionDisabled = Boolean(busy) || !nanobotConfigured;
-  const gatewayState = runtimeStatus?.gateway?.state ?? (nanobotConfigured ? "unknown" : "not configured");
+  const runtimeConfigured = Boolean(summary?.runtimeStatus.runtimeConfigured);
+  const runtimeActionDisabled = Boolean(busy) || !runtimeConfigured;
+  const gatewayState = runtimeStatus?.gateway?.state ?? (runtimeConfigured ? "unknown" : "not configured");
   const gatewayRunning = gatewayState === "running";
   const gatewayTransitioning = gatewayState === "starting" || gatewayState === "stopping";
   const gatewayStartedAtMs = runtimeStatus?.gateway?.startedAt ? Date.parse(runtimeStatus.gateway.startedAt) : Number.NaN;
@@ -1481,7 +1852,7 @@ export default function BotManagerPage() {
     : syncBlockedByLocalDraft
       ? "Save config first"
     : runtimeError
-      ? "Nanobot unavailable"
+      ? "ZeroClaw unavailable"
       : runtimeConflictCount > 0
         ? `Sync conflict (${runtimeConflictCount})`
       : runtimeDirty && summary?.runtimeSync.lastRuntimeSyncError
@@ -1490,18 +1861,40 @@ export default function BotManagerPage() {
           ? "Sync needed"
           : "Up to date";
   const syncStateVariant: "default" | "outline" | "destructive" =
-    syncState === "Sync failed" || syncState === "Nanobot unavailable" || syncState.startsWith("Sync conflict") ? "destructive" : syncState === "Sync needed" || syncState === "Save config first" ? "default" : "outline";
+    syncState === "Sync failed" || syncState === "ZeroClaw unavailable" || syncState.startsWith("Sync conflict") ? "destructive" : syncState === "Sync needed" || syncState === "Save config first" ? "default" : "outline";
   const lastSyncRaw = runtimeStatus?.morneven?.syncedAt ?? summary?.runtimeSync.lastRuntimeSyncAt;
   const lastSync = lastSyncRaw
     ? new Date(lastSyncRaw).toLocaleString()
     : "Never";
   const activeProvider = summary?.runtimeStatus.activeProvider ?? "";
   const activeOpenRouterProfileId = summary?.runtimeStatus.activeOpenRouterProfileId ?? "";
+  const activeProviderAccountId = summary?.runtimeStatus.activeProviderAccountId ?? activeOpenRouterProfileId;
+  const activeProviderAccountName = providerAccounts.find((account) => account.id === activeProviderAccountId)?.name ?? "";
   const syncReasonText = runtimeDirty ? (summary?.runtimeSync.runtimeDirtyReason ?? "Runtime changes pending") : "No pending runtime changes";
-  const selectedCredential = summary?.credentials.find((item) => item.provider === credentialProvider);
-  const credentialApiKeyValue: SecretFieldValue = credentialApiKey || (selectedCredential?.configured
-    ? { __botManagerSecret: true, configured: true, preview: selectedCredential.keyPreview || "***" }
-    : "");
+  const currentProviderAnalytics = providerAnalytics?.provider === selectedAnalyticsProvider ? providerAnalytics : null;
+  const balanceSparklineData = (() => {
+    const creditBalance = currentProviderAnalytics?.creditBalance;
+    if (typeof creditBalance !== "number" || !Number.isFinite(creditBalance)) return [];
+    const points = currentProviderAnalytics?.points ?? [];
+    if (points.length === 0) {
+      return [{
+        date: new Date().toISOString().slice(0, 10),
+        creditBalance,
+        dailySpend: 0,
+      }];
+    }
+    const totalCost = points.reduce((total, point) => total + (Number.isFinite(point.cost) ? Math.max(point.cost, 0) : 0), 0);
+    let spentThroughPoint = 0;
+    return points.map((point) => {
+      const pointCost = Number.isFinite(point.cost) ? Math.max(point.cost, 0) : 0;
+      spentThroughPoint += pointCost;
+      return {
+        date: point.date,
+        creditBalance: creditBalance + Math.max(totalCost - spentThroughPoint, 0),
+        dailySpend: pointCost,
+      };
+    });
+  })();
   const personalityPageSize = 5;
   const filteredPersonalities = (summary?.identities ?? []).filter((identity) => {
     const haystack = `${identity.name} ${identity.roleTitle} ${identity.description}`.toLowerCase();
@@ -1592,7 +1985,7 @@ export default function BotManagerPage() {
         <div role="tablist" aria-label="Bot Manager sections" className="hud-border bg-card/40 p-1 flex gap-1 overflow-x-auto">
           {([
             { key: "runtime", label: "Runtime", icon: Bot },
-            { key: "credentials", label: "Credentials", icon: KeyRound },
+            { key: "providers", label: "Providers", icon: KeyRound },
             { key: "personalities", label: "Personalities", icon: Brain },
             { key: "config", label: "Config", icon: Settings },
             { key: "backups", label: "Backups", icon: Download },
@@ -1653,11 +2046,52 @@ export default function BotManagerPage() {
               <Metric label={isMultiRuntime ? "Active Runtimes" : "Gateway State"} value={isMultiRuntime ? String(activeRuntimeIdentities.length) : gatewayState} />
               <Metric label={isMultiRuntime ? "Running Runtimes" : "Gateway Uptime"} value={isMultiRuntime ? `${runningRuntimeCount} running / ${Math.max(activeRuntimeIdentities.length - runningRuntimeCount, 0)} stopped` : formatUptime(gatewayUptimeSeconds)} />
               <Metric label={isMultiRuntime ? "Enabled Channels" : "Last Sync"} value={isMultiRuntime ? String(enabledRuntimeChannelCount) : lastSync} />
-              <Metric label={isMultiRuntime ? "Main Personality" : "Provider"} value={isMultiRuntime ? ((summary?.identities.find((identity) => identity.isMain) ?? activeIdentity)?.name ?? "None") : (activeProvider || "default provider")} />
+              <Metric label={isMultiRuntime ? "Main Personality" : "Provider / Account"} value={isMultiRuntime ? ((summary?.identities.find((identity) => identity.isMain) ?? activeIdentity)?.name ?? "None") : `${activeProvider || "default provider"}${activeProviderAccountName ? ` / ${activeProviderAccountName}` : ""}`} />
               <Metric label="Saved Personalities" value={String(summary?.identities.length ?? 0)} />
-              <Metric label="Nanobot Link" value={nanobotConfigured ? "Configured" : "Not configured"} />
+              <Metric label="ZeroClaw Link" value={runtimeConfigured ? "Configured" : "Not configured"} />
               <Metric label="Sync State" value={syncState} />
             </div>
+            {zeroClawAudit && (
+              <div className="mt-4 rounded-sm border border-border/70 bg-background/35 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Check className="h-4 w-4" />
+                    <h3 className="font-heading text-xs uppercase tracking-[0.14em]">ZeroClaw Translation Audit</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">v{zeroClawAudit.translationVersion ?? "?"}</Badge>
+                    <Badge variant="outline">{zeroClawAudit.identityCount} identities</Badge>
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                  {zeroClawAudit.identities.map((identity) => (
+                    <div key={identity.identityId || identity.slug || identity.name} className="rounded-sm border border-border/70 bg-card/50 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-heading text-sm text-foreground">{identity.name || identity.slug || identity.identityId}</p>
+                          <p className="truncate text-xs text-muted-foreground">{identity.slug || identity.identityId}</p>
+                        </div>
+                        {identity.isMain && <Badge variant="outline">Main</Badge>}
+                      </div>
+                      <div className="mt-3 grid gap-2 text-xs sm:grid-cols-5">
+                        {[
+                          ["Canonical", identity.audit.canonicalFileCount],
+                          ["Workspace", identity.audit.workspaceFileCount],
+                          ["Cron", identity.audit.cronJobCount],
+                          ["Skipped", identity.audit.cronSkippedCount],
+                          ["Memory", identity.audit.memoryReferenceCount],
+                        ].map(([label, value]) => (
+                          <div key={String(label)} className="min-w-0 rounded-sm border border-border/60 bg-background/35 p-2">
+                            <p className="truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+                            <p className="mt-1 font-heading text-sm text-foreground">{formatCount(value)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {isMultiRuntime && (
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
                 {activeRuntimeIdentities.map((identity) => {
@@ -1672,6 +2106,8 @@ export default function BotManagerPage() {
                       : status?.uptime ?? 0
                     : 0;
                   const providerLabel = identity.runtimeProvider || activeProvider || "default provider";
+                  const runtimeAccountId = identity.runtimeProviderAccountId || identity.runtimeOpenRouterProfileId || (providerLabel === activeProvider ? activeProviderAccountId : "");
+                  const accountLabel = providerAccounts.find((account) => account.id === runtimeAccountId)?.name;
                   const enabledChannels = Object.entries(asRecord(identity.channels))
                     .filter(([, value]) => asRecord(value).enabled === true)
                     .map(([key]) => key)
@@ -1686,7 +2122,7 @@ export default function BotManagerPage() {
                               <h3 className="truncate font-heading text-base text-foreground">{identity.name}</h3>
                               {identity.isMain && <Badge variant="outline">Main</Badge>}
                             </div>
-                            <p className="truncate text-sm text-muted-foreground">{providerLabel}</p>
+                            <p className="truncate text-sm text-muted-foreground">{providerLabel}{accountLabel ? ` / ${accountLabel}` : ""}</p>
                             <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{enabledChannels}</p>
                           </div>
                         </div>
@@ -1733,120 +2169,207 @@ export default function BotManagerPage() {
           </div>
 
           )}
-          {activeMainTab === "credentials" && (
+          {activeMainTab === "providers" && (
           <div className={panelClass}>
             <div className="flex items-center gap-2 text-primary">
               <KeyRound className="h-4 w-4" />
-              <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Credentials</h2>
+              <h2 className="font-heading text-sm uppercase tracking-[0.14em]">Providers</h2>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap gap-2">
-                <Badge variant={activeProvider ? "default" : "outline"}>
-                  Active provider: {activeProvider || "none"}
-                </Badge>
-                {activeProvider === "openrouter" && (
-                  <Badge variant="outline">OpenRouter profile: {openRouterProfiles.find((profile) => profile.id === activeOpenRouterProfileId)?.name ?? "selected"}</Badge>
-                )}
-              </div>
-              {credentialUnlocked && (
-                <Button type="button" variant="outline" onClick={lockCredentials} disabled={Boolean(busy)}>
-                  Lock
-                </Button>
-              )}
-            </div>
-            {!credentialUnlocked ? (
-              <div className="mt-4 grid gap-3 grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
-                <Field label="Password" value={credentialPassword} onChange={setCredentialPassword} type="password" name="bot-manager-credential-password" />
-                <Field label="Bot Manager Key" value={credentialKey} onChange={setCredentialKey} type="password" name="bot-manager-credential-key" />
-                <Field label="Confirmation" value={credentialConfirm} onChange={setCredentialConfirm} placeholder='Type "CREDENTIALS"' />
-                <Button type="button" onClick={unlockCredentials} disabled={!canUnlockCredential || Boolean(busy)}>
-                  {busy === "credential-unlock" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
-                  Unlock
-                </Button>
-              </div>
-            ) : (
-              <div className="mt-4 space-y-5">
-                <div className="space-y-2">
-                  <p className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Active providers</p>
-                  <div className="grid gap-3">
-                  {normalProviders.map((provider) => {
-                    const credential = summary?.credentials.find((item) => item.provider === provider.value);
+            <div className="mt-4 space-y-5">
+              <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-center gap-2 text-primary">
+                    <BarChart3 className="h-4 w-4" />
+                    <h3 className="font-heading text-xs uppercase tracking-[0.14em]">Provider Analytics</h3>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select className={cn(inputClass, "h-9 w-28 py-1.5")} value={analyticsRange} onChange={(event) => setAnalyticsRange(event.target.value as "7d" | "30d" | "90d")}>
+                      <option value="7d">7 days</option>
+                      <option value="30d">30 days</option>
+                      <option value="90d">90 days</option>
+                    </select>
+                    <Button type="button" variant="outline" size="sm" onClick={() => void loadProviderAnalytics()} disabled={analyticsLoading}>
+                      {analyticsLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                      Refresh
+                    </Button>
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  {providers.map((provider) => {
+                    const credential = credentialForProvider(provider.value);
+                    const analyticsCredential = analyticsCredentialForProvider(provider.value);
+                    const isSelected = selectedAnalyticsProvider === provider.value;
                     const isActive = activeProvider === provider.value;
+                    const needsAnalyticsKey = analyticsKeyProviders.has(provider.value) && !analyticsCredential?.configured;
                     return (
-                      <div key={provider.value} className={cn("rounded-sm border bg-background/35 p-3", isActive ? "border-primary/60" : "border-border/70")}>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="font-heading text-sm text-foreground">{provider.label}</p>
-                              {credential?.configured ? <Badge variant="outline" className="text-[10px]">Configured</Badge> : <Badge variant="destructive" className="text-[10px]">Missing</Badge>}
-                              {isActive && <Badge className="text-[10px]"><Check className="mr-1 h-3 w-3" />Active</Badge>}
-                            </div>
-                            <p className="truncate text-xs text-muted-foreground">{credential?.configured ? `${credential.keyPreview} / ${readString(credential.metadata.modelId, "model not set")}` : "No credential configured"}</p>
-                          </div>
-                          <Button type="button" variant={isActive ? "outline" : "default"} size="sm" onClick={() => activateProvider(provider.value)} disabled={Boolean(busy) || !credential?.configured || isActive || !canUnlockCredential}>
-                            <Power className="mr-2 h-4 w-4" />
-                            {isActive ? "Active" : "Enable"}
-                          </Button>
+                      <button
+                        key={provider.value}
+                        type="button"
+                        onClick={() => setSelectedAnalyticsProvider(provider.value)}
+                        className={cn(
+                          "rounded-sm border bg-background/40 p-3 text-left transition hover:border-primary/60",
+                          isSelected ? "border-primary" : "border-border/70",
+                        )}
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-heading text-sm text-foreground">{provider.label}</span>
+                          {isActive && <Badge className="text-[10px]">Active</Badge>}
+                          {provider.value === "openrouter" ? (
+                            providerAccounts.some((account) => account.provider === provider.value) ? <Badge variant="outline" className="text-[10px]">Configured</Badge> : <Badge variant="destructive" className="text-[10px]">Missing</Badge>
+                          ) : credential?.configured ? (
+                            <Badge variant="outline" className="text-[10px]">Configured</Badge>
+                          ) : (
+                            <Badge variant="destructive" className="text-[10px]">Missing</Badge>
+                          )}
+                          {needsAnalyticsKey && <Badge variant="secondary" className="text-[10px]">Needs key</Badge>}
+                          {!analyticsKeyProviders.has(provider.value) && !["deepseek", "openrouter"].includes(provider.value) && <Badge variant="secondary" className="text-[10px]">Local</Badge>}
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
+                </div>
+                <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                    <Metric label="Credit Balance" value={creditBalanceMetricParts(currentProviderAnalytics)} info={creditBalanceInfo(currentProviderAnalytics)}>
+                      {balanceSparklineData.length > 0 && (
+                        <ChartContainer
+                          config={{
+                            creditBalance: { label: "Balance", color: "hsl(var(--success))" },
+                          }}
+                          className="h-20 aspect-auto"
+                        >
+                          <AreaChart data={balanceSparklineData} margin={{ left: 0, right: 0, top: 6, bottom: 0 }}>
+                            <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={4} minTickGap={12} tickFormatter={formatChartDate} />
+                            <YAxis
+                              hide
+                              domain={[
+                                (value: number) => Math.max(0, value - Math.max(Math.abs(value) * 0.04, 0.25)),
+                                (value: number) => value + Math.max(Math.abs(value) * 0.04, 0.25),
+                              ]}
+                            />
+                            <ChartTooltip content={<BalanceSparklineTooltip currency={currentProviderAnalytics?.currency ?? "USD"} />} />
+                            <Area type="monotone" dataKey="creditBalance" stroke="var(--color-creditBalance)" fill="var(--color-creditBalance)" fillOpacity={0.16} strokeWidth={2} dot={{ r: 2.8, strokeWidth: 1.5 }} activeDot={{ r: 4 }} />
+                          </AreaChart>
+                        </ChartContainer>
+                      )}
+                    </Metric>
+                    <Metric label="Monthly Spend" value={formatMoney(currentProviderAnalytics?.monthlySpend, currentProviderAnalytics?.currency ?? "USD")} />
+                    <Metric label="Requests" value={formatCount(currentProviderAnalytics?.localRequestCount)} />
+                    <Metric label="Tokens" value={formatCount(currentProviderAnalytics?.localTotalTokens)} />
+                  </div>
+                  <div className="rounded-sm border border-border/70 bg-background/40 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={currentProviderAnalytics?.status === "provider_error" ? "destructive" : currentProviderAnalytics?.status === "ok" ? "default" : "outline"}>
+                          {currentProviderAnalytics?.status ?? "loading"}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">{currentProviderAnalytics?.statusMessage ?? analyticsError ?? "Loading provider analytics"}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{currentProviderAnalytics?.source ?? "local"}</span>
+                    </div>
+                    {analyticsError && <div className="mt-3 rounded-sm border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">{analyticsError}</div>}
+                    <ChartContainer
+                      config={{
+                        totalTokens: { label: "Tokens", color: "hsl(var(--primary))" },
+                        requests: { label: "Requests", color: "hsl(var(--info))" },
+                      }}
+                      className="mt-3 h-64 aspect-auto"
+                    >
+                      <AreaChart data={currentProviderAnalytics?.points ?? []} margin={{ left: 8, right: 8, top: 12, bottom: 0 }}>
+                        <CartesianGrid vertical={false} />
+                        <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} minTickGap={24} />
+                        <YAxis yAxisId="tokens" tickLine={false} axisLine={false} width={48} tickFormatter={(value) => formatAxisCount(Number(value))} domain={[0, "dataMax"]} />
+                        <YAxis yAxisId="requests" orientation="right" tickLine={false} axisLine={false} width={36} tickFormatter={(value) => formatAxisCount(Number(value))} domain={[0, "dataMax"]} allowDecimals={false} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Area yAxisId="tokens" type="monotone" dataKey="totalTokens" stroke="var(--color-totalTokens)" fill="var(--color-totalTokens)" fillOpacity={0.22} strokeWidth={2} />
+                        <Area yAxisId="requests" type="monotone" dataKey="requests" stroke="var(--color-requests)" fill="var(--color-requests)" fillOpacity={0.14} strokeWidth={2} />
+                      </AreaChart>
+                    </ChartContainer>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <p className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Add / update credential</p>
-                  <div className="rounded-sm border border-border/70 bg-background/35 p-3">
+              </div>
 
-                    <div className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_minmax(16rem,1.2fr)_minmax(14rem,1fr)_auto]">
-                      <label className="space-y-2">
-                        <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Provider</span>
-                        <select className={inputClass} value={credentialProvider} onChange={(event) => setCredentialProvider(event.target.value as BotProvider)}>
-                          {normalProviders.map((provider) => (
-                            <option key={provider.value} value={provider.value}>{provider.label}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <Field label="Model ID" value={credentialModelId} onChange={setCredentialModelId} placeholder="deepseek-chat" />
-                      <SecretField
-                        label="API Key"
-                        value={credentialApiKeyValue}
-                        onChange={(apiKey) => setCredentialApiKey(typeof apiKey === "string" ? apiKey : "")}
-                        name={`bot-manager-${credentialProvider}-api-key`}
-                        placeholder="Enter provider API key"
-                      />
-                      <Field label="API Base" value={credentialApiBase} onChange={setCredentialApiBase} placeholder="Optional provider base URL" />
-                      <Button type="button" className="h-10 whitespace-nowrap" onClick={saveCredential} disabled={!canSubmitCredential || Boolean(busy)}>
-                        {busy === "credential" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
-                        Save Credential
-                      </Button>
+              <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant={activeProvider ? "default" : "outline"}>
+                      Active provider: {activeProvider || "none"}
+                    </Badge>
+                    {activeProvider && (
+                      <Badge variant="outline">Account: {providerAccounts.find((account) => account.id === activeProviderAccountId)?.name ?? "default"}</Badge>
+                    )}
+                  </div>
+                  {credentialUnlocked && (
+                    <Button type="button" variant="outline" onClick={lockCredentials} disabled={Boolean(busy)}>
+                      Lock
+                    </Button>
+                  )}
+                </div>
+                {!credentialUnlocked ? (
+                  <div className="mt-4 grid gap-3 grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+                    <Field label="Password" value={credentialPassword} onChange={setCredentialPassword} type="password" name="bot-manager-credential-password" />
+                    <Field label="Bot Manager Key" value={credentialKey} onChange={setCredentialKey} type="password" name="bot-manager-credential-key" />
+                    <Field label="Confirmation" value={credentialConfirm} onChange={setCredentialConfirm} placeholder='Type "CREDENTIALS"' />
+                    <Button type="button" onClick={unlockCredentials} disabled={!canUnlockCredential || Boolean(busy)}>
+                      {busy === "credential-unlock" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+                      Unlock
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-5">
+                    <ProviderAccountsSection
+                      accounts={providerAccounts}
+                      activeProvider={activeProvider}
+                      activeProviderAccountId={activeProviderAccountId}
+                      busy={busy}
+                      canUseCredentialGate={canUnlockCredential}
+                      draft={providerAccountDraft}
+                      filter={providerAccountFilter}
+                      onActivate={setActiveProviderAccount}
+                      onDelete={removeProviderAccount}
+                      onDraftChange={setProviderAccountDraft}
+                      onFilterChange={setProviderAccountFilter}
+                      onProviderChange={(provider) => { setProviderAccountProvider(provider); resetProviderAccountDraft(provider); }}
+                      onSave={saveProviderAccount}
+                      onSearchChange={setProviderAccountSearch}
+                      providers={providers}
+                      search={providerAccountSearch}
+                      selectedProvider={providerAccountProvider}
+                    />
+                    <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+                      <div>
+                        <h3 className="font-heading text-base text-foreground">Provider analytics credentials</h3>
+                        <p className="text-xs text-muted-foreground">Analytics keys stay provider-level and are separate from runtime provider accounts.</p>
+                      </div>
+                      <div className="mt-4 grid gap-3 xl:grid-cols-2">
+                        {providers.filter((provider) => analyticsKeyProviders.has(provider.value)).map((provider) => {
+                          const draft = draftForProvider(provider.value);
+                          const analyticsCredential = analyticsCredentialForProvider(provider.value);
+                          const analyticsKeyValue: SecretFieldValue = draft.analyticsApiKey || (analyticsCredential?.configured
+                            ? { __botManagerSecret: true, configured: true, preview: analyticsCredential.keyPreview || "***" }
+                            : "");
+                          return (
+                            <div key={provider.value} className="rounded-sm border border-border/70 bg-background/40 p-3">
+                              <p className="font-heading text-sm text-foreground">{provider.label}</p>
+                              <div className="mt-3 grid items-end gap-3 md:grid-cols-2">
+                                <SecretField label="Analytics Key" value={analyticsKeyValue} onChange={(apiKey) => updateProviderDraft(provider.value, { analyticsApiKey: typeof apiKey === "string" ? apiKey : "" })} name={`bot-manager-${provider.value}-analytics-key`} placeholder="Enter admin analytics key" />
+                                <Field label="Organization ID" value={draft.analyticsOrganizationId} onChange={(analyticsOrganizationId) => updateProviderDraft(provider.value, { analyticsOrganizationId })} placeholder="Optional" />
+                                <Field label="Project ID" value={draft.analyticsProjectId} onChange={(analyticsProjectId) => updateProviderDraft(provider.value, { analyticsProjectId })} placeholder="Optional" />
+                                <Button type="button" variant="outline" className="h-10 whitespace-nowrap" onClick={() => saveAnalyticsCredential(provider.value)} disabled={!canSubmitAnalyticsCredential(provider.value) || Boolean(busy)}>
+                                  {busy === `analytics-credential-${provider.value}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+                                  Save Analytics
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-                </div>
-
-
-
-                <OpenRouterSection
-
-                  activeProfileId={activeOpenRouterProfileId}
-                  busy={busy}
-                  canUseCredentialGate={canUnlockCredential}
-                  draft={openRouterDraft}
-                  filter={openRouterFilter}
-                  onActivate={setActiveOpenRouterProfile}
-                  onDelete={removeOpenRouterProfile}
-                  onDraftChange={setOpenRouterDraft}
-                  onFilterChange={(value) => { setOpenRouterFilter(value); setOpenRouterPage(1); }}
-                  onPageChange={setOpenRouterPage}
-                  onSave={saveOpenRouterProfile}
-                  onSearchChange={(value) => { setOpenRouterSearch(value); setOpenRouterPage(1); }}
-                  page={openRouterPage}
-                  profiles={openRouterProfiles}
-                  search={openRouterSearch}
-                  totalPages={openRouterTotalPages}
-                />
+                )}
               </div>
-            )}
+            </div>
           </div>
           )}
 
@@ -1902,7 +2425,7 @@ export default function BotManagerPage() {
                   />
                   <ToggleControl
                     label="Allow Runtime Reload"
-                    description="Lets Sync apply backend config and workspace changes to Nanobot runtimes."
+                    description="Lets Sync apply backend config and workspace changes to ZeroClaw runtimes."
                     value={generalDraft.allowRuntimeReload}
                     onChange={(allowRuntimeReload) => updateGeneralDraft({ allowRuntimeReload })}
                   />
@@ -1911,6 +2434,7 @@ export default function BotManagerPage() {
                   <Save className="mr-2 h-4 w-4" />
                   Save General Config
                 </Button>
+                <RuntimeFreezeControl canManage={role === "author" && personnelLevel >= 7} />
               </div>
           </div>
           )}
@@ -1986,6 +2510,8 @@ export default function BotManagerPage() {
                     const loreReference = asRecord(asRecord(identity.settings).loreReference);
                     const rowEditing = editingIdentityId === identity.id;
                     const rowLoaded = rowEditing && detail?.id === identity.id;
+                    const identityAccountId = identity.runtimeProviderAccountId || identity.runtimeOpenRouterProfileId || "";
+                    const identityAccountName = providerAccounts.find((account) => account.id === identityAccountId)?.name;
                     return (
                       <div key={identity.id} className={cn("rounded-sm border border-border/80 bg-background/25", selectedId === identity.id && "border-primary")}>
                         <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
@@ -1995,6 +2521,7 @@ export default function BotManagerPage() {
                               <h3 className="truncate font-heading text-base text-foreground">{identity.name}</h3>
                               {identity.isActive && <Badge><Check className="mr-1 h-3 w-3" />Active</Badge>}
                               {identity.isMain && <Badge variant="outline">Main</Badge>}
+                              {identityAccountName && <Badge variant="outline">Account: {identityAccountName}</Badge>}
                               {readString(loreReference.id) ? <Badge variant="outline">Lore</Badge> : <Badge variant="destructive">No Lore</Badge>}
                             </div>
                             <p className="truncate text-sm text-muted-foreground">{identity.roleTitle}</p>
@@ -2073,6 +2600,7 @@ export default function BotManagerPage() {
                               <PersonalityEditor
                                 activeTab={activeTab}
                                 busy={busy}
+                                canManageSchedules={role === "author" && personnelLevel >= 7}
                                 channelsDraft={channelsDraft}
                                 cronFiles={cronFiles}
                                 defaultRegenerateConfirm={defaultRegenerateConfirm}
@@ -2090,7 +2618,7 @@ export default function BotManagerPage() {
                                 onIdentityChange={(patch) => setIdentityDraft((current) => ({ ...current, ...patch }))}
                                 onLoreSearchChange={setLoreSearch}
                                 onLoreSelect={(character) => { setSelectedLoreId(character.id); setLoreSearch(formatCharacterLabel(character)); }}
-                                openRouterProfiles={openRouterProfiles}
+                                providerAccounts={providerAccounts}
                                 onRegenerateConfirmChange={setDefaultRegenerateConfirm}
                                 onRegenerateDefaults={regenerateDefaults}
                                 onRegenerateModeChange={setDefaultRegenerateMode}
@@ -2368,6 +2896,150 @@ function SelectedCharacterPreview({ character, onClear }: { character: Character
   );
 }
 
+function ProviderAccountsSection({
+  accounts,
+  activeProvider,
+  activeProviderAccountId,
+  busy,
+  canUseCredentialGate,
+  draft,
+  filter,
+  onActivate,
+  onDelete,
+  onDraftChange,
+  onFilterChange,
+  onProviderChange,
+  onSave,
+  onSearchChange,
+  providers,
+  search,
+  selectedProvider,
+}: {
+  accounts: BotProviderAccount[];
+  activeProvider: string;
+  activeProviderAccountId: string;
+  busy: string | null;
+  canUseCredentialGate: boolean;
+  draft: ProviderAccountDraft;
+  filter: string;
+  onActivate: (account: BotProviderAccount) => void;
+  onDelete: (account: BotProviderAccount) => void;
+  onDraftChange: (draft: ProviderAccountDraft) => void;
+  onFilterChange: (value: string) => void;
+  onProviderChange: (provider: BotProvider) => void;
+  onSave: () => void;
+  onSearchChange: (value: string) => void;
+  providers: Array<{ value: BotProvider; label: string }>;
+  search: string;
+  selectedProvider: BotProvider;
+}) {
+  const visibleAccounts = accounts.filter((account) => {
+    if (account.provider !== selectedProvider) return false;
+    const matchesSearch = !search.trim() || `${account.name} ${account.modelId} ${account.tags.join(" ")} ${account.notes}`.toLowerCase().includes(search.trim().toLowerCase());
+    const matchesFilter = filter === "all" || (filter === "active" && account.isActive) || (filter === "complete" && account.configured && Boolean(account.modelId)) || (filter === "incomplete" && (!account.configured || !account.modelId));
+    return matchesSearch && matchesFilter;
+  });
+  const providerLabel = providers.find((provider) => provider.value === selectedProvider)?.label ?? selectedProvider;
+
+  return (
+    <div className="rounded-sm border border-border/70 bg-background/35 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h3 className="font-heading text-base text-foreground">Provider accounts</h3>
+          <p className="text-xs text-muted-foreground">Named runtime accounts. Each provider has one default active account; personalities can override it.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input className={cn(inputClass, "h-9 w-48 py-1.5")} value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Search accounts" />
+          <select className={cn(inputClass, "h-9 w-36 py-1.5")} value={filter} onChange={(event) => onFilterChange(event.target.value)}>
+            <option value="all">All accounts</option>
+            <option value="active">Active</option>
+            <option value="complete">Complete</option>
+            <option value="incomplete">Incomplete</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        {providers.map((provider) => {
+          const providerAccounts = accounts.filter((account) => account.provider === provider.value);
+          const active = providerAccounts.find((account) => account.isActive);
+          return (
+            <button key={provider.value} type="button" onClick={() => onProviderChange(provider.value)} className={cn("rounded-sm border p-3 text-left", selectedProvider === provider.value ? "border-primary bg-primary/10" : "border-border/70 bg-background/40 hover:border-primary/60")}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-heading text-sm text-foreground">{provider.label}</span>
+                {activeProvider === provider.value && <Badge className="text-[10px]">Runtime</Badge>}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{providerAccounts.length} account{providerAccounts.length === 1 ? "" : "s"}</p>
+              <p className="truncate text-xs text-muted-foreground">Default: {active?.name ?? "not set"}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h4 className="font-heading text-sm text-foreground">{providerLabel} accounts</h4>
+          <Badge variant="outline">{visibleAccounts.length}</Badge>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={() => onProviderChange(selectedProvider)} disabled={Boolean(busy)}>
+          <Plus className="mr-2 h-4 w-4" />
+          New account
+        </Button>
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        {visibleAccounts.map((account) => {
+          const isActive = account.isActive || activeProviderAccountId === account.id;
+          return (
+            <div key={account.id} className={cn("rounded-sm border border-border/70 bg-card/60 p-3", isActive && "border-primary")}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-heading text-sm text-foreground">{account.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{account.keyPreview} / {account.modelId}</p>
+                  {account.tags.length > 0 && <p className="mt-1 truncate text-xs text-muted-foreground">{account.tags.join(", ")}</p>}
+                </div>
+                {isActive && <Badge>Default</Badge>}
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <Button type="button" size="sm" variant="outline" onClick={() => onDraftChange({ id: account.id, provider: account.provider as BotProvider, name: account.name, apiKey: "", keyPreview: account.keyPreview, apiBase: account.apiBase, modelId: account.modelId, tags: account.tags, notes: account.notes })}>
+                  <Pencil className="mr-2 h-4 w-4" />Edit
+                </Button>
+                <Button type="button" size="sm" onClick={() => onActivate(account)} disabled={!canUseCredentialGate || isActive || Boolean(busy)}>
+                  <Power className="mr-2 h-4 w-4" />{isActive ? "Default" : "Activate"}
+                </Button>
+                <Button type="button" size="sm" variant="destructive" onClick={() => onDelete(account)} disabled={!canUseCredentialGate || isActive || Boolean(busy)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+        {visibleAccounts.length === 0 && <p className="rounded-sm border border-dashed border-border/70 p-4 text-sm text-muted-foreground lg:col-span-2">No accounts for {providerLabel} yet.</p>}
+      </div>
+
+      <div className="mt-4 rounded-sm border border-border/70 bg-background/40 p-3">
+        <div className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <Field label="Account Name" value={draft.name} onChange={(name) => onDraftChange({ ...draft, name })} placeholder={`${providerLabel} default`} />
+          <Field label="Model ID" value={draft.modelId} onChange={(modelId) => onDraftChange({ ...draft, modelId })} placeholder={defaultModelIds[selectedProvider] ?? "model-id"} />
+          <Field label="API Base" value={draft.apiBase} onChange={(apiBase) => onDraftChange({ ...draft, apiBase })} placeholder="Optional provider base URL" />
+        </div>
+        <div className="mt-4 grid items-end gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <TagField label="Tags" value={draft.tags} onChange={(tags) => onDraftChange({ ...draft, tags })} placeholder="production, reasoning" />
+          <Field label="Notes" value={draft.notes} onChange={(notes) => onDraftChange({ ...draft, notes })} />
+          <Button type="button" className="h-10 whitespace-nowrap" onClick={onSave} disabled={!draft.name.trim() || (!draft.id && !draft.apiKey.trim()) || !draft.modelId.trim() || !canUseCredentialGate || Boolean(busy)}>
+            <Save className="mr-2 h-4 w-4" />
+            {draft.id ? "Update account" : "Create account"}
+          </Button>
+        </div>
+        <div className="mt-4">
+          <SecretField label="API Key / Token" value={draft.apiKey || (draft.id && draft.keyPreview ? { __botManagerSecret: true, configured: true, preview: draft.keyPreview } : "")} onChange={(apiKey) => onDraftChange({ ...draft, apiKey: typeof apiKey === "string" ? apiKey : "" })} name={`bot-manager-${selectedProvider}-account-api-key`} placeholder="Enter provider API key or token" />
+        </div>
+        {draft.id && <div className="mt-3 flex justify-end"><Button type="button" variant="outline" onClick={() => onProviderChange(selectedProvider)}>Cancel</Button></div>}
+      </div>
+    </div>
+  );
+}
+
 function OpenRouterSection({
   activeProfileId,
   busy,
@@ -2487,6 +3159,7 @@ function OpenRouterSection({
 function PersonalityEditor({
   activeTab,
   busy,
+  canManageSchedules,
   channelsDraft,
   cronFiles,
   defaultRegenerateConfirm,
@@ -2504,7 +3177,7 @@ function PersonalityEditor({
   onIdentityChange,
   onLoreSearchChange,
   onLoreSelect,
-  openRouterProfiles,
+  providerAccounts,
   onRegenerateConfirmChange,
   onRegenerateDefaults,
   onRegenerateModeChange,
@@ -2523,6 +3196,7 @@ function PersonalityEditor({
 }: {
   activeTab: BotTab;
   busy: string | null;
+  canManageSchedules: boolean;
   channelsDraft: JsonRecord;
   cronFiles: BotIdentityFile[];
   defaultRegenerateConfirm: string;
@@ -2540,7 +3214,7 @@ function PersonalityEditor({
   onIdentityChange: (patch: Partial<BotIdentityDraft>) => void;
   onLoreSearchChange: (value: string) => void;
   onLoreSelect: (character: Character) => void;
-  openRouterProfiles: OpenRouterProfile[];
+  providerAccounts: BotProviderAccount[];
   onRegenerateConfirmChange: (value: string) => void;
   onRegenerateDefaults: () => void;
   onRegenerateModeChange: (value: "safe" | "force") => void;
@@ -2607,7 +3281,17 @@ function PersonalityEditor({
       {activeTab === "sessions" && <FileEditor files={sessionFiles} fileDraft={fileDraft} setFileDraft={onFileDraftChange} onSave={onSaveFile} onDelete={onFileDelete} busy={busy === "file"} defaultKind="session" newFilePath="sessions/session-notes.md" allowedKinds={["session"]} />}
       {activeTab === "settings" && (
         <div className="space-y-4">
-          <SettingsEditor busy={Boolean(busy)} identityDraft={identityDraft} openRouterProfiles={openRouterProfiles} settingsDraft={settingsDraft} onIdentityChange={onIdentityChange} onSave={onSaveIdentity} onSettingsChange={onSettingsChange} />
+          <SettingsEditor
+            busy={Boolean(busy)}
+            canManageSchedules={canManageSchedules}
+            identityId={detail.id}
+            identityDraft={identityDraft}
+            providerAccounts={providerAccounts}
+            settingsDraft={settingsDraft}
+            onIdentityChange={onIdentityChange}
+            onSave={onSaveIdentity}
+            onSettingsChange={onSettingsChange}
+          />
           <LorePicker options={loreOptions} search={loreSearch} selectedId={selectedLoreId} onSearchChange={onLoreSearchChange} onSelect={onLoreSelect} />
           <DefaultFilesRegenerator
             busy={busy === "default-files"}
@@ -3404,16 +4088,20 @@ function DefaultFilesRegenerator({
 
 function SettingsEditor({
   busy,
+  canManageSchedules,
+  identityId,
   identityDraft,
-  openRouterProfiles,
+  providerAccounts,
   settingsDraft,
   onIdentityChange,
   onSave,
   onSettingsChange,
 }: {
   busy: boolean;
+  canManageSchedules: boolean;
+  identityId: string;
   identityDraft: BotIdentityDraft;
-  openRouterProfiles: OpenRouterProfile[];
+  providerAccounts: BotProviderAccount[];
   settingsDraft: BotSettingsDraft;
   onIdentityChange: (patch: Partial<BotIdentityDraft>) => void;
   onSave: () => void;
@@ -3438,7 +4126,12 @@ function SettingsEditor({
             <select
               className={inputClass}
               value={identityDraft.runtimeProvider}
-              onChange={(event) => onIdentityChange({ runtimeProvider: event.target.value, runtimeOpenRouterProfileId: event.target.value === "openrouter" ? identityDraft.runtimeOpenRouterProfileId : "" })}
+              onChange={(event) => {
+                const newProvider = event.target.value;
+                // ponytail: auto-bind to active account when provider changes, so personality doesn't silently follow global default
+                const activeForProvider = providerAccounts.find((a) => a.provider === newProvider && a.isActive)?.id || providerAccounts.find((a) => a.provider === newProvider)?.id || "";
+                onIdentityChange({ runtimeProvider: newProvider, runtimeProviderAccountId: activeForProvider, runtimeOpenRouterProfileId: newProvider === "openrouter" ? activeForProvider : "" });
+              }}
             >
               <option value="">Use global default</option>
               {providers.map((provider) => (
@@ -3447,20 +4140,29 @@ function SettingsEditor({
             </select>
           </label>
           <label className="space-y-2">
-            <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">OpenRouter Profile</span>
+            <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Provider account</span>
             <select
               className={inputClass}
-              value={identityDraft.runtimeOpenRouterProfileId}
-              onChange={(event) => onIdentityChange({ runtimeOpenRouterProfileId: event.target.value })}
-              disabled={identityDraft.runtimeProvider !== "openrouter"}
+              value={identityDraft.runtimeProviderAccountId}
+              onChange={(event) => onIdentityChange({ runtimeProviderAccountId: event.target.value, runtimeOpenRouterProfileId: event.target.value })}
+              disabled={!identityDraft.runtimeProvider}
             >
-              <option value="">Use active OpenRouter profile</option>
-              {openRouterProfiles.map((profile) => (
-                <option key={profile.id} value={profile.id}>{profile.name} - {profile.modelId}</option>
+              <option value="">{(() => {
+                const active = providerAccounts.find((a) => a.provider === identityDraft.runtimeProvider && a.isActive);
+                return active ? `Use active global: ${active.name} - ${active.modelId}` : "Use default provider account";
+              })()}</option>
+              {providerAccounts.filter((account) => account.provider === identityDraft.runtimeProvider).map((account) => (
+                <option key={account.id} value={account.id}>{account.name}{account.isActive ? " (default)" : ""} - {account.modelId} {account.keyPreview ? `(${account.keyPreview})` : ""}</option>
               ))}
             </select>
           </label>
         </div>
+        {identityDraft.runtimeProvider && providerAccounts.filter((a) => a.provider === identityDraft.runtimeProvider).length > 1 && !identityDraft.runtimeProviderAccountId && (
+          <p className="mt-2 text-xs text-amber-600">Multiple accounts for {identityDraft.runtimeProvider}. Pilih akun spesifik agar personality tidak ikut default global saat switch.</p>
+        )}
+        {identityDraft.runtimeProvider && providerAccounts.filter((a) => a.provider === identityDraft.runtimeProvider).length === 0 && (
+          <p className="mt-2 text-xs text-destructive">No accounts for {identityDraft.runtimeProvider}. Buat akun di tab Providers dulu.</p>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -3478,7 +4180,7 @@ function SettingsEditor({
           <div className="mt-4 space-y-3">
             <ToggleControl
               label="Scheduled Dream"
-              description="Runs nanobot memory consolidation for this personality runtime after Start or Restart."
+              description="Runs ZeroClaw memory consolidation for this personality runtime after Start or Restart."
               value={settingsDraft.autoDreamEnabled}
               onChange={(autoDreamEnabled) => onSettingsChange({ autoDreamEnabled })}
             />
@@ -3516,10 +4218,373 @@ function SettingsEditor({
         </div>
       </div>
 
+      <div className="rounded-sm border border-primary/35 bg-primary/5 p-4">
+        <div className="flex items-start gap-3">
+          <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <div className="min-w-0">
+            <h3 className="font-heading text-sm text-foreground">Chat Access</h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Atur apakah personality ini dapat membaca, merespons, atau memulai interaksi di chat Morneven. Default aman adalah disabled.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <label className="space-y-2">
+            <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Access Mode</span>
+            <select
+              className={inputClass}
+              value={identityDraft.chatAccess.mode}
+              onChange={(event) => {
+                const mode = event.target.value as BotChatAccessMode;
+                onIdentityChange({ chatAccess: { ...identityDraft.chatAccess, mode } });
+              }}
+            >
+              <option value="disabled">Disabled</option>
+              <option value="mention-only">Mention only</option>
+              <option value="respond">Respond in chat</option>
+            </select>
+          </label>
+          <div className="flex items-end">
+            <ToggleControl
+              label="Allow bot-to-bot"
+              description="Requires conversation policy allowBotToBot and remains rate-limited by the backend."
+              value={identityDraft.chatAccess.allowBotToBot}
+              onChange={(allowBotToBot) => onIdentityChange({ chatAccess: { ...identityDraft.chatAccess, allowBotToBot } })}
+            />
+          </div>
+        </div>
+        {identityDraft.chatAccess.mode !== "disabled" && (
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <Field
+              label="Max Turns"
+              type="number"
+              value={String(identityDraft.chatAccess.maxTurns)}
+              onChange={(value) => onIdentityChange({ chatAccess: { ...identityDraft.chatAccess, maxTurns: Math.max(0, Math.min(6, Number(value) || 0)) } })}
+            />
+            <Field
+              label="Max Tokens Per Run"
+              type="number"
+              value={String(identityDraft.chatAccess.maxTokensPerRun)}
+              onChange={(value) => onIdentityChange({ chatAccess: { ...identityDraft.chatAccess, maxTokensPerRun: Math.max(128, Math.min(4096, Number(value) || 128)) } })}
+            />
+          </div>
+        )}
+      </div>
+
+      <RuntimeScheduleEditor
+        identityId={identityId}
+        canManage={canManageSchedules}
+        disabled={busy}
+      />
+
       <Button type="button" onClick={onSave} disabled={busy}>
         <Save className="mr-2 h-4 w-4" />
         Save Personality
       </Button>
+    </div>
+  );
+}
+
+function formatScheduleTimestamp(value?: string | null) {
+  if (!value) return "Disabled";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
+  }).format(date);
+}
+
+function RuntimeScheduleEditor({
+  identityId,
+  canManage,
+  disabled,
+}: {
+  identityId: string;
+  canManage: boolean;
+  disabled: boolean;
+}) {
+  const { toast } = useToast();
+  const [schedule, setSchedule] = useState<BotRuntimeSchedule | null>(null);
+  const [startEnabled, setStartEnabled] = useState(false);
+  const [stopEnabled, setStopEnabled] = useState(false);
+  const [startInput, setStartInput] = useState<ScheduleInput>(() => createDefaultScheduleInput());
+  const [stopInput, setStopInput] = useState<ScheduleInput>(() => createDefaultScheduleInput());
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    getBotRuntimeSchedule(identityId)
+      .then((next) => {
+        if (!active) return;
+        setSchedule(next);
+        setStartEnabled(Boolean(next.start));
+        setStopEnabled(Boolean(next.stop));
+        setStartInput(scheduleInputFromTask(next.start));
+        setStopInput(scheduleInputFromTask(next.stop));
+      })
+      .catch((error) => {
+        if (!active) return;
+        toast({
+          variant: "destructive",
+          title: "Runtime schedule unavailable",
+          description: error instanceof Error ? error.message : "Runtime schedule could not be loaded.",
+        });
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [identityId, toast]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const next = await updateBotRuntimeSchedule(identityId, {
+        password,
+        start: startEnabled ? startInput : null,
+        stop: stopEnabled ? stopInput : null,
+      });
+      setSchedule(next);
+      setStartInput(scheduleInputFromTask(next.start));
+      setStopInput(scheduleInputFromTask(next.stop));
+      setPassword("");
+      toast({ title: "Runtime schedule saved" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Runtime schedule failed",
+        description: error instanceof Error ? error.message : "Runtime schedule could not be saved.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const clear = async () => {
+    setSaving(true);
+    try {
+      await deleteBotRuntimeSchedule(identityId, password);
+      setSchedule((current) => current ? { ...current, start: null, stop: null } : current);
+      setStartEnabled(false);
+      setStopEnabled(false);
+      setPassword("");
+      toast({ title: "Runtime schedule disabled" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Runtime schedule failed",
+        description: error instanceof Error ? error.message : "Runtime schedule could not be disabled.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const controlsDisabled = disabled || loading || saving || !canManage;
+  return (
+    <div className="space-y-3 rounded-sm border border-border/70 bg-background/35 p-4">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="font-heading text-sm text-foreground">Runtime Start And Stop</h3>
+        <span className="text-xs text-muted-foreground">
+          Start {formatScheduleTimestamp(schedule?.start?.nextRunAt)} / Stop {formatScheduleTimestamp(schedule?.stop?.nextRunAt)}
+        </span>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={startEnabled}
+              disabled={controlsDisabled}
+              onChange={(event) => setStartEnabled(event.target.checked)}
+            />
+            Scheduled start
+          </label>
+          <ScheduleEditor value={startInput} onChange={setStartInput} disabled={controlsDisabled || !startEnabled} />
+        </div>
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={stopEnabled}
+              disabled={controlsDisabled}
+              onChange={(event) => setStopEnabled(event.target.checked)}
+            />
+            Scheduled stop
+          </label>
+          <ScheduleEditor value={stopInput} onChange={setStopInput} disabled={controlsDisabled || !stopEnabled} />
+        </div>
+      </div>
+      {canManage && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <Field label="Password Confirmation" type="password" value={password} onChange={setPassword} />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={saving || !password || (!schedule?.start && !schedule?.stop)}
+            onClick={() => { void clear(); }}
+          >
+            Disable
+          </Button>
+          <Button
+            type="button"
+            disabled={saving || !password || (!startEnabled && !stopEnabled)}
+            onClick={() => { void save(); }}
+          >
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
+            Save Runtime Schedule
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RuntimeFreezeControl({ canManage }: { canManage: boolean }) {
+  const { toast } = useToast();
+  const [freeze, setFreeze] = useState<BotRuntimeFreeze | null>(null);
+  const [schedule, setSchedule] = useState<ScheduleInput>(() => createDefaultScheduleInput("relative"));
+  const [password, setPassword] = useState("");
+  const [reason, setReason] = useState("Project freeze");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getBotRuntimeFreeze()
+      .then((next) => {
+        if (!active) return;
+        setFreeze(next);
+        if (next.schedule) {
+          setSchedule(scheduleInputFromTask(next.schedule));
+          const nextReason = next.schedule.payload?.reason;
+          if (typeof nextReason === "string" && nextReason.trim()) setReason(nextReason);
+        }
+      })
+      .catch((error) => {
+        if (!active) return;
+        toast({
+          variant: "destructive",
+          title: "Runtime freeze unavailable",
+          description: error instanceof Error ? error.message : "Runtime freeze state could not be loaded.",
+        });
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [toast]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const task = await updateBotRuntimeFreeze({ ...schedule, password, reason });
+      setFreeze((current) => ({
+        schedule: task,
+        state: current?.state ?? {
+          frozen: false,
+          frozenAt: null,
+          reason: null,
+          updatedBy: null,
+          updatedAt: new Date().toISOString(),
+        },
+      }));
+      setSchedule(scheduleInputFromTask(task));
+      setPassword("");
+      toast({ title: "Runtime freeze scheduled" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Runtime freeze failed",
+        description: error instanceof Error ? error.message : "Runtime freeze could not be scheduled.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cancel = async () => {
+    setSaving(true);
+    try {
+      await deleteBotRuntimeFreeze(password);
+      setFreeze((current) => current ? {
+        schedule: null,
+        state: {
+          ...current.state,
+          frozen: false,
+          frozenAt: null,
+          reason: null,
+          updatedAt: new Date().toISOString(),
+        },
+      } : current);
+      setPassword("");
+      toast({ title: "Runtime freeze cancelled" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Runtime freeze failed",
+        description: error instanceof Error ? error.message : "Runtime freeze could not be cancelled.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 border-t border-border/70 pt-4">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="font-heading text-sm text-foreground">Global Runtime Freeze</h3>
+        <Badge variant={freeze?.state.frozen ? "destructive" : "outline"}>
+          {freeze?.state.frozen
+            ? "Frozen"
+            : freeze?.schedule
+              ? formatScheduleTimestamp(freeze.schedule.nextRunAt)
+              : "Disabled"}
+        </Badge>
+      </div>
+      <ScheduleEditor
+        value={schedule}
+        onChange={setSchedule}
+        allowWeekly={false}
+        disabled={loading || saving || !canManage}
+      />
+      {canManage && (
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Reason" value={reason} onChange={setReason} />
+          <Field label="Password Confirmation" type="password" value={password} onChange={setPassword} />
+        </div>
+      )}
+      {canManage && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={saving || !password || (!freeze?.schedule && !freeze?.state.frozen)}
+            onClick={() => { void cancel(); }}
+          >
+            Cancel / Unfreeze
+          </Button>
+          <Button type="button" disabled={saving || !password || !reason.trim()} onClick={() => { void save(); }}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Power className="mr-2 h-4 w-4" />}
+            Schedule Freeze
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -3792,11 +4857,89 @@ function TagField({
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({
+  label,
+  value,
+  info,
+  children,
+}: {
+  label: string;
+  value: string | { base: string; parts: Array<{ value: string; kind: "down" | "up" }> };
+  info?: string;
+  children?: ReactNode;
+}) {
   return (
     <div className="rounded-sm border border-border/70 bg-background/40 p-3">
-      <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-      <p className="mt-1 break-words text-sm font-heading text-foreground">{value}</p>
+      <div className="flex items-center gap-1.5">
+        <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+        {info && (
+          <span className="group relative inline-flex">
+            <Info className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-72 -translate-x-1/2 rounded-sm border border-border bg-popover p-2 text-xs normal-case tracking-normal text-popover-foreground shadow-lg group-hover:block">
+              {info}
+            </span>
+          </span>
+        )}
+      </div>
+      {typeof value === "string" ? (
+        <p className="mt-1 break-words text-sm font-heading text-foreground">{value}</p>
+      ) : (
+        <p className="mt-1 break-words text-sm font-heading text-foreground">
+          {value.base}
+          {value.parts.length > 0 && (
+            <span className="ml-1">
+              (
+              {value.parts.map((part, index) => (
+                <span key={`${part.kind}-${index}`} className={cn(index > 0 && "ml-1", part.kind === "down" ? "text-destructive" : "text-emerald-400")}>
+                  {part.value}
+                </span>
+              ))}
+              )
+            </span>
+          )}
+        </p>
+      )}
+      {children ? <div className="mt-2">{children}</div> : null}
+    </div>
+  );
+}
+
+type BalanceSparklinePoint = {
+  date?: string;
+  creditBalance?: number;
+  dailySpend?: number;
+};
+
+function BalanceSparklineTooltip({
+  active,
+  payload,
+  label,
+  currency,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload?: BalanceSparklinePoint }>;
+  label?: unknown;
+  currency: string;
+}) {
+  if (!active || !payload?.length) return null;
+  const point = payload[0]?.payload ?? {};
+  const date = typeof point.date === "string" ? point.date : String(label ?? "");
+  const balance = typeof point.creditBalance === "number" && Number.isFinite(point.creditBalance) ? point.creditBalance : null;
+  const dailySpend = typeof point.dailySpend === "number" && Number.isFinite(point.dailySpend) ? Math.max(point.dailySpend, 0) : 0;
+
+  return (
+    <div className="grid min-w-36 gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+      <div className="font-medium">{date}</div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-muted-foreground">Balance</span>
+        <span className="font-mono font-medium tabular-nums text-foreground">{formatMoney(balance, currency)}</span>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-muted-foreground">Spend</span>
+        <span className={cn("font-mono font-medium tabular-nums", dailySpend > 0 ? "text-destructive" : "text-muted-foreground")}>
+          {dailySpend > 0 ? `-${formatMoney(dailySpend, currency)}` : formatMoney(0, currency)}
+        </span>
+      </div>
     </div>
   );
 }

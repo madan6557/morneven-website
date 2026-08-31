@@ -351,12 +351,6 @@ export default function PersonnelManagementPage() {
       });
   }, [people, filter, trackFilter, statusFilter, roleFilter, levelFilter]);
 
-  // PL5+ guard. Detailed create, update, and delete permissions are enforced
-  // by the action-level predicates below.
-  if (!canManagePersonnel(personnelLevel)) {
-    return <Navigate to="/home" replace />;
-  }
-
   const startEdit = (p: PersonnelUser) => {
     if (!canUpdatePersonnelRecord(p)) return;
     pendingEditFocusIdRef.current = p.id;
@@ -395,6 +389,12 @@ export default function PersonnelManagementPage() {
     });
     return () => window.cancelAnimationFrame(id);
   }, [editingId, filtered.length]);
+
+  // PL5+ guard. Detailed create, update, and delete permissions are enforced
+  // by the action-level predicates below.
+  if (!canManagePersonnel(personnelLevel)) {
+    return <Navigate to="/home" replace />;
+  }
 
   const persistEdit = async (person: PersonnelUser) => {
     if (!draft) return;

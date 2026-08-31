@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import MentionInput from "@/components/MentionInput";
 import { extractMentions, renderWithMentions } from "@/lib/mentions";
 import { formatCompactNumber } from "@/lib/formatNumber";
+import { isDesktopApp } from "@/services/desktop/runtime";
 
 export default function GalleryDetail() {
   const { id } = useParams<{ id: string }>();
@@ -121,7 +122,7 @@ export default function GalleryDetail() {
             Published by <span className="text-foreground">{item.uploadedBy}</span>
           </p>
         )}
-        <div className="flex flex-wrap items-center gap-2">
+        {!isDesktopApp ? <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-sm border border-border/70 bg-background/50 px-2 py-1 text-[10px] font-display uppercase tracking-[0.08em] text-muted-foreground">
             <Eye className="h-3 w-3" />
             {formatCompactNumber(item.views)} views
@@ -152,7 +153,7 @@ export default function GalleryDetail() {
             <ThumbsDown className="h-3 w-3" />
             {formatCompactNumber(item.dislikes)}
           </button>
-        </div>
+        </div> : null}
         <div className="flex gap-2 flex-wrap mt-2">
           {item.tags.map((tag) => (
             <span key={tag} className="text-[10px] font-display tracking-wider text-accent-orange bg-accent-orange/10 px-2 py-0.5 rounded-sm uppercase">
@@ -162,8 +163,8 @@ export default function GalleryDetail() {
         </div>
       </div>
 
-      {/* Comments Section */}
-      <div className="space-y-4">
+      {/* Comments are server-side only and are intentionally omitted in desktop mode. */}
+      {!isDesktopApp ? <div className="space-y-4">
         <h2 className="font-heading text-lg tracking-wider text-foreground uppercase flex items-center gap-2">
           <MessageCircle className="h-4 w-4" /> Discussion ({item.comments.length})
         </h2>
@@ -244,7 +245,7 @@ export default function GalleryDetail() {
             </div>
           ))}
         </div>
-      </div>
+      </div> : null}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { apiRequest, apiUploadForm, getApiBaseUrl } from "@/services/restClient";
+import type { ScheduleInput, ScheduledTask } from "@/services/schedulerTypes";
 
-export type BotProvider = "openai" | "anthropic" | "gemini" | "groq" | "openrouter" | "deepseek" | "zhipu" | "vllm";
+export type BotProvider = "openai" | "anthropic" | "gemini" | "groq" | "openrouter" | "opencode" | "deepseek" | "zhipu" | "vllm";
 export type BotFileKind = "identity" | "memory" | "cron" | "skill" | "session" | "tool" | "user" | "system" | "other";
 
 export interface BotCredentialSummary {
@@ -9,6 +10,51 @@ export interface BotCredentialSummary {
   keyPreview: string;
   metadata: Record<string, unknown>;
   updatedAt: string | null;
+}
+
+export interface BotProviderAnalyticsCredentialSummary {
+  provider: BotProvider;
+  configured: boolean;
+  keyPreview: string;
+  metadata: Record<string, unknown>;
+  updatedAt: string | null;
+}
+
+export interface BotProviderUsagePoint {
+  date: string;
+  requests: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cachedTokens: number;
+  cost: number;
+}
+
+export interface BotProviderAnalytics {
+  provider: BotProvider;
+  range: "7d" | "30d" | "90d";
+  status: "ok" | "not_configured" | "needs_analytics_key" | "unsupported" | "provider_error";
+  statusMessage: string;
+  source: "provider_api" | "local" | "unsupported";
+  configured: boolean;
+  active: boolean;
+  analyticsCredentialConfigured: boolean;
+  requiresAnalyticsCredential: boolean;
+  supportsProviderBalance: boolean;
+  currency: string;
+  creditBalance: number | null;
+  creditLimit: number | null;
+  currentSpend: number | null;
+  topUpAmount: number | null;
+  monthlySpend: number | null;
+  localRequestCount: number;
+  localTotalTokens: number;
+  localPromptTokens: number;
+  localCompletionTokens: number;
+  localCachedTokens: number;
+  runtimeUsageIngest?: { ok: boolean; imported: number; error?: string };
+  points: BotProviderUsagePoint[];
+  fetchedAt: string;
 }
 
 export interface OpenRouterProfile {
@@ -24,6 +70,11 @@ export interface OpenRouterProfile {
   updatedBy?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface BotProviderAccount extends OpenRouterProfile {
+  provider: BotProvider | string;
+  metadata: Record<string, unknown>;
 }
 
 export interface BotManagerPageResponse<T> {
@@ -50,6 +101,16 @@ export interface BotManagerBackupJob {
   progress: { percent?: number; stage?: string; message?: string };
 }
 
+export type BotChatAccessMode = "disabled" | "mention-only" | "respond";
+
+export interface BotChatAccess {
+  mode: BotChatAccessMode;
+  allowedConversationIds: string[];
+  allowBotToBot: boolean;
+  maxTurns: number;
+  maxTokensPerRun: number;
+}
+
 export interface BotIdentity {
   id: string;
   slug: string;
@@ -59,11 +120,13 @@ export interface BotIdentity {
   isActive: boolean;
   isMain: boolean;
   runtimeProvider?: BotProvider | string | null;
+  runtimeProviderAccountId?: string | null;
   runtimeOpenRouterProfileId?: string | null;
   profileImageObjectPath?: string | null;
   profileImageUrl?: string | null;
   channels: Record<string, unknown>;
   settings: Record<string, unknown>;
+  chatAccess?: BotChatAccess;
   createdAt: string;
   updatedAt: string;
   fileCount?: number;
@@ -82,6 +145,8 @@ export interface BotIdentityFile {
 
 export interface BotSummary {
   credentials: BotCredentialSummary[];
+  analyticsCredentials?: BotProviderAnalyticsCredentialSummary[];
+  providerAccounts?: BotProviderAccount[];
   openRouterProfiles?: OpenRouterProfile[];
   generalConfig: Record<string, unknown>;
   identities: BotIdentity[];
@@ -96,13 +161,14 @@ export interface BotSummary {
     lastRuntimePullConflictCount?: number;
   };
   runtimeStatus: {
-    nanobotConfigured: boolean;
+    runtimeConfigured: boolean;
     singleActivePersonality: boolean;
     runtimeMode?: "single-active-personality" | "multi-active-personality" | string;
     activeIdentityId: string | null;
     activeIdentityIds?: string[];
     mainIdentityId?: string | null;
     activeProvider?: BotProvider | string | null;
+    activeProviderAccountId?: string | null;
     activeOpenRouterProfileId?: string | null;
   };
 }
@@ -200,6 +266,114 @@ export function updateBotCredential(payload: {
   confirmText: "CREDENTIALS";
 }) {
   return apiRequest<BotCredentialSummary>("/bot-manager/credentials", {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function listProviderAccounts(params: { provider?: BotProvider | string; search?: string; filter?: string; page?: number; pageSize?: number } = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  });
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiRequest<BotManagerPageResponse<BotProviderAccount>>(`/bot-manager/provider-accounts${suffix}`);
+}
+
+export function createProviderAccount(payload: {
+  provider: BotProvider;
+  name: string;
+  apiKey: string;
+  apiBase?: string;
+  modelId: string;
+  tags?: string[];
+  notes?: string;
+  password: string;
+  botManagerKey: string;
+  confirmText: "CREDENTIALS";
+}) {
+  return apiRequest<BotProviderAccount>("/bot-manager/provider-accounts", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function updateProviderAccount(id: string, payload: {
+  provider: BotProvider;
+  name: string;
+  apiKey?: string;
+  apiBase?: string;
+  modelId: string;
+  tags?: string[];
+  notes?: string;
+  password: string;
+  botManagerKey: string;
+  confirmText: "CREDENTIALS";
+}) {
+  return apiRequest<BotProviderAccount>(`/bot-manager/provider-accounts/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function activateProviderAccount(id: string, payload: {
+  password: string;
+  botManagerKey: string;
+  confirmText: "CREDENTIALS";
+}) {
+  return apiRequest<{ account: BotProviderAccount; config: Record<string, unknown>; runtimeSync: BotSummary["runtimeSync"] }>(`/bot-manager/provider-accounts/${id}/activate`, {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export function deleteProviderAccount(id: string, payload: {
+  password: string;
+  botManagerKey: string;
+  confirmText: "CREDENTIALS";
+}) {
+  return apiRequest<{ deleted: boolean }>(`/bot-manager/provider-accounts/${id}`, {
+    method: "DELETE",
+    body: payload,
+  });
+}
+
+export interface BotRuntimeSchedule {
+  identityId: string;
+  start: ScheduledTask | null;
+  stop: ScheduledTask | null;
+}
+
+export interface BotRuntimeFreeze {
+  schedule: ScheduledTask | null;
+  state: {
+    frozen: boolean;
+    frozenAt: string | null;
+    reason: string | null;
+    updatedBy: string | null;
+    updatedAt: string;
+  };
+}
+
+export function getProviderAnalytics(provider: BotProvider, range: "7d" | "30d" | "90d" = "30d") {
+  const query = new URLSearchParams({ provider, range });
+  return apiRequest<BotProviderAnalytics>(`/bot-manager/providers/analytics?${query.toString()}`, {
+    timeoutMs: 30000,
+  });
+}
+
+export function updateProviderAnalyticsCredential(payload: {
+  provider: BotProvider;
+  apiKey: string;
+  organizationId?: string;
+  projectId?: string;
+  apiKeyId?: string;
+  billingAccountId?: string;
+  password: string;
+  botManagerKey: string;
+  confirmText: "CREDENTIALS";
+}) {
+  return apiRequest<BotProviderAnalyticsCredentialSummary>("/bot-manager/providers/analytics-credentials", {
     method: "PUT",
     body: payload,
   });
@@ -312,7 +486,9 @@ export function createBotIdentity(payload: {
   settings?: Record<string, unknown>;
   loreCharacterId?: string;
   runtimeProvider?: BotProvider | string;
+  runtimeProviderAccountId?: string;
   runtimeOpenRouterProfileId?: string;
+  chatAccess?: BotChatAccess;
 }) {
   return apiRequest<BotIdentity>("/bot-manager/identities", {
     method: "POST",
@@ -324,7 +500,7 @@ export function getBotIdentity(id: string) {
   return apiRequest<BotIdentityDetail>(`/bot-manager/identities/${id}`);
 }
 
-export function updateBotIdentity(id: string, payload: Partial<Pick<BotIdentity, "name" | "roleTitle" | "description" | "profileImageUrl" | "channels" | "settings" | "runtimeProvider" | "runtimeOpenRouterProfileId">> & { loreCharacterId?: string }) {
+export function updateBotIdentity(id: string, payload: Partial<Pick<BotIdentity, "name" | "roleTitle" | "description" | "profileImageUrl" | "channels" | "settings" | "runtimeProvider" | "runtimeProviderAccountId" | "runtimeOpenRouterProfileId" | "chatAccess">> & { loreCharacterId?: string }) {
   return apiRequest<BotIdentity>(`/bot-manager/identities/${id}`, {
     method: "PUT",
     body: payload,
@@ -447,7 +623,7 @@ export function syncBotManagerRuntime() {
       skipped?: Array<{ path: string; reason: string }>;
     };
     runtimeBundle?: unknown;
-    nanobot?: unknown;
+    runtime?: unknown;
   }>("/bot-manager/sync", {
     method: "POST",
     timeoutMs: 60000,
@@ -545,6 +721,46 @@ export function controlBotRuntimeForIdentity(identityId: string, action: "start"
   return apiRequest<BotRuntimeStatus>(`/bot-manager/runtime/${identityId}/${action}`, {
     method: "POST",
     timeoutMs: 60000,
+  });
+}
+
+export function getBotRuntimeSchedule(identityId: string) {
+  return apiRequest<BotRuntimeSchedule>(`/bot-manager/identities/${identityId}/runtime-schedule`);
+}
+
+export function updateBotRuntimeSchedule(identityId: string, payload: {
+  password: string;
+  start?: ScheduleInput | null;
+  stop?: ScheduleInput | null;
+}) {
+  return apiRequest<BotRuntimeSchedule>(`/bot-manager/identities/${identityId}/runtime-schedule`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function deleteBotRuntimeSchedule(identityId: string, password: string) {
+  return apiRequest<{ deletedStart: boolean; deletedStop: boolean }>(`/bot-manager/identities/${identityId}/runtime-schedule`, {
+    method: "DELETE",
+    body: { password },
+  });
+}
+
+export function getBotRuntimeFreeze() {
+  return apiRequest<BotRuntimeFreeze>("/bot-manager/runtime-freeze");
+}
+
+export function updateBotRuntimeFreeze(payload: ScheduleInput & { password: string; reason?: string }) {
+  return apiRequest<ScheduledTask>("/bot-manager/runtime-freeze", {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function deleteBotRuntimeFreeze(password: string) {
+  return apiRequest<{ deletedSchedule: boolean; frozen: boolean }>("/bot-manager/runtime-freeze", {
+    method: "DELETE",
+    body: { password },
   });
 }
 

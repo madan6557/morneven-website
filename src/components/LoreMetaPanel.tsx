@@ -12,6 +12,7 @@ import {
   ScrollText,
   ExternalLink,
 } from "lucide-react";
+import { safeNavigationUrl } from "@/lib/safeUrl";
 
 interface LoreMetaPanelProps {
   meta?: LoreMeta;
@@ -29,6 +30,7 @@ interface LoreMetaPanelProps {
 export default function LoreMetaPanel({ meta, fallbackCreator, accentColor }: LoreMetaPanelProps) {
   const m: LoreMeta = meta ?? {};
   const creator = m.creator ?? fallbackCreator;
+  const sourceUrl = safeNavigationUrl(m.sourceUrl);
 
   const rows: Array<{ icon: React.ReactNode; label: string; value: React.ReactNode }> = [];
   if (creator) rows.push({ icon: <User className="h-3.5 w-3.5" />, label: "Creator", value: creator });
@@ -60,13 +62,13 @@ export default function LoreMetaPanel({ meta, fallbackCreator, accentColor }: Lo
       value: [m.approvedAt, m.approvedBy ? `by ${m.approvedBy}` : null].filter(Boolean).join(" · "),
     });
   if (m.license) rows.push({ icon: <ScrollText className="h-3.5 w-3.5" />, label: "License", value: m.license });
-  if (m.sourceUrl)
+  if (sourceUrl)
     rows.push({
       icon: <ExternalLink className="h-3.5 w-3.5" />,
       label: "Source",
       value: (
-        <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
-          {m.sourceUrl}
+        <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+          {sourceUrl}
         </a>
       ),
     });

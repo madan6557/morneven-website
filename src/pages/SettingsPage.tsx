@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ScheduleEditor } from "@/components/ScheduleEditor";
 import { useRevealTimer } from "@/hooks/useRevealTimer";
 import { ContentState } from "@/components/ContentState";
 import { Button } from "@/components/ui/button";
@@ -40,19 +41,32 @@ import {
 import { getQuota, monthKey, pl2Status, pl3Status, pl4Status, yearKey } from "@/services/managementApi";
 import {
   clearExtractionHistory,
+  deleteExtractionSchedule,
   downloadExtractionJob,
+  getExtractionSchedule,
   listExtractionHistoryRemote,
+  retryExtractionRemote,
   startExtractionRemote,
+  stopExtractionRemote,
+  updateExtractionSchedule,
   type BackupMediaSource,
   type ExtractionJob,
   type ExtractionMode,
 } from "@/services/extractionService";
 import {
+  createDefaultScheduleInput,
+  scheduleInputFromTask,
+  type ScheduleInput,
+  type ScheduledTask,
+} from "@/services/schedulerTypes";
+import {
   downloadMigrationReport,
+  getScannerBlockedFiles,
   listMigrationHistoryRemote,
   startMigrationFromBackupRemote,
   startMigrationRemote,
   type MigrationJob,
+  type ScannerBlockedFile,
 } from "@/services/migrationService";
 import {
   changePassword,
@@ -72,6 +86,7 @@ import {
   runStorageCleanupRemote,
   type StorageCleanupReport,
 } from "@/services/storageCleanupService";
+import { apiRequest } from "@/services/restClient";
 import { cn } from "@/lib/utils";
 import type { PersonnelReport, PersonnelReviewAction, PersonnelReviewDecision } from "@/types";
 import { subscribeRealtimeEvents } from "@/services/realtime";
@@ -161,6 +176,53 @@ const BACKUP_MEDIA_SOURCES: Array<{ value: BackupMediaSource; label: string }> =
   { value: "bot-manager", label: "Bot Manager" },
 ];
 
+const WEB_VERSION = __APP_VERSION__ || "unknown";
+const backupDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  timeZoneName: "short",
+});
+
+function formatBackupDate(value: string) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? backupDateFormatter.format(date) : value;
+}
+
+function isExtractionActive(job: ExtractionJob) {
+  return job.status === "queued" || job.status === "processing";
+}
+
+function upsertHistoryJob<T extends { id: string }>(current: T[], job: T): T[] {
+  let replaced = false;
+  const next: T[] = [];
+  current.forEach((item) => {
+    if (item.id !== job.id) {
+      next.push(item);
+      return;
+    }
+    if (!replaced) {
+      next.push(job);
+      replaced = true;
+    }
+  });
+  return replaced ? next : [job, ...next];
+}
+
+type RuntimeVersion = {
+  service?: string;
+  version?: string;
+  buildVersion?: string;
+  commitSha?: string | null;
+  commit?: string | null;
+  env?: string;
+  generatedAt?: string;
+  startedAt?: string;
+};
+
 function describeRestrictionDuration(mode: RestrictionDurationMode, amount: number) {
   if (mode === "manual") return "until manual restore";
   const unit = amount === 1 ? { minutes: "minute", hours: "hour", days: "day" }[mode] : mode;
@@ -185,12 +247,19 @@ export default function SettingsPage() {
   const [autoDownload, setAutoDownload] = useState(true);
   const [password, setPassword] = useState("");
   const [extractionSecretKey, setExtractionSecretKey] = useState("");
+  const [backupSchedule, setBackupSchedule] = useState<ScheduleInput>(() => createDefaultScheduleInput());
+  const [backupScheduleTask, setBackupScheduleTask] = useState<ScheduledTask | null>(null);
+  const [backupRetentionCount, setBackupRetentionCount] = useState(3);
+  const [backupRetentionDays, setBackupRetentionDays] = useState(7);
+  const [backupScheduleLoading, setBackupScheduleLoading] = useState(personnelLevel >= 7 && role === "author");
   const [migrationPassword, setMigrationPassword] = useState("");
   const [migrationSecretKey, setMigrationSecretKey] = useState("");
   const [migrationBaseUrl, setMigrationBaseUrl] = useState("");
   const [migrationEndpoint, setMigrationEndpoint] = useState("");
   const [migrationMode, setMigrationMode] = useState<"live" | "backup">("live");
   const [migrationBackupFile, setMigrationBackupFile] = useState<File | null>(null);
+  const [migrationScannerFiles, setMigrationScannerFiles] = useState<ScannerBlockedFile[]>([]);
+  const [migrationAllowedScannerFiles, setMigrationAllowedScannerFiles] = useState<string[]>([]);
   const [migrationUploadProgress, setMigrationUploadProgress] = useState<{
     percent: number;
     loaded: number;
@@ -242,7 +311,9 @@ export default function SettingsPage() {
   const [chatError, setChatError] = useState<string | null>(null);
   const [storageLoading, setStorageLoading] = useState(personnelLevel >= 7);
   const [storageError, setStorageError] = useState<string | null>(null);
-  const processing = useMemo(() => history.some((job) => job.status === "processing"), [history]);
+  const [apiVersion, setApiVersion] = useState<RuntimeVersion | null>(null);
+  const [apiVersionError, setApiVersionError] = useState<string | null>(null);
+  const processing = useMemo(() => history.some(isExtractionActive), [history]);
   const migrationProcessing = useMemo(
     () => migrationHistory.some((job) => job.status === "processing"),
     [migrationHistory],
@@ -265,7 +336,19 @@ export default function SettingsPage() {
   );
 
   useEffect(() => {
-    if (personnelLevel < 7) {
+    apiRequest<RuntimeVersion>("/version", { auth: false, retryOnUnauthorized: false })
+      .then((payload) => {
+        setApiVersion(payload);
+        setApiVersionError(null);
+      })
+      .catch((error) => {
+        setApiVersion(null);
+        setApiVersionError(toUserFacingError(error, "API version unavailable."));
+      });
+  }, []);
+
+  useEffect(() => {
+    if (personnelLevel < 7 || role !== "author") {
       setHistory([]);
       setHistoryLoading(false);
       setHistoryError(null);
@@ -276,13 +359,43 @@ export default function SettingsPage() {
     listExtractionHistoryRemote()
       .then((items) => {
         setHistory(items);
-        setShouldPollExtraction(items.some((job) => job.status === "processing"));
+        setShouldPollExtraction(items.some(isExtractionActive));
       })
       .catch((error) => {
         setHistoryError(toUserFacingError(error, "Backup history could not be loaded."));
       })
       .finally(() => setHistoryLoading(false));
-  }, [personnelLevel]);
+  }, [personnelLevel, role]);
+
+  useEffect(() => {
+    if (personnelLevel < 7 || role !== "author") {
+      setBackupScheduleTask(null);
+      setBackupScheduleLoading(false);
+      return;
+    }
+    setBackupScheduleLoading(true);
+    getExtractionSchedule()
+      .then((task) => {
+        setBackupScheduleTask(task);
+        setBackupSchedule(scheduleInputFromTask(task));
+        const retentionCount = Number(task?.payload?.retentionCount);
+        const retentionDays = Number(task?.payload?.retentionDays);
+        if (Number.isInteger(retentionCount) && retentionCount >= 1 && retentionCount <= 10) {
+          setBackupRetentionCount(retentionCount);
+        }
+        if (Number.isInteger(retentionDays) && retentionDays >= 1 && retentionDays <= 30) {
+          setBackupRetentionDays(retentionDays);
+        }
+      })
+      .catch((error) => {
+        toast({
+          variant: "destructive",
+          title: "Backup schedule unavailable",
+          description: toUserFacingError(error, "Backup schedule could not be loaded."),
+        });
+      })
+      .finally(() => setBackupScheduleLoading(false));
+  }, [personnelLevel, role, toast]);
 
   useEffect(() => {
     if (personnelLevel < 7 || role !== "author") {
@@ -347,7 +460,7 @@ export default function SettingsPage() {
       listExtractionHistoryRemote().then((nextHistory) => {
         setHistory(nextHistory);
         setHistoryError(null);
-        if (!nextHistory.some((job) => job.status === "processing")) {
+        if (!nextHistory.some(isExtractionActive)) {
           setShouldPollExtraction(false);
         }
       }).catch((error) => {
@@ -392,26 +505,14 @@ export default function SettingsPage() {
 
         if (envelope.event === "settings.extraction.updated") {
           const job = maybeJob as ExtractionJob;
-          setHistory((current) => {
-            const index = current.findIndex((item) => item.id === job.id);
-            if (index === -1) return [job, ...current];
-            const next = [...current];
-            next[index] = job;
-            return next;
-          });
-          setShouldPollExtraction(job.status === "processing");
+          setHistory((current) => upsertHistoryJob(current, job));
+          setShouldPollExtraction(isExtractionActive(job));
           return;
         }
 
         if (envelope.event === "settings.migration.updated") {
           const job = maybeJob as MigrationJob;
-          setMigrationHistory((current) => {
-            const index = current.findIndex((item) => item.id === job.id);
-            if (index === -1) return [job, ...current];
-            const next = [...current];
-            next[index] = job;
-            return next;
-          });
+          setMigrationHistory((current) => upsertHistoryJob(current, job));
           setShouldPollMigration(job.status === "processing");
         }
       },
@@ -499,12 +600,24 @@ export default function SettingsPage() {
 
   const trackInfo = PERSONNEL_TRACKS.find((item) => item.key === track);
   const title = trackInfo?.titles[personnelLevel] ?? "Unknown";
-  const canRun =
+  const canAuthenticateExtraction =
     isPl7Author &&
     confirmText === "CONFIRM" &&
     verifyPassword(password) &&
-    extractionSecretKey.trim().length >= 16 &&
+    extractionSecretKey.trim().length >= 16;
+  const canRun =
+    canAuthenticateExtraction &&
     (mode === "db" || mediaSources.length > 0);
+  const canAuthenticateBackupSchedule =
+    isPl7Author &&
+    verifyPassword(password) &&
+    extractionSecretKey.trim().length >= 16;
+  const canSaveBackupSchedule =
+    canAuthenticateBackupSchedule &&
+    (mode === "db" || mediaSources.length > 0);
+  const canRetryExtraction = (job: ExtractionJob) =>
+    canAuthenticateExtraction &&
+    (job.mode === "db" || mediaSources.length > 0);
   const canRunMigration =
     isPl7Author &&
     migrationConfirmText === "MIGRATION" &&
@@ -528,7 +641,7 @@ export default function SettingsPage() {
     try {
       const nextHistory = await listExtractionHistoryRemote();
       setHistory(nextHistory);
-      setShouldPollExtraction(nextHistory.some((job) => job.status === "processing"));
+      setShouldPollExtraction(nextHistory.some(isExtractionActive));
     } catch (error) {
       setHistoryError(toUserFacingError(error, "Backup history could not be loaded."));
     } finally {
@@ -864,6 +977,21 @@ export default function SettingsPage() {
               <Row label="Clearance" value={`L${personnelLevel}`} strong />
               <Row label="Track" value={`${trackInfo?.short} - ${trackInfo?.label}`} strong />
               <Row label="Title" value={title} />
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            icon={DatabaseZap}
+            title="System Version"
+            description="Current frontend and backend release metadata for deployment verification."
+          >
+            <div className="space-y-2 text-sm font-body">
+              <Row label="Website" value={WEB_VERSION} strong />
+              <Row label="API" value={apiVersion?.version ?? "Unknown"} strong active={!apiVersionError} />
+              <Row label="API Build" value={apiVersion?.buildVersion ?? "Unknown"} active={!apiVersionError} />
+              <Row label="API Env" value={apiVersion?.env ?? "Unknown"} active={!apiVersionError} />
+              <Row label="API Commit" value={(apiVersion?.commitSha ?? apiVersion?.commit ?? "Not provided").slice(0, 12)} active={!apiVersionError} />
+              {apiVersionError && <p className="text-xs leading-5 text-destructive">{apiVersionError}</p>}
             </div>
           </SectionCard>
 
@@ -1671,7 +1799,7 @@ export default function SettingsPage() {
               accentClass="text-warning"
             >
               <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                <p className="text-sm text-muted-foreground">History is retained for 30 days. Completed archives include restore guidance inside the attachment README.</p>
+                <p className="text-sm text-muted-foreground">Backup archives expire after 7 days by default. Scheduled retention is configurable below.</p>
                 {processing && <p className="text-sm text-muted-foreground">Backup in progress...</p>}
               </div>
 
@@ -1742,8 +1870,8 @@ export default function SettingsPage() {
                           secretKey: extractionSecretKey,
                           mediaSources,
                         });
-                        setHistory((current) => [job, ...current]);
-                        setShouldPollExtraction(job.status === "processing");
+                        setHistory((current) => upsertHistoryJob(current, job));
+                        setShouldPollExtraction(isExtractionActive(job));
                       }, "Backup started", "Backup failed");
                     },
                   })}
@@ -1804,6 +1932,89 @@ export default function SettingsPage() {
                 <span>Auto download when completed</span>
               </label>
 
+              <div className="space-y-3 border-t border-border/70 pt-4">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs font-heading uppercase text-foreground">Scheduled Backup</p>
+                  <p className="text-xs text-muted-foreground">
+                    {backupScheduleTask?.nextRunAt
+                      ? `Next: ${formatBackupDate(backupScheduleTask.nextRunAt)}`
+                      : "Disabled"}
+                  </p>
+                </div>
+                <ScheduleEditor
+                  value={backupSchedule}
+                  onChange={setBackupSchedule}
+                  disabled={backupScheduleLoading || Boolean(busyAction)}
+                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="text-xs font-heading uppercase text-muted-foreground">Keep Archives</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      className={inputClass}
+                      value={backupRetentionCount}
+                      onChange={(event) => setBackupRetentionCount(Math.min(10, Math.max(1, Number(event.target.value) || 1)))}
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-xs font-heading uppercase text-muted-foreground">Retention Days</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={30}
+                      className={inputClass}
+                      value={backupRetentionDays}
+                      onChange={(event) => setBackupRetentionDays(Math.min(30, Math.max(1, Number(event.target.value) || 1)))}
+                    />
+                  </label>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!backupScheduleTask || !canAuthenticateBackupSchedule}
+                    isLoading={busyAction === "delete-backup-schedule"}
+                    onClick={() => showValidation({
+                      variant: "warning",
+                      title: "Disable scheduled backup",
+                      description: "The current backup schedule will be removed.",
+                      confirmLabel: "Disable schedule",
+                      cancelLabel: "Cancel",
+                      onConfirm: async () => {
+                        await runWithFeedback("delete-backup-schedule", async () => {
+                          await deleteExtractionSchedule({ password, secretKey: extractionSecretKey });
+                          setBackupScheduleTask(null);
+                        }, "Backup schedule disabled", "Schedule update failed");
+                      },
+                    })}
+                  >
+                    Disable
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={!canSaveBackupSchedule}
+                    isLoading={busyAction === "save-backup-schedule"}
+                    onClick={() => runWithFeedback("save-backup-schedule", async () => {
+                      const task = await updateExtractionSchedule({
+                        ...backupSchedule,
+                        mode,
+                        mediaSources,
+                        retentionCount: backupRetentionCount,
+                        retentionDays: backupRetentionDays,
+                        password,
+                        secretKey: extractionSecretKey,
+                      });
+                      setBackupScheduleTask(task);
+                      setBackupSchedule(scheduleInputFromTask(task));
+                    }, "Backup schedule saved", "Schedule update failed")}
+                  >
+                    Save Schedule
+                  </Button>
+                </div>
+              </div>
+
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-xs font-heading tracking-[0.12em] text-foreground uppercase">Backup History</p>
@@ -1849,7 +2060,10 @@ export default function SettingsPage() {
                             Select job
                           </label>
                           <p className="break-words text-foreground">
-                            {job.mode.toUpperCase()} / {job.status} / expires {new Date(job.expiresAt).toLocaleDateString()}
+                            {job.mode.toUpperCase()} / {job.status}
+                          </p>
+                          <p className="break-words text-xs text-muted-foreground">
+                            Created {formatBackupDate(job.createdAt)} / Expires {formatBackupDate(job.expiresAt)}
                           </p>
                           {job.progress && (
                             <div className="space-y-2 pt-1">
@@ -1862,7 +2076,34 @@ export default function SettingsPage() {
                             </div>
                           )}
                         </div>
-                        <div className="shrink-0">
+                        <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                          {isExtractionActive(job) && (
+                            <button
+                              type="button"
+                              className="text-sm text-destructive underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-60"
+                              disabled={busyAction === `stop-${job.id}`}
+                              onClick={() => showValidation({
+                                variant: "warning",
+                                title: "Stop backup job",
+                                description: "This stops the running backup job. You can retry it from 0 afterward.",
+                                confirmLabel: "Stop job",
+                                cancelLabel: "Cancel",
+                                critical: true,
+                                onConfirm: async () => {
+                                  await runWithFeedback(`stop-${job.id}`, async () => {
+                                    const stopped = await stopExtractionRemote(job.id);
+                                    setHistory((current) => {
+                                      const next = upsertHistoryJob(current, stopped);
+                                      setShouldPollExtraction(next.some(isExtractionActive));
+                                      return next;
+                                    });
+                                  }, "Backup stopped", "Stop failed");
+                                },
+                              })}
+                            >
+                              {busyAction === `stop-${job.id}` ? "Stopping..." : "Stop"}
+                            </button>
+                          )}
                           {job.status === "completed" && (
                             <button
                               type="button"
@@ -1877,6 +2118,38 @@ export default function SettingsPage() {
                               title={extractionSecretKey.trim().length < 16 ? "Enter EXTRACTION_KEY to download backup archives." : undefined}
                             >
                               {busyAction === `download-${job.id}` ? "Downloading..." : "Download ZIP"}
+                            </button>
+                          )}
+                          {(job.status === "failed" || job.status === "stopped") && (
+                            <button
+                              type="button"
+                              className="text-sm text-primary underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-60"
+                              disabled={busyAction === `retry-${job.id}` || !canRetryExtraction(job)}
+                              title={!canRetryExtraction(job) ? 'Enter password, EXTRACTION_KEY, confirmation, and at least one attachment source when needed.' : undefined}
+                              onClick={() => showValidation({
+                                variant: "warning",
+                                title: "Retry backup from 0",
+                                description: "This creates a new backup job using the same mode and starts progress from 0%.",
+                                confirmLabel: "Retry from 0",
+                                cancelLabel: "Cancel",
+                                critical: true,
+                                confirmDelaySeconds: 3,
+                                onConfirm: async () => {
+                                  await runWithFeedback(`retry-${job.id}`, async () => {
+                                    const retry = await retryExtractionRemote(job.id, {
+                                      autoDownload,
+                                      confirmText: "CONFIRM",
+                                      password,
+                                      secretKey: extractionSecretKey,
+                                      mediaSources,
+                                    });
+                                    setHistory((current) => upsertHistoryJob(current, retry));
+                                    setShouldPollExtraction(isExtractionActive(retry));
+                                  }, "Backup retry started", "Retry failed");
+                                },
+                              })}
+                            >
+                              {busyAction === `retry-${job.id}` ? "Retrying..." : "Retry from 0"}
                             </button>
                           )}
                         </div>
@@ -1964,6 +2237,8 @@ export default function SettingsPage() {
                   onClick={() => {
                     setMigrationMode("live");
                     setMigrationUploadProgress(null);
+                    setMigrationScannerFiles([]);
+                    setMigrationAllowedScannerFiles([]);
                   }}
                   className={`rounded-sm border px-3 py-2 text-left text-xs font-heading uppercase tracking-[0.12em] ${
                     migrationMode === "live" ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"
@@ -1976,6 +2251,8 @@ export default function SettingsPage() {
                   onClick={() => {
                     setMigrationMode("backup");
                     setMigrationUploadProgress(null);
+                    setMigrationScannerFiles([]);
+                    setMigrationAllowedScannerFiles([]);
                   }}
                   className={`rounded-sm border px-3 py-2 text-left text-xs font-heading uppercase tracking-[0.12em] ${
                     migrationMode === "backup" ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"
@@ -2013,12 +2290,44 @@ export default function SettingsPage() {
                     onChange={(event) => {
                       setMigrationBackupFile(event.target.files?.[0] ?? null);
                       setMigrationUploadProgress(null);
+                      setMigrationScannerFiles([]);
+                      setMigrationAllowedScannerFiles([]);
                     }}
                     className={inputClass}
                   />
                   <span className="block text-xs text-muted-foreground">
                     {migrationBackupFile ? `${migrationBackupFile.name} (${Math.round(migrationBackupFile.size / 1024 / 1024)} MB)` : "Choose a backup_ddbbyyhhss.zip archive."}
                   </span>
+                  {migrationScannerFiles.length > 0 && (
+                    <div className="space-y-2 rounded-sm border border-amber-500/40 bg-amber-500/5 p-3">
+                      <p className="text-xs font-heading uppercase tracking-[0.12em] text-amber-700 dark:text-amber-300">
+                        Scanner approval required
+                      </p>
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        Choose the blocked backup files you explicitly want to restore. Unchecked files stay skipped.
+                      </p>
+                      <div className="space-y-2">
+                        {migrationScannerFiles.map((file) => (
+                          <label key={file.objectPath} className="flex items-start gap-2 text-xs text-foreground">
+                            <input
+                              type="checkbox"
+                              checked={migrationAllowedScannerFiles.includes(file.objectPath)}
+                              onChange={(event) => {
+                                setMigrationAllowedScannerFiles((current) => event.target.checked
+                                  ? [...new Set([...current, file.objectPath])]
+                                  : current.filter((path) => path !== file.objectPath));
+                              }}
+                              className="mt-0.5 h-4 w-4 accent-primary"
+                            />
+                            <span className="min-w-0 break-all">
+                              <span className="block font-medium">{file.objectPath}</span>
+                              <span className="block text-muted-foreground">{file.reason}</span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {migrationUploadProgress && (
                     <div className="space-y-2 rounded-sm border border-primary/25 bg-primary/5 p-3">
                       <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
@@ -2106,6 +2415,7 @@ export default function SettingsPage() {
                             password: migrationPassword,
                             secretKey: migrationSecretKey,
                             confirmText: "MIGRATION",
+                            allowBlockedFiles: migrationScannerFiles.length > 0 ? migrationAllowedScannerFiles : undefined,
                             onUploadProgress: (progress) => {
                               const total = progress.total ?? migrationBackupFile.size;
                               const percent = progress.percent ?? Math.round((progress.loaded / total) * 100);
@@ -2122,8 +2432,17 @@ export default function SettingsPage() {
                             },
                           });
                         } catch (error) {
+                          const blockedFiles = getScannerBlockedFiles(error);
+                          if (blockedFiles) {
+                            setMigrationScannerFiles(blockedFiles);
+                            setMigrationAllowedScannerFiles((current) => current.filter((path) => blockedFiles.some((file) => file.objectPath === path)));
+                          }
                           setMigrationUploadProgress((current) => current
-                            ? { ...current, stage: "upload-failed", message: "Backup upload or restore start failed." }
+                            ? {
+                              ...current,
+                              stage: blockedFiles ? "scanner-review" : "upload-failed",
+                              message: blockedFiles ? "Review the blocked files above, then start restore again." : "Backup upload or restore start failed.",
+                            }
                             : null);
                           throw error;
                         }
@@ -2134,11 +2453,13 @@ export default function SettingsPage() {
                           stage: "restore-tracked",
                           message: "Backup ZIP uploaded. Restore progress is now tracked in Migration History.",
                         });
+                        setMigrationScannerFiles([]);
+                        setMigrationAllowedScannerFiles([]);
                       } else {
                         setMigrationUploadProgress(null);
                         job = await startMigrationRemote(commonPayload);
                       }
-                      setMigrationHistory((current) => [job, ...current]);
+                      setMigrationHistory((current) => upsertHistoryJob(current, job));
                       setShouldPollMigration(job.status === "processing");
                     }, "Migration started", "Migration failed");
                   },
@@ -2378,7 +2699,7 @@ function PasswordField({
       <div className="relative">
         <input
           type={revealed ? "text" : "password"}
-          name={name}
+          id={name} name={name}
           autoComplete={autoComplete}
           autoCorrect="off"
           autoCapitalize="none"
@@ -2428,3 +2749,4 @@ function Metric({ icon: Icon, label, value }: { icon: typeof DatabaseZap; label:
     </div>
   );
 }
+

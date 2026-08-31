@@ -52,6 +52,10 @@ function runtimeMetadataPlugin(mode: string) {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  base: process.env.VITE_DESKTOP_APP === "true" ? "./" : "/",
+  define: {
+    __APP_VERSION__: JSON.stringify(readPackageVersion()),
+  },
   server: {
     host: "::",
     port: 3000,
@@ -71,7 +75,7 @@ export default defineConfig(({ mode }) => ({
     rolldownOptions: {
       output: {
         // Single-bundle output avoids environments that aggressively cap file requests.
-        codeSplitting: false,
+        codeSplitting: true,
       },
     },
   },

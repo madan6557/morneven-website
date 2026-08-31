@@ -69,9 +69,9 @@ export const PERSONNEL_TRACKS: TrackTitles[] = [
     summary: "Strategic governance, doctrine control, and institute-wide decision authority.",
     description:
       "The Executive division governs policy, inter-division alignment, strategic approvals, and crisis doctrine. Personnel in this ladder are expected to translate fragmented field, engineering, and logistics realities into stable institutional direction without collapsing operational tempo.",
-    emblemTitle: "Command Sigil",
+    emblemTitle: "Central Prism",
     emblemDescription:
-      "A crowned hexagonal command sigil that represents supervisory authority, layered oversight, and the burden of central doctrine.",
+      "A mirrored crystal split by a narrow central seam, representing centralized authority, balanced oversight, and decisions that align the institute's divisions.",
     titles: {
       7: "Full Authority",
       6: "Board of Trustees",
@@ -90,9 +90,9 @@ export const PERSONNEL_TRACKS: TrackTitles[] = [
     summary: "Reconnaissance, containment, combat deployment, and hostile-zone survival.",
     description:
       "The Field division handles direct exposure to unstable sectors, creature activity, anomaly response, and tactical retrieval. Its doctrine values adaptability, observation under stress, and the ability to move from intelligence gathering to decisive engagement without waiting for ideal conditions.",
-    emblemTitle: "Vector Scope",
+    emblemTitle: "Forward Vector",
     emblemDescription:
-      "A crosshair pierced by an upward vector arrow, symbolizing target acquisition, mobility, and the will to advance into contested ground.",
+      "A forward-leaning crystal with an open diagonal cut, representing movement into uncertain ground, rapid response, and a clear path through hostile conditions.",
     titles: {
       7: "Full Authority",
       6: "Global Operative",
@@ -111,9 +111,9 @@ export const PERSONNEL_TRACKS: TrackTitles[] = [
     summary: "Systems design, maintenance, reverse engineering, and technical continuity.",
     description:
       "The Mechanic division keeps the institute functional at every scale, from emergency repairs to high-complexity architecture. It owns machine reliability, technical research conversion, and the disciplined translation of dangerous theory into tools that can survive field use.",
-    emblemTitle: "Cog Array",
+    emblemTitle: "Core Assembly",
     emblemDescription:
-      "A cogged tri-bolt array with a hex core, representing engineered precision, modular systems thinking, and continuous maintenance pressure.",
+      "Four interlocking mineral facets around a precise core, representing modular systems, repair cycles, and the technical balance that keeps complex machinery stable.",
     titles: {
       7: "Full Authority",
       6: "Chief Architect",
@@ -132,9 +132,9 @@ export const PERSONNEL_TRACKS: TrackTitles[] = [
     summary: "Supply routing, inventory continuity, transport discipline, and operational sustainment.",
     description:
       "The Logistics division ensures the rest of the institute can continue operating when conditions degrade. It coordinates movement, storage, provisioning, and redundancy planning, treating continuity itself as a strategic capability rather than a background service.",
-    emblemTitle: "Cargo Prism",
+    emblemTitle: "Flow Nexus",
     emblemDescription:
-      "Stacked cargo prisms with directional chevrons, representing controlled throughput, layered distribution, and forward movement of critical resources.",
+      "Two opposing crystal masses joined by a narrow bridge, representing controlled transfer, continuity, and the balanced movement of resources across the institute.",
     titles: {
       7: "Full Authority",
       6: "Supply Chain Sovereign",

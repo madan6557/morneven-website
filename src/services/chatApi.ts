@@ -34,6 +34,43 @@ export interface ChatMessage {
   attachments?: ChatAttachment[];
   system?: boolean;
   replyTo?: ReplyPreview;
+  clientId?: string | null;
+  senderType?: "user" | "bot" | string;
+  botIdentityId?: string | null;
+  serverSequence?: number | null;
+  deliveryStatus?: "pending" | "sent" | "failed" | "deleted" | string;
+  deletedAt?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+export type ChatBotPolicyMode = "disabled" | "mention-only" | "respond";
+
+export interface ConversationBotPolicy {
+  mode: ChatBotPolicyMode;
+  allowedIdentityIds: string[];
+  allowBotToBot: boolean;
+  maxTurns: number;
+  maxTokensPerRun: number;
+}
+
+export interface AvailableBot {
+  personalityId: string;
+  name: string;
+  roleTitle?: string;
+  avatarUrl?: string | null;
+  personalityMode: ChatBotPolicyMode;
+  effectiveAllowed: boolean;
+  denialReason?: string;
+}
+
+export interface ChatBotRun {
+  botRunId: string;
+  conversationId: string;
+  personalityId: string;
+  triggerMessageId?: string | null;
+  status: "queued" | "running" | "completed" | "failed" | "cancel_requested" | "cancelled" | string;
+  createdAt: string;
+  error?: string | null;
 }
 
 export interface ConversationMember {
@@ -56,6 +93,7 @@ export interface Conversation {
   systemManaged?: boolean;
   createdBy: string;
   createdAt: string;
+  botPolicy?: ConversationBotPolicy;
 }
 
 export interface ConversationSample {
@@ -114,7 +152,10 @@ const REALTIME_EVENTS = [
   "chat.invite.resolved",
   "chat.read.updated",
   "chat.unread.updated",
+  "chat.conversation.bot-policy.updated",
+  "client.ack",
   "socket.ready",
+  "socket.resume.completed",
 ] as const;
 
 let conversationCache: Conversation[] = [];
@@ -221,6 +262,13 @@ function ensureRealtimeBridge() {
             inviteCache = inviteCache.filter((item) => item.id !== eventPayload.conversationId);
           }
         }
+        emitChatChanged();
+        return;
+      }
+
+      if (envelope.event === "chat.conversation.bot-policy.updated" && payload && typeof payload === "object") {
+        const nextConversation = payload as Conversation;
+        if (nextConversation.id) upsertConversation(nextConversation);
         emitChatChanged();
         return;
       }
@@ -423,11 +471,13 @@ export async function sendMessageRemote(
   text: string,
   attachments?: ChatAttachment[],
   replyTo?: ReplyPreview,
+  clientId?: string,
 ): Promise<ChatMessage> {
   const message = await apiRequest<ChatMessage>("/chat/messages", {
     method: "POST",
     body: {
       conversationId,
+      ...(clientId ? { clientId } : {}),
       text,
       attachments: attachments ?? [],
       ...(replyTo ? { replyTo } : {}),
@@ -438,6 +488,25 @@ export async function sendMessageRemote(
   unreadCountCache[conversationId] = 0;
   emitChatChanged();
   return message;
+}
+
+export async function sendMessageWithRetryRemote(
+  conversationId: string,
+  text: string,
+  attachments?: ChatAttachment[],
+  replyTo?: ReplyPreview,
+  clientId = uid("client"),
+): Promise<ChatMessage> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await sendMessageRemote(conversationId, text, attachments, replyTo, clientId);
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await new Promise((resolve) => window.setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Message delivery failed");
 }
 
 export function updateMessage(
@@ -463,6 +532,70 @@ export async function editMessageRemote(messageId: string, text: string): Promis
   });
   updateMessage(messageId, () => message);
   return message;
+}
+
+const DEFAULT_BOT_POLICY: ConversationBotPolicy = {
+  mode: "disabled",
+  allowedIdentityIds: [],
+  allowBotToBot: false,
+  maxTurns: 2,
+  maxTokensPerRun: 1200,
+};
+
+export async function getConversationBotPolicyRemote(conversationId: string): Promise<ConversationBotPolicy> {
+  const cached = getConversationFromCache(conversationId)?.botPolicy;
+  if (cached) return { ...DEFAULT_BOT_POLICY, ...cached, allowedIdentityIds: [...(cached.allowedIdentityIds ?? [])] };
+  const conversations = await listConversationsForRemote("current");
+  const policy = conversations.find((conversation) => conversation.id === conversationId)?.botPolicy;
+  return { ...DEFAULT_BOT_POLICY, ...(policy ?? {}), allowedIdentityIds: [...(policy?.allowedIdentityIds ?? [])] };
+}
+
+export async function updateConversationBotPolicyRemote(
+  conversationId: string,
+  policy: Partial<ConversationBotPolicy>,
+): Promise<ConversationBotPolicy> {
+  const response = await apiRequest<Conversation>(`/chat/conversations/${conversationId}/bot-policy`, {
+    method: "PATCH",
+    body: { ...DEFAULT_BOT_POLICY, ...policy },
+  });
+  upsertConversation(response);
+  emitChatChanged();
+  return { ...DEFAULT_BOT_POLICY, ...(response.botPolicy ?? {}) };
+}
+
+export function getAvailableBotsRemote(conversationId: string): Promise<AvailableBot[]> {
+  return apiRequest<AvailableBot[]>(`/chat/conversations/${conversationId}/available-bots`);
+}
+
+export function createBotRunRemote(
+  conversationId: string,
+  payload: { personalityId: string; triggerMessageId?: string; clientRunId?: string },
+): Promise<ChatBotRun> {
+  return apiRequest<ChatBotRun>(`/chat/conversations/${conversationId}/bot-runs`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function cancelBotRunRemote(botRunId: string, clientMutationId = uid("cancel")): Promise<ChatBotRun> {
+  return apiRequest<ChatBotRun>(`/chat/bot-runs/${botRunId}/cancel`, {
+    method: "POST",
+    body: { clientMutationId },
+  });
+}
+
+export function sendBotMessageRemote(payload: {
+  conversationId: string;
+  botIdentityId: string;
+  text: string;
+  attachments?: ChatAttachment[];
+  replyTo?: ReplyPreview;
+  clientId?: string;
+  botToBot?: boolean;
+  triggeredByMention?: boolean;
+  metadata?: Record<string, unknown>;
+}): Promise<ChatMessage> {
+  return apiRequest<ChatMessage>("/chat/bot/messages", { method: "POST", body: payload });
 }
 
 export function buildReplyPreview(message: ChatMessage): ReplyPreview {

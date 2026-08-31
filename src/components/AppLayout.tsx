@@ -5,6 +5,8 @@ import NotificationBell from "./NotificationBell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Menu } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { DesktopSyncBar } from "@/components/DesktopSyncBar";
+import { isDesktopApp } from "@/services/desktop/runtime";
 
 export function AppLayout() {
   const isMobile = useIsMobile();
@@ -33,6 +35,7 @@ export function AppLayout() {
           isMobile={isMobile}
         />
         <main className="flex-1 min-w-0 overflow-x-hidden bg-transparent">
+          <DesktopSyncBar />
           {/* Mobile header with hamburger */}
           {isMobile ? (
             <div className="sticky top-0 z-30 h-12 flex items-center px-4 border-b border-border bg-background/80 backdrop-blur-sm">
@@ -48,11 +51,11 @@ export function AppLayout() {
               <span className="ml-2 font-display text-xs tracking-[0.2em] text-primary uppercase">
                 Morneven
               </span>
-              <div className="ml-auto"><NotificationBell /></div>
+              {!isDesktopApp ? <div className="ml-auto"><NotificationBell /></div> : null}
             </div>
           ) : (
             <div className="sticky top-0 z-30 h-12 flex items-center justify-end px-4 border-b border-border/50 bg-background/60 backdrop-blur-sm">
-              <NotificationBell />
+              {!isDesktopApp ? <NotificationBell /> : null}
             </div>
           )}
           <Outlet />

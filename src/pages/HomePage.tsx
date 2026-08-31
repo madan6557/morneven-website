@@ -45,6 +45,15 @@ const emptyStats: ContentStats = {
 };
 
 type SnapshotStatus = "loading" | "ready" | "error";
+const NEW_NEWS_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isNewNewsItem(item: NewsItem, now = Date.now()) {
+  const sourceDate = item.createdAt || item.date;
+  const createdTime = new Date(sourceDate).getTime();
+  if (!Number.isFinite(createdTime)) return false;
+  const age = now - createdTime;
+  return age >= 0 && age < NEW_NEWS_WINDOW_MS;
+}
 
 function StatCard({ icon: Icon, label, value, color, delay }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number; color: string; delay: number }) {
   return (
@@ -218,7 +227,7 @@ export default function HomePage() {
                     description="No project has been pinned into the command center snapshot yet."
                     compact
                   />
-                ) : projects.map((p, index) => (
+                ) : projects.map((p) => (
                   <Link
                     key={p.id}
                     to={`/projects/${p.id}`}
@@ -275,13 +284,19 @@ export default function HomePage() {
                       compact
                     />
                   </li>
-                ) : news.map((n, index) => {
+                ) : news.map((n) => {
+                  const isNew = isNewNewsItem(n);
                   const inner = (
                     <>
                       <Clock className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start gap-2 flex-wrap">
                           <p className="flex-1 break-words font-body text-foreground/80 line-clamp-2 sm:line-clamp-none">{n.text}</p>
+                          {isNew && (
+                            <span className="flex-shrink-0 rounded-sm border border-success/45 bg-success/10 px-1.5 py-0.5 text-[9px] font-display uppercase tracking-wider text-success">
+                              New
+                            </span>
+                          )}
                           {n.hasDetail && (
                             <span className="hidden flex-shrink-0 items-center gap-1 rounded-sm border border-primary/40 px-1.5 py-0.5 text-[9px] font-display tracking-wider uppercase text-primary sm:inline-flex">
                               <BookOpen className="h-2.5 w-2.5" /> Detail

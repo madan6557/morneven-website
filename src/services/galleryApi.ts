@@ -4,6 +4,8 @@ import {
   type PaginationParams,
 } from "@/services/pagination";
 import { apiRequest, buildQuery, toPageResponse, unwrapPageItems, type BackendPage } from "@/services/restClient";
+import { isDesktopApp } from "@/services/desktop/runtime";
+import * as desktopRepository from "@/services/desktop/repository";
 
 export type GallerySort = "newest" | "oldest" | "title";
 
@@ -14,10 +16,12 @@ export interface GalleryPageParams extends PaginationParams {
 }
 
 export async function getGallery(): Promise<GalleryItem[]> {
+  if (isDesktopApp) return desktopRepository.getGallery();
   return unwrapPageItems(await apiRequest<GalleryItem[] | BackendPage<GalleryItem>>("/gallery"));
 }
 
 export async function getGalleryPage(params: GalleryPageParams = {}): Promise<PaginatedResponse<GalleryItem>> {
+  if (isDesktopApp) return desktopRepository.getGalleryPage(params);
   const data = await apiRequest<GalleryItem[] | BackendPage<GalleryItem>>(
     `/gallery${buildQuery({ ...params, q: params.search })}`,
   );
@@ -25,18 +29,22 @@ export async function getGalleryPage(params: GalleryPageParams = {}): Promise<Pa
 }
 
 export async function getGalleryItem(id: string): Promise<GalleryItem | undefined> {
+  if (isDesktopApp) return desktopRepository.getGalleryItem(id);
   return apiRequest<GalleryItem>(`/gallery/${id}`);
 }
 
 export async function createGalleryItem(item: Omit<GalleryItem, "id">): Promise<GalleryItem> {
+  if (isDesktopApp) return desktopRepository.createGalleryItem(item);
   return apiRequest<GalleryItem>("/gallery", { method: "POST", body: item });
 }
 
 export async function updateGalleryItem(id: string, data: Partial<GalleryItem>): Promise<GalleryItem | undefined> {
+  if (isDesktopApp) return desktopRepository.updateGalleryItem(id, data);
   return apiRequest<GalleryItem>(`/gallery/${id}`, { method: "PUT", body: data });
 }
 
 export async function deleteGalleryItem(id: string): Promise<boolean> {
+  if (isDesktopApp) return desktopRepository.deleteGalleryItem(id);
   await apiRequest(`/gallery/${id}`, { method: "DELETE" });
   return true;
 }
@@ -45,6 +53,7 @@ export async function setGalleryReaction(
   galleryId: string,
   reaction: "like" | "dislike" | null,
 ): Promise<Pick<GalleryItem, "views" | "likes" | "dislikes" | "viewerReaction">> {
+  if (isDesktopApp) return { views: 0, likes: 0, dislikes: 0, viewerReaction: null };
   return apiRequest(`/gallery/${galleryId}/reaction`, {
     method: "POST",
     body: { reaction },
@@ -57,6 +66,7 @@ export async function addComment(
   text: string,
   mentions: DiscussionMention[] = [],
 ): Promise<GalleryItem | undefined> {
+  if (isDesktopApp) return undefined;
   return apiRequest(`/gallery/${galleryId}/comments`, {
     method: "POST",
     body: { text, mentions },
@@ -70,6 +80,7 @@ export async function addReply(
   text: string,
   mentions: DiscussionMention[] = [],
 ): Promise<GalleryItem | undefined> {
+  if (isDesktopApp) return undefined;
   return apiRequest(`/gallery/${galleryId}/comments/${commentId}/replies`, {
     method: "POST",
     body: { text, mentions },

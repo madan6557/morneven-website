@@ -1,3 +1,6 @@
+import { isDesktopApp } from "@/services/desktop/runtime";
+import { saveDesktopUpload } from "@/services/desktop/media";
+
 export interface ApiErrorDetail {
   path?: string;
   message: string;
@@ -293,6 +296,11 @@ export async function apiUpload<T>(
   file: File,
   fieldNameOrOptions: string | ApiUploadOptions = "file",
 ): Promise<T> {
+  if (isDesktopApp) {
+    const uploaded = await saveDesktopUpload(path, file);
+    return uploaded as T;
+  }
+
   const options: ApiUploadOptions =
     typeof fieldNameOrOptions === "string" ? { fieldName: fieldNameOrOptions } : fieldNameOrOptions;
   const form = new FormData();
@@ -313,6 +321,13 @@ export async function apiUploadForm<T>(
   form: FormData,
   options: ApiFormUploadOptions = {},
 ): Promise<T> {
+  if (isDesktopApp) {
+    const file = Array.from(form.values()).find((value): value is File => value instanceof File);
+    if (!file) throw new Error("A file is required for desktop uploads.");
+    const uploaded = await saveDesktopUpload(path, file);
+    return uploaded as T;
+  }
+
   if (typeof XMLHttpRequest === "undefined") {
     return apiRequest<T>(path, {
       method: "POST",

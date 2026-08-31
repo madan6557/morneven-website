@@ -7,6 +7,7 @@ import { extractMentions, renderWithMentions } from "@/lib/mentions";
 import { accentBorder, accentSurface, accentText } from "@/lib/themeColor";
 import { canModerateDiscussions } from "@/lib/pl";
 import { useValidationDialog } from "@/components/ui/validation-dialog";
+import { isDesktopApp } from "@/services/desktop/runtime";
 
 interface Props {
   comments: DiscussionComment[];
@@ -143,6 +144,8 @@ export default function DiscussionSection({
   useEffect(() => {
     setCommentCursor((current) => Math.max(commentLimit, Math.min(current, sortedComments.length)));
   }, [commentLimit, sortedComments.length]);
+
+  if (isDesktopApp) return null;
 
   return (
     <div className="space-y-4">

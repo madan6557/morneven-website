@@ -16,6 +16,8 @@ import {
 } from "@/services/restClient";
 import { connectRealtime, disconnectRealtime } from "@/services/realtime";
 import { sendPresenceHeartbeat } from "@/services/personnelApi";
+import { isDesktopApp } from "@/services/desktop/runtime";
+import { useDesktopWorkspace } from "@/components/DesktopWorkspaceGate";
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -119,23 +121,25 @@ function clearSavedAuth() {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const desktopWorkspace = useDesktopWorkspace();
   const [saved] = useState(() => readSaved());
   const hasDemoToken = Boolean(saved?.token?.startsWith("demo-token-") || saved?.refreshToken?.startsWith("demo-refresh-token"));
 
-  const [isAuthenticated, setIsAuthenticated] = useState(saved?.isAuthenticated && !hasDemoToken);
-  const [userId, setUserId] = useState<string | null>(hasDemoToken ? null : (saved?.userId ?? null));
-  const [username, setUsername] = useState(hasDemoToken ? "Guest" : (saved?.username ?? "Guest"));
-  const [role, setRole] = useState<UserRole>(hasDemoToken ? "guest" : (saved?.role ?? "guest"));
+  const [isAuthenticated, setIsAuthenticated] = useState(isDesktopApp ? desktopWorkspace.unlocked : saved?.isAuthenticated && !hasDemoToken);
+  const [userId, setUserId] = useState<string | null>(isDesktopApp ? "local-author" : (hasDemoToken ? null : (saved?.userId ?? null)));
+  const [username, setUsername] = useState(isDesktopApp ? (desktopWorkspace.meta?.profile.username ?? "Local Author") : (hasDemoToken ? "Guest" : (saved?.username ?? "Guest")));
+  const [role, setRole] = useState<UserRole>(isDesktopApp ? "author" : (hasDemoToken ? "guest" : (saved?.role ?? "guest")));
   const [personnelLevel, setPersonnelLevel] = useState<PersonnelLevel>(
-    hasDemoToken ? DEFAULT_PL_BY_ROLE.guest : (saved?.personnelLevel ?? DEFAULT_PL_BY_ROLE[saved?.role ?? "guest"])
+    isDesktopApp ? 7 : (hasDemoToken ? DEFAULT_PL_BY_ROLE.guest : (saved?.personnelLevel ?? DEFAULT_PL_BY_ROLE[saved?.role ?? "guest"]))
   );
   const [track, setTrack] = useState<PersonnelTrack>(
-    hasDemoToken ? DEFAULT_TRACK_BY_ROLE.guest : (saved?.track ?? DEFAULT_TRACK_BY_ROLE[saved?.role ?? "guest"])
+    isDesktopApp ? (desktopWorkspace.meta?.profile.track ?? "executive") : (hasDemoToken ? DEFAULT_TRACK_BY_ROLE.guest : (saved?.track ?? DEFAULT_TRACK_BY_ROLE[saved?.role ?? "guest"]))
   );
 
   const [passwordSnapshot, setPasswordSnapshot] = useState(hasDemoToken ? "" : (saved?.passwordSnapshot ?? ""));
 
   useEffect(() => {
+    if (isDesktopApp) return;
     const token = getAccessToken();
     if (!saved?.token && !token) return;
 
@@ -203,10 +207,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Save to localStorage whenever auth state changes
   useEffect(() => {
+    if (isDesktopApp) return;
     writeSavedAuth({ isAuthenticated, userId, username, role, personnelLevel, track, passwordSnapshot });
   }, [isAuthenticated, userId, username, role, personnelLevel, track, passwordSnapshot]);
 
   useEffect(() => {
+    if (isDesktopApp) return;
     if (hasDemoToken) {
       clearSavedAuth();
       clearAuthTokens();
@@ -220,6 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [hasDemoToken, saved?.refreshToken, saved?.token]);
 
   useEffect(() => {
+    if (isDesktopApp) return;
     if (isAuthenticated && role !== "guest") {
       connectRealtime();
       return;
@@ -229,6 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated, role]);
 
   useEffect(() => {
+    if (isDesktopApp) return;
     if (!isAuthenticated || role === "guest") return;
 
     let cancelled = false;
@@ -273,6 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
+    if (isDesktopApp) throw new Error("Backend login is available from the sync action.");
     const data = await apiRequest<AuthResponse>("/auth/login", {
       method: "POST",
       body: { email: email.trim().toLowerCase(), password },
@@ -282,6 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (email: string, password: string, name: string) => {
+    if (isDesktopApp) throw new Error("Backend registration is unavailable in local-only mode.");
     const data = await apiRequest<AuthResponse>("/auth/register", {
       method: "POST",
       body: {
@@ -299,11 +309,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const guestLogin = async () => {
+    if (isDesktopApp) throw new Error("Guest login is unavailable in local-only mode.");
     const data = await apiRequest<AuthResponse>("/auth/guest", { method: "POST", auth: false });
     applyAuthResponse(data, "");
   };
 
   const logout = () => {
+    if (isDesktopApp) {
+      desktopWorkspace.lock();
+      return;
+    }
     apiRequest("/auth/logout", { method: "POST" }).catch(() => undefined);
     disconnectRealtime();
     setIsAuthenticated(false);

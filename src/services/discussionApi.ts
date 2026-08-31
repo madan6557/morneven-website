@@ -9,10 +9,14 @@ import type {
   Technology,
 } from "@/types";
 import { apiRequest } from "@/services/restClient";
+import { isDesktopApp } from "@/services/desktop/runtime";
+
+const discussionsUnavailable = <T,>(): Promise<T> => Promise.reject(new Error("Discussions are server-side and unavailable in desktop mode."));
 
 function createLoreDiscussionCrud<T>(category: string) {
   return {
     addComment(entityId: string, _author: string, text: string, mentions: DiscussionMention[] = []) {
+      if (isDesktopApp) return discussionsUnavailable<T>();
       return apiRequest<T>(`/lore/${category}/${entityId}/comments`, {
         method: "POST",
         body: { text, mentions },
@@ -26,6 +30,7 @@ function createLoreDiscussionCrud<T>(category: string) {
       text: string,
       mentions: DiscussionMention[] = [],
     ) {
+      if (isDesktopApp) return discussionsUnavailable<T>();
       return apiRequest<T>(`/lore/${category}/${entityId}/comments/${commentId}/replies`, {
         method: "POST",
         body: { text, mentions },
@@ -33,6 +38,7 @@ function createLoreDiscussionCrud<T>(category: string) {
     },
 
     editComment(entityId: string, commentId: string, text: string, mentions: DiscussionMention[] = []) {
+      if (isDesktopApp) return discussionsUnavailable<T>();
       return apiRequest<T>(`/lore/${category}/${entityId}/comments/${commentId}`, {
         method: "PUT",
         body: { text, mentions },
@@ -40,6 +46,7 @@ function createLoreDiscussionCrud<T>(category: string) {
     },
 
     deleteComment(entityId: string, commentId: string) {
+      if (isDesktopApp) return discussionsUnavailable<T>();
       return apiRequest<T>(`/lore/${category}/${entityId}/comments/${commentId}`, {
         method: "DELETE",
       });
@@ -52,6 +59,7 @@ function createLoreDiscussionCrud<T>(category: string) {
       text: string,
       mentions: DiscussionMention[] = [],
     ) {
+      if (isDesktopApp) return discussionsUnavailable<T>();
       return apiRequest<T>(`/lore/${category}/${entityId}/comments/${commentId}/replies/${replyId}`, {
         method: "PUT",
         body: { text, mentions },
@@ -59,6 +67,7 @@ function createLoreDiscussionCrud<T>(category: string) {
     },
 
     deleteReply(entityId: string, commentId: string, replyId: string) {
+      if (isDesktopApp) return discussionsUnavailable<T>();
       return apiRequest<T>(`/lore/${category}/${entityId}/comments/${commentId}/replies/${replyId}`, {
         method: "DELETE",
       });
@@ -69,6 +78,7 @@ function createLoreDiscussionCrud<T>(category: string) {
 function createProjectDiscussionCrud<T>() {
   return {
     addComment(entityId: string, _author: string, text: string, mentions: DiscussionMention[] = []) {
+      if (isDesktopApp) return discussionsUnavailable<T>();
       return apiRequest<T>(`/projects/${entityId}/comments`, {
         method: "POST",
         body: { text, mentions },
@@ -82,6 +92,7 @@ function createProjectDiscussionCrud<T>() {
       text: string,
       mentions: DiscussionMention[] = [],
     ) {
+      if (isDesktopApp) return discussionsUnavailable<T>();
       return apiRequest<T>(`/projects/${entityId}/comments/${commentId}/replies`, {
         method: "POST",
         body: { text, mentions },
@@ -89,6 +100,7 @@ function createProjectDiscussionCrud<T>() {
     },
 
     editComment(entityId: string, commentId: string, text: string, mentions: DiscussionMention[] = []) {
+      if (isDesktopApp) return discussionsUnavailable<T>();
       return apiRequest<T>(`/projects/${entityId}/comments/${commentId}`, {
         method: "PUT",
         body: { text, mentions },
@@ -96,6 +108,7 @@ function createProjectDiscussionCrud<T>() {
     },
 
     deleteComment(entityId: string, commentId: string) {
+      if (isDesktopApp) return discussionsUnavailable<T>();
       return apiRequest<T>(`/projects/${entityId}/comments/${commentId}`, {
         method: "DELETE",
       });
@@ -108,6 +121,7 @@ function createProjectDiscussionCrud<T>() {
       text: string,
       mentions: DiscussionMention[] = [],
     ) {
+      if (isDesktopApp) return discussionsUnavailable<T>();
       return apiRequest<T>(`/projects/${entityId}/comments/${commentId}/replies/${replyId}`, {
         method: "PUT",
         body: { text, mentions },
@@ -115,6 +129,7 @@ function createProjectDiscussionCrud<T>() {
     },
 
     deleteReply(entityId: string, commentId: string, replyId: string) {
+      if (isDesktopApp) return discussionsUnavailable<T>();
       return apiRequest<T>(`/projects/${entityId}/comments/${commentId}/replies/${replyId}`, {
         method: "DELETE",
       });

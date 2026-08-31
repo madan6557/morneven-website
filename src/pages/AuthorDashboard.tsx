@@ -22,6 +22,7 @@ import type { Project, Character, CharacterContribution, Place, Technology, Gall
 import { Pencil, Trash2, Plus, X, Save, Upload, Link as LinkIcon, Image, Video, File as FileIcon, Calendar, LayoutDashboard, RotateCcw, Map as MapIcon, Star, CheckCircle2, FilePlus, RefreshCw, Loader2, ChevronDown } from "lucide-react";
 import RestrictedMarkerTool from "@/components/RestrictedMarkerTool";
 import NewsManagementSection from "@/components/NewsManagementSection";
+import { isDesktopApp } from "@/services/desktop/runtime";
 import CommandCenterSelectionPanel from "@/components/CommandCenterSelectionPanel";
 import MetadataEditor from "@/components/MetadataEditor";
 import { canAccessAuthorPanel, canEnterAuthorPanel } from "@/lib/pl";
@@ -625,8 +626,9 @@ export default function AuthorDashboard() {
   const [params, setParams] = useSearchParams();
   const [activeTab, setActiveTabRaw] = useState<DashboardTab>(() => {
     const tab = params.get("tab");
-    return isDashboardTab(tab) ? tab : "projects";
+    return isDashboardTab(tab) && (!isDesktopApp || ["projects", "lore", "gallery"].includes(tab)) ? tab : "projects";
   });
+  const visibleDashTabs = isDesktopApp ? dashTabs.filter((tab) => ["projects", "lore", "gallery"].includes(tab)) : dashTabs;
   const setActiveTab = (t: DashboardTab) => {
     setActiveTabRaw(t);
     const next = new URLSearchParams(params);
@@ -1124,7 +1126,7 @@ export default function AuthorDashboard() {
 
   useEffect(() => {
     const tab = params.get("tab");
-    if (isDashboardTab(tab)) {
+    if (isDashboardTab(tab) && (!isDesktopApp || ["projects", "lore", "gallery"].includes(tab))) {
       setActiveTabRaw(tab);
       return;
     }
@@ -1881,7 +1883,7 @@ export default function AuthorDashboard() {
       {/* Tabs - disabled tabs render as locked with a tooltip explaining
           the clearance gate (per L6 track scoping). */}
       <div className="flex flex-wrap gap-2">
-        {dashTabs.map((t) => {
+        {visibleDashTabs.map((t) => {
           const allowed = tabAllowed(t);
           const button = (
             <button

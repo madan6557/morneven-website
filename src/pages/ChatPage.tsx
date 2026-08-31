@@ -5,7 +5,7 @@ import {
   listConversationsForRemote,
   listInvitesForRemote,
   listMessagesRemote,
-  sendMessageRemote,
+  sendMessageWithRetryRemote,
   editMessageRemote,
   deleteMessageRemote,
   createDMRemote,
@@ -89,6 +89,8 @@ import { PERSONNEL_TRACKS } from "@/lib/pl";
 import type { PersonnelTrack } from "@/lib/pl";
 import { personnelLevelBadgeStyle, personnelLevelPanelStyle } from "@/lib/personnelTone";
 import { cn } from "@/lib/utils";
+import { ConversationSidebar } from "@/components/ConversationSidebar";
+import { ConversationDetailsDrawer } from "@/components/ConversationDetailsDrawer";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 function uploadKeyForFile(file: File, index: number) {
@@ -409,7 +411,7 @@ export default function ChatPage() {
 
   // Scroll behavior:
   // 1) after sending -> scroll to latest
-  // 2) when opening conversation -> restore saved position, else oldest unread, else bottom
+  // 2) when opening conversation -> oldest unread, else latest message
   // 3) on new incoming messages -> auto-scroll only if user is near the bottom
   useEffect(() => {
     if (!active || messages.length === 0) return;
@@ -428,42 +430,29 @@ export default function ChatPage() {
     }
 
     if (pendingOpenScrollRef.current || isNewConversation) {
-      const saved = readScrollPositions()[active];
-      const viewport = getConversationViewport();
+      const lastReadAt = readMap[active];
+      const oldestUnread = messages.find(
+        (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
+      );
 
-      if (typeof saved === "number" && viewport) {
-        // Restore previously saved scroll position.
-        requestAnimationFrame(() => {
-          viewport.scrollTo({ top: saved, behavior: "auto" });
-          const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-          nearBottomRef.current = distanceFromBottom <= NEAR_BOTTOM_THRESHOLD;
-          setShowJumpToLatest(distanceFromBottom > NEAR_BOTTOM_THRESHOLD);
-        });
-      } else {
-        const lastReadAt = readMap[active];
-        const oldestUnread = messages.find(
-          (m) => !m.system && m.author !== username && (!lastReadAt || m.createdAt > lastReadAt),
-        );
-
-        if (oldestUnread) {
-          const didScroll = scrollMessageIntoView(oldestUnread.id, "center");
-          if (didScroll) {
-            setHighlightId(oldestUnread.id);
-            window.setTimeout(
-              () => setHighlightId((cur) => (cur === oldestUnread.id ? null : cur)),
-              1600,
-            );
-          }
-        } else {
-          scrollConversationToBottom("auto");
-          nearBottomRef.current = true;
+      if (oldestUnread) {
+        const didScroll = scrollMessageIntoView(oldestUnread.id, "center");
+        if (didScroll) {
+          setHighlightId(oldestUnread.id);
+          window.setTimeout(
+            () => setHighlightId((cur) => (cur === oldestUnread.id ? null : cur)),
+            1600,
+          );
         }
+      } else {
+        scrollConversationToBottom("auto");
+        nearBottomRef.current = true;
+        setShowJumpToLatest(false);
       }
 
       pendingOpenScrollRef.current = false;
       return;
     }
-
     // New messages arrived in the same conversation.
     if (messages.length > prevLen && nearBottomRef.current) {
       scrollConversationToBottom("smooth");
@@ -643,105 +632,19 @@ export default function ChatPage() {
   }, [activeConv]);
 
   const renderConversationListPanel = (isMobileList = false) => (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className={cn("border-b border-border/70", isMobileList ? "space-y-3 p-3" : "space-y-4 p-4")}>
-        {!isMobileList && (
-          <div className="space-y-1">
-          <p className="font-heading text-xs tracking-[0.14em] text-foreground uppercase">Conversations</p>
-          <p className="text-xs leading-5 text-muted-foreground">
-            {convs.length} channel{convs.length === 1 ? "" : "s"} active
-          </p>
-          </div>
-        )}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => setDialog("dm")}
-            className={cn(
-              "flex items-center justify-center gap-1 rounded-sm border border-primary/65 bg-background/50 font-display tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground",
-              isMobileList ? "px-3 py-2 text-[10px]" : "px-3 py-2 text-[10px]",
-            )}
-          >
-            <Plus className="h-3 w-3" /> DM
-          </button>
-          <button
-            onClick={() => setDialog("group")}
-            className={cn(
-              "flex items-center justify-center gap-1 rounded-sm border border-primary/65 bg-background/50 font-display tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground",
-              isMobileList ? "px-3 py-2 text-[10px]" : "px-3 py-2 text-[10px]",
-            )}
-          >
-            <Plus className="h-3 w-3" /> GROUP
-          </button>
-        </div>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={conversationQuery}
-            onChange={(event) => setConversationQuery(event.target.value)}
-            placeholder={isMobileList ? "Search channels" : "Search channels or members"}
-            className={cn("border-border/70 bg-background/40 pl-9", isMobileList ? "h-9 text-sm" : "h-10 text-sm")}
-          />
-        </div>
-      </div>
-
-      <ScrollArea className="flex-1 min-h-0">
-        <div className={cn("space-y-2", isMobileList ? "p-2.5 pr-2" : "p-3 pr-2")}>
-          {filteredConvs.length === 0 ? (
-            <div className="rounded-sm border border-dashed border-border bg-background/35 px-3 py-6 text-center">
-              <p className="text-sm italic text-muted-foreground">
-                {conversationQuery.trim() ? "No conversations match this search." : "No conversations yet."}
-              </p>
-            </div>
-          ) : filteredConvs.map((c) => {
-            const Icon = KIND_ICON[c.kind];
-            const activeCount = c.members.filter((m) => m.status === "active").length;
-            const unreadCount = getUnreadCount(c.id);
-            return (
-              <button
-                key={c.id}
-                onClick={() => selectConversation(c.id)}
-                className={`w-full rounded-sm border px-3 py-2.5 text-left transition-colors ${
-                  active === c.id
-                    ? "border-primary/55 bg-primary/10 text-primary shadow-[inset_3px_0_0_hsl(var(--primary))]"
-                    : "border-border/70 bg-background/30 text-foreground hover:bg-muted/60"
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={cn(
-                      "mt-0.5 rounded-sm border",
-                      isMobileList ? "p-1.5" : "p-1.5",
-                      active === c.id ? "border-primary/45 bg-primary/10" : "border-border/70 bg-background/50",
-                    )}
-                  >
-                    <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-                  </div>
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <span className={cn("truncate font-heading", isMobileList ? "text-[13px]" : "text-sm")}>{c.name}</span>
-                      {unreadCount > 0 ? (
-                        <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[9px] font-display text-destructive-foreground">
-                          {unreadCount}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center text-[9px] text-muted-foreground">
-                          <Check className="h-2.5 w-2.5" />
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-display tracking-wider text-muted-foreground uppercase">
-                      <span>{conversationKindLabel(c.kind)}</span>
-                      {!isMobileList && <span>{activeCount} active</span>}
-                      {!isMobileList && c.systemManaged ? <span className="text-primary">Auto</span> : null}
-                    </div>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </ScrollArea>
-    </div>
+    <ConversationSidebar
+      conversations={filteredConvs}
+      activeId={active}
+      unreadCounts={Object.fromEntries(filteredConvs.map((conversation) => [conversation.id, getUnreadCount(conversation.id)]))}
+      query={conversationQuery}
+      mobile={isMobileList}
+      invitesCount={invites.length}
+      onQueryChange={setConversationQuery}
+      onSelect={selectConversation}
+      onCreateDm={() => setDialog("dm")}
+      onCreateGroup={() => setDialog("group")}
+      onOpenInvites={() => setDialog("invites")}
+    />
   );
 
   if (!isAuthenticated) {
@@ -819,7 +722,7 @@ export default function ChatPage() {
           ),
         );
       }
-      await sendMessageRemote(active, draftText, attachments, draftReplyTo ?? undefined);
+      await sendMessageWithRetryRemote(active, draftText, attachments, draftReplyTo ?? undefined);
       refresh();
     } catch (error) {
       toast({
@@ -1014,7 +917,7 @@ export default function ChatPage() {
         </Button>
       </div>
 
-      <div className="grid h-[calc(100dvh-3.5rem)] min-h-0 gap-0 md:h-[76vh] md:min-h-[660px] md:gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
+      <div className="grid h-[calc(100dvh-3.5rem)] min-h-0 gap-0 md:h-[76vh] md:min-h-[660px] md:gap-4 xl:grid-cols-[340px_minmax(0,1fr)_260px]">
         <div className={`xl:hidden ${!activeConv || mobileViewport === "list" ? "flex" : "hidden"} min-h-0 flex-col overflow-hidden bg-card md:hud-border`}>
           <div className="border-b border-border/70 bg-background/35 px-4 py-4">
             <div className="flex items-start justify-between gap-3">
@@ -1583,6 +1486,11 @@ export default function ChatPage() {
             </div>
           )}
         </div>
+        <ConversationDetailsDrawer
+          conversation={activeConv}
+          myRole={myRole}
+          onSettings={() => setDialog("settings")}
+        />
       </div>
 
       <Dialog open={activeAttachmentItem !== null} onOpenChange={(open) => !open && closeAttachmentViewer()}>

@@ -1,7 +1,8 @@
 import { apiRequest, getApiBaseUrl, unwrapPageItems, type BackendPage } from "@/services/restClient";
+import type { ScheduleInput, ScheduledTask } from "@/services/schedulerTypes";
 
 export type ExtractionMode = "db" | "images" | "all";
-export type ExtractionStatus = "processing" | "completed" | "failed";
+export type ExtractionStatus = "queued" | "processing" | "completed" | "failed" | "stopped";
 export type BackupMediaSource =
   | "chat"
   | "gallery"
@@ -31,6 +32,7 @@ export interface ExtractionJob {
     percent: number;
     stage: string;
     message: string;
+    updatedAt?: string;
   };
 }
 
@@ -64,10 +66,28 @@ export async function startExtractionRemote(
   mode: ExtractionMode,
   autoDownload: boolean,
   payload: { confirmText?: string; password?: string; secretKey?: string; mediaSources?: BackupMediaSource[] } = {},
+  idempotencyKey = crypto.randomUUID(),
 ): Promise<ExtractionJob> {
   return apiRequest<ExtractionJob>("/settings/extractions", {
     method: "POST",
+    headers: { "Idempotency-Key": idempotencyKey },
     body: { mode, autoDownload, ...payload },
+  });
+}
+
+export async function retryExtractionRemote(
+  id: string,
+  payload: { autoDownload?: boolean; confirmText?: string; password?: string; secretKey?: string; mediaSources?: BackupMediaSource[] } = {},
+): Promise<ExtractionJob> {
+  return apiRequest<ExtractionJob>(`/settings/extractions/${id}/retry`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function stopExtractionRemote(id: string): Promise<ExtractionJob> {
+  return apiRequest<ExtractionJob>(`/settings/extractions/${id}/stop`, {
+    method: "POST",
   });
 }
 
@@ -107,4 +127,29 @@ export async function downloadExtractionJob(job: ExtractionJob, secretKey: strin
 
 export function canUseLocalExtractionFallback(): boolean {
   return false;
+}
+
+export function getExtractionSchedule() {
+  return apiRequest<ScheduledTask | null>("/settings/extraction/schedule");
+}
+
+export function updateExtractionSchedule(payload: ScheduleInput & {
+  mode: ExtractionMode;
+  mediaSources: BackupMediaSource[];
+  retentionCount: number;
+  retentionDays: number;
+  password: string;
+  secretKey: string;
+}) {
+  return apiRequest<ScheduledTask>("/settings/extraction/schedule", {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export function deleteExtractionSchedule(payload: { password: string; secretKey: string }) {
+  return apiRequest<{ deleted: boolean }>("/settings/extraction/schedule", {
+    method: "DELETE",
+    body: payload,
+  });
 }

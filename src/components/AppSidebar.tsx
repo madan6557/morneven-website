@@ -45,7 +45,8 @@ import {
   subscribeNavigationBadges,
   type NavigationBadges,
 } from "@/services/navigationBadgesApi";
-import logoColor from "@/assets/logo-color.png";
+import logoColor from "@/assets/logo-color.webp";
+import { isDesktopApp } from "@/services/desktop/runtime";
 
 interface NavItem {
   title: string;
@@ -130,9 +131,10 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
   );
   const isActive = (path: string) => location.pathname.startsWith(path);
 
-  const filteredNav = navItems.filter((item) =>
-    item.visible ? item.visible({ role, level: personnelLevel, track, isAuthenticated, userId }) : true,
-  );
+  const filteredNav = navItems.filter((item) => {
+    if (isDesktopApp && !["/author", "/projects", "/gallery", "/lore"].includes(item.url)) return false;
+    return item.visible ? item.visible({ role, level: personnelLevel, track, isAuthenticated, userId }) : true;
+  });
 
   // Authors can preview every tier including the hidden L7 (Full Authority).
   // Everyone else stops at the public ladder (L0-L6).
@@ -144,6 +146,9 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
     navigate("/");
   };
 
+  const groupOrder: Record<string, number> = { "/home": 0, "/activity": 1, "/gallery": 2, "/lore": 3, "/maps": 4, "/projects": 5, "/chat": 6, "/author": 7, "/management": 8, "/bot-manager": 9, "/security": 10, "/personnel": 11, "/settings": 12 };
+  const groupedNav = [...filteredNav].sort((a, b) => groupOrder[a.url] - groupOrder[b.url]);
+  const groupForUrl = (url: string) => ["/home", "/activity", "/gallery", "/lore", "/maps"].includes(url) ? "Explore" : ["/projects", "/chat", "/author"].includes(url) ? "Workspace" : ["/management", "/bot-manager", "/security", "/personnel"].includes(url) ? "Operations" : "System";
   useEffect(() => {
     const updateOnlineStatus = () => setIsOnline(navigator.onLine);
 
@@ -159,6 +164,12 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
 
   useEffect(() => {
     let cancelled = false;
+
+    if (isDesktopApp) {
+      setChatBadgeCount(0);
+      setManagementBadgeCount(0);
+      return () => { cancelled = true; };
+    }
 
     const refreshBadges = async (badges?: NavigationBadges) => {
       if (role === "guest") {
@@ -189,13 +200,31 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
       }
     };
 
-    void refreshBadges();
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (
+        callback: () => void,
+        options?: { timeout: number },
+      ) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    const initialRefreshHandle = idleWindow.requestIdleCallback
+      ? idleWindow.requestIdleCallback(() => void refreshBadges(), { timeout: 1500 })
+      : window.setTimeout(() => void refreshBadges(), 700);
+    const cancelInitialRefresh = () => {
+      if (idleWindow.cancelIdleCallback && idleWindow.requestIdleCallback) {
+        idleWindow.cancelIdleCallback(initialRefreshHandle);
+      } else {
+        window.clearTimeout(initialRefreshHandle);
+      }
+    };
+
     const unsubscribeBadges = subscribeNavigationBadges((badges) => {
       void refreshBadges(badges);
     });
 
     return () => {
       cancelled = true;
+      cancelInitialRefresh();
       unsubscribeBadges();
     };
   }, [personnelLevel, role, track, username]);
@@ -268,7 +297,9 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
             <label htmlFor="pl-switch" className="text-[10px] font-display tracking-wider text-sidebar-foreground/70 uppercase">
               Clearance
             </label>
-            {role === "author" ? (
+            {isDesktopApp ? (
+              <span className="text-[10px] font-display tracking-wider bg-sidebar-accent border border-sidebar-border rounded-sm px-1.5 py-0.5 text-sidebar-foreground/85">L7 (LOCAL)</span>
+            ) : role === "author" ? (
               <select
                 id="pl-switch"
                 value={personnelLevel}
@@ -301,7 +332,9 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
             </label>
             <div className="flex items-center gap-1.5">
               <TrackEmblem track={track} size={22} title={PERSONNEL_TRACKS.find((t) => t.key === track)?.label} />
-              {role === "author" || personnelLevel >= PL_FULL_AUTHORITY ? (
+              {isDesktopApp ? (
+                <span className="text-[10px] font-display tracking-wider bg-sidebar-accent border border-sidebar-border rounded-sm px-1.5 py-0.5 text-sidebar-foreground/85">EXEC</span>
+              ) : role === "author" || personnelLevel >= PL_FULL_AUTHORITY ? (
                 <select
                   id="track-switch"
                   value={track}
@@ -332,13 +365,17 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
 
       {/* Nav items */}
       <ScrollArea className="flex-1">
-        <nav className="py-3 space-y-1 px-2">
-          {filteredNav.map((item) => {
+        <nav aria-label="Primary navigation" className="py-3 space-y-1 px-2">
+          {groupedNav.map((item, index) => {
             const active = isActive(item.url);
+            const group = groupForUrl(item.url);
+            const previousGroup = index > 0 ? groupForUrl(groupedNav[index - 1].url) : null;
+            const showGroupLabel = isExpanded && group !== previousGroup;
             const badgeCount = badgeCountFor(item);
             const link = (
               <Link
                 to={item.url}
+                aria-current={active ? "page" : undefined}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-all group relative
                   ${active
                     ? "bg-primary/10 text-primary font-medium"
@@ -377,7 +414,16 @@ export function AppSidebar({ expanded, onToggleExpand, open, onClose, isMobile }
               );
             }
 
-            return <div key={item.title}>{link}</div>;
+            return (
+              <div key={item.title}>
+                {showGroupLabel && (
+                  <div className="px-3 pt-4 pb-1 text-[10px] font-display uppercase tracking-[0.2em] text-primary/70">
+                    {group}
+                  </div>
+                )}
+                {link}
+              </div>
+            );
           })}
         </nav>
       </ScrollArea>
