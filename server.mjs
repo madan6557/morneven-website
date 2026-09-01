@@ -51,7 +51,7 @@ const contentSecurityPolicy = [
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
   "media-src 'self' data: blob:",
-  "connect-src 'self' https://backend.dev.morneven.com wss://backend.dev.morneven.com https://backend.morneven.com wss://backend.morneven.com https://morneven-backend-production.up.railway.app wss://morneven-backend-production.up.railway.app https://va.vercel-scripts.com https://vitals.vercel-insights.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
+  "connect-src 'self' https://backend.dev.morneven.com wss://backend.dev.morneven.com https://backend.morneven.com wss://backend.morneven.com https://morneven-backend-production-2d6f.up.railway.app wss://morneven-backend-production-2d6f.up.railway.app https://va.vercel-scripts.com https://vitals.vercel-insights.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
   "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",

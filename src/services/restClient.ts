@@ -67,7 +67,7 @@ export class ApiError extends Error {
   }
 }
 
-const DEFAULT_PRODUCTION_BASE_URL = "https://morneven-backend-production.up.railway.app/api";
+const DEFAULT_PRODUCTION_BASE_URL = "https://morneven-backend-production-2d6f.up.railway.app/api";
 const DEFAULT_LOCAL_BASE_URL = "http://localhost:3000/api";
 const DEFAULT_REQUEST_TIMEOUT_MS = 10000;
 const DEFAULT_UPLOAD_TIMEOUT_MS = 300000;
