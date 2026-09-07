@@ -42,6 +42,14 @@ export default function DocumentationViewer({
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const sortedDocs = useMemo(() => sortDocsByDateDesc(docs), [docs]);
   const activeDoc = activeIndex === null ? null : sortedDocs[activeIndex] ?? null;
+  const activeFileUrl = activeDoc
+    ? activeDoc.url || (activeDoc.type === "image" ? activeDoc.thumbnail : "") || activeDoc.thumbnail || ""
+    : "";
+  const activePreviewUrl = activeDoc
+    ? activeDoc.thumbnail || (activeDoc.type === "image" ? activeDoc.url : "") || ""
+    : "";
+  const canPreviewImage = activeDoc?.type === "image" && Boolean(activeFileUrl || activePreviewUrl);
+  const canPreviewVideo = activeDoc?.type === "video" && Boolean(activeFileUrl);
   const hasDocs = sortedDocs.length > 0;
   const sectionStyle = useMemo(
     () => (accentColor ? { borderColor: `${accentColor}30` } : undefined),
@@ -133,7 +141,7 @@ export default function DocumentationViewer({
                 const previewUrl = doc.thumbnail || (doc.type === "image" ? doc.url : "");
                 return (
                   <button
-                    key={`${doc.type}-${doc.url}-${index}`}
+                    key={`${doc.type}-${doc.url || doc.thumbnail || index}-${index}`}
                     type="button"
                     onClick={() => openDoc(index)}
                     className="group overflow-hidden rounded-sm border border-border bg-background text-left transition-colors hover:border-primary/70 hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/45"
@@ -187,21 +195,21 @@ export default function DocumentationViewer({
                     </DialogDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {activeDoc.url && (
+                    {activeFileUrl && (
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => void openAuthenticatedFile(activeDoc.url)}
+                        onClick={() => void openAuthenticatedFile(activeFileUrl)}
                       >
                         <ExternalLink className="h-4 w-4" /> Open
                       </Button>
                     )}
-                    {activeDoc.url && (
+                    {activeFileUrl && (
                       <Button
                         type="button"
                         size="sm"
-                        onClick={() => void downloadAuthenticatedFile(activeDoc.url, docFallbackName(activeDoc, activeIndex, itemLabel))}
+                        onClick={() => void downloadAuthenticatedFile(activeFileUrl, docFallbackName(activeDoc, activeIndex, itemLabel))}
                       >
                         <Download className="h-4 w-4" /> Download
                       </Button>
@@ -212,42 +220,54 @@ export default function DocumentationViewer({
 
               <div className="relative min-h-0 bg-muted/35 p-3 md:p-5">
                 <div className="flex h-full min-h-[320px] items-center justify-center overflow-hidden rounded-sm border border-border bg-background">
-                  {activeDoc.type === "image" && activeDoc.url ? (
+                  {canPreviewImage ? (
                     <AuthenticatedImage
-                      src={activeDoc.url}
+                      src={activeFileUrl || activePreviewUrl}
                       alt={docFallbackName(activeDoc, activeIndex, itemLabel)}
                       className="max-h-[70vh] w-full object-contain"
                     />
-                  ) : activeDoc.type === "video" && activeDoc.url ? (
+                  ) : canPreviewVideo ? (
                     <AuthenticatedVideo
-                      src={activeDoc.url}
+                      src={activeFileUrl}
                       className="aspect-video h-full max-h-[70vh] w-full"
                       title={docFallbackName(activeDoc, activeIndex, itemLabel)}
                     />
                   ) : (
                     <div className="flex flex-col items-center gap-4 p-8 text-center">
-                      <FileText className="h-12 w-12 text-muted-foreground" />
+                      {activePreviewUrl ? (
+                        <div className="max-h-[45vh] max-w-md overflow-hidden rounded-sm border border-border bg-background shadow-sm">
+                          <AuthenticatedImage
+                            src={activePreviewUrl}
+                            alt={docFallbackName(activeDoc, activeIndex, itemLabel)}
+                            className="h-full w-full object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <FileText className="h-12 w-12 text-muted-foreground" />
+                      )}
                       <div className="space-y-1">
                         <p className="font-heading text-sm tracking-wider text-foreground uppercase">
-                          File attachment
+                          {activeDoc.type === "file" ? "File attachment" : "Document preview"}
                         </p>
                         <p className="max-w-md text-sm text-muted-foreground">
-                          Open or download this file to inspect the full document.
+                          {activeFileUrl
+                            ? "Open or download this file to inspect the full document."
+                            : "No attachment file has been uploaded for this document."}
                         </p>
                       </div>
                       <div className="flex flex-wrap justify-center gap-2">
-                        {activeDoc.url && (
+                        {activeFileUrl && (
                           <>
                             <Button
                               type="button"
-                              onClick={() => void downloadAuthenticatedFile(activeDoc.url, docFallbackName(activeDoc, activeIndex, itemLabel))}
+                              onClick={() => void downloadAuthenticatedFile(activeFileUrl, docFallbackName(activeDoc, activeIndex, itemLabel))}
                             >
                               <Download className="h-4 w-4" /> Download
                             </Button>
                             <Button
                               type="button"
                               variant="outline"
-                              onClick={() => void openAuthenticatedFile(activeDoc.url)}
+                              onClick={() => void openAuthenticatedFile(activeFileUrl)}
                             >
                               <ExternalLink className="h-4 w-4" /> Open
                             </Button>

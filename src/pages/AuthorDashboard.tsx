@@ -1630,7 +1630,21 @@ export default function AuthorDashboard() {
   };
   const updateDoc = (idx: number, field: keyof DocItem, value: string) => {
     const docs = [...(editing.docs || [])];
-    docs[idx] = { ...docs[idx], [field]: value };
+    const current = { ...docs[idx], [field]: value };
+    if (current.type === "image") {
+      if (field === "thumbnail" && value && !current.url) {
+        current.url = value;
+      } else if (field === "url" && value && !current.thumbnail) {
+        current.thumbnail = value;
+      }
+    } else if (field === "type" && value === "image") {
+      if (current.thumbnail && !current.url) {
+        current.url = current.thumbnail;
+      } else if (current.url && !current.thumbnail) {
+        current.thumbnail = current.url;
+      }
+    }
+    docs[idx] = current;
     setEditing({ ...editing, docs: docsForEditor(docs) });
   };
   const removeDoc = (idx: number) => {
