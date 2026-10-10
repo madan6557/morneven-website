@@ -4,6 +4,7 @@ import { BookOpen, Users, FlaskConical, Globe, ArrowRight, ExternalLink } from "
 import logoColor from "@/assets/logo-color.webp";
 import kronLogo from "@/assets/kron-logo.svg";
 import omniLogo from "@/assets/omni-logo.svg";
+import waveLogo from "@/assets/wave-logo.svg";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -327,7 +328,7 @@ export default function Landing() {
               </p>
             </motion.div>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* OMNI */}
               <motion.div
                 variants={fadeUp}
@@ -379,6 +380,31 @@ export default function Landing() {
                 <div className="flex gap-3 pt-2">
                   <Link to="/privacy" className="font-body text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-4">Privacy Policy</Link>
                   <Link to="/terms" className="font-body text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-4">Terms of Service</Link>
+                </div>
+              </motion.div>
+
+              {/* WAVE */}
+              <motion.div
+                variants={fadeUp}
+                custom={3}
+                className="group p-8 rounded-lg border border-border bg-card/40 hover:bg-card/80 hover:border-primary/30 transition-all duration-300 space-y-5"
+              >
+                <div className="flex items-center gap-4">
+                  <img src={waveLogo} alt="WAVE Logo" className="h-14 w-14 drop-shadow-md" />
+                  <div>
+                    <h3 className="font-display text-lg tracking-[0.1em] text-primary">WAVE</h3>
+                    <p className="font-heading text-xs tracking-wider text-muted-foreground uppercase">Software</p>
+                  </div>
+                </div>
+                <p className="font-body text-sm text-foreground/85 leading-relaxed">
+                  Desktop soundboard application for Windows inspired by Discord, designed for real-time audio playback without limits. Features global hotkeys, sound wheel overlay, audio trimming, and direct virtual audio routing.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {["Soundboard", "Windows", "Low Latency", "Discord", "Overlay"].map((tag) => (
+                    <span key={tag} className="rounded-sm border border-border/70 px-2.5 py-1 text-[10px] font-heading tracking-wider text-muted-foreground uppercase">
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               </motion.div>
             </div>
